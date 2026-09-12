@@ -1,0 +1,14 @@
+[project]
+name = "deephelp-workspace"
+version = "0.1.0"
+description = "DeepHelp Python workspace"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+required-version = ">=0.12.13,<0.13"
+
+[tool.uv.workspace]
+members = ["modules/*"]
+exclude = ["modules/README.md"]

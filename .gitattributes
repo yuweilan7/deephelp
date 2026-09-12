@@ -1,2 +1,2 @@
-# Preserve the exact deployed bytes, including upstream source and evidence hashes.
-* -text
+* text=auto eol=lf
+# infra/.gitattributes preserves the original deployment/evidence bytes.

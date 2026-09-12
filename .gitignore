@@ -1,13 +1,40 @@
+# Local configuration and credentials (examples are safe to track).
 .env
-.env.secret
+.env.*
+!.env.example
+!.env.*.example
 .secrets/
-.venv/
-.venv312/
-__pycache__/
-*.pyc
-client/.tunnel*
-config/connections.env
-*.sql.gz
 *.pem
 *.key
+**/config/connections.env
+**/client/.tunnel*
+
+# Python environments, caches, and generated distributions.
+.venv*/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# IDE / OS state.
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local datasets, model artifacts, backups, and logs.
+/data/
+/models/
+/artifacts/
+/logs/
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
 *.tar.gz
+*.pdf
