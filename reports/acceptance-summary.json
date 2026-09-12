@@ -1,0 +1,65 @@
+{
+  "P00": "DONE",
+  "MILVUS_CLOUD": "ACCEPTED_EXPERIMENTAL",
+  "server": "SERVER_VALIDATED",
+  "client": "REMOTE_CLIENT_VALIDATED",
+  "duration_seconds": 720.0,
+  "sample_count": 24,
+  "minimum_host_available_GiB": 6.420440673828125,
+  "minimum_root_free_GiB": 48.037933349609375,
+  "swap_io_delta": {
+    "pswpin": 0,
+    "pswpout": 0
+  },
+  "resources": {
+    "mysql": {
+      "current_MiB": 189.2734375,
+      "peak_MiB": 196.484375,
+      "rss_status": [
+        "VmHWM:\t  223432 kB",
+        "VmRSS:\t  223432 kB"
+      ],
+      "restarts": 0,
+      "oom": false
+    },
+    "redis": {
+      "current_MiB": 4.4921875,
+      "peak_MiB": 7.16796875,
+      "rss_status": [
+        "VmHWM:\t   22444 kB",
+        "VmRSS:\t   22444 kB"
+      ],
+      "restarts": 0,
+      "oom": false
+    },
+    "milvus": {
+      "current_MiB": 185.765625,
+      "peak_MiB": 188.4765625,
+      "rss_status": [
+        "VmHWM:\t    3948 kB",
+        "VmRSS:\t    3948 kB"
+      ],
+      "restarts": 0,
+      "oom": false
+    }
+  },
+  "startup": {
+    "deephelp-mysql": {
+      "healthy_seconds": 5.283085,
+      "source": "first successful healthcheck after StartedAt in first observation sample"
+    },
+    "deephelp-redis": {
+      "healthy_seconds": 20.283687,
+      "source": "first successful healthcheck after StartedAt in first observation sample"
+    },
+    "deephelp-milvus": {
+      "healthy_seconds": 5.221254,
+      "source": "first successful healthcheck after StartedAt in first observation sample"
+    }
+  },
+  "python_3_12_health_validated": true,
+  "webui": "PAGE_LOADED_DETAILS_EMPTY",
+  "wsl": "SCRIPT_GENERATED_SYNTAX_CHECKED_NOT_EXECUTED",
+  "host_reboot": "BOOT_POLICY_ENABLED_NOT_REBOOT_TESTED",
+  "synthetic_vectors": "interface validation only; embedding quality not evaluated"
+}

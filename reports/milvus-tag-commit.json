@@ -1,0 +1,10 @@
+{
+  "ref": "refs/tags/v2.6.23",
+  "node_id": "MDM6UmVmMjA4NzI4NzcyOnJlZnMvdGFncy92Mi42LjIz",
+  "url": "https://api.github.com/repos/milvus-io/milvus/git/refs/tags/v2.6.23",
+  "object": {
+    "sha": "bfa1bc34f93df2ccd20fa7c060463c6c6812d355",
+    "type": "commit",
+    "url": "https://api.github.com/repos/milvus-io/milvus/git/commits/bfa1bc34f93df2ccd20fa7c060463c6c6812d355"
+  }
+}

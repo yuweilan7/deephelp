@@ -1,0 +1,13 @@
+[mysqld]
+character-set-server=utf8mb4
+collation-server=utf8mb4_0900_ai_ci
+default-time-zone=+00:00
+innodb_buffer_pool_size=128M
+max_connections=20
+performance_schema=OFF
+mysqlx=0
+skip_name_resolve=ON
+innodb_redo_log_capacity=64M
+log_bin=OFF
+general_log=OFF
+slow_query_log=OFF

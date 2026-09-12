@@ -1,0 +1,31 @@
+{
+  "mode": "post-restart",
+  "started_at": "2026-09-12T02:00:45.328708+00:00",
+  "viewpoint": "Windows developer PC through SSH tunnel",
+  "mysql": {
+    "server": [
+      "8.4.11",
+      "deephelp",
+      1,
+      "utf8mb4",
+      "+00:00",
+      20,
+      134217728
+    ],
+    "restart_persistence": true
+  },
+  "redis": {
+    "ping": true,
+    "cache_lost_as_expected": true
+  },
+  "milvus": {
+    "databases": [
+      "default",
+      "deephelp"
+    ],
+    "server_version": "2.6.23",
+    "restart_persistence": true,
+    "row_count": 36
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,6 @@
+{
+  "mysql_wrong_password_rejected": true,
+  "redis_unauthenticated_rejected": true,
+  "milvus_unauthenticated_rejected": true,
+  "milvus_app_list_users_rejected": true
+}

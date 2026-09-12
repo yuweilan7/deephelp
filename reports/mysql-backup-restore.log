@@ -1,0 +1,6 @@
+ROOT_FREE_GIB=48.04 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=4.14
+1	中文事务已提交😀
+MYSQL_BACKUP_RESTORE PASS
+Backup=/srv/deephelp-backup/deephelp-20260912T020144Z.sql.gz
+TestDatabase=deephelp_restore_p00_20260912020144

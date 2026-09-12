@@ -1,0 +1,90 @@
+name: deephelp
+x-logging: &bounded-log
+  driver: json-file
+  options: {max-size: 10m, max-file: '3'}
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:?Run pull-images.sh first}
+    container_name: deephelp-mysql
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.5
+    restart: unless-stopped
+    ports: ['127.0.0.1:3306:3306']
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql-root
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql-app
+      MYSQL_DATABASE: deephelp
+      MYSQL_USER: deephelp_app
+      TZ: UTC
+    volumes:
+      - /srv/deephelp-data/mysql:/var/lib/mysql
+      - ./config/mysql.cnf:/etc/mysql/conf.d/deephelp.cnf:ro
+      - ./.secrets/mysql-init.sql:/docker-entrypoint-initdb.d/01-app.sql:ro
+      - ./.secrets/mysql-root:/run/secrets/mysql-root:ro
+      - ./.secrets/mysql-app:/run/secrets/mysql-app:ro
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD=$$(cat /run/secrets/mysql-app) mysql -h127.0.0.1 -udeephelp_app -Ddeephelp -Nse "SELECT 1"']
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    logging: *bounded-log
+    networks: [middleware]
+  redis:
+    image: ${REDIS_IMAGE:?Run pull-images.sh first}
+    container_name: deephelp-redis
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+    command: [redis-server, /usr/local/etc/redis/redis.conf]
+    ports: ['127.0.0.1:6379:6379']
+    volumes:
+      - /srv/deephelp-data/redis:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./.secrets/redis.acl:/run/secrets/redis.acl:ro
+      - ./.secrets/redis-app:/run/secrets/redis-app:ro
+      - ./.secrets/redis-admin:/run/secrets/redis-admin:ro
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH=$$(cat /run/secrets/redis-app) redis-cli --user deephelp_app ping | grep -qx PONG']
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    logging: *bounded-log
+    networks: [middleware]
+  milvus:
+    image: ${MILVUS_IMAGE:?Run pull-images.sh first}
+    container_name: deephelp-milvus
+    mem_limit: 5g
+    memswap_limit: 5g
+    cpus: 2.75
+    restart: 'on-failure:3'
+    stop_grace_period: 120s
+    command: [milvus, run, standalone]
+    environment:
+      ETCD_USE_EMBED: 'true'
+      ETCD_DATA_DIR: /var/lib/milvus/etcd
+      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
+      COMMON_STORAGETYPE: local
+      COMMON_SECURITY_DEFAULTROOTPASSWORD: ${MILVUS_BOOTSTRAP_PASSWORD:?Secrets bootstrap required}
+      DEPLOY_MODE: STANDALONE
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    ports: ['127.0.0.1:19530:19530', '127.0.0.1:9091:9091']
+    volumes:
+      - /srv/deephelp-data/milvus:/var/lib/milvus
+      - ./config/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
+      - ./config/milvus-user.yaml:/milvus/configs/user.yaml:ro
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:9091/healthz]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 120s
+    logging: *bounded-log
+    networks: [middleware]
+networks:
+  middleware:
+    name: deephelp-middleware
+    driver: bridge

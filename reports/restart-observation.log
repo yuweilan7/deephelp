@@ -1,0 +1,16 @@
+ Container deephelp-mysql Restarting 
+ Container deephelp-milvus Restarting 
+ Container deephelp-redis Restarting 
+ Container deephelp-redis Started 
+ Container deephelp-mysql Started 
+ Container deephelp-milvus Started 
+ Container deephelp-redis Running 
+ Container deephelp-milvus Running 
+ Container deephelp-mysql Running 
+ Container deephelp-redis Waiting 
+ Container deephelp-milvus Waiting 
+ Container deephelp-mysql Waiting 
+ Container deephelp-mysql Healthy 
+ Container deephelp-milvus Healthy 
+ Container deephelp-redis Healthy 
+STABILITY_OBSERVATION_COMPLETE

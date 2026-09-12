@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "collection": "p00_rebuilt_1789178448",
+  "rows": 36,
+  "bm25_search": [
+    [
+      {
+        "id": 1,
+        "distance": 3.1211636066436768,
+        "entity": {}
+      },
+      {
+        "id": 4,
+        "distance": 3.1211636066436768,
+        "entity": {}
+      },
+      {
+        "id": 7,
+        "distance": 3.1211636066436768,
+        "entity": {}
+      }
+    ]
+  ]
+}

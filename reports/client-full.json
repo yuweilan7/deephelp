@@ -1,0 +1,219 @@
+{
+  "mode": "full",
+  "started_at": "2026-09-12T01:58:25.541579+00:00",
+  "viewpoint": "Windows developer PC through SSH tunnel",
+  "mysql": {
+    "server": [
+      "8.4.11",
+      "deephelp",
+      1,
+      "utf8mb4",
+      "+00:00",
+      20,
+      134217728
+    ],
+    "isolation_mysql_system_denied": true,
+    "isolation_create_database_denied": true,
+    "grants": [
+      "GRANT USAGE ON *.* TO `deephelp_app`@`%`",
+      "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES ON `deephelp`.* TO `deephelp_app`@`%`"
+    ],
+    "connection_17_denied": true,
+    "utf8mb4": true,
+    "commit": true,
+    "rollback": true,
+    "unique_key": true,
+    "index": true,
+    "utc_datetime": true
+  },
+  "redis": {
+    "ping": true,
+    "ttl": 2,
+    "config": {
+      "save": "",
+      "maxmemory-policy": "allkeys-lru",
+      "appendonly": "no",
+      "maxmemory": "67108864"
+    },
+    "app_config_denied": true,
+    "other_prefix_denied": true,
+    "ttl_expiration": true
+  },
+  "milvus": {
+    "databases": [
+      "default",
+      "deephelp"
+    ],
+    "server_version": "2.6.23",
+    "chinese_analyzer": [
+      "['物流', '运单', '查询', '包裹', '延迟', '怎么', '怎么办']"
+    ],
+    "create_seconds": 3.0977146000000175,
+    "dense": [
+      [
+        {
+          "id": 1,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 4,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 7,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 10,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 13,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 16,
+          "distance": 1.0,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        }
+      ]
+    ],
+    "bm25_sparse": [
+      [
+        {
+          "id": 1,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 4,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 7,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 10,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 13,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 16,
+          "distance": 3.1839842796325684,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        }
+      ]
+    ],
+    "weighted_hybrid": [
+      [
+        {
+          "id": 1,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 4,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 7,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 10,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 13,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        },
+        {
+          "id": 16,
+          "distance": 0.92250657081604,
+          "entity": {
+            "tenant": "a",
+            "text": "物流运单查询 包裹延迟 联系客服"
+          }
+        }
+      ]
+    ],
+    "insert_count": 37,
+    "delete_verified": true,
+    "query_ms": {
+      "dense": 134.91129999965779,
+      "bm25_sparse": 138.38320000013482,
+      "weighted_hybrid": 158.5226000001967
+    },
+    "metadata_filter": true,
+    "create_database_denied": true
+  },
+  "status": "PASS"
+}

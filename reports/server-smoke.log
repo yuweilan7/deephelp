@@ -1,0 +1,10 @@
+ROOT_FREE_GIB=48.04 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=4.14
+mysql HEALTHY memory cap 536870912 CPU 0.5 loopback-only; bounded logs
+redis HEALTHY memory cap 134217728 CPU 0.25 loopback-only; bounded logs
+milvus HEALTHY memory cap 5368709120 CPU 2.750000128 loopback-only; bounded logs
+OK
+enabled
+8.4.11	deephelp	1
+PONG
+Milvus functional acceptance: run client/test-connections.py on developer PC through SSH tunnel.

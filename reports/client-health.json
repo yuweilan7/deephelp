@@ -1,0 +1,31 @@
+{
+  "mode": "health",
+  "started_at": "2026-09-12T02:10:02.896857+00:00",
+  "viewpoint": "Windows developer PC through SSH tunnel",
+  "mysql": {
+    "server": [
+      "8.4.11",
+      "deephelp",
+      1,
+      "utf8mb4",
+      "+00:00",
+      20,
+      134217728
+    ]
+  },
+  "redis": {
+    "ping": true
+  },
+  "milvus": {
+    "databases": [
+      "default",
+      "deephelp"
+    ],
+    "server_version": "2.6.23",
+    "collections": [
+      "p00_acceptance",
+      "p00_rebuilt_1789178448"
+    ]
+  },
+  "status": "PASS"
+}

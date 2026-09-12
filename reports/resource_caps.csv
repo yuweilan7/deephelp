@@ -1,0 +1,4 @@
+service,memory_limit_bytes,swap_total_limit_bytes,cpu_limit,disk_soft_budget_bytes
+milvus,5368709120,5368709120,2.750000128,6442450944
+mysql,536870912,536870912,0.5,2147483648
+redis,134217728,134217728,0.25,268435456

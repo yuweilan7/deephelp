@@ -1,0 +1,440 @@
+{
+  "os": "Ubuntu 24.04.4 LTS",
+  "kernel": "6.8.0-124-generic",
+  "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  4\nOn-line CPU(s) list:                     0-3\nVendor ID:                               AuthenticAMD\nBIOS Vendor ID:                          Smdbmds\nModel name:                              AMD EPYC 7K62 48-Core Processor\nBIOS Model name:                         3.0  CPU @ 2.0GHz\nBIOS CPU family:                         1\nCPU family:                              23\nModel:                                   49\nThread(s) per core:                      1\nCore(s) per socket:                      4\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                5190.24\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ibpb vmmcall fsgsbase bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 arat\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               128 KiB (4 instances)\nL1i cache:                               128 KiB (4 instances)\nL2 cache:                                16 MiB (4 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-3\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT disabled\nVulnerability Spec rstack overflow:      Vulnerable\nVulnerability Spec store bypass:         Vulnerable\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+  "simd": [
+    "sse4_2",
+    "avx",
+    "avx2"
+  ],
+  "memory_bytes": 8058523648,
+  "filesystem": "Filesystem     Type   Size  Used Avail Use% Mounted on\ntmpfs          tmpfs  769M 1016K  768M   1% /run\n/dev/vda2      ext4    59G  5.7G   51G  11% /\ntmpfs          tmpfs  3.8G   24K  3.8G   1% /dev/shm\ntmpfs          tmpfs  5.0M     0  5.0M   0% /run/lock\n",
+  "docker": {
+    "ServerVersion": "29.6.1",
+    "Driver": "overlayfs",
+    "DriverStatus": [
+      [
+        "driver-type",
+        "io.containerd.snapshotter.v1"
+      ]
+    ],
+    "DockerRootDir": "/var/lib/docker",
+    "CgroupVersion": "2",
+    "MemTotal": 8058523648,
+    "NCPU": 4,
+    "KernelVersion": "6.8.0-124-generic",
+    "OperatingSystem": "Ubuntu 24.04.4 LTS",
+    "Architecture": "x86_64"
+  },
+  "compose_version": "5.3.1",
+  "containerd_image_store": true,
+  "containerd_root": "/var/lib/containerd",
+  "images": {
+    "MYSQL_IMAGE": {
+      "tag": "mysql:8.4.11",
+      "digest": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26",
+      "image_id": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26",
+      "size": 238996067,
+      "created": "2026-09-08T19:20:34.720656671Z"
+    },
+    "REDIS_IMAGE": {
+      "tag": "redis:8.2.8-alpine",
+      "digest": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103",
+      "image_id": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103",
+      "size": 27854159,
+      "created": "2026-07-24T17:18:48.182181741Z"
+    },
+    "MILVUS_IMAGE": {
+      "tag": "milvusdb/milvus:v2.6.23",
+      "digest": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17",
+      "image_id": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17",
+      "size": 379996918,
+      "created": "2026-08-27T13:41:37.278214103Z"
+    }
+  },
+  "milvus": {
+    "server_version": "2.6.23",
+    "pymilvus_recommended": "2.6.17",
+    "release_url": "https://github.com/milvus-io/milvus/releases/tag/v2.6.23",
+    "release_commit": "bfa1bc34f93df2ccd20fa7c060463c6c6812d355",
+    "script_source": "https://raw.githubusercontent.com/milvus-io/milvus/v2.6.23/scripts/standalone_embed.sh",
+    "script_sha256": "e345aed43a2579e2f888177274d85d9e32ba28925ca65833339337a19e610eb2",
+    "original_script_tag_mismatch": "v2.6.22; corrected to v2.6.23 in compose",
+    "embedded_etcd_config": "listen-client-urls: http://127.0.0.1:2379\nadvertise-client-urls: http://127.0.0.1:2379\nquota-backend-bytes: 536870912\nauto-compaction-mode: revision\nauto-compaction-retention: '1000'\n",
+    "wal": "woodpecker local"
+  },
+  "mysql": {
+    "version": "mysql  Ver 8.4.11 for Linux on x86_64 (MySQL Community Server - GPL)",
+    "release_url": "https://dev.mysql.com/doc/relnotes/mysql/8.4/en/news-8-4-11.html",
+    "selection_reason": "8.4.12 release notes exist but official Docker tag absent; 8.4.11 official tag verified"
+  },
+  "redis": {
+    "version": "Redis server v=8.2.8 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=90cd4c0ab440d5b8",
+    "release_url": "https://github.com/redis/redis/releases/tag/8.2.8"
+  },
+  "network_and_resource_configuration": {
+    "mysql": {
+      "state": {
+        "Status": "running",
+        "Running": true,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 145224,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-09-12T01:59:34.195130224Z",
+        "FinishedAt": "2026-09-12T01:59:34.040240056Z",
+        "Health": {
+          "Status": "healthy",
+          "FailingStreak": 0,
+          "Log": [
+            {
+              "Start": "2026-09-12T10:12:42.428918413+08:00",
+              "End": "2026-09-12T10:12:42.493574867+08:00",
+              "ExitCode": 0,
+              "Output": "1\n"
+            },
+            {
+              "Start": "2026-09-12T10:13:02.495054654+08:00",
+              "End": "2026-09-12T10:13:02.568184137+08:00",
+              "ExitCode": 0,
+              "Output": "1\n"
+            },
+            {
+              "Start": "2026-09-12T10:13:22.569363595+08:00",
+              "End": "2026-09-12T10:13:22.633319696+08:00",
+              "ExitCode": 0,
+              "Output": "1\n"
+            },
+            {
+              "Start": "2026-09-12T10:13:42.634816276+08:00",
+              "End": "2026-09-12T10:13:42.691729813+08:00",
+              "ExitCode": 0,
+              "Output": "1\n"
+            },
+            {
+              "Start": "2026-09-12T10:14:02.692898463+08:00",
+              "End": "2026-09-12T10:14:02.756921407+08:00",
+              "ExitCode": 0,
+              "Output": "1\n"
+            }
+          ]
+        }
+      },
+      "restart_count": 0,
+      "ports": {
+        "3306/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "3306"
+          }
+        ],
+        "33060/tcp": null
+      },
+      "mounts": [
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/config/mysql.cnf",
+          "Destination": "/etc/mysql/conf.d/deephelp.cnf",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/mysql-init.sql",
+          "Destination": "/docker-entrypoint-initdb.d/01-app.sql",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/mysql-root",
+          "Destination": "/run/secrets/mysql-root",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/mysql-app",
+          "Destination": "/run/secrets/mysql-app",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-data/mysql",
+          "Destination": "/var/lib/mysql",
+          "Mode": "rw",
+          "RW": true,
+          "Propagation": "rprivate"
+        }
+      ],
+      "limits": {
+        "Memory": 536870912,
+        "MemorySwap": 536870912,
+        "NanoCpus": 500000000,
+        "LogConfig": {
+          "Type": "json-file",
+          "Config": {
+            "max-file": "3",
+            "max-size": "10m"
+          }
+        },
+        "RestartPolicy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "image": "mysql:8.4.11@sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26"
+    },
+    "redis": {
+      "state": {
+        "Status": "running",
+        "Running": true,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 145062,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-09-12T01:59:33.604556228Z",
+        "FinishedAt": "2026-09-12T01:59:33.458057494Z",
+        "Health": {
+          "Status": "healthy",
+          "FailingStreak": 0,
+          "Log": [
+            {
+              "Start": "2026-09-12T10:12:56.864422523+08:00",
+              "End": "2026-09-12T10:12:56.960169732+08:00",
+              "ExitCode": 0,
+              "Output": ""
+            },
+            {
+              "Start": "2026-09-12T10:13:16.960805251+08:00",
+              "End": "2026-09-12T10:13:17.006456766+08:00",
+              "ExitCode": 0,
+              "Output": ""
+            },
+            {
+              "Start": "2026-09-12T10:13:37.007792735+08:00",
+              "End": "2026-09-12T10:13:37.054219416+08:00",
+              "ExitCode": 0,
+              "Output": ""
+            },
+            {
+              "Start": "2026-09-12T10:13:57.054753899+08:00",
+              "End": "2026-09-12T10:13:57.155717348+08:00",
+              "ExitCode": 0,
+              "Output": ""
+            },
+            {
+              "Start": "2026-09-12T10:14:17.157407681+08:00",
+              "End": "2026-09-12T10:14:17.254708969+08:00",
+              "ExitCode": 0,
+              "Output": ""
+            }
+          ]
+        }
+      },
+      "restart_count": 0,
+      "ports": {
+        "6379/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "6379"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/redis.acl",
+          "Destination": "/run/secrets/redis.acl",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/redis-app",
+          "Destination": "/run/secrets/redis-app",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/.secrets/redis-admin",
+          "Destination": "/run/secrets/redis-admin",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-data/redis",
+          "Destination": "/data",
+          "Mode": "rw",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/config/redis.conf",
+          "Destination": "/usr/local/etc/redis/redis.conf",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        }
+      ],
+      "limits": {
+        "Memory": 134217728,
+        "MemorySwap": 134217728,
+        "NanoCpus": 250000000,
+        "LogConfig": {
+          "Type": "json-file",
+          "Config": {
+            "max-file": "3",
+            "max-size": "10m"
+          }
+        },
+        "RestartPolicy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "image": "redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103"
+    },
+    "milvus": {
+      "state": {
+        "Status": "running",
+        "Running": true,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 145553,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-09-12T01:59:44.786388089Z",
+        "FinishedAt": "2026-09-12T01:59:44.602028958Z",
+        "Health": {
+          "Status": "healthy",
+          "FailingStreak": 0,
+          "Log": [
+            {
+              "Start": "2026-09-12T10:12:51.99198403+08:00",
+              "End": "2026-09-12T10:12:52.04794512+08:00",
+              "ExitCode": 0,
+              "Output": "OK"
+            },
+            {
+              "Start": "2026-09-12T10:13:12.049343969+08:00",
+              "End": "2026-09-12T10:13:12.109412626+08:00",
+              "ExitCode": 0,
+              "Output": "OK"
+            },
+            {
+              "Start": "2026-09-12T10:13:32.110333199+08:00",
+              "End": "2026-09-12T10:13:32.162231305+08:00",
+              "ExitCode": 0,
+              "Output": "OK"
+            },
+            {
+              "Start": "2026-09-12T10:13:52.162730587+08:00",
+              "End": "2026-09-12T10:13:52.210573778+08:00",
+              "ExitCode": 0,
+              "Output": "OK"
+            },
+            {
+              "Start": "2026-09-12T10:14:12.211268317+08:00",
+              "End": "2026-09-12T10:14:12.254710278+08:00",
+              "ExitCode": 0,
+              "Output": "OK"
+            }
+          ]
+        }
+      },
+      "restart_count": 0,
+      "ports": {
+        "19530/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "19530"
+          }
+        ],
+        "9091/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "9091"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-data/milvus",
+          "Destination": "/var/lib/milvus",
+          "Mode": "rw",
+          "RW": true,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/config/embedEtcd.yaml",
+          "Destination": "/milvus/configs/embedEtcd.yaml",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/deephelp-infra/config/milvus-user.yaml",
+          "Destination": "/milvus/configs/user.yaml",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        }
+      ],
+      "limits": {
+        "Memory": 5368709120,
+        "MemorySwap": 5368709120,
+        "NanoCpus": 2750000128,
+        "LogConfig": {
+          "Type": "json-file",
+          "Config": {
+            "max-file": "3",
+            "max-size": "10m"
+          }
+        },
+        "RestartPolicy": {
+          "Name": "on-failure",
+          "MaximumRetryCount": 3
+        }
+      },
+      "image": "milvusdb/milvus:v2.6.23@sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17"
+    }
+  },
+  "ssh": {
+    "port": 22,
+    "user": "ubuntu",
+    "host": "134.175.142.187",
+    "dns": null,
+    "instance_id": "lhins-56mgod8p",
+    "host_fingerprint": "SHA256:a8ekBn8a1SBNtDdUAa7Qz3L8fV7zklTo5KPPXDYOLQU"
+  },
+  "disk_limit_type": "SOFT_GUARD",
+  "client_runtime": {
+    "python": "3.12.14",
+    "pymilvus": "2.6.17",
+    "platform": "Windows-11-10.0.22631-SP0",
+    "requirements_sha256": "744b8f03cecd9ce2bd4ee12517e55813edd416a34c26922b5de407263ab7f9c3"
+  }
+}

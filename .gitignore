@@ -1,0 +1,13 @@
+.env
+.env.secret
+.secrets/
+.venv/
+.venv312/
+__pycache__/
+*.pyc
+client/.tunnel*
+config/connections.env
+*.sql.gz
+*.pem
+*.key
+*.tar.gz

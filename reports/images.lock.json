@@ -1,0 +1,23 @@
+{
+  "MYSQL_IMAGE": {
+    "tag": "mysql:8.4.11",
+    "digest": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26",
+    "image_id": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26",
+    "size": 238996067,
+    "created": "2026-09-08T19:20:34.720656671Z"
+  },
+  "REDIS_IMAGE": {
+    "tag": "redis:8.2.8-alpine",
+    "digest": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103",
+    "image_id": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103",
+    "size": 27854159,
+    "created": "2026-07-24T17:18:48.182181741Z"
+  },
+  "MILVUS_IMAGE": {
+    "tag": "milvusdb/milvus:v2.6.23",
+    "digest": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17",
+    "image_id": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17",
+    "size": 379996918,
+    "created": "2026-08-27T13:41:37.278214103Z"
+  }
+}

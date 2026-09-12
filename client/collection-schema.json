@@ -1,0 +1,61 @@
+{
+  "auto_id": false,
+  "description": "",
+  "fields": [
+    {
+      "name": "id",
+      "description": "",
+      "type": 5,
+      "is_primary": true,
+      "auto_id": false
+    },
+    {
+      "name": "text",
+      "description": "",
+      "type": 21,
+      "params": {
+        "max_length": 1024,
+        "enable_analyzer": true,
+        "analyzer_params": "{\"type\":\"chinese\"}"
+      }
+    },
+    {
+      "name": "tenant",
+      "description": "",
+      "type": 21,
+      "params": {
+        "max_length": 20
+      }
+    },
+    {
+      "name": "dense",
+      "description": "",
+      "type": 101,
+      "params": {
+        "dim": 4
+      }
+    },
+    {
+      "name": "sparse",
+      "description": "",
+      "type": 104,
+      "is_function_output": true
+    }
+  ],
+  "enable_dynamic_field": false,
+  "enable_namespace": false,
+  "functions": [
+    {
+      "name": "text_bm25",
+      "description": "",
+      "type": 1,
+      "input_field_names": [
+        "text"
+      ],
+      "output_field_names": [
+        "sparse"
+      ],
+      "params": {}
+    }
+  ]
+}

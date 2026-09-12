@@ -1,0 +1,26 @@
+{
+  "source": "Chrome Tencent Lighthouse console, instance detail Firewall tab",
+  "instance_id": "lhins-56mgod8p",
+  "inbound": [
+    {
+      "protocol": "TCP",
+      "port": 22,
+      "source": "all IPv4",
+      "action": "allow"
+    },
+    {
+      "protocol": "TCP",
+      "port": 80,
+      "source": "all IPv4",
+      "action": "allow"
+    },
+    {
+      "protocol": "ICMP",
+      "port": "ALL",
+      "source": "all IPv4",
+      "action": "allow"
+    }
+  ],
+  "no_db_port_rules": true,
+  "mutations": "none"
+}

@@ -1,0 +1,104 @@
+ROOT_FREE_GIB=50.76 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=0.00
+Error response from daemon: failed to resolve reference "docker.io/library/mysql:8.4.12": docker.io/library/mysql:8.4.12: not found
+ROOT_FREE_GIB=50.76 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=0.00
+8.4.11: Pulling from library/mysql
+4bb6eac2f26a: Pulling fs layer
+376471fc2810: Pulling fs layer
+c97b16353903: Pulling fs layer
+e432419b7832: Pulling fs layer
+9aec5f91e544: Pulling fs layer
+54c6505f4c64: Pulling fs layer
+fc5464550662: Pulling fs layer
+efcdee021140: Pulling fs layer
+17ed162ed4d4: Pulling fs layer
+5d5c020522d1: Pulling fs layer
+20f6fb79d0c6: Download complete
+e432419b7832: Download complete
+c97b16353903: Download complete
+54c6505f4c64: Download complete
+17ed162ed4d4: Download complete
+9aec5f91e544: Download complete
+fc5464550662: Download complete
+26e5de38a252: Download complete
+efcdee021140: Download complete
+4bb6eac2f26a: Download complete
+376471fc2810: Download complete
+5d5c020522d1: Download complete
+e432419b7832: Pull complete
+fc5464550662: Pull complete
+4bb6eac2f26a: Pull complete
+17ed162ed4d4: Pull complete
+efcdee021140: Pull complete
+c97b16353903: Pull complete
+54c6505f4c64: Pull complete
+376471fc2810: Pull complete
+9aec5f91e544: Pull complete
+5d5c020522d1: Pull complete
+Digest: sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26
+Status: Downloaded newer image for mysql:8.4.11
+docker.io/library/mysql:8.4.11
+ROOT_FREE_GIB=49.71 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=1.05
+8.2.8-alpine: Pulling from library/redis
+4f4fb700ef54: Pulling fs layer
+f7ee36c9aa34: Pulling fs layer
+8c151eaa1a37: Pulling fs layer
+3a18f40bb594: Pulling fs layer
+2645f340b4af: Pulling fs layer
+6b9181ca4c36: Pulling fs layer
+341db60ffe62: Pulling fs layer
+d56879f9255e: Download complete
+3a18f40bb594: Download complete
+2645f340b4af: Download complete
+8c151eaa1a37: Download complete
+4f4fb700ef54: Download complete
+6b9181ca4c36: Download complete
+f8aa22a90395: Download complete
+f7ee36c9aa34: Download complete
+341db60ffe62: Download complete
+2645f340b4af: Pull complete
+6b9181ca4c36: Pull complete
+f7ee36c9aa34: Pull complete
+3a18f40bb594: Pull complete
+8c151eaa1a37: Pull complete
+4f4fb700ef54: Pull complete
+341db60ffe62: Pull complete
+Digest: sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
+Status: Downloaded newer image for redis:8.2.8-alpine
+docker.io/library/redis:8.2.8-alpine
+ROOT_FREE_GIB=49.62 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=1.14
+v2.6.23: Pulling from milvusdb/milvus
+7646c8da3324: Pulling fs layer
+b211f1d878e4: Pulling fs layer
+2b64e0d0fabe: Pulling fs layer
+a65b6ab6c2c1: Pulling fs layer
+11546e1eaef4: Pulling fs layer
+752371b727c0: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+76f45d8b1351: Pulling fs layer
+9928b0a959b0: Pulling fs layer
+4f4fb700ef54: Already exists
+11546e1eaef4: Download complete
+b211f1d878e4: Download complete
+76f45d8b1351: Download complete
+2b64e0d0fabe: Download complete
+a65b6ab6c2c1: Download complete
+7646c8da3324: Download complete
+9928b0a959b0: Download complete
+7646c8da3324: Pull complete
+752371b727c0: Download complete
+11546e1eaef4: Pull complete
+2b64e0d0fabe: Pull complete
+a65b6ab6c2c1: Pull complete
+76f45d8b1351: Pull complete
+9928b0a959b0: Pull complete
+4f4fb700ef54: Pull complete
+b211f1d878e4: Pull complete
+752371b727c0: Pull complete
+Digest: sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17
+Status: Downloaded newer image for milvusdb/milvus:v2.6.23
+docker.io/milvusdb/milvus:v2.6.23
+IMAGES_LOCKED {"MYSQL_IMAGE": {"tag": "mysql:8.4.11", "digest": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26", "image_id": "sha256:3466ba4a4828aa8d46fb7c3bc16b67b781c98413cf4ea0fac6feaa6e881faa26", "size": 238996067, "created": "2026-09-08T19:20:34.720656671Z"}, "REDIS_IMAGE": {"tag": "redis:8.2.8-alpine", "digest": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103", "image_id": "sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103", "size": 27854159, "created": "2026-07-24T17:18:48.182181741Z"}, "MILVUS_IMAGE": {"tag": "milvusdb/milvus:v2.6.23", "digest": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17", "image_id": "sha256:60e96d5abe7ea9199dd8a4d0d0506f9b57a7056cf57683327b8c7ae7f489ed17", "size": 379996918, "created": "2026-08-27T13:41:37.278214103Z"}}

@@ -1,0 +1,21 @@
+{
+  "root_password_rotated": true,
+  "database": "deephelp",
+  "user": "deephelp_app",
+  "role": {
+    "role": "deephelp_developer",
+    "description": "",
+    "privileges": [
+      {
+        "object_type": "Global",
+        "object_name": "*",
+        "db_name": "*",
+        "role_name": "deephelp_developer",
+        "privilege": "ListDatabases",
+        "grantor_name": "root"
+      }
+    ]
+  },
+  "default_password_rejected": true,
+  "bootstrap_password_rejected": true
+}

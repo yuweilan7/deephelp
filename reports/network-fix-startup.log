@@ -1,0 +1,22 @@
+ Network deephelp-middleware Creating 
+ Network deephelp-middleware Created 
+ Container deephelp-redis Creating 
+ Container deephelp-mysql Creating 
+ Container deephelp-mysql Created 
+ Container deephelp-redis Created 
+ Container deephelp-redis Starting 
+ Container deephelp-mysql Starting 
+ Container deephelp-redis Started 
+ Container deephelp-mysql Started 
+ Container deephelp-mysql Waiting 
+ Container deephelp-redis Waiting 
+ Container deephelp-mysql Healthy 
+ Container deephelp-redis Healthy 
+ROOT_FREE_GIB=48.10 DISK_LIMIT_TYPE=SOFT_GUARD
+DOCKER_CONTENT_GIB=3.27
+ Container deephelp-milvus Creating 
+ Container deephelp-milvus Created 
+ Container deephelp-milvus Starting 
+ Container deephelp-milvus Started 
+ Container deephelp-milvus Waiting 
+ Container deephelp-milvus Healthy 

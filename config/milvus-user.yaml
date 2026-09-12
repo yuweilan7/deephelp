@@ -1,0 +1,33 @@
+common:
+  storageType: local
+  security:
+    authorizationEnabled: true
+  threadCoreCoefficient:
+    highPriority: 1
+    middlePriority: 1
+    lowPriority: 1
+    maxThreadsSize: 4
+mq:
+  type: woodpecker
+woodpecker:
+  storage:
+    type: local
+    rootPath: /var/lib/milvus/woodpecker
+localStorage:
+  path: /var/lib/milvus/data
+indexNode:
+  scheduler:
+    buildParallel: 1
+dataNode:
+  import:
+    concurrencyPerCPUCore: 1
+    readBufferSizeInMB: 8
+  slot:
+    slotCap: 1
+log:
+  level: warn
+  file:
+    rootPath: ''
+    maxSize: 10
+    maxBackups: 3
+  stdout: true

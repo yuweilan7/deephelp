@@ -1,0 +1,138 @@
+{
+  "uname -a": {
+    "exit": 0,
+    "stdout": "Linux VM-0-17-ubuntu 6.8.0-124-generic #124-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 13:00:45 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n",
+    "stderr": ""
+  },
+  "cat /etc/os-release": {
+    "exit": 0,
+    "stdout": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "stderr": ""
+  },
+  "lscpu": {
+    "exit": 0,
+    "stdout": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  4\nOn-line CPU(s) list:                     0-3\nVendor ID:                               AuthenticAMD\nBIOS Vendor ID:                          Smdbmds\nModel name:                              AMD EPYC 7K62 48-Core Processor\nBIOS Model name:                         3.0  CPU @ 2.0GHz\nBIOS CPU family:                         1\nCPU family:                              23\nModel:                                   49\nThread(s) per core:                      1\nCore(s) per socket:                      4\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                5190.24\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ibpb vmmcall fsgsbase bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 arat\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               128 KiB (4 instances)\nL1i cache:                               128 KiB (4 instances)\nL2 cache:                                16 MiB (4 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-3\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; untrained return thunk; SMT disabled\nVulnerability Spec rstack overflow:      Vulnerable\nVulnerability Spec store bypass:         Vulnerable\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+    "stderr": ""
+  },
+  "cat /proc/meminfo": {
+    "exit": 0,
+    "stdout": "MemTotal:        7869652 kB\nMemFree:         6173296 kB\nMemAvailable:    7280372 kB\nBuffers:          139120 kB\nCached:          1171564 kB\nSwapCached:            0 kB\nActive:           642492 kB\nInactive:         840392 kB\nActive(anon):     183532 kB\nInactive(anon):        0 kB\nActive(file):     458960 kB\nInactive(file):   840392 kB\nUnevictable:       28820 kB\nMlocked:           27284 kB\nSwapTotal:       2035708 kB\nSwapFree:        2035708 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               108 kB\nWriteback:             0 kB\nAnonPages:        195680 kB\nMapped:           208108 kB\nShmem:              2576 kB\nKReclaimable:      57104 kB\nSlab:             118404 kB\nSReclaimable:      57104 kB\nSUnreclaim:        61300 kB\nKernelStack:        3632 kB\nPageTables:         4788 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:     5970532 kB\nCommitted_AS:    1436948 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       17320 kB\nVmallocChunk:          0 kB\nPercpu:             2528 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      143224 kB\nDirectMap2M:     4050944 kB\nDirectMap1G:     6291456 kB\n",
+    "stderr": ""
+  },
+  "free -h": {
+    "exit": 0,
+    "stdout": "               total        used        free      shared  buff/cache   available\nMem:           7.5Gi       575Mi       5.9Gi       2.5Mi       1.3Gi       6.9Gi\nSwap:          1.9Gi          0B       1.9Gi\n",
+    "stderr": ""
+  },
+  "swapon --show": {
+    "exit": 0,
+    "stdout": "NAME      TYPE SIZE USED PRIO\n/swap.img file 1.9G   0B   -2\n",
+    "stderr": ""
+  },
+  "df -hT": {
+    "exit": 0,
+    "stdout": "Filesystem     Type   Size  Used Avail Use% Mounted on\ntmpfs          tmpfs  769M 1016K  768M   1% /run\n/dev/vda2      ext4    59G  5.7G   51G  11% /\ntmpfs          tmpfs  3.8G   24K  3.8G   1% /dev/shm\ntmpfs          tmpfs  5.0M     0  5.0M   0% /run/lock\n",
+    "stderr": ""
+  },
+  "df -i": {
+    "exit": 0,
+    "stdout": "Filesystem      Inodes  IUsed   IFree IUse% Mounted on\ntmpfs           983706    698  983008    1% /run\n/dev/vda2      3932160 113674 3818486    3% /\ntmpfs           983706      7  983699    1% /dev/shm\ntmpfs           983706      3  983703    1% /run/lock\n",
+    "stderr": ""
+  },
+  "lsblk -f": {
+    "exit": 0,
+    "stdout": "NAME   FSTYPE  FSVER            LABEL    UUID                                 FSAVAIL FSUSE% MOUNTPOINTS\nsr0    iso9660 Joliet Extension config-2 2026-09-11-23-58-29-00                              \nvda                                                                                          \n\u251c\u2500vda1                                                                                       \n\u2514\u2500vda2 ext4    1.0                       9842d3d6-a839-4127-bda7-f19137effe71   50.8G    10% /\n",
+    "stderr": ""
+  },
+  "findmnt": {
+    "exit": 0,
+    "stdout": "TARGET                          SOURCE      FSTYPE      OPTIONS\n/                               /dev/vda2   ext4        rw,relatime\n\u251c\u2500/sys                          sysfs       sysfs       rw,nosuid,nodev,noexec,relatime\n\u2502 \u251c\u2500/sys/kernel/security        securityfs  securityfs  rw,nosuid,nodev,noexec,relatime\n\u2502 \u251c\u2500/sys/fs/cgroup              cgroup2     cgroup2     rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot\n\u2502 \u251c\u2500/sys/fs/pstore              pstore      pstore      rw,nosuid,nodev,noexec,relatime\n\u2502 \u251c\u2500/sys/fs/bpf                 bpf         bpf         rw,nosuid,nodev,noexec,relatime,mode=700\n\u2502 \u251c\u2500/sys/kernel/debug           debugfs     debugfs     rw,nosuid,nodev,noexec,relatime\n\u2502 \u2502 \u2514\u2500/sys/kernel/debug/tracing tracefs     tracefs     rw,nosuid,nodev,noexec,relatime\n\u2502 \u251c\u2500/sys/kernel/tracing         tracefs     tracefs     rw,nosuid,nodev,noexec,relatime\n\u2502 \u251c\u2500/sys/fs/fuse/connections    fusectl     fusectl     rw,nosuid,nodev,noexec,relatime\n\u2502 \u2514\u2500/sys/kernel/config          configfs    configfs    rw,nosuid,nodev,noexec,relatime\n\u251c\u2500/proc                         proc        proc        rw,nosuid,nodev,noexec,relatime\n\u2502 \u2514\u2500/proc/sys/fs/binfmt_misc    systemd-1   autofs      rw,relatime,fd=32,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=437\n\u2502   \u2514\u2500/proc/sys/fs/binfmt_misc  binfmt_misc binfmt_misc rw,nosuid,nodev,noexec,relatime\n\u251c\u2500/dev                          udev        devtmpfs    rw,nosuid,relatime,size=3893080k,nr_inodes=973270,mode=755,inode64\n\u2502 \u251c\u2500/dev/pts                    devpts      devpts      rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000\n\u2502 \u251c\u2500/dev/shm                    tmpfs       tmpfs       rw,nosuid,nodev,inode64\n\u2502 \u251c\u2500/dev/hugepages              hugetlbfs   hugetlbfs   rw,nosuid,nodev,relatime,pagesize=2M\n\u2502 \u2514\u2500/dev/mqueue                 mqueue      mqueue      rw,nosuid,nodev,noexec,relatime\n\u2514\u2500/run                          tmpfs       tmpfs       rw,nosuid,nodev,noexec,relatime,size=786968k,mode=755,inode64\n  \u2514\u2500/run/lock                   tmpfs       tmpfs       rw,nosuid,nodev,noexec,relatime,size=5120k,inode64\n",
+    "stderr": ""
+  },
+  "df -hT /srv /var /var/lib/docker": {
+    "exit": 0,
+    "stdout": "Filesystem     Type  Size  Used Avail Use% Mounted on\n/dev/vda2      ext4   59G  5.7G   51G  11% /\n/dev/vda2      ext4   59G  5.7G   51G  11% /\n/dev/vda2      ext4   59G  5.7G   51G  11% /\n",
+    "stderr": ""
+  },
+  "du -sh /var/lib/docker /var/lib/containerd": {
+    "exit": 0,
+    "stdout": "212K\t/var/lib/docker\n92K\t/var/lib/containerd\n",
+    "stderr": ""
+  },
+  "docker version": {
+    "exit": 0,
+    "stdout": "Client: Docker Engine - Community\n Version:           29.6.1\n API version:       1.55\n Go version:        go1.26.4\n Git commit:        8900f1d\n Built:             Fri Jun 26 11:40:19 2026\n OS/Arch:           linux/amd64\n Context:           default\n\nServer: Docker Engine - Community\n Engine:\n  Version:          29.6.1\n  API version:      1.55 (minimum version 1.40)\n  Go version:       go1.26.4\n  Git commit:       8ec5ab3\n  Built:            Fri Jun 26 11:40:19 2026\n  OS/Arch:          linux/amd64\n  Experimental:     false\n containerd:\n  Version:          v2.2.5\n  GitCommit:        e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc:\n  Version:          1.3.6\n  GitCommit:        v1.3.6-0-g491b69ba\n docker-init:\n  Version:          0.19.0\n  GitCommit:        de40ad0\n",
+    "stderr": ""
+  },
+  "docker info": {
+    "exit": 0,
+    "stdout": "Client: Docker Engine - Community\n Version:    29.6.1\n Context:    default\n Debug Mode: false\n Plugins:\n  buildx: Docker Buildx (Docker Inc.)\n    Version:  v0.35.0\n    Path:     /usr/libexec/docker/cli-plugins/docker-buildx\n  compose: Docker Compose (Docker Inc.)\n    Version:  v5.3.1\n    Path:     /usr/libexec/docker/cli-plugins/docker-compose\n\nServer:\n Containers: 0\n  Running: 0\n  Paused: 0\n  Stopped: 0\n Images: 0\n Server Version: 29.6.1\n Storage Driver: overlayfs\n  driver-type: io.containerd.snapshotter.v1\n Logging Driver: json-file\n Cgroup Driver: systemd\n Cgroup Version: 2\n Plugins:\n  Volume: local\n  Network: bridge host ipvlan macvlan null overlay\n  Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog\n CDI spec directories:\n  /etc/cdi\n  /var/run/cdi\n Swarm: inactive\n Runtimes: io.containerd.runc.v2 runc\n Default Runtime: runc\n Init Binary: docker-init\n containerd version: e53c7c1516c3b2bff98eb76f1f4117477e6f4e66\n runc version: v1.3.6-0-g491b69ba\n init version: de40ad0\n Security Options:\n  apparmor\n  seccomp\n   Profile: builtin\n  cgroupns\n Kernel Version: 6.8.0-124-generic\n Operating System: Ubuntu 24.04.4 LTS\n OSType: linux\n Architecture: x86_64\n CPUs: 4\n Total Memory: 7.505GiB\n Name: VM-0-17-ubuntu\n ID: 0f90c176-9c45-4708-8103-37b5ff2464f1\n Docker Root Dir: /var/lib/docker\n Debug Mode: false\n Experimental: false\n Insecure Registries:\n  ::1/128\n  127.0.0.0/8\n Registry Mirrors:\n  https://mirror.ccs.tencentyun.com/\n Live Restore Enabled: false\n Firewall Backend: iptables\n  EnableUserlandProxy: true\n  UserlandProxyPath: /usr/bin/docker-proxy\n\n",
+    "stderr": ""
+  },
+  "docker compose version": {
+    "exit": 0,
+    "stdout": "Docker Compose version v5.3.1\n",
+    "stderr": ""
+  },
+  "docker ps -a --no-trunc": {
+    "exit": 0,
+    "stdout": "CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES\n",
+    "stderr": ""
+  },
+  "docker images --digests": {
+    "exit": 0,
+    "stdout": "REPOSITORY   TAG       DIGEST    IMAGE ID   CREATED   SIZE\n",
+    "stderr": ""
+  },
+  "docker volume ls": {
+    "exit": 0,
+    "stdout": "DRIVER    VOLUME NAME\n",
+    "stderr": ""
+  },
+  "docker system df": {
+    "exit": 0,
+    "stdout": "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE\nImages          0         0         0B        0B\nContainers      0         0         0B        0B\nLocal Volumes   0         0         0B        0B\nBuild Cache     0         0         0B        0B\n",
+    "stderr": ""
+  },
+  "ss -lntup": {
+    "exit": 0,
+    "stdout": "Netid State  Recv-Q Send-Q  Local Address:Port Peer Address:PortProcess                                                   \nudp   UNCONN 0      0          127.0.0.54:53        0.0.0.0:*    users:((\"systemd-resolve\",pid=470,fd=16))                \nudp   UNCONN 0      0       127.0.0.53%lo:53        0.0.0.0:*    users:((\"systemd-resolve\",pid=470,fd=14))                \nudp   UNCONN 0      0      10.1.0.17%eth0:68        0.0.0.0:*    users:((\"systemd-network\",pid=1040,fd=21))               \nudp   UNCONN 0      0           127.0.0.1:323       0.0.0.0:*    users:((\"chronyd\",pid=1710,fd=5))                        \nudp   UNCONN 0      0               [::1]:323          [::]:*    users:((\"chronyd\",pid=1710,fd=6))                        \ntcp   LISTEN 0      4096          0.0.0.0:22        0.0.0.0:*    users:((\"sshd\",pid=119489,fd=3),(\"systemd\",pid=1,fd=204))\ntcp   LISTEN 0      4096    127.0.0.53%lo:53        0.0.0.0:*    users:((\"systemd-resolve\",pid=470,fd=15))                \ntcp   LISTEN 0      4096       127.0.0.54:53        0.0.0.0:*    users:((\"systemd-resolve\",pid=470,fd=17))                \ntcp   LISTEN 0      4096             [::]:22           [::]:*    users:((\"sshd\",pid=119489,fd=4),(\"systemd\",pid=1,fd=205))\n",
+    "stderr": ""
+  },
+  "ufw status verbose": {
+    "exit": 0,
+    "stdout": "Status: inactive\n",
+    "stderr": ""
+  },
+  "nft list ruleset": {
+    "exit": 0,
+    "stdout": "table ip nat {\n\tchain DOCKER {\n\t}\n\n\tchain PREROUTING {\n\t\ttype nat hook prerouting priority dstnat; policy accept;\n\t\tfib daddr type local counter packets 23605 bytes 670922 jump DOCKER\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip daddr != 127.0.0.0/8 fib daddr type local counter packets 0 bytes 0 jump DOCKER\n\t}\n\n\tchain POSTROUTING {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip saddr 172.17.0.0/16 oifname != \"docker0\" counter packets 0 bytes 0 masquerade\n\t}\n}\ntable ip filter {\n\tchain DOCKER {\n\t\tiifname != \"docker0\" oifname \"docker0\" counter packets 0 bytes 0 drop\n\t}\n\n\tchain DOCKER-FORWARD {\n\t\tcounter packets 0 bytes 0 jump DOCKER-CT\n\t\tcounter packets 0 bytes 0 jump DOCKER-INTERNAL\n\t\tcounter packets 0 bytes 0 jump DOCKER-BRIDGE\n\t\tiifname \"docker0\" counter packets 0 bytes 0 accept\n\t}\n\n\tchain DOCKER-BRIDGE {\n\t\toifname \"docker0\" counter packets 0 bytes 0 jump DOCKER\n\t}\n\n\tchain DOCKER-CT {\n\t\toifname \"docker0\" ct state related,established counter packets 0 bytes 0 accept\n\t}\n\n\tchain DOCKER-INTERNAL {\n\t}\n\n\tchain FORWARD {\n\t\ttype filter hook forward priority filter; policy accept;\n\t\tcounter packets 0 bytes 0 jump DOCKER-USER\n\t\tcounter packets 0 bytes 0 jump DOCKER-FORWARD\n\t}\n\n\tchain DOCKER-USER {\n\t}\n\n\tchain YJ-FIREWALL-INPUT {\n\t\tip saddr 103.204.159.72 counter packets 0 bytes 0 reject\n\t}\n\n\tchain INPUT {\n\t\ttype filter hook input priority filter; policy accept;\n\t\tcounter packets 9557 bytes 1397860 jump YJ-FIREWALL-INPUT\n\t}\n}\ntable ip6 nat {\n\tchain DOCKER {\n\t}\n\n\tchain PREROUTING {\n\t\ttype nat hook prerouting priority dstnat; policy accept;\n\t\tfib daddr type local counter packets 0 bytes 0 jump DOCKER\n\t}\n\n\tchain OUTPUT {\n\t\ttype nat hook output priority dstnat; policy accept;\n\t\tip6 daddr != ::1 fib daddr type local counter packets 0 bytes 0 jump DOCKER\n\t}\n}\ntable ip6 filter {\n\tchain DOCKER {\n\t}\n\n\tchain DOCKER-FORWARD {\n\t\tcounter packets 0 bytes 0 jump DOCKER-CT\n\t\tcounter packets 0 bytes 0 jump DOCKER-INTERNAL\n\t\tcounter packets 0 bytes 0 jump DOCKER-BRIDGE\n\t}\n\n\tchain DOCKER-BRIDGE {\n\t}\n\n\tchain DOCKER-CT {\n\t}\n\n\tchain DOCKER-INTERNAL {\n\t}\n\n\tchain FORWARD {\n\t\ttype filter hook forward priority filter; policy accept;\n\t\tcounter packets 0 bytes 0 jump DOCKER-USER\n\t\tcounter packets 0 bytes 0 jump DOCKER-FORWARD\n\t}\n\n\tchain DOCKER-USER {\n\t}\n}\n",
+    "stderr": "# Warning: table ip nat is managed by iptables-nft, do not touch!\n# Warning: table ip filter is managed by iptables-nft, do not touch!\n# Warning: table ip6 nat is managed by iptables-nft, do not touch!\n"
+  },
+  "iptables-save": {
+    "exit": 0,
+    "stdout": "# Generated by iptables-save v1.8.10 (nf_tables) on Sat Sep 12 09:44:24 2026\n*filter\n:INPUT ACCEPT [9527:1395572]\n:FORWARD ACCEPT [0:0]\n:OUTPUT ACCEPT [0:0]\n:DOCKER - [0:0]\n:DOCKER-BRIDGE - [0:0]\n:DOCKER-CT - [0:0]\n:DOCKER-FORWARD - [0:0]\n:DOCKER-INTERNAL - [0:0]\n:DOCKER-USER - [0:0]\n:YJ-FIREWALL-INPUT - [0:0]\n-A INPUT -j YJ-FIREWALL-INPUT\n-A FORWARD -j DOCKER-USER\n-A FORWARD -j DOCKER-FORWARD\n-A DOCKER ! -i docker0 -o docker0 -j DROP\n-A DOCKER-BRIDGE -o docker0 -j DOCKER\n-A DOCKER-CT -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT\n-A DOCKER-FORWARD -j DOCKER-CT\n-A DOCKER-FORWARD -j DOCKER-INTERNAL\n-A DOCKER-FORWARD -j DOCKER-BRIDGE\n-A DOCKER-FORWARD -i docker0 -j ACCEPT\n-A YJ-FIREWALL-INPUT -s 103.204.159.72/32 -j REJECT --reject-with icmp-port-unreachable\nCOMMIT\n# Completed on Sat Sep 12 09:44:24 2026\n# Generated by iptables-save v1.8.10 (nf_tables) on Sat Sep 12 09:44:24 2026\n*nat\n:PREROUTING ACCEPT [23606:670958]\n:INPUT ACCEPT [0:0]\n:OUTPUT ACCEPT [20307:1258336]\n:POSTROUTING ACCEPT [20307:1258336]\n:DOCKER - [0:0]\n-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER\n-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER\n-A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE\nCOMMIT\n# Completed on Sat Sep 12 09:44:24 2026\n",
+    "stderr": ""
+  },
+  "sshd -T": {
+    "exit": 0,
+    "stdout": "port 22\naddressfamily any\nlistenaddress [::]:22\nlistenaddress 0.0.0.0:22\nusepam yes\nlogingracetime 120\nx11displayoffset 10\nmaxauthtries 6\nmaxsessions 10\nclientaliveinterval 0\nclientalivecountmax 3\nrequiredrsasize 1024\nstreamlocalbindmask 0177\nunusedconnectiontimeout none\npermitrootlogin yes\nignorerhosts yes\nignoreuserknownhosts no\nhostbasedauthentication no\nhostbasedusesnamefrompacketonly no\npubkeyauthentication yes\nkerberosauthentication no\nkerberosorlocalpasswd yes\nkerberosticketcleanup yes\ngssapiauthentication no\ngssapicleanupcredentials yes\ngssapikeyexchange no\ngssapistrictacceptorcheck yes\ngssapistorecredentialsonrekey no\ngssapikexalgorithms gss-group14-sha256-,gss-group16-sha512-,gss-nistp256-sha256-,gss-curve25519-sha256-,gss-group14-sha1-,gss-gex-sha1-\npasswordauthentication no\nkbdinteractiveauthentication no\nprintmotd no\nprintlastlog yes\nx11forwarding yes\nx11uselocalhost yes\npermittty yes\npermituserrc yes\nstrictmodes yes\ntcpkeepalive yes\npermitemptypasswords no\ncompression yes\ngatewayports no\nusedns no\nallowtcpforwarding yes\nallowagentforwarding yes\ndisableforwarding no\nallowstreamlocalforwarding yes\nstreamlocalbindunlink no\nfingerprinthash SHA256\nexposeauthinfo no\ndebianbanner yes\npidfile /run/sshd.pid\nmodulifile /etc/ssh/moduli\nxauthlocation /usr/bin/xauth\nciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com\nmacs umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1\nbanner none\nforcecommand none\nchrootdirectory none\ntrustedusercakeys none\nrevokedkeys none\nsecuritykeyprovider internal\nauthorizedprincipalsfile none\nversionaddendum none\nauthorizedkeyscommand none\nauthorizedkeyscommanduser none\nauthorizedprincipalscommand none\nauthorizedprincipalscommanduser none\nhostkeyagent none\nkexalgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256\ncasignaturealgorithms ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256\nhostbasedacceptedalgorithms ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256\nhostkeyalgorithms ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256\npubkeyacceptedalgorithms ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256\nloglevel INFO\nsyslogfacility AUTH\nauthorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2\nhostkey /etc/ssh/ssh_host_rsa_key\nhostkey /etc/ssh/ssh_host_ecdsa_key\nhostkey /etc/ssh/ssh_host_ed25519_key\nacceptenv LANG\nacceptenv LC_*\nauthenticationmethods any\nchanneltimeout none\nsubsystem sftp /usr/lib/openssh/sftp-server \nmaxstartups 10:30:100\npersourcemaxstartups none\npersourcenetblocksize 32:128\npermittunnel no\nipqos lowdelay throughput\nrekeylimit 0 0\npermitopen any\npermitlisten any\npermituserenvironment no\npubkeyauthoptions none\n",
+    "stderr": ""
+  },
+  "systemctl is-enabled docker": {
+    "exit": 0,
+    "stdout": "enabled\n",
+    "stderr": ""
+  },
+  "systemctl cat containerd": {
+    "exit": 0,
+    "stdout": "# /usr/lib/systemd/system/containerd.service\n# Copyright The containerd Authors.\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n\n[Unit]\nDescription=containerd container runtime\nDocumentation=https://containerd.io\nAfter=network.target dbus.service\n\n[Service]\nExecStartPre=-/sbin/modprobe overlay\nExecStart=/usr/bin/containerd\n\nType=notify\nDelegate=yes\nKillMode=process\nRestart=always\nRestartSec=5\n\n# Having non-zero Limit*s causes performance problems due to accounting overhead\n# in the kernel. We recommend using cgroups to do container-local accounting.\nLimitNPROC=infinity\nLimitCORE=infinity\n\n# Comment TasksMax if your systemd version does not supports it.\n# Only systemd 226 and above support this version.\nTasksMax=infinity\nOOMScoreAdjust=-999\n\n[Install]\nWantedBy=multi-user.target\n",
+    "stderr": ""
+  },
+  "ls -la /srv": {
+    "exit": 0,
+    "stdout": "total 8\ndrwxr-xr-x  2 root root 4096 Apr 23  2024 .\ndrwxr-xr-x 24 root root 4096 Sep 12 09:44 ..\n",
+    "stderr": ""
+  },
+  "captured_at": "2026-09-12T01:44:24.101447+00:00"
+}

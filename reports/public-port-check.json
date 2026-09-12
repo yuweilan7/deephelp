@@ -1,0 +1,37 @@
+{
+  "from": "Windows client",
+  "host": "134.175.142.187",
+  "probe": {
+    "22": {
+      "tcp_connect_returned": true,
+      "response": "SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.16\r\n",
+      "outcome": "protocol_response"
+    },
+    "3306": {
+      "tcp_connect_returned": true,
+      "response": "",
+      "outcome": "closed_without_protocol_response"
+    },
+    "6379": {
+      "tcp_connect_returned": true,
+      "response": "",
+      "outcome": "closed_without_protocol_response"
+    },
+    "19530": {
+      "tcp_connect_returned": true,
+      "response": "",
+      "outcome": "closed_without_protocol_response"
+    },
+    "9091": {
+      "tcp_connect_returned": true,
+      "response": "",
+      "outcome": "closed_without_protocol_response"
+    },
+    "48231": {
+      "tcp_connect_returned": true,
+      "response": "",
+      "outcome": "closed_without_protocol_response"
+    }
+  },
+  "note": "TCP connect can return before remote reachability is established on this client path, including unused control port 48231. Assess protocol response together with cloud firewall and server bind evidence."
+}
