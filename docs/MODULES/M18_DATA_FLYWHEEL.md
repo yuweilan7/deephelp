@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 53–54、70–71、74–76。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 复刻原文“运行样本→确认→向量库/FastText/规则→评测→发布”的闭环，同时防止模型把自己的错误反复训练成真。闭环不是自动无条件写入线上知识库。
 
@@ -35,10 +29,6 @@ ReleaseManifest原子绑定意图库版本、Embedding签名、FastText模型、
 
 交付review CLI/最小页面、候选/金标schema、三路构建任务、release gate和rollback工具。每日自动训练、复杂主动学习平台不是必需品。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 outbox只解决幂等任务投递，不等于跨模型/向量/文件的原子发布。先准备不可变ReleaseManifest及所有工件，校验后以单一事实源中的版本化active指针切换；run固定完整manifest。回滚不强改已审批run的SOP/参数绑定，变更须重规划/重新审批。旧工件仍被待审批或待对账run引用时不得按“两版本上限”直接删除，容量不足先停止发布。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M18.md`、`handoffs/M18.md`、`reports/M18/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

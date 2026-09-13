@@ -3,11 +3,9 @@
   "title": "客诉场景的自动驾驶DeepHelp",
   "pages": 78,
   "sha256": "4199ec4d9fcd35f88039868f9c878d3f8d0568bf25ff085fa4d8907d05aa5375",
-  "local_relative_path": ".local/references/deephelp-original.pdf",
-  "publish_original": false,
-  "starter_zip_sha256": "0d338af8683a9dab4c5d4f629aa4c9bd37ccc2932d23ca2792024a9d01254dc1",
-  "inspected_repository_commit": "15d9ac9cd03251f7c32242cbdf1279abbffb8df9",
-  "starter_zip_local_relative_path": ".local/references/deephelp-starter-original.zip",
-  "starter_extracted_local_relative_path": ".local/references/starter-original/",
-  "local_import_evidence": "reports/M00/windows-sync-v2.json"
+  "local_search_paths": [
+    "docs/*.pdf",
+    ".local/references/*.pdf"
+  ],
+  "publish_original": false
 }

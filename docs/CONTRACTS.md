@@ -71,7 +71,7 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 2. 外部用户读取另一用户case：outcome=REJECTED，error=FORBIDDEN，question_id可空，业务写入数=0、工具调用数=0，允许独立安全审计。
 3. 操作返回丢失：outcome=HANDOFF或受控处理中响应，error=OPERATION_UNKNOWN，operation_id固定，禁止立即再次执行写工具；能查询已成功时补记账本再给成功证据。
 
-## S06补齐：空值、审批领取与重复请求
+## 空值、审批领取与重复请求
 
 | 情况 | 语义 / 处理 |
 |---|---|
@@ -80,7 +80,7 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 | 不适用 | 拒绝于入口的请求没有业务run/question，允许null；未调用工具的evidence/tool列表可为空 |
 | 非法 | 字段格式、枚举、归属或版本不合法，分别按INVALID_ARGUMENT、FORBIDDEN、VERSION_CONFLICT处理；不能当缺槽位放行 |
 
-上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联run/结果；未知主意图和缺槽位不等于非法HTTP请求。三个JSON语义样例及非top1反例见reports/M00/S06.md，不是已发布API。
+上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联 run/结果；未知主意图和缺槽位不等于非法 HTTP 请求。兼容样例和非 top1 反例见 `ACCEPTANCE.md`；它们是待 M02 落为类型和测试的设计基线，不是已发布 API。
 
 审批记录必须绑定operation_id、参数hash、SOP版本、question_version、主体和期限，并以版本条件更新确保PENDING→APPROVED最多一次。批准后由执行领取事务再次核验绑定与授权，将PREPARED→IN_FLIGHT并标识唯一执行者；批准记录本身不触发第二次工具调用。领取前的实体更正撤销旧审批并取消未发送操作/等待run；已经IN_FLIGHT或UNKNOWN的操作不得伪标CANCELLED，应冻结原参数并对账。
 

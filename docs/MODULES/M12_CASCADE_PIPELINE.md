@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 19–20、31–35、53、57–60、69。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 把原文的规则、检索、记忆增强和模型兜底组合成一个具有明确接管/拒识语义的决策服务，再将多轮事件聚合后的信息接入 13 段主链。不能把每段写成一次大模型调用。
 
@@ -32,10 +26,6 @@
 
 交付级联决策表、阈值配置及来源、完整图定义/节点trace、短路测试矩阵、dev 集调参记录和旧 MVP 回归。不得借机更换整个项目框架或把简单节点全部 Agent 化。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 在 M08 同一图/服务上替换已标注的 passthrough、增强检索和上下文节点，回归原MVP行为，不并存两套流水线。统一使用 Response.outcome=REJECTED；IntentDecision.decision=reject 是另一层枚举。离线固定fixture/相同版本要求策略重放一致，真实随机模型不承诺逐字/候选顺序完全一致；安全与业务状态不变量必须始终成立。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M12.md`、`handoffs/M12.md`、`reports/M12/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

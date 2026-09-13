@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 25–30、51–54、55–66、71。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 建立模块间唯一一版数据契约和可追溯的小型数据资产，阻止多个 Pro 会话各自命名状态、定义不同的 confidence、修改同一个意图 code。评测从这里开始，不等系统做完才补测试。
 
@@ -35,10 +29,6 @@ Question 状态至少覆盖 ACTIVE、WAITING_SLOT、WAITING_APPROVAL、RESOLVED�
 
 交付 schema/示例 JSON、意图注册表、少量冻结 fixture、数据版本清单、测试断言及 contracts 变更流程。共享 schema、全局 lock 和 DB migration 只能由本模块的主集成人统一发布。下游只能提变更请求，不能私自复制另一版 DTO。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 本模块发布唯一类型、注册表与合成 fixture；复用并补全 M01 最小类型。数据库唯一约束/权限语义先形成规格，M08 实现最小消息/问题账本，M10 扩展生命周期和投影，M15 完成审批/操作恢复；不要提前实现后三个模块。订单等编号用字符串，金额用 Decimal 或规范十进制字符串并明确币种/精度。只有实际执行过的测试才算通过，不能把契约样例标成 MySQL 行为验证。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M02.md`、`handoffs/M02.md`、`reports/M02/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

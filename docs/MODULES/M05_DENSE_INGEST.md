@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 25–30、35–40、70。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 将“已标注意图的客诉语料”导入 Milvus，建立可比较的 Dense 检索基线。这里不是对 PDF 分块做问答，也不是把 SOP 全文当所有意图的训练样本。
 
@@ -33,10 +27,6 @@ Dense 检索使用真实 Embedding；确定性随机向量仅可测试接口。�
 
 交付数据字典、导入流水线、collection 创建/校验/回滚脚本、DenseRetrieverPort、小型实际 integration 报告。BM25/混合排名留 M09，避免本模块提前包办全部识别。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 只把获准的 train/reference 语料写入检索集合，dev/test 问题及其近义变体组不得入库；保持查询集与索引语料的 manifest 可比对。M05 的导入批次状态可用有界原子文件 manifest，或复用已存在的受控存储，不能依赖尚未实现的 M10。旧 p00_acceptance 是协议探针而非意图库，禁止重建它来冒充业务验证。重启持久性测试需明确维护/隔离目标授权。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M05.md`、`handoffs/M05.md`、`reports/M05/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

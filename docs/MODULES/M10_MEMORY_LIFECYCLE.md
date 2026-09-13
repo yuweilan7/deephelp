@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 55–66、69。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 让“同一个用户在说哪个问题、哪些信息已确认、问题何时结束”成为明确的业务状态，而不是把历史聊天全部塞进大模型。复刻 JIMDB/DB/Milvus 的职责分工，用 Redis/MySQL/向量投影实现。
 
@@ -33,10 +27,6 @@ MySQL 保存 messages、cases、entities、status/version、operation/approval �
 
 交付业务状态图、表/schema 与约束、缓存键规范及 TTL、outbox 投影契约、回放/清理策略和实际 MySQL/Redis 集成测试。checkpoint 接入留 M15，先把业务事实权威说清楚。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 “开放问题”明确包含 ACTIVE、WAITING_SLOT；WAITING_APPROVAL 只作受授权的上下文候选，普通新消息不能批准/恢复挂起run。原图 ACTIVE 过滤在本项目扩展状态机中不是直接照搬的枚举条件。基于 M08 账本增量迁移，审批执行逻辑仍留 M15。缓存丢失通过隔离测试实例或本测试专用前缀模拟，禁止对共享 Redis 执行 FLUSHALL/FLUSHDB。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M10.md`、`handoffs/M10.md`、`reports/M10/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

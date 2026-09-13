@@ -6,12 +6,6 @@
 
 **来源：** 原 PDF 文件页 35–41、53、70–71。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式（v2）
-
-默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
-
-原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
-
 ## 本模块目标
 复刻原文最值得做对照实验的混合检索：Milvus 原生中文 Analyzer + BM25 Function 稀疏向量，与 Dense 结果融合。不能用向量搜索套个“混合”名字，也不能用字符串包含匹配假装 BM25。
 
@@ -33,10 +27,6 @@
 
 交付 schema/迁移、HybridRetrieverPort、可复现 A/B 脚本、dev 参数选择记录和 test 报告。不要加第二套 Elasticsearch 或外部检索服务。为 M11 留通用相似候选接口，但不能让事件集合与意图集合混查。
 
-## 接口与分期边界（v2复核）
+## 接口与分期边界
 
 先复用 M05 检索Port/返回字段，能力确有差异再增量扩展；不要因文件名为Hybrid就复制一套不兼容接口。对照使用相同查询集、候选预算和版本，记录各路线原始分数及融合来源；已看 test 错例再调参后不能仍称该集合完全未见，冻结发布前另保留未参与选择的样本组。
-
-## 本轮交付
-
-按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M09.md`、`handoffs/M09.md`、`reports/M09/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
