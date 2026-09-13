@@ -41,8 +41,15 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
+def assert_no_links(path: Path) -> None:
+    """Check lexical ancestors before resolve can hide symlinks or Windows junctions."""
+    for part in (*reversed(path.parents), path):
+        if part.is_symlink() or part.is_junction():
+            raise ValueError(f"Symlink or junction not allowed: {path.name}")
+
+
 def safe_path(root: Path, relative: str) -> Path:
-    """Reject traversal, drive-qualified paths and all symlinks, including broken ones."""
+    """Reject traversal, drives and redirected components, including broken links."""
     root = root.resolve()
     normalized = relative.replace("\\", "/")
     parts = normalized.split("/")
@@ -51,8 +58,8 @@ def safe_path(root: Path, relative: str) -> Path:
     current = root
     for part in parts:
         current = current / part
-        if current.is_symlink():
-            raise ValueError(f"Symlink not allowed: {relative}")
+        if current.is_symlink() or current.is_junction():
+            raise ValueError(f"Symlink or junction not allowed: {relative}")
     if not current.resolve().is_relative_to(root):
         raise ValueError(f"Path escapes repository: {relative}")
     return current
@@ -123,7 +130,7 @@ def verify(root: Path) -> dict[str, Any]:
             raise ValueError(f"Missing pipeline step: {step}")
     checked_links = 0
     candidates = [root / "AGENTS.md", root / "00_START_HERE.md"]
-    for folder in ("docs", "planning", "handoffs"):
+    for folder in ("docs", "planning", "handoffs", "reports/M00"):
         directory = safe_path(root, folder)
         candidates.extend(directory.rglob("*.md"))
     for path in candidates:
@@ -136,12 +143,11 @@ def verify(root: Path) -> dict[str, Any]:
             target = target.split("#", 1)[0]
             if not target:
                 continue
-            resolved = (path.parent / target).resolve()
+            lexical = path.parent / target
+            assert_no_links(lexical)
+            resolved = lexical.resolve()
             if not resolved.is_relative_to(root.resolve()) or not resolved.exists():
                 raise ValueError(f"Broken or escaping link: {path.name} -> {target}")
-            # A resolved link may not hide a symlink into private/outside content.
-            if (path.parent / target).is_symlink():
-                raise ValueError(f"Symlink link target: {target}")
             checked_links += 1
     return {"status": "PASS", "scope": "documentation_only", "modules": len(modules),
             "pipeline_steps": len(PIPELINE), "checked_links": checked_links,
@@ -206,6 +212,8 @@ def export_context(root: Path, module_id: str) -> Path:
 
 
 def copy_verified(source: Path, destination: Path, expected_hash: str) -> str:
+    assert_no_links(source.absolute())
+    assert_no_links(destination.absolute())
     if source.is_symlink() or not source.is_file() or digest(source) != expected_hash:
         raise ValueError("Source hash mismatch or unsafe source")
     if destination.is_symlink():
@@ -245,7 +253,8 @@ def import_source(root: Path, source_dir: Path) -> tuple[Path, str]:
         if digest(destination) != manifest["sha256"]:
             raise ValueError("Existing private PDF differs; no overwrite performed")
         return destination, "ALREADY_PRESENT"
-    if not source_dir.is_dir() or source_dir.is_symlink():
+    assert_no_links(source_dir.absolute())
+    if not source_dir.is_dir():
         raise ValueError("Source directory unavailable or symlinked")
     matches = [p for p in sorted(source_dir.glob("*.pdf"))
                if "deephelp" in p.name.lower() and not p.is_symlink()

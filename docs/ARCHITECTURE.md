@@ -1,6 +1,6 @@
 # DeepHelp 架构章程
 
-版本：`M00-design-v1.1`；语义契约：`0.1.1-draft`。这是待复核的工程基线，不是运行中系统描述。来源裁决见 DECISIONS，当前实现状态见 PROJECT_STATE。
+版本：`M00-design-v1.2`；语义契约：`0.1.2-draft`。这是M00工程设计基线，不是运行中系统描述。验收证据见reports/M00/S06.md；来源裁决见 DECISIONS，当前实现状态见 PROJECT_STATE。
 
 ## 1. 目标与边界
 
@@ -72,7 +72,9 @@ RESOLVED + 普通相似消息 → 新question   # 默认不隐式重开；显式
 
 一个session可有多个活动question；同订单也可能有多个不同问题，不能用order_id唯一划分case。路由不确定时先保存受授权消息并返回CLARIFY，question_id允许为空；不得把歧义消息写入随机case。等待槽位不使用LangGraph interrupt，不无限挂起执行资源。
 
-普通消息入口与审批恢复入口分开。审批只恢复原run；thread_id由服务端以workflow namespace+run_id映射，tenant作为隔离命名空间的一部分；不能信任客户端提交任意thread_id。审批绑定operation、参数hash、SOP版本、question版本、审批主体和期限。任何变化都使旧批准失效。
+普通消息入口与审批恢复入口分开。审批只恢复原run；thread_id由服务端以workflow namespace+run_id映射，tenant作为隔离命名空间的一部分；不能信任客户端提交任意thread_id。审批绑定operation、参数hash、SOP版本、question版本、审批主体和期限；领取前绑定计划变化使旧批准失效。
+
+审批用例用CAS保证同一PENDING决定只迁移一次，执行边界在短事务中校验计划快照并唯一领取PREPARED操作。绑定值在领取前变化使旧批准失效；本次领取自身推进Question/Run状态产生的新version记录到执行证据，不使本次领取自我失效。已领取后更正不得取消已发出的效果，需冻结原计划并对账。重复审批先鉴权，再返回同operation/run的既有结果或进行中引用；不得重复领取、写工具或新增业务run。普通“好的”可只澄清，但原审批和原run保持等待。详见ADR018和CONTRACTS的S06补充。
 
 ## 5. 数据所有权与一致性
 
@@ -121,7 +123,7 @@ RESOLVED + 普通相似消息 → 新question   # 默认不隐式重开；显式
 | M17–M19 | 冻结评测、审核回流、容量和故障验收 | 两周稳定/生产吞吐，除非实际测试 |
 | M20–M21 | 合成物流迁移；可选框架对照 | 真正公司部署或模型必然优于另一框架 |
 
-M00通过标准：三个指定走查能用同一套状态/ID/错误/版本解释；两份独立接口草案兼容；未定项有后续门禁；不存在按旧启动包重装/加库指令。细项见 MODULES/M00_ACCEPTANCE.md。
+M00通过标准：三个指定走查能用同一套状态/ID/错误/版本解释；两份接口视角草案兼容（允许单会话双视角，须如实标注）；未定项有后续门禁；不存在按旧启动包重装/加库指令。细项见 MODULES/M00_ACCEPTANCE.md。
 
 ## v2边界补充
 

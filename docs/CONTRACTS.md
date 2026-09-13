@@ -1,6 +1,6 @@
 # 跨模块语义契约
 
-版本：`0.1.1-draft`，M00语义基线。M02负责将下列语义落为唯一一套Pydantic/数据库类型、JSON示例和兼容性测试；本文件不声称这些类或表已存在。字段名本轮建议固定，具体类型/可选条件由M02发布，变更须ADR和下游影响说明。
+版本：`0.1.2-draft`，M00语义基线。M02负责将下列语义落为唯一一套Pydantic/数据库类型、JSON示例和兼容性测试；本文件不声称这些类或表已存在。字段名本轮建议固定，具体类型/可选条件由M02发布，变更须ADR和下游影响说明。
 
 ## 身份与幂等
 
@@ -14,6 +14,7 @@
 | run_id | 一次业务执行；普通新消息通常新run；重复同message应指向已有关联run/结果 |
 | trace_id | 诊断链路；不能当授权或幂等凭据 |
 | operation_id | 单次业务工具操作的稳定幂等键；重试/恢复沿用，参数变化必须另建并重新审批 |
+| approval_id | 一份持久审批记录；绑定operation及计划快照，同一决定重投引用同一记录，不是message_id |
 | event_id / version | outbox幂等与业务聚合版本；不等同消息到达时间 |
 
 重复消息payload相同返回既有结果或进行中引用，不新增case/工具调用；相同message_id但正文hash不同返回IDEMPOTENCY_CONFLICT。普通用户补充信息必须使用新message_id。服务端取当前身份及归属，不能靠全局order_id过滤替代租户隔离。
@@ -69,6 +70,23 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 1. 缺订单：outcome=CLARIFY，question_status=WAITING_SLOT，next_action=provide_slots，missing=[order_id]，tool_calls=0，run正常结束。下一消息新run，不调用resume。
 2. 外部用户读取另一用户case：outcome=REJECTED，error=FORBIDDEN，question_id可空，业务写入数=0、工具调用数=0，允许独立安全审计。
 3. 操作返回丢失：outcome=HANDOFF或受控处理中响应，error=OPERATION_UNKNOWN，operation_id固定，禁止立即再次执行写工具；能查询已成功时补记账本再给成功证据。
+
+## S06补齐：空值、审批领取与重复请求
+
+| 情况 | 语义 / 处理 |
+|---|---|
+| 未知 | 尚无可靠证据，如question尚未归属或模型版本未配置；用null/not_configured并保留原因，不猜值 |
+| 缺失 | 当前步骤必需的业务槽位未提供，返回CLARIFY/WAITING_SLOT；必需的传输字段缺失则INVALID_ARGUMENT |
+| 不适用 | 拒绝于入口的请求没有业务run/question，允许null；未调用工具的evidence/tool列表可为空 |
+| 非法 | 字段格式、枚举、归属或版本不合法，分别按INVALID_ARGUMENT、FORBIDDEN、VERSION_CONFLICT处理；不能当缺槽位放行 |
+
+上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联run/结果；未知主意图和缺槽位不等于非法HTTP请求。三个JSON语义样例及非top1反例见reports/M00/S06.md，不是已发布API。
+
+审批记录必须绑定operation_id、参数hash、SOP版本、question_version、主体和期限，并以版本条件更新确保PENDING→APPROVED最多一次。批准后由执行领取事务再次核验绑定与授权，将PREPARED→IN_FLIGHT并标识唯一执行者；批准记录本身不触发第二次工具调用。领取前的实体更正撤销旧审批并取消未发送操作/等待run；已经IN_FLIGHT或UNKNOWN的操作不得伪标CANCELLED，应冻结原参数并对账。
+
+绑定的question_version指领取前的计划快照。领取事务因本次状态推进而产生的新version，要记入执行证据；它不反过来否定已经完成的本次领取。外部更正仍需CAS协调，不能修改已发出的计划。此边界及影响记录于ADR018。
+
+同一审批决定的重投先鉴权，再读取既有决定/执行状态：不再次迁移、不重新领取；已完成返回同operation/run的结果，未完成返回进行中引用或OPERATION_UNKNOWN对账指引。相互冲突的决定或旧版本新决定返回VERSION_CONFLICT/APPROVAL_INVALID；过期返回APPROVAL_EXPIRED，工具0。普通新消息只产生普通消息run，不能借“好的”批准/恢复原run。
 
 ## 兼容性与发布
 
