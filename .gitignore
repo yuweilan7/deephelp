@@ -38,3 +38,7 @@ Thumbs.db
 *.sql.gz
 *.tar.gz
 *.pdf
+
+# Private source documents, original starter archives and exported context.
+/.local/
+*核心复刻启动包*.zip

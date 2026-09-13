@@ -1,0 +1,39 @@
+# M13｜FastText 本机训练、量化、拒识与兜底接入
+
+**阶段：** D 执行与治理
+
+**前置：** M02, M09, M12
+
+**来源：** 原 PDF 文件页 41–52、53–54、71。以下未由原文给出的实现细节均为本复刻方案的工程要求。
+
+## 工作方式
+
+默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+
+本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+
+## 本模块目标
+复刻 FastText 的轻量意图兜底链路，重点是数据划分、预处理一致性、未知类和版本化发布，不是训练出一条漂亮收敛曲线。训练默认在个人电脑 CPU/Linux 环境，RTX4060 不是必须条件。
+
+## 训练设计
+使用 M02 注册表和已核验训练数据，保留来源及 split。原文 8:1:1 可作为起点，但按会话/语义改写组分割，不能把同模板改写随机散到三个集合。若某类样本不足，明确无法做可信泛化评估；可以完成训练流程，却不能宣传分类能力。
+
+训练与在线推理共用同一 normalization/tokenization 函数、Jieba/词典/配置版本，覆盖全半角、空白、业务词、未知词；预处理变更必须重训或明确兼容。导出 __label__ 及 code 映射，不依赖字符串拆分猜层级。
+
+限定 bucket、dim、wordNgrams、epoch、线程数等探索范围与内存预算；先做小样本计量再训练，原文 800MB→4.3MB 不是本项目保证。可比较量化前后大小/准确率/延迟，不为压到某个数字牺牲未知类安全。避免安装整套 PyTorch/CUDA 只训练 FastText。
+
+## 推理与决策
+Python 直接调用经当前环境验证的 FastText binding；原文 JNI 是 Java 适配层，在本项目无需复刻 JNI。返回 topK、raw probability、模型/预处理版本以及 unknown/need_review。FastText 概率不是已校准正确率，阈值与top1/top2间隔在 dev 集评估，低把握可进入已有LLM/人工兜底。
+
+专门处理 p52 的截图矛盾：final_intent_code、topK、confidence_kind、is_actionable、need_review 必须一致；选择非top1需要确定性策略与理由。禁止出现最终低概率code却 needReview=false 的无解释结果。
+
+## 接入和验收
+M12 的 FallbackPort 只增加一个适配器，不另建一套识别服务。比较关闭FastText、启用FastText、量化版本三种模式的正确率/覆盖率/错误接管率、调用成本与实际速度。小模型没有优势可以保持默认关闭，但模块流程仍可验收为完成。
+
+测试包含未知标签、越界code、模型损坏、预处理签名不匹配、空输入、OOV、只含编号、低置信误接管、训练集泄漏检查。云端只上传经审核的小模型和manifest，保留当前/上一版本，超过预算就仅本机推理。
+
+交付训练脚本及固定seed/config、数据审计、模型manifest、量化对照、推理Port、真实评测报告和回滚指针。训练集准确率与heldout结果必须分栏，合成语料标签必须显著标明。
+
+## 本轮交付
+
+按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M13.md`、`handoffs/M13.md`、`reports/M13/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

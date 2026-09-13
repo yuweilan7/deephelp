@@ -1,0 +1,38 @@
+# M05｜意图语料导入、Milvus 数据模型与 Dense 基线
+
+**阶段：** B 最小闭环
+
+**前置：** P00, M02, M03
+
+**来源：** 原 PDF 文件页 25–30、35–40、70。以下未由原文给出的实现细节均为本复刻方案的工程要求。
+
+## 工作方式
+
+默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+
+本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+
+## 本模块目标
+将“已标注意图的客诉语料”导入 Milvus，建立可比较的 Dense 检索基线。这里不是对 PDF 分块做问答，也不是把 SOP 全文当所有意图的训练样本。
+
+## 环境门禁
+先读取 P00 的 infra 验收和实际 Milvus/PyMilvus 版本；当前优先复用已验收的云端受限 Milvus；真实模型和数据接入前复测容量。本机完整 Milvus 仅为另行授权的后备，不自动部署。没有可用实例时可做单测/生成配置，但不把 fake 或 Lite 测试算作真实 Milvus 接口通过。不能自动起另一套 etcd/MinIO，不能下载未审核的大镜像。
+
+## 数据和 schema
+借鉴原文 1024 维向量、content、intentCode、metadata，采用 M02 的注册表和 M03 的 embedding_signature。基线使用 FloatVector（FP32），这是为调试与兼容性做的明确改造；原文 Float16Vector 在本模块可做小型独立对照，先验证所选 SDK/索引和类型转换，未验证就不启用，不能静默变型。所有查询/导入明确 namespace/dataset_version/model_signature。短期意图样本和后续多轮事件投影分 collection，避免跨类型召回。
+
+导入支持 UTF-8 JSONL/CSV 为内部标准；原文无表头 Excel 用一个明确列映射适配器兼容。先预览/校验再导入：空行、未知code、缺字段、重复样本、异常长度、公式单元格、标签层级冲突都要报清楚。不要让导入工具执行 Excel 公式。原始文件哈希、记录ID、内容哈希、导入批次和版本可追踪，重复执行幂等。
+
+Dense 检索使用真实 Embedding；确定性随机向量仅可测试接口。选择小数据适合的索引，不为几百条样本调复杂性能参数。结果输出 doc_id、intent_code、raw_score、score_kind、metadata 与版本。按意图聚合候选时制定规则，防止某类仅因样本数多而霸榜；最终接管阈值只能在开发集调整。
+
+## 资源与失败行为
+批次和并发默认很小，导入前估算字节/行数/索引峰值；达到 P00 容量门禁立即停止新批次，并保存已完成记录。不能通过不停创建新 collection 逃避清理。版本切换采用先建后验再切指针，空间不够要安排维护窗口，而非破坏唯一可用集合。
+
+## 验收
+同一文件重导不倍增；同维度不同模型被拒；未知code被拒；插入/检索/过滤/删除/重启持久性可验证；部分批次失败能续跑且不混版本。开发集输出 Recall@K、按类候选召回和失败例子，不把与自己完全相同的训练句检索命中率当泛化能力。
+
+交付数据字典、导入流水线、collection 创建/校验/回滚脚本、DenseRetrieverPort、小型实际 integration 报告。BM25/混合排名留 M09，避免本模块提前包办全部识别。
+
+## 本轮交付
+
+按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M05.md`、`handoffs/M05.md`、`reports/M05/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
