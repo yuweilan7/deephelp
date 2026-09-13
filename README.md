@@ -1,5 +1,7 @@
 # DeepHelp
 
+项目当前入口：[00_START_HERE](00_START_HERE.md)；规划策略：[按需拆分](planning/PLAN_MODULE_PROMPT.md)；实施方法：[单主会话串行工作流](docs/WORKFLOW.md)。以下为原workspace与基础设施说明，业务完成状态以docs/PROJECT_STATE.md为准。
+
 一个 Git 仓库、一个 Python workspace，按需添加子模块。
 目前只建立基础工程框架，不预设业务模块，也没有新增业务服务或中间件。
 

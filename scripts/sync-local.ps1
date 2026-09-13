@@ -10,7 +10,18 @@ if (-not (Test-Path -LiteralPath $RepoPath -PathType Container)) {
     throw "Repository directory not found: $RepoPath"
 }
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'Git is required.' }
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { throw 'Use the existing uv installation; it was not found.' }
+$UvCommand = $null
+$UvPrefix = @()
+if (Get-Command uv -ErrorAction SilentlyContinue) {
+    $UvCommand = (Get-Command uv).Source
+} elseif (Get-Command py -ErrorAction SilentlyContinue) {
+    $UvCommand = (Get-Command py).Source
+    $UvPrefix = @('-3.11', '-m', 'uv')
+} else {
+    throw 'Existing uv or Python launcher not found. No installation was attempted.'
+}
+& $UvCommand @UvPrefix --version
+if ($LASTEXITCODE -ne 0) { throw 'Existing uv is unavailable. No repository change was attempted.' }
 
 Push-Location -LiteralPath $RepoPath
 try {
@@ -28,9 +39,9 @@ try {
     if (-not (Test-Path -LiteralPath 'scripts/project_context.py' -PathType Leaf)) {
         throw 'The delivery commit is not present; no PDF copied.'
     }
-    & uv run --locked python scripts/project_context.py verify
+    & $UvCommand @UvPrefix run --locked python scripts/project_context.py verify
     if ($LASTEXITCODE -ne 0) { throw 'Documentation checks failed; no PDF copied.' }
-    & uv run --locked python scripts/project_context.py import-source --source-dir $SourceDirectory
+    & $UvCommand @UvPrefix run --locked python scripts/project_context.py import-source --source-dir $SourceDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Source import failed safely. Read the hash/path error; the original was not deleted.' }
     Write-Host 'Remote files synchronized. Original PDF copied and verified under .local/references.'
     Write-Host 'No original deleted; no commit/push; no cloud services or paid models invoked.'

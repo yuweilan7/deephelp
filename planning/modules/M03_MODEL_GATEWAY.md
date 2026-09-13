@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 16–18、21–24、35–41、67–69。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 把模型供应商差异挡在一个可测的网关后面，确认“能聊天”“能工具调用”“能稳定输出 schema”“能生成指定维度向量”是四项分别验收的能力。
@@ -32,6 +32,10 @@ Embedding 缓存以规范化文本+signature 为键，支持批次和容量上�
 
 交付 providers 配置示例（无密钥）、模型能力矩阵、环境/版本签名、网关实现子任务、单测和受控 live 脚本。未完成 live 时写 PENDING_LIVE，不能写“千问兼容所以都支持”。本轮不下载 BGE 或大语言模型，不装训练框架。
 
+## 接口与分期边界（v2复核）
+
+本模块的 tool calling 能力探针使用静态工具 schema 与受控结果，验证模型协议而非 M06 的 MCP。真实 MCP 往返由 M06 负责，端到端调用由 M07/M08 负责，避免形成隐藏依赖环。网关计数包含底层 SDK 实际尝试，关闭/纳管 SDK 默认重试；缺少授权额度时离线实现可完成，live 单列 PENDING_LIVE。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M03.md`、`handoffs/M03.md`、`reports/M03/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M03.md`、`handoffs/M03.md`、`reports/M03/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

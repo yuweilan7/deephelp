@@ -1,5 +1,7 @@
 # 模块目录：按需读取，不是运行时模块
 
+当前规范v2：模块由[通用Prompt](PLAN_MODULE_PROMPT.md)判断是否需要拆分；DIRECT可一份任务，DECOMPOSE才用多个S，未知能力先PROBE_FIRST，已有成果VERIFY_EXISTING。默认一个M一个主会话串行实施，测试随任务交付；需要时在[工作流](../docs/WORKFLOW.md)查看接续方式。原解压稿仅为.local中的历史资料。
+
 阶段计划不自动注入每个实施会话；只读当前模块和直接前置交接。每个文件保留原模块专属范围/失败案例，公共底座已去重；旧PG/环境/单pyproject约束显式修订，详见 docs/DECISIONS.md。
 
 P00 已有历史验收，入口改为 handoffs/P00.md，不提供旧环境重装指令。

@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 19–24、31–35、53。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 复刻输入校验、清洗/实体提取并行，以及规则→较轻模型→强模型的逐层补齐机制。关键是数据保真和可解释失败，不是尽可能多调模型。
@@ -32,6 +32,10 @@
 
 交付 TextCleanResult、ExtractedEntity、RuleMatch 的具体兼容接口、版本化规则、小型黄金样本、故障测试和 trace 事件。禁止把实体提取写成一个没有校验的“请帮我抽取”大 Prompt。
 
+## 接口与分期边界（v2复核）
+
+清洗/抽取可以生成 RuleMatch 候选与话语功能标签，但不在300阶段确定最终主意图并路由 SOP；规则决策在600统一消费。新结果必须带来源；明确更正与普通冲突区分，低可信结果不能覆盖已确认实体。先用现有 Regex/API 方案，不为补齐层数再接一个未经验证的小模型。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M04.md`、`handoffs/M04.md`、`reports/M04/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M04.md`、`handoffs/M04.md`、`reports/M04/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

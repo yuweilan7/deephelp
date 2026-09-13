@@ -1,15 +1,15 @@
 # 项目真实状态
 
-记录版本：M00-design-v1。输入仓库基线：`15d9ac9cd03251f7c32242cbdf1279abbffb8df9`（main）。本文件是设计交付时的快照，不代表后来机器的实时状态。
+记录版本：M00-design-v1.1 / prompt-policy-v2。此次复核输入commit：`4724a386ceecf62efe318569526103e3233d5db6`；最早基础工程为15d9ac9。本文件记录已执行事实，不替代当前运行监控。
 
 | 范围 | 状态 | 证据 / 限制 |
 |---|---|---|
 | 根 uv workspace | EXISTING_SCAFFOLD | 根 pyproject、uv.lock、README；Python 3.12.14 / uv 0.12 系列是原仓库约束 |
 | P00 | HISTORICAL_ACCEPTANCE_REVIEWED | infra/reports/acceptance-summary.json 和客户端验收脚本已读；本轮未 SSH、未复测 |
 | 云端 Milvus | ACCEPTED_EXPERIMENTAL（历史） | compose 上限 5 GiB；历史 4 维合成向量验证协议，不证明真实 embedding 效果或未来容量 |
-| M00 | DESIGN_READY / REVIEW_PENDING | 架构、语义契约、来源差异、六个子任务及验收规格已交付；S06 独立集成复核待做 |
+| M00 | DESIGN_READY / REVIEW_PENDING | 架构、语义契约、来源差异、六个子任务及验收规格已交付；22模块和规划策略v2已复核；最终S06设计验收仍待执行 |
 | M01–M21 | NOT_IMPLEMENTED | 只有规划文件；M01 不能因已有 workspace 就视作完成；M21 可选 |
-| Windows 本地同步 / 原 PDF 归位 | NOT_EXECUTED_HERE | 已提供本地脚本，当前会话没有连接 Windows 文件系统 |
+| Windows 本地同步 / 原 PDF 与启动包归位 | COMPLETED_LOCAL | 已快进同步；PDF、原ZIP、42份解压文件逐字节/哈希校验复制到.local/references；原件保留、未公开上传；见reports/M00/windows-sync-v2.json |
 | 业务 integration / live / e2e | NOT_RUN | 没有业务应用、模型授权或当前机器执行证据 |
 
 ## 有效技术基线

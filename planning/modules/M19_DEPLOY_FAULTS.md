@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 18、53、69–75（硬配额和故障协议为工程补充）。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 证明整个系统在选定拓扑和实际资源下可运行、可停机、可恢复，而不是只证明电脑上某次成功。云端Milvus失败时采用split是合法结果；不能为了“全云”删除核心能力或无限加swap。
@@ -35,6 +35,10 @@
 
 交付最终部署手册、smoke/backup/restore/doctor、故障结果、资源证据、残余风险与停机/回滚步骤。此模块验收对象是真实环境，不是一个仅写好没执行的compose文件。
 
+## 接口与分期边界（v2复核）
+
+先列实际服务/挂载/端口/数据目录与本次测试目标，只读盘点不等于允许重启/删除/恢复。破坏性演练和恢复使用明确隔离目标，写出中止与清理范围；不触碰共享p00探针或其它项目。固定数字是设计参考而非实测容量保证，报告真实期限/负载与剩余风险。无当前云授权时可以完成部署计划和离线校验，运行验收保持待执行。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M19.md`、`handoffs/M19.md`、`reports/M19/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M19.md`、`handoffs/M19.md`、`reports/M19/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

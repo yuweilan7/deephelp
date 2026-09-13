@@ -1,41 +1,39 @@
 # DeepHelp：工程入口
 
-当前远程基线是基础设施与 uv workspace；本次新增架构/规划资料，不冒充已实现 Agent。真实状态只看 [PROJECT_STATE](docs/PROJECT_STATE.md)。
+当前代码状态见[PROJECT_STATE](docs/PROJECT_STATE.md)。核心架构和规划已经在工程内，不要重新初始化P00，也不要把文档存在当业务实现完成。
 
-## 三种工作只读三种上下文
+## 最短操作路径
 
-| 工作 | 最小必读 | 不默认读取 |
+先用[修订后的S06](planning/M00/S06_ACCEPTANCE_HANDOFF.md)对S01–S05的既有成果做覆盖核验，需要哪项才补哪项；不要求重写五轮。通过最终设计验收后实施M01。
+
+后续每个M用[通用规划Prompt v2](planning/PLAN_MODULE_PROMPT.md)：由Pro判断DIRECT、DECOMPOSE、PROBE_FIRST或VERIFY_EXISTING。一个M默认一个主会话按顺序完成任务，测试随实现交付；S不是必须创建的第二层。具体方法见[工作流](docs/WORKFLOW.md)。
+
+| 工作 | 必要上下文 | 不默认读取 |
 |---|---|---|
-| Astra 实施一个子任务 | AGENTS、CONTRACTS、PROJECT_STATE、当前子任务、直接前置 handoff 和相关代码 | 全部 22 份模块 Prompt、合集、原 PDF 全文 |
-| Pro 规划一个模块 | [通用规划 Prompt](planning/PLAN_MODULE_PROMPT.md)、当前模块、上述工程基线、相关 PDF 页 | 其它模块全文、全部历史报告 |
-| 架构/来源核对 | ARCHITECTURE、DECISIONS、SOURCE_MAP 和有疑问的原图 | 无关网页或推测出来的内部源码 |
+| 实施当前M/S | AGENTS、CONTRACTS、STATE、当前任务、直接前置交接、相关代码/测试 | 全22份Prompt、合订本、原PDF全文 |
+| Pro设计当前M | 当前M、上述工程事实及相关PDF页 | 全部未来模块和每份历史报告 |
+| 来源/架构核对 | SOURCE_MAP、DECISIONS、必要原图 | 不能访问的内部网页或推测的源码 |
 
-## 现在怎么继续
+## 原始资料：本地齐全，不公开上传
 
-M00 详细设计见 [模块设计](docs/MODULES/M00.md)，六个可独立复制的实施/核对子 Prompt 见 [M00 子任务](planning/M00/README.md)。仓库已经写入对应设计文档，执行时只检查和补差异，不重新生成一套。先完成 S06 的集成复核，再开始 M01 实施；M01 的规划可先进行，但不得把 M00 的设计状态冒充运行验收。
+Windows工作区：`D:\IdeaProject\deephelp`。
+原PDF：`.local/references/deephelp-original.pdf`。
+原ZIP：`.local/references/deephelp-starter-original.zip`。
+原解压稿：`.local/references/starter-original/`（包含合集和原始Prompt，只作历史资料）。
 
-后续在新 Pro 会话上传原 PDF 和当前 `Mxx_*.md`，粘贴同一份 [通用规划 Prompt](planning/PLAN_MODULE_PROMPT.md)。它应从仓库读取最新状态；没有仓库读取能力时，上传本地导出的上下文包：
+归位哈希与记录见 `reports/M00/windows-sync-v2.json`。下载/网盘目录原件未删除。公开仓库只有哈希、页码索引与修订版规划，没有原始PDF/ZIP/内部截图。新Pro只有GitHub访问能力时仍需上传PDF；本机文件不是远程仓库文件。
 
-```powershell
-uv run --locked python scripts/project_context.py export --module M01
-```
+有效模块规范在[planning/modules](planning/README.md)，不要用归档中的PG/4GiB旧假设覆盖现仓库。
 
-输出位于 `.local/context/M01_CONTEXT.md`，只含白名单工程文件和缺失前置说明，不含原 PDF、密钥或数据库连接配置。将它与 PDF、当前模块文件一起上传。
-
-## 原始资料在本地
-
-原 PDF 的统一位置为 `.local/references/deephelp-original.pdf`。执行以下命令会在指定目录中按 SHA-256 找到本次原件，复制并校验；不会删除原文件，不会上传：
+## 无仓库读取能力时导出上下文
 
 ```powershell
-uv run --locked python scripts/project_context.py import-source --source-dir D:\BaiduNetdiskDownload
+py -3.11 -m uv run --locked python scripts/project_context.py export --module M01
 ```
 
-原启动包保留在下载目录作为历史原件。`planning/modules/` 是按当前工程修订且去除重复底座的工作副本；合集、原校验清单和旧 P00 初始化指令不作为当前执行入口。文件取舍见 [导入记录](reports/M00/import-map.md)。
+文件位于 `.local/context/M01_CONTEXT.md`，包含白名单工程文档/当前任务/前置交接，不含原PDF、凭据或完整实现代码。缺失相关代码时仍需补充，不宣称包内包含所有事实。已有uv命令也可直接替换`py -3.11 -m uv`。
 
-## 当前已有与未来目标
+文档检查：`py -3.11 -m uv run --locked python scripts/project_context.py verify`。
+文档工具测试：`py -3.11 -m uv run --locked python -B -m unittest discover -s tests/docs -v`。
 
-保留 MySQL/Redis/Milvus、现有 uv workspace 和 infra 原文件。PG、云端 4 GiB、重建单一 pyproject 等旧要求已在 [DECISIONS](docs/DECISIONS.md) 明确修订。框架持久恢复后端尚待验证，不通过添加新数据库掩盖这个缺口。
-
-开发顺序、直接依赖和源页码见 [模块目录](planning/README.md)。到 M08 先验证 3–5 个合成场景的真实纵向链路，再做多轮、FastText、审批和评测；不必等 22 个模块全部完成。
-
-仓库文档自检：`python scripts/project_context.py verify`。这只检查文档结构和规划一致性，不是 DeepHelp 业务验收。
+本轮未实施M01或后续业务模块；真实模型、云机、端到端与恢复测试保留各自待执行状态。修订清单见[逐模块复核](reports/M00/prompt-review-v2.md)。

@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 全篇机制；物流场景为新的工程设计。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 将客诉系统的核心抽象迁移到我熟悉的运单/轨迹领域，证明学到的是系统设计而不是只背原文流程。这不是宣称已在京东或Shopee上线，也不能使用两家公司的真实内部数据。
@@ -32,6 +32,10 @@
 
 交付物流domain配置与mock计划、演示脚本、证据化项目介绍、风险/限制和后续真正值得做的一个方向。无需启动第二个大项目或重新规划半年学习路线。
 
+## 接口与分期边界（v2复核）
+
+复用已验收引擎，仅新增合成物流适配/配置与必要契约增量；每次变更回归客诉场景。延迟/签收判断明确事件发生时间、接收时间、时区和数据更新时间，缺失/乱序轨迹不能直接断言丢件或自动补偿。展示/简历只引用可复查report，演示脚本不等于生产上线或千万级性能。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M20.md`、`handoffs/M20.md`、`reports/M20/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M20.md`、`handoffs/M20.md`、`reports/M20/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

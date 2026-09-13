@@ -6,21 +6,21 @@
 
 **来源：** 原 PDF 文件页 55–61，重点 p57–58。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 复刻原文最容易被“把历史消息拼一起”错误替代的 EventClusterStep：先判定哪几句话属于同一业务事件，再给统一意图识别一个可靠的当前事件上下文。不要在本模块识别最终业务意图或执行 SOP。
 
 ## 按 p58 的结构规划实现
-A. MessageWindowAssembler：读取同 tenant/user/session 中仍有效的活动历史，与当前消息组成有界窗口；引用 cleaned_text、entities、demand_type、message_id。数据库不可用时不能随意跨用户取缓存；可安全降级为仅当前消息并注明。
+A. MessageWindowAssembler：读取同 tenant/user/session 中仍有效的活动历史，与当前消息组成有界窗口；引用 cleaned_text、entities、demand_type、message_id。数据库不可用时不能随意跨用户取缓存；普通有状态请求失败关闭，仅显式无持久化只读预览可退化为当前消息。
 
 会话守卫：NEW_TOPIC/RESOLVED 的处理依 M10 策略，限制哪些历史有资格参与，不是相似度高就能复活旧问题。
 
-B. buildSimilarityPreLinks：对有资格的 ACTIVE 事件取语义候选，保留得分及实体依据；检索失败时不给伪造关联边。状态从 MySQL 校验，不能只信向量中的 status。
+B. buildSimilarityPreLinks：对符合 M10 开放问题策略的事件取语义候选（包含 WAITING_SLOT；审批等待只读上下文），保留得分及实体依据；检索失败时不给伪造关联边。状态从 MySQL 校验，不能只信向量中的 status。
 
 C. 按话语功能分主诉/补充/未知，不在此再次执行完整 IntentCascade。D1 对主诉用实体一致性和有效候选边做合并。D2 对“补一句订单号/纠正日期”等补充消息，用 TopK 候选+受限结构化 ClusterJudgePort 判断归属；证据不足输出未确定并澄清，不能总贴给最近一条。
 
@@ -38,6 +38,10 @@ F. EventAggregationService 只做事实摘要与实体合并，保留出处和�
 
 验收核心是归属正确率、错误合并/拆分率、澄清率、预算和隔离，不只是“能生成一段通顺摘要”。最终模块必须证明没有调用主意图分类器；主分类仅在下一阶段发生。交付聚合子模块、黄金序列、实体冲突测试和可重放事件图文本。
 
+## 接口与分期边界（v2复核）
+
+复用 M10 开放问题集合，不能把 WAITING_SLOT 从补充归属候选中排除。WAITING_APPROVAL 只提供上下文/更正入口，绝不隐式resume；更正计划必须使旧批准失效。明确A改B是实体更正事件而非证明A=B的union边，同订单不同诉求也不能只因编号一致合并。MySQL不可用时普通有状态请求失败关闭；仅显式标注的无持久化只读预览允许仅当前消息，不伪报已保存/已处理。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M11.md`、`handoffs/M11.md`、`reports/M11/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M11.md`、`handoffs/M11.md`、`reports/M11/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

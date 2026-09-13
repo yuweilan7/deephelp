@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 57–60、62–69、74（恢复细节为工程补充）。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 将“可暂停的 Agent”做成“进程重启后知道自己做到哪、不会重复副作用、不能被错误消息批准”的系统。这些细节是工程补充，原文未提供完整事务/恢复实现，必须明确标注。
@@ -31,13 +31,17 @@ LangGraph interrupt恢复时可能从该节点开头重跑；节点前半部分�
 避免持有数据库事务/行锁跨等待人类或长LLM调用。case并发更新用版本检查等策略；Redis锁只能优化，不作为唯一正确性保证。checkpoint与业务提交间的裂缝需通过ledger对账修复。
 
 ## 必须给出故障注入矩阵
-中断前崩溃、approval已入库但checkpoint未推进、工具执行前崩溃、工具成功但响应丢失、工具成功但MySQL未更新、重复resume、两个审批者并发、参数被改、旧审批过期、Redis清空、Milvus投影滞后。每个案例写最终case状态、允许的工具调用次数、幂等记录、恢复入口与证据。
+中断前崩溃、approval已入库但checkpoint未推进、工具执行前崩溃、工具成功但响应丢失、工具成功但MySQL未更新、重复resume、两个审批者并发、参数被改、旧审批过期、隔离测试缓存丢失、Milvus投影滞后。每个案例写最终case状态、允许的工具调用次数、幂等记录、恢复入口与证据。
 
 交付经过兼容性门禁的持久checkpointer适配（不能因业务库是MySQL就假定后端已可用）、审批schema/端点、幂等ledger、恢复/对账脚本、权限测试及真实进程重启测试。未能实际模拟重启就标未验收。只操作合成权益系统，不接真实支付/退款。
 
 ## 当前仓库补充门禁
 MySQL 业务账本已定，持久 checkpoint saver 未验收。先以锁定版本和真实 MySQL 做最小兼容/崩溃恢复试验；社区 saver 不等于官方支持。不得自动添加 PostgreSQL/SQLite 或新工作流引擎。未通过该门禁只能交付非持久试验，不能标记持久审批完成。
 
+## 接口与分期边界（v2复核）
+
+优先 PROBE_FIRST 检验实际 saver/锁定依赖；通过后再定实现任务。领取执行权、审批校验、expected_version 和 IN_FLIGHT 标记要在同一受控事务中裁决；普通消息更正不能与旧计划执行无约束并发。操作已进入外部执行后不能谎称撤销了已发生效果，需查询/对账或受授权补偿。合成下游的幂等效果记录也必须跨其重启持久；内存计数无法证明崩溃恢复。测试区分网络调用次数与业务效果次数，UNKNOWN不得盲目重试。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M15.md`、`handoffs/M15.md`、`reports/M15/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M15.md`、`handoffs/M15.md`、`reports/M15/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

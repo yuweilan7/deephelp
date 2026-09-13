@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 67–69、73。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 实现能读取 SOP、调用工具、根据结果分支并产出结构化结论的最小执行器。不要退化成“模型自由聊天+几个工具”，也不要在只有三个流程时创造完整 BPMN 引擎。
@@ -30,6 +30,10 @@ ReAct 可用于有约束地选择下一个获准工具、解释观察，但必�
 
 给出一次真实模型+真实 MCP Mock 的受控执行探针，其它路径用可重放模型 fixture 保持测试稳定。交付 SOP schema/三个配置/执行器接口/Prompt 版本/循环预算测试。未来接 AgentScope 只替换 SOPExecutorPort，不改变业务模型。
 
+## 接口与分期边界（v2复核）
+
+SOPResult 返回缺槽位/下一步，由主流程映射到 Question.WAITING_SLOT 和 Response.CLARIFY；执行器不自行写问题状态或重做主意图识别。沿用已发布 ToolResult/预算，不另造调用网关。M07 的最小 SOP schema 由 M14 增量扩展，配置数不是拆任务依据；三个相似 SOP 可以一个任务连同测试完成。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M07.md`、`handoffs/M07.md`、`reports/M07/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M07.md`、`handoffs/M07.md`、`reports/M07/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

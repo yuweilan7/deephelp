@@ -1,25 +1,39 @@
-# S06｜独立集成复核与M00退出
+# S06｜核验既有成果、补齐证据与M00退出
 
-你是DeepHelp的Astra实施工程师，本轮只执行这个M00子任务。仓库为D:\IdeaProject\deephelp（实际执行环境没有该路径时先定位授权工作区，不假装访问Windows）。先读AGENTS.md、docs/CONTRACTS.md、docs/PROJECT_STATE.md、当前子任务及列出的输入。运行git status --short、git rev-parse HEAD；输入设计基线为15d9ac9cd03251f7c32242cbdf1279abbffb8df9，但不得checkout旧版本覆盖后续工作，需确认当前内容是否已更新并记录实际commit。
+本任务不是跳过S01–S05，而是用它们的退出条件检查已经存在的成果。默认一个主会话串行核验；有缺口时执行对应S，不再为“执行S”生成另一轮任务。
 
-当前仓库已有本次生成的设计产物；先复核，再只修正缺失或错误，不为了执行任务重写全部文件。MySQL/Redis/云Milvus与uv workspace保留，默认模型调用0、云变更0。M00不创建业务包、DTO实现、数据库迁移或应用依赖。
+## 输入与范围
 
-## 前置与输入
-全部核心设计/工具产物可读；S01–S05可已有报告，也可由本任务对现有交付独立复核。不能仅因缺少五次历史会话就要求重做文件；必须实际验证对应退出条件。
+在授权的deephelp工作区读取AGENTS、CONTRACTS、PROJECT_STATE、M00设计、M00_ACCEPTANCE、DECISIONS、SOURCE_MAP和S01–S05。记录实际分支、HEAD和未提交差异。历史commit只说明来源，不作为覆盖当前工作区的理由。原PDF从source-manifest指定位置读取；不能读原图时明确SOURCE_NOT_VERIFIED。
 
-## 允许修改的路径
-docs/MODULES/M00.md、docs/PROJECT_STATE.md、handoffs/M00.md、reports/M00/S06.md。其它文件只读；需要修复契约/架构时退回对应owner。
+仅核验或修补M00，不实施M01、不安装业务框架、不修改infra与根锁、不调用模型或云服务。只按本轮明确授权提交修改。
 
-## 具体执行
-核对SOURCE_MAP/DECISIONS/ARCHITECTURE/CONTRACTS/M00_ACCEPTANCE/模块manifest一致。读取当前git状态、工具测试结果和真实资源变化，不继承旧PASS。
-执行文档verify与tests/docs单测；检查本次提交差异不含原PDF/凭据，未改infra/根锁。用两个独立接口视角写缺槽位、跨用户拒绝、重复审批的请求/响应与状态/工具预期，记录输入依据与对照结果。若能启动两个独立会话才称“两会话验证”；单会话双视角明确标注，不伪装。
-逐个走查订单更正、双问题交错、审批重放，确认没有临时新造状态。若不一致，保持REVIEW_PENDING，写最小冲突单；不要在本任务改其它owner的契约绕过审核。
-通过后将M00设为DESIGN_ACCEPTED（仅设计，不是实现），记录实际commit/命令/退出码/尚未执行的业务integration/live/e2e与Windows导入。交接M01工作包布局和M02语义输入，下一步只启动M01。
+## 覆盖表：要求—产物—本轮检查—结果—缺口
 
-## 必须验证的输入与期望
-已有workspace不等于M01完成；历史P00不等于本轮在线健康；文档工具unit通过不等于业务unit；本轮没有真模型/进程重启就必须NOT_RUN。共享contract/IDs/状态必须三个场景兼容。未定saver归M15门禁，不偷偷新增数据库。
+在reports/M00/S06.md记录以下五项，已有内容正确就引用证据，不重生成。
 
-## 执行、失败与回滚
-从仓库确认可用解释器后运行 `python scripts/project_context.py verify`；工具尚未存在时记录待S05，不假装已运行。只执行本任务允许的离线检查，不安装额外框架。每条命令记录实际路径、退出码和简要结果；提出命令不等于执行成功。
-发现源证据不足、前置契约不成立、允许路径外必须修改、用户未提交冲突或核心断言失败，停止相关写入并给最小修正请求。保留用户文件；回滚只撤销本任务自己的变更/提交，经确认使用git revert，不reset/clean。
-报告输出到指定的reports/M00子任务文件，列输入commit、改动、通过/失败/未执行、资源变化、限制及下一任务。仅在本轮已有提交授权时提交自己的允许路径，推送不得force；没有权限明确未提交。本任务是唯一可以更新PROJECT_STATE的M00集成人。
+| 来源任务 | 现有产物 | 必须核对 |
+|---|---|---|
+| S01 | SOURCE_MAP、DECISIONS、source-manifest、原PDF | hash、12/13段差异、600唯一主分类、原文与工程改造分开、实仓环境 |
+| S02 | CONTRACTS | ID、幂等、状态、错误、证据、预算；缺槽位、跨用户、非top1及UNKNOWN行为 |
+| S03 | ARCHITECTURE、RISKS | 13段职责、早停、存储权威、预算；WAITING_SLOT候选及审批上下文限制 |
+| S04 | M00三个走查、M00_ACCEPTANCE | 更正、双问题交错、审批重放的ID/版本/状态/效果次数，无临时新造状态 |
+| S05 | project_context.py、tests/docs、源同步记录 | 实际自检/测试、幂等导入、不覆盖异内容、白名单导出、依赖无环和路径边界 |
+
+没有五份单独的执行报告不自动失败，集中S06报告可以承载核验；没有对应证据也不能自动通过。有缺口标明对应S，再在同会话按该S范围补齐。
+
+## 实际检查与兼容性复核
+
+用项目Python3.12执行 `python scripts/project_context.py verify` 和 `python -B -m unittest discover -s tests/docs -v`，记录解释器、命令、退出码、失败和跳过原因。Windows优先解析当前项目的`.venv/Scripts/python.exe`或既有uv入口，不把系统解释器冒充项目版本。
+
+检查差异及已跟踪路径，确保原PDF、原ZIP和凭据不在公开提交内。资料归位不证明架构正确；历史P00报告不证明当前云机已重新验收。
+
+分别从CONTRACTS与ARCHITECTURE两个接口视角写缺槽位、跨用户拒绝、重复审批的输入输出/状态/工具次数预期，再逐项比较。可同会话完成并标“单会话双视角”；实际另开会话才标“独立会话审查”。语义兼容是门禁，会话数量不是门禁。订单更正、双问题交错、审批后重放三个走查必须覆盖。
+
+## 修改与退出
+
+默认修改reports/M00/S06.md、docs/PROJECT_STATE.md、handoffs/M00.md及M00设计的必要说明。设计有实质问题时先记录，再在同会话切到对应S所列文件范围补齐并复核；新业务范围和新服务不在本任务内。
+
+覆盖表没有未解决的关键缺口，走查和接口视角一致、适用文档测试通过后，才标M00 DESIGN_ACCEPTED。它只表示设计验收，不表示业务已实现。关键源证据缺失或失败不能按跳过通过；业务unit/integration/live/e2e与恢复能力保留真实状态。
+
+有明确提交授权时只提交本任务路径并验证远端结果；否则保留可审查差异。记录真实commit，不自引用未知SHA。完成后交接M01骨架及M02唯一类型输入，不自动实施下一模块。

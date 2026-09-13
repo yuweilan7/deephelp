@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 19–24、31–40、67–74。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 现在就交付一个可以拿来提问、真实调用模型、真实查 Milvus、真实走 MCP Mock 的 3–5 场景系统，不等待全部高级模块实现。前面的模块各自好看但拼不起来，本模块就不能过关。
@@ -18,7 +18,7 @@
 ## 贯通链路
 按 M00 的 13 段骨架运行：输入/安全→清洗→构建最小业务上下文→显式 passthrough EventCluster→一次意图服务（规则+Dense，按既定策略有限 LLM兜底）→意图可执行检查→槽位检查→读取 SOP→执行→事实模板输出→最小 session 维护→统一响应。
 
-每阶段有 trace，返回 request/run/trace/question ID；未实现的功能标记 disabled，而不是假返回正确结果。一个用户可先补订单号再发完整问题，但真正交错多事件留 M10/M11；界面必须清楚当前阶段的限制。未知意图、无 SOP、缺槽位、模型不可用的分支都要有正常契约结果，不成为未处理500。
+每阶段有 trace，返回 request/run/trace/question ID；未实现的功能标记 disabled，而不是假返回正确结果。此阶段处理本条完整问题，跨消息槽位合并和真正交错多事件留 M10/M11；界面必须清楚当前阶段的限制。未知意图、无 SOP、缺槽位、模型不可用的分支都要有正常契约结果，不成为未处理500。
 
 缺槽位返回 WAITING_SLOT 的普通业务结果，不随手用 checkpoint interrupt 暂停整个用户会话。此时若没有完整多轮实体合并，仅明确要求用户补齐完整输入；不得暗称多轮已支持。
 
@@ -33,8 +33,12 @@ FastAPI converse API + CLI 或单页朴素调试入口即可。用户可以看�
 ## 交付与后续边界
 交付可运行入口、统一 compose/env 连接方式、实际 end-to-end 报告、演示命令和剩余功能表。原文第一阶段 80% 意图、90% SOP 成功是原作者计划标准，本项目只能在定义明确的自有数据集上报告；不能为了凑百分比删掉难例。
 
-达成后冻结一个 mvp-v0 标签并确认 shared contracts。只有这个版本能重跑，才并行推进 M09 检索增强和 M10 状态/记忆；不要在全链路尚未工作时投入大量训练。
+达成后冻结一个 mvp-v0 标签并确认 shared contracts。只有这个版本能重跑，才继续 M09 检索增强和 M10 状态/记忆；逻辑独立不代表默认并行写入，通常按编号串行推进；不要在全链路尚未工作时投入大量训练。
+
+## 接口与分期边界（v2复核）
+
+实现最小 MySQL messages/runs/questions 接收记录、同消息幂等及终结状态落账，迁移脚本限定本项目业务表，不改旧P00探针。M10 在此基础增量扩展；内存Repository只用于离线测试，不能通过正式持久化验收。此阶段只承诺本条完整输入的处理，缺槽位返回 WAITING_SLOT 并提示补齐完整问题；未做归属/合并就不承诺跨消息自动补槽。M09/M12继续扩展同一主流程和意图服务，不新造平行实现。
 
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M08.md`、`handoffs/M08.md`、`reports/M08/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M08.md`、`handoffs/M08.md`、`reports/M08/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

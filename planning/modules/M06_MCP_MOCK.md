@@ -6,11 +6,11 @@
 
 **来源：** 原 PDF 文件页 16–18、67–69、74。以下未由原文给出的实现细节均为本复刻方案的工程要求。
 
-## 工作方式
+## 工作方式（v2）
 
-默认PLAN_MODULE，只设计/拆解本模块。使用[通用规划Prompt](../PLAN_MODULE_PROMPT.md)的六项交付格式。先读实仓AGENTS、CONTRACTS、PROJECT_STATE、DECISIONS及直接前置handoff；本文件不是完成证据。
+默认 MODE=PLAN_MODULE。实际读取 AGENTS、CONTRACTS、PROJECT_STATE、当前相关代码/测试与直接前置 handoff，按[通用规划 Prompt](../PLAN_MODULE_PROMPT.md)先选择 DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING，再给最小充分设计和实施任务；不强制拆分。明确要求实施时按本轮授权执行，不继续生成下一层规划。
 
-本工作副本显式修订旧PG/部署/布局假设，采用现有MySQL、uv workspace与5GiB云Milvus受限实验；不重新部署、不自动付费、不把22阶段建成22个包。原PDF仅存本地，业务演示只用合成数据。
+原图按模块页码读取 `.local/references/deephelp-original.pdf` 或本轮 PDF 附件；GitHub 访问不包含被忽略的本地文件。已核对的原图不必每个 S 重读，旧解压稿仅为历史来源。保留现有 MySQL、uv workspace 和已记录的云 Milvus 实验，不重建 P00。一个 M 默认一个主会话顺序实施，相关测试随每个任务交付；跨会话从实际文件与最新合法 HEAD 接续。
 
 ## 本模块目标
 用真实 MCP 工具发现和调用链路，连接我们自建的合成下游服务。业务可以 Mock，协议和错误处理不能 Mock 成普通 Python 函数后假称完成 MCP。
@@ -32,6 +32,10 @@ Mock 不是永远成功：提供可配置延迟、超时、500/限流、缺字�
 
 交付 MCP mock server、客户端 ToolGateway、工具注册表、故障 fixture、调用日志与 smoke 脚本。不要把下游拆成四个独立 HTTP 微服务来模仿公司组织架构，一套可控 mock 足够承载初期业务差异。
 
+## 接口与分期边界（v2复核）
+
+stdio 本身不证明用户身份。可信 ToolGateway 必须从已验证请求注入工具执行上下文，通过不暴露给模型的受控会话/内部信封传递，并在 Mock 服务端再检查对象归属；正文参数不得覆盖身份。所称500/限流是模拟下游故障，不混同 stdio HTTP 状态。真实 list_tools/call_tool 可不调用真实模型，本模块不依赖 M03。调用ledger用于合成协议断言；持久副作用账本由 M15 实现。
+
 ## 本轮交付
 
-按通用规划Prompt给详细设计、3–7项DAG、每项完整独立Astra执行Prompt、分层验收和交接。路径：`docs/MODULES/M06.md`、`handoffs/M06.md`、`reports/M06/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。
+按通用规划 Prompt 自适应决定任务粒度；可只给一份实施任务，需要拆分时才给最少必要的 S 和依赖。已有成果先验收/补差异，不重复建设。保留本模块全部关键失败案例和适用的分层验收。路径：`docs/MODULES/M06.md`、`handoffs/M06.md`、`reports/M06/`。仅集成人更新PROJECT_STATE；未执行项写NOT_RUN，不能把Mock/合成数据结果写成线上效果。

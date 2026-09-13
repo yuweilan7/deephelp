@@ -21,7 +21,7 @@ CORE = (
     "AGENTS.md", "docs/CONTRACTS.md", "docs/PROJECT_STATE.md",
     "docs/ARCHITECTURE.md", "docs/DECISIONS.md", "docs/RISKS.md",
     "docs/SOURCE_MAP.md", "docs/references/source-manifest.json",
-    "planning/manifest.json", "pyproject.toml", "uv.lock",
+    "planning/manifest.json", "docs/WORKFLOW.md", "pyproject.toml", "uv.lock",
 )
 PIPELINE = (
     "INPUT_VALIDATE", "SAFETY_CHECK", "TEXT_CLEAN", "BUILD_BIZ_CONTEXT",
