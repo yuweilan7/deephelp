@@ -26,4 +26,6 @@ MySQL checkpoint saver 尚未选定/验收。M01/M08 可明确使用非持久执
 
 S06是单会话双视角，没有其他写入Agent或独立会话审查。原PDF的SHA/78页与指定13幅页图已在本机核验；文档工具新增真实Windows junction反例通过。真实符号链接创建测试受系统权限限制跳过，单独保留限制，不计通过。M03模型/费用、M05真实容量、M15持久saver/审批并发/崩溃恢复仍为运行门禁。
 
+实际M00验收commit：`1ae0a35c0c8f4a26d5a42b5d63185ca09292cdbe`，已推送origin/main并用ls-remote核对同一SHA；本行是提交后的事实补录。完整检查及提交记录见handoffs/M00.md。
+
 共享 CONTRACTS、lockfile、数据库迁移和本文件由主集成会话维护。前置检查使用当前 commit，而不是永远固定本快照 SHA。历史验收报告与本轮新测试分开存放。
