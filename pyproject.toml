@@ -5,6 +5,14 @@ description = "DeepHelp Python workspace"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.25,<1",
+    "ruff>=0.11,<1",
+    "mypy>=1.15,<2",
+]
+
 [tool.uv]
 package = false
 required-version = ">=0.12.13,<0.13"
@@ -12,3 +20,28 @@ required-version = ">=0.12.13,<0.13"
 [tool.uv.workspace]
 members = ["modules/*"]
 exclude = ["modules/README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["modules/deephelp-app/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--strict-markers"
+markers = [
+    "unit: isolated offline tests",
+    "integration: synthetic adapters and loopback HTTP only",
+    "live: explicit configuration and budget gate; no real gateway in M01",
+    "e2e: offline application boundary; not business or cloud acceptance",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["modules/deephelp-app/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["modules/deephelp-app/src"]
+strict = true

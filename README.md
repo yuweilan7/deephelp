@@ -1,6 +1,6 @@
 # DeepHelp
 
-复刻《客诉场景的自动驾驶 DeepHelp》中可迁移、可验证的核心机制，并补齐权限、幂等、恢复和评测等生产边界。项目当前只有基础设施与设计基线，业务代码从 M01 开始实现。
+复刻《客诉场景的自动驾驶 DeepHelp》中可迁移、可验证的核心机制，并补齐权限、幂等、恢复和评测等生产边界。M01 已提供离线异步骨架；业务 Agent、真实模型与持久化尚未实现。
 
 ## 当前入口
 
@@ -38,3 +38,17 @@ uv run python --version
 ```
 
 已有 `infra/` 是 P00 历史基础设施，不因开始 M01 而重建。当前真实进度和未验证门禁以 `docs/PROJECT_STATE.md` 为准。
+
+## M01 运行入口
+
+安装、启动、测试和三个异步实验见 [modules/deephelp-app/README.md](modules/deephelp-app/README.md)，一页异步说明见 [docs/M01_ASYNC_GUIDE.md](docs/M01_ASYNC_GUIDE.md)。
+
+Windows 上 `uv` 不在 PATH 时使用现有安装：
+
+```powershell
+py -3.11 -m uv sync --locked --all-packages
+py -3.11 -m uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+py -3.11 -m uv run --locked pytest
+```
+
+`py -3.11` 仅运行 uv；业务应用仍使用根 `.python-version` 指定的 Python 3.12。`GET /health` 返回骨架健康信息；`POST /converse` 返回 HTTP 501 和 `NOT_IMPLEMENTED`。
