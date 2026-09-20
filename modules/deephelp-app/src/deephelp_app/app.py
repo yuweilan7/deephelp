@@ -75,7 +75,7 @@ def diagnostic_id(headers: dict[bytes, bytes], name: bytes) -> str:
     try:
         value = headers.get(name, b"").decode("ascii")
         return str(UUID(value))
-    except (ValueError, UnicodeDecodeError):
+    except ValueError, UnicodeDecodeError:
         return str(uuid4())
 
 

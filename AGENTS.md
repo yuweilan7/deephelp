@@ -8,7 +8,7 @@
 
 ## 工程不变量
 
-保留 Python 3.12、根 uv workspace、单一 `uv.lock` 和既有 `infra/`。首个业务包由 M01 创建在 `modules/deephelp-app/`；22 个阶段不是 22 个包或微服务。
+保留 Python 3.14.7、根 uv workspace、单一 `uv.lock` 和既有 `infra/`。首个业务包由 M01 创建在 `modules/deephelp-app/`；22 个阶段不是 22 个包或微服务。
 
 MySQL 是业务事实源，Redis 与 Milvus 均可重建，checkpoint 不是业务账本。区分 tenant、user、session、question、message、request、run、trace、operation 与 approval。只有 600 INTENT_RECOGNIZE 进入统一主意图服务；聚合、槽位和 SOP 不重复主分类。
 

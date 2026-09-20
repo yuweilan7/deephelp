@@ -25,7 +25,7 @@
 
 ## 工程基线
 
-- Python 3.12，根目录一个 uv workspace 和一个 `uv.lock`
+- Python 3.14.7，根目录一个 uv workspace 和一个 `uv.lock`
 - 首个业务包由 M01 在 `modules/deephelp-app/` 创建
 - MySQL 保存业务事实，Redis 是可重建缓存，Milvus 是可重建检索投影
 - 主路线为 FastAPI/Pydantic/LangGraph；AgentScope 仅作为 M21 可选对照
@@ -43,12 +43,12 @@ uv run python --version
 
 安装、启动、测试和三个异步实验见 [modules/deephelp-app/README.md](modules/deephelp-app/README.md)，一页异步说明见 [docs/M01_ASYNC_GUIDE.md](docs/M01_ASYNC_GUIDE.md)。
 
-Windows 上 `uv` 不在 PATH 时使用现有安装：
+Windows 上从仓库根运行：
 
 ```powershell
-py -3.11 -m uv sync --locked --all-packages
-py -3.11 -m uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
-py -3.11 -m uv run --locked pytest
+uv sync --locked --all-packages
+uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+uv run --locked pytest
 ```
 
-`py -3.11` 仅运行 uv；业务应用仍使用根 `.python-version` 指定的 Python 3.12。`GET /health` 返回骨架健康信息；`POST /converse` 返回 HTTP 501 和 `NOT_IMPLEMENTED`。
+根 `.python-version` 精确锁定 Python 3.14.7，`uv sync` 会按该版本创建项目虚拟环境。`GET /health` 返回骨架健康信息；`POST /converse` 返回 HTTP 501 和 `NOT_IMPLEMENTED`。

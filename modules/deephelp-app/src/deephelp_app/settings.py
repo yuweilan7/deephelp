@@ -28,7 +28,7 @@ class Settings(BaseModel):
     live_model: str | None = None
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
+    def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
         """No automatic dotenv discovery: the caller explicitly supplies the environment."""
         source = os.environ if env is None else env
         values = {

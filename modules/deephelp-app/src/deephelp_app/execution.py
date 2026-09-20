@@ -19,7 +19,7 @@ class ExecutionBudget:
     retries_used: int = 0
 
     @classmethod
-    def start(cls, timeout: float, attempts: int, retries: int) -> "ExecutionBudget":
+    def start(cls, timeout: float, attempts: int, retries: int) -> ExecutionBudget:
         if timeout <= 0 or attempts < 1 or retries < 0:
             raise ValueError("Budget limits must be positive (retries may be zero)")
         return cls(asyncio.get_running_loop().time() + timeout, attempts, retries)
@@ -71,11 +71,11 @@ class AsyncCalls:
                                 min(self.child_timeout, budget.remaining_seconds())
                             ):
                                 return await operation()
-                        except (TimeoutError, httpx.TimeoutException):
+                        except TimeoutError, httpx.TimeoutException:
                             error = AppError(
                                 ErrorCode.TIMEOUT, "Subcall timed out", 504, retryable=True
                             )
-                        except (httpx.ConnectError, httpx.ReadError):
+                        except httpx.ConnectError, httpx.ReadError:
                             error = AppError(
                                 ErrorCode.UPSTREAM_UNAVAILABLE,
                                 "Read upstream unavailable",

@@ -11,7 +11,7 @@
 | `asyncio.to_thread` | 类似交给线程池，适合短同步文件 I/O/阻塞 SDK；普通 CPython 线程受 GIL 影响，纯 Python CPU 工作不保证提速 |
 | `ProcessPoolExecutor` | 独立进程执行 CPU 工作，可绕过同一解释器的 GIL；参数/返回值须可序列化，有启动与内存成本 |
 
-从仓库根执行 `py -3.11 -m uv run --locked python -m deephelp_app.experiments`，能运行三个实验。它们不访问网络、不使用 API key。
+从仓库根执行 `uv run --locked python -m deephelp_app.experiments`，能在 Python 3.14.7 下运行三个实验。它们不访问网络、不使用 API key。
 
 1. **独立 I/O：** 两次合成等待先串行再由 TaskGroup 并发。返回 A/B 结果、并发峰值和两种耗时。串行峰值为 1、并发为 2；通常串行耗时接近两段等待之和，并发接近较长一段。测试验证任务重叠，具体耗时仅供观察。
 2. **失败和超时：** 一个子任务等待另一个已启动，再抛异常或耗尽自身 timeout。TaskGroup 取消等待中的兄弟任务；兄弟记录取消、执行 `finally` 清理，组在全部任务收尾后抛异常组。实验只记录预期失败；生产代码必须映射成明确错误，不能当成功。
@@ -21,4 +21,4 @@
 
 应用启动只创建一个共享 HTTP 连接池，正常退出统一关闭。领域 DTO 只含可 JSON 序列化数据；客户端、锁、Semaphore、预算时钟等留在运行时资源中。后续分词/训练可替换进程执行位置，本模块不引入任务队列。
 
-实现依据：[Python 3.12 任务/取消与线程说明](https://docs.python.org/3.12/library/asyncio-task.html)、[HTTPX transports 与 ASGI lifespan 边界](https://www.python-httpx.org/advanced/transports/)、[FastAPI lifespan 资源管理](https://fastapi.tiangolo.com/advanced/events/)。
+实现依据：[Python 3.14 任务/取消与线程说明](https://docs.python.org/3.14/library/asyncio-task.html)、[HTTPX transports 与 ASGI lifespan 边界](https://www.python-httpx.org/advanced/transports/)、[FastAPI lifespan 资源管理](https://fastapi.tiangolo.com/advanced/events/)。

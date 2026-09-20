@@ -2,7 +2,7 @@
 name = "deephelp-app"
 version = "0.1.0"
 description = "M01 offline asynchronous application skeleton"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14.7,<3.15"
 dependencies = [
     "fastapi>=0.115,<1",
     "pydantic>=2.10,<3",

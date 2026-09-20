@@ -16,14 +16,16 @@
 
 ```powershell
 cd D:\IdeaProject\deephelp-infra
+uv venv --python 3.14.7 .venv314
+uv pip install --python .\.venv314\Scripts\python.exe --requirement .\client\requirements.lock.txt
 .\client\tunnel.ps1 -Action start
 .\client\tunnel.ps1 -Action health
-.\.venv312\Scripts\python.exe .\client\recheck-persistence.py
+.\.venv314\Scripts\python.exe .\client\recheck-persistence.py
 ```
 
 运行完整合成验收可使用 `python client/test-connections.py full`，它会重建本项目的 `p00_probe` 表内容和 `p00_acceptance` 集合，不用于真实业务数据。`post-restart`、`health` 和 `recheck-persistence.py` 用于已有数据检查。`rebuild-milvus.py` 只新建 `p00_` 前缀集合。
 
-Windows 优先运行 `.venv312` 的 Python 3.12；保留初始 `.venv` 的基础设施验收环境用于复核。两者均忽略入 Git。固定依赖见 `client/requirements.lock.txt`，可在新的本机 Python 3.12 venv 中安装。Linux/WSL 入口是 `bash client/tunnel.sh`。
+Windows 当前基线使用 `.venv314` 的 Python 3.14.7；保留旧虚拟环境仅用于复核历史验收证据。各虚拟环境均忽略入 Git。固定依赖见 `client/requirements.lock.txt`，可在新的本机 Python 3.14.7 venv 中安装。Linux/WSL 入口是 `bash client/tunnel.sh`。
 
 ## 重要范围
 

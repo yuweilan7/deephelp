@@ -66,7 +66,7 @@ async def cancellation_experiment(failure: Literal["timeout", "error"] = "timeou
         async with asyncio.TaskGroup() as group:
             group.create_task(sibling())
             group.create_task(failing())
-    except* (TimeoutError, ValueError):
+    except* TimeoutError, ValueError:
         # The demo records the expected failure. Production must map it to an explicit error.
         events.append("group_failed")
     events.append("all_tasks_joined")

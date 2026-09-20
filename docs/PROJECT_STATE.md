@@ -4,7 +4,7 @@
 
 | 范围 | 状态 | 证据与限制 |
 |---|---|---|
-| 根 uv workspace | `EXISTING_SCAFFOLD` | Python 3.12；根 `pyproject.toml` 与 `uv.lock` 已存在，尚无业务依赖 |
+| 根 uv workspace | `EXISTING_SCAFFOLD` | Python 3.14.7；根 `pyproject.toml` 与 `uv.lock` 已存在，尚无业务依赖 |
 | P00 基础设施 | `HISTORICAL_ACCEPTANCE_REVIEWED` | 见 `handoffs/P00.md` 与 `infra/reports/`；本轮未重新连接云机 |
 | M00 架构 | `DESIGN_ACCEPTED` | 架构、契约、ADR、来源索引与验收场景已形成；见 `handoffs/M00.md` |
 | M01 | `IMPLEMENTED_OFFLINE_VERIFIED` | `modules/deephelp-app/` 已实现最小异步骨架；48 项离线测试通过，1 项 live 配置检查默认跳过；见 `handoffs/M01.md` |
@@ -15,6 +15,8 @@
 ## 当前基线
 
 MySQL 保存业务事实；Redis 是可重建缓存；Milvus 是可重建检索投影。主路线使用 FastAPI/Pydantic/LangGraph，保留单一 uv workspace。M01 已创建首个业务包、离线异步骨架、共享客户端、占位 converse API、trace、fake 适配器与异步实验；M02 将在同一套最小类型上发布正式契约。M01 未安装 LangGraph，未连接真实数据库或调用真实模型。
+
+2026-09-20 已将工程解释器基线迁移到 Python 3.14.7：根 `.python-version`、根/成员 `requires-python`、Ruff、mypy、CI 与根 `uv.lock` 已同步；M01 在 3.14.7 下的离线检查仍为 48 passed、1 skipped。P00 验收报告保留当时环境版本，不冒充本次复验。
 
 原 PDF 已由用户放在本机 `docs/`，不会提交公共仓库；其身份与页码索引见 `docs/SOURCE_MAP.md`。仓库中的模块规格以 `docs/MODULES/M00_*.md` 到 `M21_*.md` 为准。
 
