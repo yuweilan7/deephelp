@@ -1,7 +1,7 @@
 [project]
 name = "deephelp-app"
 version = "0.1.0"
-description = "M01 offline asynchronous application skeleton"
+description = "DeepHelp read-only complaint conversation MVP"
 requires-python = ">=3.14.7,<3.15"
 dependencies = [
     "fastapi>=0.115,<1",
@@ -11,6 +11,7 @@ dependencies = [
     "jsonschema>=4.25,<5",
     "pymilvus==2.6.17",
     "mcp==2.2.0",
+    "aiomysql==0.3.2",
 ]
 
 [build-system]

@@ -142,3 +142,9 @@ M07发布 `SOPExecutorPort.execute(question, budget, context=可信RequestEnvelo
 ToolRequest新增可选 `timeout_seconds=null`，null沿用网关子时限，非空只能收紧；身份/预算/timeout均不在模型参数schema中。ToolPort.execute增加可选运行时 `on_dispatch(call_id)` 回调，默认null兼容原消费者，网关在发送await前调用；它不属于DTO，用于总deadline期间保留已发送尝试。M06的事实/证据检查提取为共享validate_observation，网关与执行器使用同一规则。
 
 SOPResult与ResponseEnvelope的tool_call_ids语义细化为所有已发送尝试，包含失败/被取消的调用，ID不重复。所有工具证据必须指向其中的成功调用；失败ID自身不是成功证据，RESOLVED仍必须有事实/证据。旧有全成功结果兼容；缺槽位仍禁止工具ID。入口FORBIDDEN仍是无事实/调用的REJECTED；已鉴权运行中查询被下游拒绝可为ERROR/FAILED并保留实际调用ID，不能发布对象事实。业务envelope仍0.2.0-m02，现有消费者完整回归；此边界不实现持久审计/审批账本。
+
+M08复用`0.2.0-m02`，ResponseEnvelope新增可选`stages=()`、`intent_decision=null`、`disabled_features=()`、`replayed=false`。StageReport记录stage/status/elapsed_ms/model_calls/tool_calls/error_code；模型尝试计入300/600/1000，实际工具尝试计入1000。score_kind新增`model_choice`，score=1只表示schema分类选中项，不是校准概率；Dense原始余弦保留为候选及数据证据，不跨打分种类比较。
+
+`Conversation.run(request,budget)`处理当前完整消息，只有600进入IntentService。`MessageLedger.accept`返回新领取或原run/Question/结果，`finish`以原Question version+1及RUNNING条件更新run/Question；同消息payload内容范围沿用既有契约，传输ID不进入hash。MySQL三表的唯一接收与终结事务已由M08消费；相同消息回放使用本次request/trace ID、原run/question与事实结果、当前预算0。RUNNING仅返回进行中引用，不抢占或恢复；不承诺硬中断后的自动恢复。
+
+M08缺槽位提示新消息完整重发，跨消息entities/事件/记忆未启用；question_hint先按主体/session回查，再以INVALID_ARGUMENT拒绝恢复，未授权hint为FORBIDDEN。取消终态保留已发送调用ID，但无成功事实；提交失败不返回ANSWERED。唯一事实模板只消费经M06/M07核验的Fact与配置结论。本机Bearer令牌映射可信合成身份，正文无身份/批准字段；不等于企业登录系统。M01未组装业务端口时的离线501行为保持兼容。

@@ -11,10 +11,10 @@ from deephelp_app.errors import ConfigurationError
 class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
-    mode: Literal["dev", "test", "live"] = "dev"
+    mode: Literal["dev", "test", "live", "mvp"] = "dev"
     request_timeout: float = Field(default=5.0, gt=0, le=120)
     child_timeout: float = Field(default=1.0, gt=0, le=120)
-    max_attempts: int = Field(default=3, ge=1, le=10)
+    max_attempts: int = Field(default=3, ge=1, le=100)
     retry_limit: int = Field(default=1, ge=0, le=9)
     http_connections: int = Field(default=10, ge=1, le=100)
     llm_concurrency: int = Field(default=2, ge=1, le=2)

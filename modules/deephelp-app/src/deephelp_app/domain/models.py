@@ -454,6 +454,7 @@ class ScoreKind(StrEnum):
     FUSION = "fusion"
     CLASSIFIER_PROBABILITY = "classifier_probability"
     RULE = "rule"
+    MODEL_CHOICE = "model_choice"
 
 
 class IntentCandidate(DTO):
@@ -746,6 +747,15 @@ class SOPResult(DTO):
         return self
 
 
+class StageReport(DTO):
+    stage: Identifier
+    status: Literal["completed", "skipped", "disabled", "failed"]
+    elapsed_ms: float = Field(default=0, ge=0, allow_inf_nan=False)
+    model_calls: Count = 0
+    tool_calls: Count = 0
+    error_code: ErrorCode | None = None
+
+
 class ResponseEnvelope(DTO):
     schema_version: Literal["0.2.0-m02"] = CONTRACT_VERSION
     request_id: Identifier
@@ -764,6 +774,10 @@ class ResponseEnvelope(DTO):
     error: ErrorDetail | None = None
     versions: VersionManifest = Field(default_factory=VersionManifest)
     budget_used: BudgetUsed = Field(default_factory=BudgetUsed)
+    stages: tuple[StageReport, ...] = ()
+    intent_decision: IntentDecision | None = None
+    disabled_features: tuple[Identifier, ...] = ()
+    replayed: bool = False
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:

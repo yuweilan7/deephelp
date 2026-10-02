@@ -1,13 +1,13 @@
 # DeepHelp 应用与离线契约
 
-Python 3.14.7 异步骨架及 M02 `0.2.0-m02` 离线契约；启动/凭据见 [LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见 [ROADMAP](../../docs/ROADMAP.md)，验证证据见 [M01 handoff](../../handoffs/M01.md) / [M02 handoff](../../handoffs/M02.md)。真实 ModelGateway 属于 M03。
+Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。
 
 ## API
 
-- `GET /health`：200，`{"status":"ok","module":"M01","capability":"NOT_IMPLEMENTED"}`；只证明应用存活。
-- `POST /converse`：接收 channel、session_id、message_id、raw_text、带时区 occurred_at；返回 501 / NOT_IMPLEMENTED，run/question 为 null，事实/证据为空、调用数 0。完整传输字段见 `domain/models.py`。不执行主分类、SOP、模型调用或业务记账。
+- M08 `GET /health`返回M08/READ_ONLY_SINGLE_MESSAGE，只证明应用存活；`POST /converse`接收channel/session_id/message_id/raw_text/带时区occurred_at，需要固定合成身份的Bearer令牌。业务结果包含run/question、事实/工具证据、13段耗时与调用数。
+- 未传业务组装器的M01离线`create_app`保留501/NOT_IMPLEMENTED，run/question为null、调用0；不会因机器存在Key自动联网。
 
-入口只允许 loopback/testclient 的独立本地测试身份，不用于公网鉴权；正文拒绝自报身份和诊断 ID。UUID 格式的 X-Request-ID / X-Trace-ID 仅供关联，缺失/非法则生成新值，响应头和正文一致。非法传输、缺身份、总 deadline、意外异常分别映射 422/401/504/500，错误消息不回显输入或异常详情。
+M01使用loopback/testclient本地测试身份，M08本机令牌映射为固定合成身份，不开发登录系统，服务仅绑定127.0.0.1。正文拒绝自报身份和诊断ID。X-Request-ID/X-Trace-ID仅供诊断，响应头/正文一致；回放沿用业务run/结果但使用本次传输ID。入口错误不回显输入或异常详情。
 
 ## 实现边界
 
@@ -46,7 +46,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.samples
 
 unit 验证类型、设置、预算和实验；integration 用真实本机 httpcore 池验证取消后连接槽复用；e2e 验证 ASGI 组装/Uvicorn 生命周期，均不代表云端业务效果。默认测试阻止外部 DNS/连接。实验可用 `py -3.14 -m uv run --locked python -m deephelp_app.experiments`；CI 依据峰值、事件、清理及 heartbeat，不设毫秒门槛。
 
-`tests/live` 默认跳过。pytest 的 --live 仍只测配置门禁；真实网关验收使用独立的 M03 入口，见 [LOCAL_SETUP](../../docs/LOCAL_SETUP.md)。业务 converse 的 live 组装仍为 NOT_IMPLEMENTED，不因网关可用就进入尚未实现的 M08 主流程。GitHub Actions 使用根锁执行静态检查和离线 pytest。
+`tests/live`默认跳过，pytest的--live仍只测历史配置门禁。真实网关/业务闭环使用对应probe，M08入口见下方。GitHub Actions使用根锁执行静态检查和离线pytest。
 
 ## M03 模型网关
 
@@ -132,4 +132,37 @@ py -3.14 -m uv run --locked python -m deephelp_app.sop_probe --help
 
 每份配置包含max_steps、max_tool_calls、总时限、模型/工具子时限、单次与总重试上限；所有模型/工具共享原ExecutionBudget，参数不能放大调用者预算。只对明确的限流/下游不可用只读失败有限重试，timeout/取消/鉴权/坏结果不重试。ToolRequest可用 `timeout_seconds` 收紧网关子时限；ToolPort可用运行时 `on_dispatch(call_id)` 在发送await前记录ID，总deadline收口仍可对账。失败调用ID保留，失败没有事实；ledger是合成查询审计，不是持久副作用账本。
 
-真实模型+真实MCP内容验收、累计预算初始化和参数见 [LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m07真实模型与sop验收)。默认pytest无外部网络，覆盖三个SOP正常/缺资料/失败、循环、注入、版本、证据、共享预算、重试、timeout和取消；真实stdio与固定回放组合属于本机集成。converse业务接入留M08，润色/复杂SOP治理/审批留对应后续模块。
+真实模型+真实MCP内容验收、累计预算初始化和参数见 [LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m07真实模型与sop验收)。默认pytest无外部网络，覆盖三个SOP正常/缺资料/失败、循环、注入、版本、证据、共享预算、重试、timeout和取消；真实stdio与固定回放组合属于本机集成。主会话复用该执行端口，润色/复杂SOP治理/审批留对应后续模块。
+
+
+## M08单条完整问题闭环
+
+输入示例：`订单 000031 未享受优惠，请查一下`、`订单 000042 的券 000009 不能用`、`查询订单 000053 参加的活动`。模型/Milvus为真实服务，MCP为正式SDK本机stdio，订单/券/活动为合成数据。输出核对事实模板和工具证据，不以模型文字宣称成功。
+
+从仓库根启动。首次创建新的令牌与累计预算文件，已有文件直接复用、不清零。Key显式加载`.env.local`，数据库复用infra配置/秘密文件，Dense沿用M05发布指针及完整Embedding签名。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m08/demo-auth.json --budget-state .local/m08/demo-budget.json --max-calls 300 --max-tokens 600000 --max-cost 10
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli migrate
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --auth .local/m08/demo-auth.json --budget-state .local/m08/demo-budget.json --port 8000
+# 另一个终端调用，服务仍需运行。
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --auth .local/m08/demo-auth.json --text "订单 000031 未享受优惠，请查一下"
+```
+
+浏览器打开`http://127.0.0.1:8000/`，密码框填auth文件中的令牌。页面显示回复/事实/证据/13段耗时与调用数，令牌不写浏览器存储。“发送新消息”生成新message ID，“重投同一消息”发送原payload。CLI重投必须同时保留message_id、occurred_at、session和正文，改变payload返回409。
+
+主流程沿M00的13段，500明确单消息passthrough；600是唯一主意图服务，规则确定单类时选择，否则Dense召回加一次schema分类确认。余弦分数不当概率，不设置未经校准的接管阈值；无规则的长输入转人工，不截掉尾部后猜意图。原文/前导零/来源/更正沿用M04，缺乏明确字段语义的裸编号可以澄清。
+
+缺槽位返回CLARIFY/WAITING_SLOT/run SUCCEEDED，要求用新消息重发完整问题；未知/多个诉求/否定查询不调用工具，无SOP/模型不可用形成正常契约。1100只输出核验事实和本地SOP结论。1200准备状态/版本，1300校验完整响应；MySQL终态事务提交后才返回，提交耗时另记ledger_committed trace。
+
+迁移只创建`dh_m08_messages/runs/questions`。同(tenant,user,channel,message_id)唯一接收；相同hash回放终态或返回RUNNING引用，不新增问题/工具；hash不同返回IDEMPOTENCY_CONFLICT。终结事务更新run及Question版本，重复终结拒绝。应用资源重建可回放，取消保留已发送工具ID并落CANCELLED；失败ID不构成成功证据。进程硬中断的RUNNING不自动领取或重放。
+
+每请求共享90秒总预算，模型子时限30秒，SOP/工具仍可收紧。存储收尾最多5秒，不延长业务调用。累计文件独占写、发送前持久预留，未知计费不退款；控制文件及其锁/临时文件要用不同路径。无--live的mvp_probe用36条M02标签/槽位回放验证串联，不证明模型质量；--live消费模型/MySQL/Milvus，--http使用真实HTTP，--samples选12条原始固定样本。验收入口见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m08闭环启动与验收)。
+
+| 尚未启用 | 用户边界 |
+|---|---|
+| 跨消息补槽、事件合并、记忆、Redis投影 | 每条消息独立完整问题；hint先核归属再拒绝恢复 |
+| Hybrid/FastText/完整级联 | 在同一600服务中增量扩展 |
+| 回复模型润色、LangGraph | 使用事实模板及现有SOPExecutorPort |
+| 持久审批、业务写工具、崩溃领取 | 写工具禁用；RUNNING不盲目重放 |
+| 企业接口、15+情境、500+未见评测 | 合成三类及固定样本不代表这些规模/质量 |

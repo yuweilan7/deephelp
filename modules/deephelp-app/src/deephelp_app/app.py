@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,10 +9,11 @@ from uuid import UUID, uuid4
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from deephelp_app.conversation import Conversation
 from deephelp_app.domain.models import (
     BudgetUsed,
     ConverseInput,
@@ -44,6 +45,7 @@ class Resources:
     gateway: ModelGateway
     repository: Repository
     trace: TraceSink
+    conversation: Conversation | None = None
 
 
 def local_test_identity(request: Request) -> VerifiedIdentity:
@@ -143,7 +145,15 @@ class RequestMiddleware:
         try:
             await record("request_received")
             try:
-                async with asyncio.timeout_at(budget.deadline):
+                if resources.conversation is not None and scope["path"] == "/converse":
+                    factory = getattr(scope["app"].state, "budget_factory", None)
+                    if factory is not None:
+                        budget = factory()
+                        state["budget"] = budget
+                # The conversation owns its deadline and persists a terminal receipt before return.
+                async with asyncio.timeout_at(
+                    budget.deadline + (6 if resources.conversation is not None else 0)
+                ):
                     await self.app(scope, receive, traced_send)
             except asyncio.CancelledError:
                 await record("request_cancelled")
@@ -181,22 +191,37 @@ def create_app(
     trace: TraceSink | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
     identity_provider: Callable[[Request], VerifiedIdentity] = local_test_identity,
+    conversation_factory: Callable[
+        [httpx.AsyncClient, TraceSink], AbstractAsyncContextManager[Conversation]
+    ]
+    | None = None,
+    budget_factory: Callable[[], ExecutionBudget] | None = None,
 ) -> FastAPI:
     config = Settings.from_env() if settings is None else settings
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config.validate_live()
-        if config.mode == "live":
+        if config.mode == "live" and conversation_factory is None:
             raise ConfigurationError(
                 "Live business converse is NOT_IMPLEMENTED; use deephelp_app.live_probe for M03"
             )
+        if config.mode == "mvp" and conversation_factory is None:
+            raise ConfigurationError("MVP requires explicit adapters and authenticated identity")
+        if config.mode == "mvp" and identity_provider is local_test_identity:
+            raise ConfigurationError("MVP requires an explicit authenticated identity mapping")
         async with AsyncExitStack() as stack:
             sink = JsonlTrace(Path(config.trace_path)) if trace is None else trace
             stack.push_async_callback(sink.aclose)
             client = await stack.enter_async_context(
                 httpx.AsyncClient(
-                    transport=OfflineTransport() if transport is None else transport,
+                    transport=(
+                        httpx.AsyncHTTPTransport(retries=0)
+                        if config.mode == "mvp"
+                        else OfflineTransport()
+                    )
+                    if transport is None
+                    else transport,
                     limits=httpx.Limits(
                         max_connections=config.http_connections,
                         max_keepalive_connections=config.http_connections,
@@ -210,9 +235,14 @@ def create_app(
             app.state.resources = Resources(
                 client, calls, FakeModelGateway(calls), FakeRepository(), sink
             )
+            if conversation_factory is not None:
+                app.state.resources.conversation = await stack.enter_async_context(
+                    conversation_factory(client, sink)
+                )
+            app.state.budget_factory = budget_factory
             yield
 
-    app = FastAPI(title="DeepHelp M01 skeleton", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="DeepHelp", version="0.1.0", lifespan=lifespan)
     app.add_middleware(RequestMiddleware, settings=config)
 
     @app.exception_handler(RequestValidationError)
@@ -236,10 +266,24 @@ def create_app(
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "module": "M01", "capability": "NOT_IMPLEMENTED"}
+        return {
+            "status": "ok",
+            "module": "M08" if conversation_factory else "M01",
+            "capability": "READ_ONLY_SINGLE_MESSAGE" if conversation_factory else "NOT_IMPLEMENTED",
+        }
 
-    @app.post("/converse", response_model=ResponseEnvelope, status_code=501)
-    async def converse(body: ConverseInput, request: Request) -> ResponseEnvelope:
+    @app.get("/", response_class=HTMLResponse)
+    async def debug_page() -> str:
+        from importlib.resources import files
+
+        return files("deephelp_app").joinpath("debug.html").read_text(encoding="utf-8")
+
+    @app.post(
+        "/converse",
+        response_model=ResponseEnvelope,
+        status_code=200 if conversation_factory else 501,
+    )
+    async def converse(body: ConverseInput, request: Request) -> JSONResponse:
         identity = identity_provider(request)
         envelope = RequestEnvelope(
             **body.model_dump(),
@@ -257,7 +301,10 @@ def create_app(
                 input_length=len(envelope.raw_text),
             )
         )
-        return ResponseEnvelope(
+        if resources.conversation is not None:
+            result = await resources.conversation.run(envelope, request.state.budget)
+            return JSONResponse(result.model_dump(mode="json"))
+        result = ResponseEnvelope(
             request_id=envelope.request_id,
             trace_id=envelope.trace_id,
             outcome=Outcome.ERROR,
@@ -267,5 +314,6 @@ def create_app(
             ),
             budget_used=request.state.budget.usage(),
         )
+        return JSONResponse(result.model_dump(mode="json"), status_code=501)
 
     return app
