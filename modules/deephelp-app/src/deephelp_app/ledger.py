@@ -1,11 +1,12 @@
-"""Durable single-message acceptance. RUNNING receipts are never automatically reclaimed."""
+"""Durable message acceptance. RUNNING receipts are never automatically reclaimed."""
 
+import asyncio
 import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 from uuid import uuid4
 
 import aiomysql  # type: ignore[import-untyped]
@@ -28,8 +29,18 @@ from deephelp_app.milvus_dense import local_connection
 def payload_hash(request: RequestEnvelope) -> str:
     payload = request.model_dump(
         mode="json",
-        include={"session_id", "raw_text", "occurred_at", "question_hint", "schema_version"},
+        include={
+            "session_id",
+            "raw_text",
+            "occurred_at",
+            "question_hint",
+            "schema_version",
+            "expected_question_version",
+        },
     )
+    # Preserve the hash of pre-M10 messages that did not provide a version.
+    if payload.get("expected_question_version") is None:
+        payload.pop("expected_question_version", None)
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
     ).hexdigest()
@@ -135,11 +146,13 @@ def validate_terminal(receipt: Receipt, question: Question, response: ResponseEn
 
 
 class MySQLLedger:
+    supports_continuation = False
+
     def __init__(self, pool: Any) -> None:
         self.pool = pool
 
     @classmethod
-    async def open(cls, root: Path) -> MySQLLedger:
+    async def open(cls, root: Path) -> Self:
         c = local_connection(root)
         try:
             pool = await aiomysql.create_pool(
@@ -161,7 +174,13 @@ class MySQLLedger:
 
     async def aclose(self) -> None:
         self.pool.close()
-        await self.pool.wait_closed()
+        try:
+            async with asyncio.timeout(5):
+                await self.pool.wait_closed()
+        except TimeoutError:
+            self.pool.terminate()
+            async with asyncio.timeout(5):
+                await self.pool.wait_closed()
 
     async def migrate(self) -> None:
         from importlib.resources import files
@@ -186,24 +205,18 @@ class MySQLLedger:
                             "VALUES (%s,%s,%s,%s,%s,%s,%s)",
                             (*key, digest, fresh.run_id, request.model_dump_json()),
                         )
-                        await cursor.execute(
-                            "INSERT INTO dh_m08_questions "
-                            "(question_id,tenant_id,user_id,session_id,"
-                            "version,status,body) VALUES (%s,%s,%s,%s,1,'ACTIVE',%s)",
-                            (
-                                fresh.question.question_id,
-                                *key[:2],
-                                request.session_id,
-                                fresh.question.model_dump_json(),
-                            ),
-                        )
+                        fresh = await self.prepare_question(cursor, request, fresh)
                         await cursor.execute(
                             "INSERT INTO dh_m08_runs (run_id,question_id,status) "
                             "VALUES (%s,%s,'RUNNING')",
                             (fresh.run_id, fresh.question.question_id),
                         )
+                        await self.accepted(cursor, request, fresh)
                     await conn.commit()
                     return fresh
+                except AppError, IntegrityError:
+                    await conn.rollback()
+                    raise
                 except BaseException:
                     conn.close()  # disconnect rolls back uncommitted work, including cancellation
                     raise
@@ -245,6 +258,7 @@ class MySQLLedger:
             async with self.pool.acquire() as conn:
                 try:
                     async with conn.cursor() as cursor:
+                        await self.before_finish(cursor, receipt, question, response)
                         await cursor.execute(
                             "UPDATE dh_m08_runs SET status=%s,response=%s,"
                             "finished_at=CURRENT_TIMESTAMP(6) "
@@ -273,7 +287,11 @@ class MySQLLedger:
                         )
                         if cursor.rowcount != 1:
                             raise AppError(ErrorCode.VERSION_CONFLICT, "Question version changed")
+                        await self.changed(cursor, question, "run_finished")
                     await conn.commit()
+                except AppError:
+                    await conn.rollback()
+                    raise
                 except BaseException:
                     conn.close()
                     raise
@@ -294,3 +312,31 @@ class MySQLLedger:
             row = await cursor.fetchone()
             await conn.rollback()
         return Question.model_validate_json(row[0]) if row else None
+
+    async def prepare_question(
+        self, cursor: Any, request: RequestEnvelope, fresh: Receipt
+    ) -> Receipt:
+        await cursor.execute(
+            "INSERT INTO dh_m08_questions "
+            "(question_id,tenant_id,user_id,session_id,version,status,body) "
+            "VALUES (%s,%s,%s,%s,1,'ACTIVE',%s)",
+            (
+                fresh.question.question_id,
+                request.identity.tenant_id,
+                request.identity.user_id,
+                request.session_id,
+                fresh.question.model_dump_json(),
+            ),
+        )
+        return fresh
+
+    async def accepted(self, cursor: Any, request: RequestEnvelope, receipt: Receipt) -> None:
+        pass
+
+    async def before_finish(
+        self, cursor: Any, receipt: Receipt, question: Question, response: ResponseEnvelope
+    ) -> None:
+        pass
+
+    async def changed(self, cursor: Any, question: Question, reason: str) -> None:
+        pass

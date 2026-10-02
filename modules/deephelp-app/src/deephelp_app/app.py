@@ -4,10 +4,11 @@ from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated
 from uuid import UUID, uuid4
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException
@@ -19,8 +20,11 @@ from deephelp_app.domain.models import (
     ConverseInput,
     ErrorCode,
     ErrorDetail,
+    LifecycleCommand,
+    MemoryWindow,
     NextAction,
     Outcome,
+    Question,
     RequestEnvelope,
     ResponseEnvelope,
     VerifiedIdentity,
@@ -266,10 +270,16 @@ def create_app(
 
     @app.get("/health")
     async def health() -> dict[str, str]:
+        resources: Resources = app.state.resources
+        cases = resources.conversation is not None and resources.conversation.cases is not None
         return {
             "status": "ok",
-            "module": "M08" if conversation_factory else "M01",
-            "capability": "READ_ONLY_SINGLE_MESSAGE" if conversation_factory else "NOT_IMPLEMENTED",
+            "module": "M10" if cases else "M08" if conversation_factory else "M01",
+            "capability": "READ_ONLY_MULTI_QUESTION"
+            if cases
+            else "READ_ONLY_SINGLE_MESSAGE"
+            if conversation_factory
+            else "NOT_IMPLEMENTED",
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -315,5 +325,28 @@ def create_app(
             budget_used=request.state.budget.usage(),
         )
         return JSONResponse(result.model_dump(mode="json"), status_code=501)
+
+    @app.get("/memory", response_model=MemoryWindow)
+    async def memory_window(
+        request: Request,
+        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
+    ) -> MemoryWindow:
+        identity = identity_provider(request)
+        resources: Resources = request.app.state.resources
+        service = resources.conversation
+        if service is None or service.memory is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Memory is not configured", 501)
+        return await service.memory.load(identity, session_id, request.state.budget)
+
+    @app.post("/questions/{question_id}/state", response_model=Question)
+    async def change_question(
+        question_id: str, body: LifecycleCommand, request: Request
+    ) -> Question:
+        identity = identity_provider(request)
+        resources: Resources = request.app.state.resources
+        service = resources.conversation
+        if service is None or service.cases is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Case repository is not configured", 501)
+        return await service.cases.transition(identity, question_id, body)
 
     return app

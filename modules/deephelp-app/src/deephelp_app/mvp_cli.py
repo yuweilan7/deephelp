@@ -12,9 +12,9 @@ from uuid import uuid4
 import httpx
 import uvicorn
 
+from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.domain.models import ConverseInput
 from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.ledger import MySQLLedger
 from deephelp_app.live_probe import local_path
 from deephelp_app.mvp_runtime import (
     BudgetSession,
@@ -70,13 +70,13 @@ def initialize(args: argparse.Namespace) -> None:
 
 
 async def migrate() -> None:
-    ledger = await MySQLLedger.open(Path.cwd())
+    ledger = await MySQLCaseRepository.open(Path.cwd())
     try:
         async with asyncio.timeout(30):
             await ledger.migrate()
     finally:
         await ledger.aclose()
-    print("M08 MySQL project tables ready")
+    print("M08/M10 MySQL project tables ready")
 
 
 async def ask(args: argparse.Namespace) -> None:
@@ -87,6 +87,8 @@ async def ask(args: argparse.Namespace) -> None:
         message_id=args.message_id,
         raw_text=args.text,
         occurred_at=args.occurred_at,
+        question_hint=args.question_hint,
+        expected_question_version=args.question_version,
     )
     async with httpx.AsyncClient(trust_env=False, timeout=100) as client:
         reply = await client.post(
@@ -102,6 +104,8 @@ async def ask(args: argparse.Namespace) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description="DeepHelp authenticated single-message MVP")
     p.add_argument("command", choices=["init", "migrate", "serve", "ask"])
+    p.add_argument("--question-hint")
+    p.add_argument("--question-version", type=int)
     p.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     p.add_argument("--pointer", default=".local/m05/active.json")
     p.add_argument("--auth", default=".local/m08/auth.json")

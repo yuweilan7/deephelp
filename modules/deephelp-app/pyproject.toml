@@ -12,6 +12,7 @@ dependencies = [
     "pymilvus==2.6.17",
     "mcp==2.2.0",
     "aiomysql==0.3.2",
+    "redis==6.4.0",
 ]
 
 [build-system]

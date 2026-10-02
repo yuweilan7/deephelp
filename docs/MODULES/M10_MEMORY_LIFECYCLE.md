@@ -30,3 +30,39 @@ MySQL 保存 messages、cases、entities、status/version、operation/approval �
 ## 接口与分期边界
 
 “开放问题”明确包含 ACTIVE、WAITING_SLOT；WAITING_APPROVAL 只作受授权的上下文候选，普通新消息不能批准/恢复挂起run。原图 ACTIVE 过滤在本项目扩展状态机中不是直接照搬的枚举条件。基于 M08 账本增量迁移，审批执行逻辑仍留 M15。缓存丢失通过隔离测试实例或本测试专用前缀模拟，禁止对共享 Redis 执行 FLUSHALL/FLUSHDB。
+
+## 实现状态机与存储约束
+
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE: 无hint的新消息
+    ACTIVE --> WAITING_SLOT: 缺槽位或冲突
+    WAITING_SLOT --> ACTIVE: 明确补充且槽位完整
+    ACTIVE --> RESOLVED: SOP事实或用户确认
+    WAITING_SLOT --> RESOLVED: 有证据的用户确认
+    ACTIVE --> HANDED_OFF: 流程或人工交接
+    WAITING_SLOT --> HANDED_OFF: 人工交接
+    ACTIVE --> CANCELLED: 明确取消
+    WAITING_SLOT --> CANCELLED: 明确取消
+    RESOLVED --> ACTIVE: 显式重开与审计
+    HANDED_OFF --> ACTIVE: 显式重开与审计
+    CANCELLED --> ACTIVE: 显式重开与审计
+```
+
+增量迁移保留M08三表：messages保存原文和唯一幂等键；runs移除question唯一索引，允许同问题多run，并保留RUNNING不可重领；questions保存实体、来源、更正链、未确认字段、状态和版本。新增表：
+
+| 表 | 内容与约束 |
+|---|---|
+| dh_m10_sessions | tenant/user/session主键、单调generation；短事务串行同session事实变化 |
+| dh_m10_members | tenant/user/channel/message主键，question和occurred_at索引；历史引用不会只靠文本编号 |
+| dh_m10_outbox | event_id主键、question/version唯一；完整Question快照与变更证据，done/attempts/lease/error为投影进度 |
+
+旧M08消息按原occurred_at换算UTC回填成员关系，当前问题回填一份事件，原接收/结果不改写。事实写入、成员关系、generation和outbox在同一事务提交。正常版本/归属冲突回滚并归还连接；未知中断断开连接回滚。MySQL行锁不跨模型、Redis或Milvus调用。
+
+Redis键为`deephelp:m10:<scope-hash>:g<generation>`，关键词键追加`:keywords`；hash包含完整tenant/user/session，不含明文身份。窗口和关键词在同一Redis事务写入，默认TTL300秒，可配置；无latest指针，旧generation不会覆盖新事实。默认历史30条、24小时、文本UTF-8字节8192作为保守token上界，开放/已结列表各最多32；限制可通过repository参数调整。裁剪保留引用及truncated标记，原文仍完整在MySQL。请求读取一致的有界MySQL快照并刷新缓存，因此缓存不可用有诊断且不丢事实。
+
+事件向量集合使用`dh_m10_events_<signature>`，schema含scope、question_id、version、status、summary、message_ids、真实Embedding vector；id为question/version摘要，同版本upsert幂等，旧版本保留为派生历史。签名或物理schema不同需新集合/reindex；不复用M05/M09意图集合。摘要只描述当前意图/状态/确认实体及消息引用，不生成业务结论。
+
+worker在短事务中领取事件，120秒lease和唯一token防旧worker确认新任务；随后最多90秒执行远程投影，两目的地都成功才CAS确认。重复投递/乱序安全，失败保存异常类型且保持pending，默认最多5次领取，CLI遇到失败退出；不循环重试不可恢复错误。重建先保留MySQL/签名配置；`memory_cli rebuild --session`重新投影该主体/session全部最新问题并刷新snapshot缓存，超出显式limit即退出，不把截断当完整恢复；pending事件可另用worker回放。更换集合/签名后必须rebuild，旧done不代表新目标已重建；需要重新领取耗尽重试的事件时，运维只重置指定事件的投影进度，禁止改业务body/version或重放业务工具。清理只删除已核对的专用键/集合，事实与审计保留；缓存TTL和清理都不关闭业务问题。
+
+运行入口见[应用README](../../modules/deephelp-app/README.md#m10多问题记忆)，接口见[CONTRACTS](../CONTRACTS.md#m10-多问题记忆契约)，实际证据见[M10交接](../../handoffs/M10.md)。

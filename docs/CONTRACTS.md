@@ -156,3 +156,13 @@ Hit/Candidate的score_kind增量支持cosine/bm25/fusion：COSINE有界，BM25�
 IntentDecision增加可选`retrieval=null`，保存600实际候选/分数/版本；分类结果仍由唯一IntentService给出，原envelope版本和消费者兼容。M09发布指针一次原子替换已验证scope、manifest、完整冻结策略与上一版本；启动核对index/dev/test摘要、权重及候选预算。旧M05指针仍装配原Dense端口，M09指针装配Hybrid，不自动改默认配置。checkpoint/审批/写工具边界不变。
 
 学习环境网关扩展：ChatRequest默认输出2048 token，移除4096输出、32消息与16工具声明的本地上限；新增可选enable_thinking=null（继承ProviderConfig）和thinking_budget=null（继承配置）。ProviderConfig默认不开推理、思考额度8192；思考启用后在原预算预留中另计思考额度。请求/响应默认1MiB/16MiB，可配置更大；max_texts默认128，可配置更大。模型自身能力/错误、任务deadline/累计预算与结构/工具参数验证仍由原网关处理。既有业务调用显式输出参数不改变，消费者继续导入同一DTO。
+
+## M10 多问题记忆契约
+
+`ConverseInput/RequestEnvelope`兼容新增`expected_question_version`：提供时必须有`question_hint`，参与幂等摘要；未提供的旧消息摘要保持不变。无hint新建问题；hint只续接同tenant/user/session的ACTIVE或WAITING_SLOT，先检查版本、未完成run和消息时间。接收续接与终态各增一次question.version。重复消息先回放原run结果，重开后重投旧消息也不再执行工具。普通新消息不恢复RUNNING或审批。
+
+Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段进入工具；`conflicts`保留更正链及消息来源。300复用M04合并，600保留显式问题的已绑定意图，话题不符需新建；自动归属留M11。关闭由SOP事实/流程结果或有证据的用户确认决定，TTL不改变业务状态。
+
+`CaseRepository`读取有界snapshot、归属内question和CAS transition；`MemoryPort.load`返回`MemoryWindow`，包括有channel/message/question引用的历史、开放Question和已结`CaseSummary`。MySQL始终核验事实；向量候选必须同时匹配主体/session、当前status和version，过期ACTIVE不能恢复问题，摘要不写回实体。
+
+`GET /memory?session_id=...`读取当前身份的窗口。`POST /questions/{question_id}/state`接收`LifecycleCommand(session_id,expected_version,target,reason,evidence_source,evidence_ref)`；同主体/session校验、版本冲突409，禁止修改RUNNING问题。RESOLVED要求user_confirmation/process_result，CANCELLED要求operator_cancel，HANDED_OFF要求operator_handoff，开放状态切换要求slot_check；关闭后只允许explicit_reopen→ACTIVE。WAITING_APPROVAL仍禁用至M15。这些是问题状态操作，未接入业务写工具。

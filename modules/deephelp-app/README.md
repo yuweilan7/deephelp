@@ -190,3 +190,25 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_
 集合名绑定scope/signature/analyzer版本；迁移使用新dataset-version/manifest/selection。每次导入做现有数据占用与新版本峰值容量门禁，最多保留两个M09版本。`delete --allow-delete-synthetic --doc-id`只删当前scope既有合成记录，随后对照核对检索缺失；原记录/向量或同语料新manifest用于恢复，不能覆盖原验证证据。`rollback`恢复上一已验证语料和完整策略，不查询旧集合中的样本。
 
 M08的serve/ask/probe追加`--pointer .local/m09/active.json`即可接入同一600服务，响应intent_decision.retrieval保留真实候选与版本；规则先行、缺槽位禁工具、MySQL账本、事实回复不变。更换指针后重建应用资源；默认Dense入口保留。M11可复用返回类型，但需自己的隔离scope/查询端口，不能把事件/用户历史装入本意图集合。
+
+## M10多问题记忆
+
+先保持隧道健康，使用已有`.local/m08/auth.json`与授权累计预算；首次升级执行增量迁移。新建M10专用auth/budget可用已有`mvp_cli init`，参数自行按验收范围设定。令牌只在本机配置中，不提交仓库。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli migrate
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --auth .local/m10/auth.json --budget-state .local/m10/session-budget.json
+```
+
+调试页刷新当前会话的开放问题，选择后补充编号；选择“新问题”则独立新建。API仍为`POST /converse`，可带`question_hint`和`expected_question_version`；`GET /memory`提供窗口，状态操作见[CONTRACTS](../../docs/CONTRACTS.md#m10-多问题记忆契约)。CLI的`ask --question-hint <id> --question-version <version>`也支持续接。自动交错归属留M11，不会把无hint的补充偷偷并入旧问题。
+
+投影单独运行，默认处理最多50个事件，累计预算沿用现有文件；遇到失败退出，按报告恢复依赖后再运行。每次远程投影有自己的子时限，MySQL事务已在调用前提交。事件集合与Embedding签名绑定。删除集合或更换签名后，用`rebuild --session`将该主体/session的最新问题从MySQL重新投影；超出limit会明确退出，需调整运行上限。
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.memory_cli project --budget-state .local/m10/session-budget.json --limit 50
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.memory_cli rebuild --budget-state .local/m10/session-budget.json --session demo --limit 100
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.memory_cli show --budget-state .local/m10/session-budget.json --session demo --query "订单优惠问题"
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.memory_probe --live --stage feature --auth .local/m10/auth.json --output .local/m10/feature.json
+```
+
+probe使用随机session、专用缓存前缀与独立事件集合，实际验HTTP补充/更正/事实、MySQL并发、Redis断连与缓存删除恢复、真实向量陈旧命中回查、lease/乱序/重试、新进程回读和长历史裁剪。合成事实/outbox留MySQL供回放，验证完成清理本次派生集合/键。main复验使用`--stage main`及新的output，预算不清零。默认pytest保持离线。

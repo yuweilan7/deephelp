@@ -7,6 +7,8 @@ from deephelp_app.domain.models import (
     DenseResult,
     DenseScope,
     EmbeddingResult,
+    LifecycleCommand,
+    MemoryWindow,
     Question,
     RequestEnvelope,
     ResponseEnvelope,
@@ -28,6 +30,36 @@ class ChatPort(Protocol):
 
 class EmbeddingPort(Protocol):
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult: ...
+
+
+class CaseRepository(Protocol):
+    async def question(
+        self, identity: VerifiedIdentity, session: str, question_id: str
+    ) -> Question | None: ...
+    async def snapshot(
+        self,
+        identity: VerifiedIdentity,
+        session: str,
+        *,
+        count: int = 30,
+        token_limit: int = 8192,
+        age_seconds: int = 86400,
+        case_limit: int = 32,
+    ) -> MemoryWindow: ...
+    async def transition(
+        self, identity: VerifiedIdentity, qid: str, command: LifecycleCommand
+    ) -> Question: ...
+
+
+class MemoryPort(Protocol):
+    async def load(
+        self,
+        identity: VerifiedIdentity,
+        session: str,
+        budget: ExecutionBudget,
+        *,
+        query: str | None = None,
+    ) -> MemoryWindow: ...
 
 
 class DenseRetrieverPort(Protocol):

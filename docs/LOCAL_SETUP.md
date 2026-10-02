@@ -155,3 +155,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_pro
 `tune`只在dev选择0.25/0.5/0.75的Dense权重，按candidate Recall@1→MRR→接近0.5→较小权重选择，冻结index/dev/test摘要及K。`evaluate --classify`只用已冻结策略运行test：按三方案实际返回证据调用同一600分类逻辑，多诉求/无关含确定性守卫；不执行SOP。不得根据test错例改权重后仍宣称未见test。`activate`验证完整内容/向量哈希后发布语料与策略；`rollback`验证并原子恢复上一组合，服务须重建应用资源才读取新指针。
 
 M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid端口；默认仍为`.local/m05/active.json`。合并main复验M09只读verify/compare及M08真实HTTP最小路径，继续同一累计预算；不跑P00 full，不查询历史/事件集合。该小合成对照不证明企业效果、15+情境或500+规模。
+
+## M10 多问题记忆
+
+M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行增量`mvp_cli migrate`，serve/ask接入显式问题续接，Redis窗口会在读取时恢复。Milvus事件投影用独立`memory_cli project`运行，`memory_cli show --query`检索后回查MySQL；完整命令见[应用README](../modules/deephelp-app/README.md#m10多问题记忆)。不要把原意图集合用作用户历史，也不要重置累计预算。

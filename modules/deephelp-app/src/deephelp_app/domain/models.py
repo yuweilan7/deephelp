@@ -57,6 +57,13 @@ class ConverseInput(DTO):
     raw_text: RawText
     occurred_at: AwareDatetime
     question_hint: Identifier | None = None
+    expected_question_version: PositiveCount | None = None
+
+    @model_validator(mode="after")
+    def continuation_version(self) -> ConverseInput:
+        if self.expected_question_version is not None and self.question_hint is None:
+            raise ValueError("Question version requires a question hint")
+        return self
 
 
 class RequestEnvelope(ConverseInput):
@@ -543,6 +550,7 @@ class Question(DTO):
     version: PositiveCount
     entities: tuple[Entity, ...] = ()
     conflicts: tuple[EntityConflict, ...] = ()
+    unresolved_fields: tuple[EntityName, ...] = ()
     member_message_ids: tuple[Identifier, ...] = Field(min_length=1)
     active_intent: IntentCode | None = None
     versions: VersionManifest
@@ -557,13 +565,20 @@ class Question(DTO):
                 "Current entities have one value per slot; retain conflicts separately"
             )
         sources = [entity.source.message_id for entity in self.entities]
-        for conflict in self.conflicts:
+        for index, conflict in enumerate(self.conflicts):
             sources.extend(
                 [conflict.previous.source.message_id, conflict.replacement.source.message_id]
             )
             if (
                 conflict.resolution == "explicit_correction"
-                and conflict.replacement not in self.entities
+                and not any(
+                    current.name == conflict.replacement.name
+                    and current.value == conflict.replacement.value
+                    for current in self.entities
+                )
+                and not any(
+                    later.previous == conflict.replacement for later in self.conflicts[index + 1 :]
+                )
             ):
                 raise ValueError("Corrected value must be the current entity")
         if not set(sources) <= set(self.member_message_ids):
@@ -580,6 +595,47 @@ class Question(DTO):
         if self.status == QuestionStatus.WAITING_APPROVAL:
             raise ValueError("Approval execution is disabled until M15")
         return self
+
+
+class MemoryMessage(DTO):
+    channel: Identifier
+    message_id: Identifier
+    question_id: Identifier
+    occurred_at: AwareDatetime
+    text: RawText
+    truncated: bool = False
+
+
+class CaseSummary(DTO):
+    question_id: Identifier
+    version: PositiveCount
+    status: QuestionStatus
+    text: RawText
+    message_ids: tuple[Identifier, ...]
+
+
+class MemoryWindow(DTO):
+    history: tuple[MemoryMessage, ...] = ()
+    active_questions: tuple[Question, ...] = ()
+    closed_summaries: tuple[CaseSummary, ...] = ()
+    generation: Count = 0
+    trimmed: bool = False
+
+
+class LifecycleCommand(DTO):
+    session_id: Identifier
+    expected_version: PositiveCount
+    target: QuestionStatus
+    reason: RawText
+    evidence_source: Literal[
+        "user_confirmation",
+        "process_result",
+        "explicit_reopen",
+        "operator_cancel",
+        "operator_handoff",
+        "slot_check",
+    ]
+    evidence_ref: Identifier
 
 
 class ToolName(StrEnum):

@@ -11,6 +11,7 @@ import httpx
 from fastapi import FastAPI, Request
 
 from deephelp_app.app import create_app
+from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, TrackedTools
 from deephelp_app.dense import DenseRetriever, atomic_json, load_json
 from deephelp_app.domain.models import (
@@ -25,8 +26,8 @@ from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.hybrid import HybridRetriever
 from deephelp_app.intent import IntentService
-from deephelp_app.ledger import MySQLLedger
 from deephelp_app.mcp_mock import MockConfig
+from deephelp_app.memory import MemoryService, RedisMemory
 from deephelp_app.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.milvus_hybrid import MilvusHybridStore
 from deephelp_app.providers import ProviderConfig, create_gateway
@@ -201,16 +202,19 @@ class LiveAssembly:
         self.mock = mock
         self.gateway: Any = None
         self.tools: ToolGateway | None = None
-        self.ledger: MySQLLedger | None = None
+        self.ledger: MySQLCaseRepository | None = None
 
     @asynccontextmanager
     async def open(
         self, client: httpx.AsyncClient, trace: TraceSink
     ) -> AsyncIterator[Conversation]:
         async with AsyncExitStack() as stack:
-            ledger = await MySQLLedger.open(self.root)
+            ledger = await MySQLCaseRepository.open(self.root)
             stack.push_async_callback(ledger.aclose)
             self.ledger = ledger
+            cache = RedisMemory.open(self.root)
+            stack.push_async_callback(cache.aclose)
+            memory = MemoryService(ledger, cache)
             gateway = create_gateway(client, self.config, AsyncCalls(2, 30))
             self.gateway = gateway
             model = CountedModel(gateway, gateway)
@@ -265,6 +269,8 @@ class LiveAssembly:
                 SOPExecutor(model, TrackedTools(tools)),
                 trace,
                 versions,
+                memory=memory,
+                cases=ledger,
             )
 
 
