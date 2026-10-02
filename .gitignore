@@ -8,6 +8,7 @@
 *.key
 **/config/connections.env
 **/client/.tunnel*
+**/client/known_hosts
 
 # Python environments, caches, and generated distributions.
 .venv*/
@@ -42,3 +43,7 @@ Thumbs.db
 # Private source documents, original starter archives and exported context.
 /.local/
 *核心复刻启动包*.zip
+
+# Generated infrastructure evidence is local, not a current design input.
+/infra/reports/*
+!/infra/reports/README.md

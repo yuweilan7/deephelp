@@ -1,6 +1,6 @@
 """Synthetic acceptance only. Never emits passwords or DSNs. Run on developer PC."""
-import argparse,datetime,json,logging,pathlib,socket,sys,time,uuid
-from settings import BASE,settings,mysql_connect,redis_connect,milvus_connect
+import argparse,datetime,json,logging,pathlib,sys,time
+from settings import BASE,mysql_connect,redis_connect,milvus_connect
 logging.getLogger('pymilvus').setLevel(logging.CRITICAL)
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('mode',nargs='?',choices=['health','full','post-restart'],default='full')
@@ -57,7 +57,8 @@ def redis_test():
     c.set('deephelp:p00:restart','must disappear',ex=3600)
     r['ttl_expiration']=True;return r
 def milvus_test():
-    from pymilvus import MilvusClient,DataType,Function,FunctionType,AnnSearchRequest,WeightedRanker
+    from pymilvus import AnnSearchRequest,WeightedRanker
+    from milvus_schema import schema_and_indexes
     c=milvus_connect();r={'databases':c.list_databases(),'server_version':c.get_server_version()}
     if MODE=='health':r['collections']=c.list_collections();c.close();return r
     name='p00_acceptance'
@@ -67,20 +68,10 @@ def milvus_test():
         r['restart_persistence']=True;r['row_count']=len(rows);c.close();return r
     analyzer={'type':'chinese'}
     tokens=c.run_analyzer(texts=['物流运单查询，包裹延迟怎么办？'],analyzer_params=analyzer);assert tokens;r['chinese_analyzer']=tokens
-    schema=MilvusClient.create_schema(auto_id=False,enable_dynamic_field=False)
-    schema.add_field('id',DataType.INT64,is_primary=True)
-    schema.add_field('text',DataType.VARCHAR,max_length=1024,enable_analyzer=True,analyzer_params=analyzer)
-    schema.add_field('tenant',DataType.VARCHAR,max_length=20)
-    schema.add_field('dense',DataType.FLOAT_VECTOR,dim=4)
-    schema.add_field('sparse',DataType.SPARSE_FLOAT_VECTOR)
-    schema.add_function(Function(name='text_bm25',function_type=FunctionType.BM25,input_field_names=['text'],output_field_names=['sparse']))
-    indexes=c.prepare_index_params();indexes.add_index(field_name='dense',index_type='FLAT',metric_type='COSINE');indexes.add_index(field_name='sparse',index_type='SPARSE_INVERTED_INDEX',metric_type='BM25')
+    schema,indexes=schema_and_indexes(c)
     if c.has_collection(name):c.drop_collection(name)
     t=time.perf_counter();c.create_collection(name,schema=schema,index_params=indexes,consistency_level='Strong',num_shards=1);r['create_seconds']=time.perf_counter()-t
-    samples=[('物流运单查询 包裹延迟 联系客服',[1.,0.,0.,0.]),('账户密码重置 登录帮助',[0.,1.,0.,0.]),('商品退货 退款申请 售后服务',[0.,0.,1.,0.])]
-    rows=[{'id':i,'text':samples[(i-1)%3][0],'tenant':'a' if i<=24 else 'b','dense':samples[(i-1)%3][1]} for i in range(1,37)]
-    rows.append({'id':999,'text':'待删除 测试记录','tenant':'a','dense':[0.,0.,0.,1.]})
-    (BASE/'client/dataset.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2),encoding='utf-8')
+    rows=json.loads((BASE/'client/dataset.json').read_text(encoding='utf-8'))
     for start in range(0,len(rows),16):c.insert(name,rows[start:start+16])
     c.flush(name);c.load_collection(name)
     filt='tenant == "a"';dense=AnnSearchRequest(data=[[1.,0.,0.,0.]],anns_field='dense',param={'metric_type':'COSINE','params':{}},limit=6,expr=filt)

@@ -6,7 +6,6 @@ p=argparse.ArgumentParser();p.add_argument('--collection',default='p00_rebuilt_'
 assert args.collection.startswith('p00_') and args.collection.replace('_','').isalnum()
 c=milvus_connect();assert not c.has_collection(args.collection),'Refusing to overwrite an existing collection'
 schema,indexes=schema_and_indexes(c)
-(BASE/'client/collection-schema.json').write_text(json.dumps(schema.to_dict(),indent=2,default=str))
 rows=[r for r in json.loads((BASE/'client/dataset.json').read_text(encoding='utf-8')) if r['id']!=999]
 c.create_collection(args.collection,schema=schema,index_params=indexes,consistency_level='Strong',num_shards=1)
 for start in range(0,len(rows),16):c.insert(args.collection,rows[start:start+16])

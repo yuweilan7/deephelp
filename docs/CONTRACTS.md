@@ -36,13 +36,13 @@ RequestEnvelope：schema_version、经验证身份、channel/session/message/req
 
 Question：question_id、归属、status、version、实体及每项provenance、active_intent、固定registry/SOP版本、创建/更新时刻。实体更正保存新旧值和消息来源，不能last-write-wins抹掉证据。
 
-EventContext：current_message_id、member_message_ids、candidate_question_ids、selected_question_id、cleaned/contextual_text、entities、conflicts、assignment_decision和证据。跨明确订单的相似传递边不自动合并；明确更正走有版本的替换事件。
+EventContext：current_message_id、member_message_ids、candidate_question_ids、selected_question_id、cleaned/contextual_text、entities、conflicts、assignment_decision和证据。跨明确订单的相似传递边不自动合并；明确更正走有版本的替换事件。上下文候选为ACTIVE、WAITING_SLOT，WAITING_APPROVAL仅允许授权读取；结束状态默认不参加活动合并。命中后回查MySQL归属、状态和version，不只信向量投影。
 
 IntentDecision：decision=accept/clarify/handoff/reject、final_code可空、candidates、stage_evidence、reason_code、registry_version、policy_version。候选保存原始score和score_kind（cosine/BM25/fusion/classifier_probability等），不能统一叫confidence。非top1选择须含可校验的override_rule_id、理由和证据；任意自然语言解释不算豁免。
 
 ToolRequest/ToolResult：operation_id、run_id、工具名/版本、受控身份、经校验参数及hash、调用预算、结果status、事实、evidence_refs、upstream_request_id、错误分类。数据/日志中不含SDK客户端或秘密。调用ledger是行为证据，模型说“已查询”不是证据。
 
-SOPResult：status、facts、evidence_refs、tool_call_ids、next_action、sop_version、缺失槽位/人工原因。未获证据不能宣称RESOLVED；M15之前所有业务写工具拒绝。
+SOPResult：status、facts、evidence_refs、tool_call_ids、next_action、sop_version、缺失槽位/人工原因。缺槽位由主流程映射Question.WAITING_SLOT和Response.CLARIFY，不混用三类状态。未获证据不能宣称RESOLVED；M15之前所有业务写工具拒绝。
 
 ResponseEnvelope：schema_version、request/run/trace ID、question_id可空、outcome、question_status可空、reply、facts、evidence_refs、next_action、error可空、versions、budget_used。未授权/输入非法可以没有run/question。response不序列化内部提示词、凭据或隐藏推理。
 
@@ -76,12 +76,6 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 | APPROVAL_INVALID / APPROVAL_EXPIRED | 否 | 不能执行原操作；提示重新授权流程 |
 | OPERATION_UNKNOWN | 否 | 对账/人工；保留可恢复run及操作引用 |
 
-## 三个最小兼容样例（语义，不是已发布API）
-
-1. 缺订单：outcome=CLARIFY，question_status=WAITING_SLOT，next_action=provide_slots，missing=[order_id]，tool_calls=0，run正常结束。下一消息新run，不调用resume。
-2. 外部用户读取另一用户case：outcome=REJECTED，error=FORBIDDEN，question_id可空，业务写入数=0、工具调用数=0，允许独立安全审计。
-3. 操作返回丢失：outcome=HANDOFF或受控处理中响应，error=OPERATION_UNKNOWN，operation_id固定，禁止立即再次执行写工具；能查询已成功时补记账本再给成功证据。
-
 ## 空值、审批领取与重复请求
 
 | 情况 | 语义 / 处理 |
@@ -102,11 +96,3 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 ## 兼容性与发布
 
 当前特性主写者发布被消费的具体类型和示例；下游导入同一包，不能复制DTO定义。新增可选字段说明默认行为；删字段/改枚举/改变幂等范围必须升级契约并回归直接消费者。全局锁与迁移单独审查，不能两个会话同时修改。
-
-## v2分期与开放问题语义
-
-本段为本项目工程澄清，不声称原PDF给出了这些枚举。上下文候选集合包含ACTIVE、WAITING_SLOT；WAITING_APPROVAL可参与受授权上下文读取，但新消息不批准或恢复原run。已结束状态默认不参与活动合并。候选命中后回查MySQL归属、状态和version，不能仅依靠向量投影。
-
-M01最小类型由M02原位补全；M02定义最小存储语义及测试规格；M08落最小消息/执行/问题账本；M10增量扩展生命周期、缓存及投影；M15实现持久审批和副作用恢复。所有模块共享唯一类型定义，不复制DTO。
-
-模型费用、操作预算、权限和归属仍由代码验证。SOPResult返回缺槽位信息，由主流程映射到Question.WAITING_SLOT与Response.CLARIFY，不能把三种状态类型混成一个枚举。
