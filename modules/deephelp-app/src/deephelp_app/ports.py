@@ -3,6 +3,8 @@ from typing import Protocol
 from deephelp_app.domain.models import (
     ChatRequest,
     ChatResult,
+    DenseResult,
+    DenseScope,
     EmbeddingResult,
     RequestEnvelope,
     ResponseEnvelope,
@@ -21,6 +23,12 @@ class ChatPort(Protocol):
 
 class EmbeddingPort(Protocol):
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult: ...
+
+
+class DenseRetrieverPort(Protocol):
+    async def retrieve(
+        self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
+    ) -> DenseResult: ...
 
 
 class Repository(Protocol):

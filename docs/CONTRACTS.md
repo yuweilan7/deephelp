@@ -6,6 +6,10 @@
 
 ## 哪个阶段实现什么
 
+M05在唯一domain/models.py增量发布CorpusRecord、DenseScope、DenseHit、DenseCandidate、DenseResult，ports.py发布DenseRetrieverPort；envelope仍0.2.0-m02，旧消费者兼容。CorpusRecord只接受actionable目录标签及合成语料。DenseScope绑定namespace/dataset_version/registry_version/完整EmbeddingSignature；同维度不同模型不等价，scope改变使用另一个集合。namespace为语料范围，不是用户授权凭据。
+
+DenseRetrieverPort.retrieve(text, scope, budget, top_k=3)复用原ExecutionBudget，返回DenseResult。hits含doc_id/intent_code/content/raw_score/score_kind=cosine/metadata/scope；candidates按per_intent_max_v1取每类最佳样本，保存连续rank及evidence_doc_id，policy_version=dense-baseline-v1。cosine不是confidence或概率，候选不等于最终IntentDecision；只有后续600主意图服务决定接管。manifest及本机指针不是业务事实账本。
+
 M04增量类型仍在唯一domain/models.py，业务envelope保持0.2.0-m02，无破坏性接口变化：
 
 - TextCleanResult含raw_text、cleaned_text、连续完整segments及width-whitespace-v1；不截断原文。分段start/end是cleaned_text字符索引，段拼接必须还原完整cleaned_text。

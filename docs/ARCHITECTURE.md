@@ -104,7 +104,7 @@ M08落最小消息/run/question账本与幂等，M10增量扩展生命周期和�
 
 ## 6. 模型与资源边界
 
-[仓库] 云端配置MySQL512MiB、Redis128MiB、Milvus5120MiB，总5760MiB；这不是当前RSS测量。Redis自身maxmemory64MiB是历史客户端脚本校验项。现有报告只验证小合成数据，不支持容量外推。
+[仓库] 云端配置MySQL512MiB、Redis128MiB、etcd256MiB、Milvus5120MiB，总6016MiB/3.75CPU；这不是当前RSS测量。etcd复用原元数据目录、健康后启动Milvus，裁决见ADR021。Redis自身maxmemory64MiB是历史客户端脚本校验项。现有报告只验证小合成数据，不支持容量外推。
 
 [设计] 以下是未来业务run的保守默认，不覆盖M01现有设置：每run总deadline60s；单模型尝试上限20s并受剩余deadline限制；模型并发2；总模型网络尝试最多8（含结构化修复/重试）；检索尝试最多4；工具尝试最多6；ReAct最多6步；全run重试附加次数最多2；工具单次超时10s。只读工具也消耗总预算，副作用不确定不可按通用重试策略重放。数字是可逆工程默认，非原PDF参数。
 

@@ -22,3 +22,22 @@ reference 6 条可用于规则/召回参考，dev 12 条用于阈值与策略调
 | 脚本场景完成率 | 所有已声明脚本场景为分母；每一步意图/实体、归属、工具及 outcome/question_status 全部符合 gold 才算完成。CLARIFY/HANDOFF/REJECTED 可以是正确场景完成；不解释为线上问题已解决或一次解决率 |
 
 只有运行被测系统并产生实际观测，才能按这些口径评分。校验 gold 引用一致、手工构造 DTO 或回放预期，不算业务效果/模型准确率。
+
+## M05导入数据字典
+
+M02样本不修改；`corpus.frozen_preview()`适配非空标签记录，原文件SHA-256、split/来源/近义组及索引digest保存于本机manifest。JSONL一行一对象，CSV必需字段同名，metadata/label_path使用JSON字符串，synthetic为文本`true`；XLSX映射覆盖必需字段，不推断标签或前导零。
+
+| 字段 | 语义与约束 |
+|---|---|
+| doc_id | 稳定字符串主键，最多128 UTF-8字节；同版本不改义 |
+| content | 客诉原句，1–2000字符；content_hash为NFC/strip后JSON字符串的SHA-256 |
+| intent_code | M02登记的actionable叶子；未知/父节点拒收 |
+| split | train/reference入库；dev/test/regression仅查询/保留manifest |
+| source_group / variant_group | 显式来源/近义组，同组不得跨split；不能靠改ID宣称独立 |
+| synthetic | 必须true；当前入口交付合成业务语料 |
+| label_path | 可选l1–l4路径，提供时必须匹配registry |
+| metadata | 可选有界字符串属性，最多16项，键128字符/值512字符 |
+
+Milvus另存namespace、dataset_version、model_signature、split、content_hash、FP32 vector及JSON metadata；metadata含source/variant、record_hash、原文件hash、batch_id、corpus_digest、registry_version和attributes。全签名保存在collection description，不存连接/客户端/秘密。record_hash覆盖完整CorpusRecord，batch_id绑定文件及scope；改变标签/内容/签名须新版本，先导入验证再切指针。
+
+dev报告doc Recall@1/3及候选Recall@1/2，每类分母单列；错例保留query ID与候选原分数。未知/否定不纳入有标签召回分母；召回成功不证明最终接管、槽位或业务回答正确。dev供未来阈值校准，regression不能当未见test。
