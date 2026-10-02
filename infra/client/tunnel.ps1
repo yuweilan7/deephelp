@@ -25,9 +25,14 @@ $ports=@([int]$cfg.MYSQL_PORT,[int]$cfg.REDIS_PORT,[int]$cfg.MILVUS_LOCAL_PORT,[
 if($Action -in 'check','health'){
  foreach($port in $ports){$c=[Net.Sockets.TcpClient]::new(); try{$ok=$c.ConnectAsync('127.0.0.1',$port).Wait(1500); if(-not $ok -or -not $c.Connected){throw "Port $port unavailable"}; Write-Output "127.0.0.1:$port reachable"}finally{$c.Dispose()}}
  if($Action -eq 'health'){
-  $python=Join-Path $base '.venv312/Scripts/python.exe'
-  if(-not(Test-Path -LiteralPath $python)){$python=Join-Path $base '.venv/Scripts/python.exe'}
-  & $python (Join-Path $PSScriptRoot 'test-connections.py') health
+  $python=$null
+  foreach($envName in @('.venv314','.venv312','.venv')){
+   $candidate=Join-Path $base "$envName/Scripts/python.exe"
+   if(Test-Path -LiteralPath $candidate){$python=$candidate;break}
+  }
+  if(-not $python){throw 'Infra Python missing. Follow infra/README.md to create .venv314 and install client/requirements.lock.txt.'}
+  $reportDir=Join-Path (Split-Path $base -Parent) '.local/infra-health'
+  & $python (Join-Path $PSScriptRoot 'test-connections.py') health --report-dir $reportDir
   if($LASTEXITCODE -ne 0){throw 'Authenticated health failed'}
  }
  exit 0
