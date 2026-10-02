@@ -606,6 +606,7 @@ class ToolRequest(DTO):
     parameters: ToolParameters
     parameters_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     budget: BudgetSnapshot
+    timeout_seconds: Annotated[float, Field(gt=0, le=120, allow_inf_nan=False)] | None = None
 
     @model_validator(mode="after")
     def read_only_parameters(self) -> ToolRequest:
@@ -724,8 +725,10 @@ class SOPResult(DTO):
     def sop_closeout(self) -> SOPResult:
         validate_facts(self.facts, self.evidence_refs)
         calls = {ref.record_id for ref in self.evidence_refs if ref.source == EvidenceSource.TOOL}
-        if calls != set(self.tool_call_ids):
-            raise ValueError("SOP tool calls and evidence must match")
+        if len(set(self.tool_call_ids)) != len(self.tool_call_ids) or not calls <= set(
+            self.tool_call_ids
+        ):
+            raise ValueError("SOP evidence must reference a unique recorded tool call")
         if self.status == SOPStatus.RESOLVED:
             if not self.facts or not self.evidence_refs or self.missing_slots or self.error:
                 raise ValueError("Resolved SOP requires supported facts")
@@ -766,8 +769,10 @@ class ResponseEnvelope(DTO):
     def closeout(self) -> ResponseEnvelope:
         validate_facts(self.facts, self.evidence_refs)
         calls = {ref.record_id for ref in self.evidence_refs if ref.source == EvidenceSource.TOOL}
-        if calls != set(self.tool_call_ids):
-            raise ValueError("Response tool calls and evidence must match")
+        if len(set(self.tool_call_ids)) != len(self.tool_call_ids) or not calls <= set(
+            self.tool_call_ids
+        ):
+            raise ValueError("Response evidence must reference a unique recorded tool call")
         if (
             self.outcome == Outcome.PENDING_APPROVAL
             or self.question_status == QuestionStatus.WAITING_APPROVAL
@@ -797,8 +802,14 @@ class ResponseEnvelope(DTO):
             if self.tool_call_ids or self.facts or self.next_action != NextAction.PROVIDE_SLOTS:
                 raise ValueError("Missing slots must ask for input without tools/facts")
         if self.error and self.error.code == ErrorCode.FORBIDDEN:
-            if self.outcome != Outcome.REJECTED or self.tool_call_ids or self.facts:
-                raise ValueError("Forbidden request is rejected without tool calls or facts")
+            rejected = self.outcome == Outcome.REJECTED and not self.tool_call_ids
+            query_denied = (
+                self.outcome == Outcome.ERROR
+                and self.run_status == RunStatus.FAILED
+                and bool(self.tool_call_ids)
+            )
+            if self.facts or not (rejected or query_denied):
+                raise ValueError("Forbidden entry/query cannot publish object facts")
         return self
 
 

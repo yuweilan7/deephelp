@@ -156,7 +156,13 @@ class AsyncCalls:
         retry_safe: bool = False,
         token_reservation: int = 0,
         cost_reservation: Decimal = Decimal("0"),
+        child_timeout: float | None = None,
     ) -> T:
+        timeout = (
+            self.child_timeout if child_timeout is None else min(self.child_timeout, child_timeout)
+        )
+        if timeout <= 0:
+            raise ValueError("Child timeout must be positive")
         retry = False
         while True:
             # Waiting for the semaphore is included in the original request deadline.
@@ -167,9 +173,7 @@ class AsyncCalls:
                             retry=retry, tokens=token_reservation, cost=cost_reservation
                         )
                         try:
-                            async with asyncio.timeout(
-                                min(self.child_timeout, budget.remaining_seconds())
-                            ):
+                            async with asyncio.timeout(min(timeout, budget.remaining_seconds())):
                                 return await operation()
                         except TimeoutError, httpx.TimeoutException:
                             error = AppError(

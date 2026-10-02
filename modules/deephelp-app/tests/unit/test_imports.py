@@ -37,6 +37,10 @@ with (
         import deephelp_app.mcp_mock
         import deephelp_app.tool_gateway
         import deephelp_app.mcp_smoke
+        import deephelp_app.sop_config
+        import deephelp_app.sop
+        import deephelp_app.sop_replay
+        import deephelp_app.sop_probe
     assert not client.called
     assert not pool.called
 """

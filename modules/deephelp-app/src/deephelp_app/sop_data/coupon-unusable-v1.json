@@ -1,0 +1,78 @@
+{
+  "schema_version": "m07-sop-v1",
+  "sop_id": "coupon-unusable-v1",
+  "version": "coupon-unusable-v1",
+  "intent_code": "COUPON_UNUSABLE",
+  "prompt_version": "sop-react-v1",
+  "tool_version": "m06-readonly-v1",
+  "required_slots": [
+    "order_id",
+    "coupon_id"
+  ],
+  "allowed_tools": [
+    "check_coupon"
+  ],
+  "steps": [
+    "lookup",
+    "evaluate"
+  ],
+  "required_facts": [
+    "order_id",
+    "coupon_id",
+    "coupon_status",
+    "minimum_spend",
+    "usable"
+  ],
+  "evidence_version": "business-fixtures-v1",
+  "stop_conditions": [
+    "missing_slots",
+    "invalid_action",
+    "repeated_call",
+    "deadline",
+    "max_steps",
+    "max_tools"
+  ],
+  "handoff_conditions": [
+    "model_handoff",
+    "insufficient_evidence",
+    "unmatched_branch"
+  ],
+  "limits": {
+    "max_steps": 4,
+    "max_tool_calls": 2,
+    "total_seconds": 60,
+    "model_seconds": 30,
+    "tool_seconds": 5,
+    "retries_per_call": 1,
+    "total_retries": 1
+  },
+  "branches": [
+    {
+      "condition": {
+        "fact": "coupon_status",
+        "op": "eq",
+        "value": "expired"
+      },
+      "status": "RESOLVED",
+      "conclusion": "优惠券证据显示已过期。"
+    },
+    {
+      "condition": {
+        "fact": "coupon_status",
+        "op": "eq",
+        "value": "threshold_not_met"
+      },
+      "status": "RESOLVED",
+      "conclusion": "优惠券证据显示未满足使用门槛，门槛金额见查询事实。"
+    },
+    {
+      "condition": {
+        "fact": "coupon_status",
+        "op": "eq",
+        "value": "usable"
+      },
+      "status": "RESOLVED",
+      "conclusion": "优惠券查询状态为可用；本次只确认查询状态，不承诺结算成功。"
+    }
+  ]
+}

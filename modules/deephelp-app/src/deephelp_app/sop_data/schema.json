@@ -1,0 +1,284 @@
+{
+  "$defs": {
+    "EntityName": {
+      "enum": [
+        "order_id",
+        "coupon_id",
+        "sku_id",
+        "activity_id"
+      ],
+      "title": "EntityName",
+      "type": "string"
+    },
+    "IntentCode": {
+      "enum": [
+        "SERVICE",
+        "BENEFIT_ISSUE",
+        "ORDER_QUERY",
+        "DISCOUNT_MISSING",
+        "COUPON_UNUSABLE",
+        "ORDER_ACTIVITY_QUERY"
+      ],
+      "title": "IntentCode",
+      "type": "string"
+    },
+    "SOPBranch": {
+      "additionalProperties": false,
+      "properties": {
+        "condition": {
+          "$ref": "#/$defs/SOPCondition"
+        },
+        "status": {
+          "enum": [
+            "RESOLVED",
+            "HANDED_OFF"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "conclusion": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Conclusion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "condition",
+        "status",
+        "conclusion"
+      ],
+      "title": "SOPBranch",
+      "type": "object"
+    },
+    "SOPCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Fact",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "empty",
+            "nonempty"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "fact",
+        "op"
+      ],
+      "title": "SOPCondition",
+      "type": "object"
+    },
+    "SOPLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_steps": {
+          "default": 4,
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "default": 2,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Max Tool Calls",
+          "type": "integer"
+        },
+        "total_seconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "maximum": 120,
+          "title": "Total Seconds",
+          "type": "number"
+        },
+        "model_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "maximum": 60,
+          "title": "Model Seconds",
+          "type": "number"
+        },
+        "tool_seconds": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "title": "Tool Seconds",
+          "type": "number"
+        },
+        "retries_per_call": {
+          "default": 1,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Retries Per Call",
+          "type": "integer"
+        },
+        "total_retries": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Total Retries",
+          "type": "integer"
+        }
+      },
+      "title": "SOPLimits",
+      "type": "object"
+    },
+    "ToolName": {
+      "enum": [
+        "get_order_benefits",
+        "check_coupon"
+      ],
+      "title": "ToolName",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "m07-sop-v1",
+      "default": "m07-sop-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sop_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Sop Id",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "intent_code": {
+      "$ref": "#/$defs/IntentCode"
+    },
+    "prompt_version": {
+      "const": "sop-react-v1",
+      "default": "sop-react-v1",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "tool_version": {
+      "const": "m06-readonly-v1",
+      "default": "m06-readonly-v1",
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "required_slots": {
+      "items": {
+        "$ref": "#/$defs/EntityName"
+      },
+      "title": "Required Slots",
+      "type": "array"
+    },
+    "allowed_tools": {
+      "items": {
+        "$ref": "#/$defs/ToolName"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "title": "Allowed Tools",
+      "type": "array"
+    },
+    "steps": {
+      "items": {
+        "enum": [
+          "lookup",
+          "evaluate"
+        ],
+        "type": "string"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "required_facts": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Facts",
+      "type": "array"
+    },
+    "evidence_version": {
+      "const": "business-fixtures-v1",
+      "title": "Evidence Version",
+      "type": "string"
+    },
+    "branches": {
+      "items": {
+        "$ref": "#/$defs/SOPBranch"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Branches",
+      "type": "array"
+    },
+    "stop_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stop Conditions",
+      "type": "array"
+    },
+    "handoff_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Handoff Conditions",
+      "type": "array"
+    },
+    "limits": {
+      "$ref": "#/$defs/SOPLimits"
+    }
+  },
+  "required": [
+    "sop_id",
+    "version",
+    "intent_code",
+    "required_slots",
+    "allowed_tools",
+    "steps",
+    "required_facts",
+    "evidence_version",
+    "branches",
+    "stop_conditions",
+    "handoff_conditions"
+  ],
+  "title": "SOPDefinition",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

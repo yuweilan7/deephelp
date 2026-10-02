@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Protocol
 
 from deephelp_app.domain.models import (
@@ -9,6 +10,7 @@ from deephelp_app.domain.models import (
     Question,
     RequestEnvelope,
     ResponseEnvelope,
+    SOPResult,
     ToolRequest,
     ToolResult,
     VerifiedIdentity,
@@ -42,7 +44,19 @@ class ToolPort(Protocol):
         budget: ExecutionBudget,
         *,
         context: RequestEnvelope,
+        on_dispatch: Callable[[str], None] | None = None,
     ) -> ToolResult: ...
+
+
+class SOPExecutorPort(Protocol):
+    async def execute(
+        self,
+        question: Question,
+        budget: ExecutionBudget,
+        *,
+        context: RequestEnvelope,
+        run_id: str,
+    ) -> SOPResult: ...
 
 
 class Repository(Protocol):

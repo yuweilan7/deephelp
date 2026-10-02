@@ -1,0 +1,129 @@
+{
+  "synthetic": true,
+  "version": "m07-model-replay-v1",
+  "cases": {
+    "discount": [
+      {
+        "call_id": "model-discount-lookup",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000031"
+        }
+      },
+      {
+        "call_id": "model-discount-finish",
+        "name": "finish_sop",
+        "arguments": {}
+      }
+    ],
+    "discount-repeat": [
+      {
+        "call_id": "model-discount-lookup",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000031"
+        }
+      },
+      {
+        "call_id": "model-repeat",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000031"
+        }
+      }
+    ],
+    "coupon": [
+      {
+        "call_id": "model-coupon-lookup",
+        "name": "check_coupon",
+        "arguments": {
+          "order_id": "000042",
+          "coupon_id": "000009"
+        }
+      },
+      {
+        "call_id": "model-coupon-finish",
+        "name": "finish_sop",
+        "arguments": {}
+      }
+    ],
+    "coupon-repeat": [
+      {
+        "call_id": "model-coupon-lookup",
+        "name": "check_coupon",
+        "arguments": {
+          "order_id": "000042",
+          "coupon_id": "000009"
+        }
+      },
+      {
+        "call_id": "model-repeat",
+        "name": "check_coupon",
+        "arguments": {
+          "order_id": "000042",
+          "coupon_id": "000009"
+        }
+      }
+    ],
+    "activity": [
+      {
+        "call_id": "model-activity-lookup",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000053"
+        }
+      },
+      {
+        "call_id": "model-activity-finish",
+        "name": "finish_sop",
+        "arguments": {}
+      }
+    ],
+    "activity-repeat": [
+      {
+        "call_id": "model-activity-lookup",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000053"
+        }
+      },
+      {
+        "call_id": "model-repeat",
+        "name": "get_order_benefits",
+        "arguments": {
+          "order_id": "000053"
+        }
+      }
+    ],
+    "invented": [
+      {
+        "call_id": "model-invented",
+        "name": "invented_tool",
+        "arguments": {}
+      }
+    ],
+    "write": [
+      {
+        "call_id": "model-write",
+        "name": "refund_order",
+        "arguments": {
+          "order_id": "000031"
+        }
+      }
+    ],
+    "premature-finish": [
+      {
+        "call_id": "model-finish",
+        "name": "finish_sop",
+        "arguments": {}
+      }
+    ],
+    "handoff": [
+      {
+        "call_id": "model-handoff",
+        "name": "handoff_sop",
+        "arguments": {}
+      }
+    ]
+  }
+}

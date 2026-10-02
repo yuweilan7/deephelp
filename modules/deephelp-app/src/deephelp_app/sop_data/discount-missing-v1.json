@@ -1,0 +1,78 @@
+{
+  "schema_version": "m07-sop-v1",
+  "sop_id": "discount-missing-v1",
+  "version": "discount-missing-v1",
+  "intent_code": "DISCOUNT_MISSING",
+  "prompt_version": "sop-react-v1",
+  "tool_version": "m06-readonly-v1",
+  "required_slots": [
+    "order_id"
+  ],
+  "allowed_tools": [
+    "get_order_benefits"
+  ],
+  "steps": [
+    "lookup",
+    "evaluate"
+  ],
+  "required_facts": [
+    "order_id",
+    "paid",
+    "discount",
+    "discount_status",
+    "activity_ids",
+    "activity_labels"
+  ],
+  "evidence_version": "business-fixtures-v1",
+  "stop_conditions": [
+    "missing_slots",
+    "invalid_action",
+    "repeated_call",
+    "deadline",
+    "max_steps",
+    "max_tools"
+  ],
+  "handoff_conditions": [
+    "model_handoff",
+    "insufficient_evidence",
+    "unmatched_branch"
+  ],
+  "limits": {
+    "max_steps": 4,
+    "max_tool_calls": 2,
+    "total_seconds": 60,
+    "model_seconds": 30,
+    "tool_seconds": 5,
+    "retries_per_call": 1,
+    "total_retries": 1
+  },
+  "branches": [
+    {
+      "condition": {
+        "fact": "discount_status",
+        "op": "eq",
+        "value": "applied"
+      },
+      "status": "RESOLVED",
+      "conclusion": "订单证据显示优惠已抵扣，实付和优惠金额见查询事实。"
+    },
+    {
+      "condition": {
+        "fact": "discount_status",
+        "op": "eq",
+        "value": "not_eligible"
+      },
+      "status": "RESOLVED",
+      "conclusion": "订单证据显示不满足优惠条件；具体资格规则需另行核实。"
+    },
+    {
+      "condition": {
+        "fact": "discount_status",
+        "op": "eq",
+        "value": "missing"
+      },
+      "status": "HANDED_OFF",
+      "conclusion": "订单证据显示优惠未到账，无法仅凭查询确认原因，转人工核查。"
+    }
+  ]
+}
