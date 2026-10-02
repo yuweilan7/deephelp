@@ -25,6 +25,9 @@ class TraceEvent(DTO):
         "extraction_layer_finished",
         "text_processing_cancelled",
         "text_processing_failed",
+        "stage_finished",
+        "message_replayed",
+        "ledger_committed",
     ]
     request_id: Identifier
     trace_id: Identifier
@@ -32,11 +35,15 @@ class TraceEvent(DTO):
     input_length: int | None = Field(default=None, ge=0)
     status_code: int | None = None
     error_code: str | None = None
-    stage: Literal["300_TEXT_ENTITY"] | None = None
+    stage: str | None = None
     layer: Literal["regex", "api", "strong"] | None = None
     elapsed_ms: float | None = Field(default=None, ge=0)
     model_calls: int | None = Field(default=None, ge=0)
     entity_count: int | None = Field(default=None, ge=0)
+    run_id: Identifier | None = None
+    question_id: Identifier | None = None
+    tool_calls: int | None = Field(default=None, ge=0)
+    stage_status: Literal["completed", "skipped", "disabled", "failed"] | None = None
 
 
 class TraceSink(Protocol):

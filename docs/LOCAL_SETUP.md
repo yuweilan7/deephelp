@@ -1,6 +1,6 @@
 # 本地启动与依赖交接
 
-这是运行环境入口。当前应用为 M01 离线骨架；中间件可连接、模型目录可读不代表业务联调完成。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
+这是运行环境入口。M08启动见文末；中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
 M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度或云库配置。预览、真实协议验收与参数见[应用README](../modules/deephelp-app/README.md#m06真实mcp只读工具)。其--live只启动受控本机进程，不运行P00或开启应用converse业务路径。
 
@@ -123,3 +123,21 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.sop_pro
 ```
 
 feature验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败，核对实际事实、证据与ledger；main最小复验三类正常业务路径和退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
+
+
+## M08闭环启动与验收
+
+先按上文health检查既有隧道/云库，核对选定chat/Embedding可调用性；Dense默认`.local/m05/active.json`，签名变化不得直接复用。初始化/迁移/服务/CLI提问见[应用README](../modules/deephelp-app/README.md#m08单条完整问题闭环)。复用现有MySQL/Milvus应用账号、千问配置及本机正式SDK合成MCP，不运行P00 full，不重建服务。
+
+同机已有`.local/m08/auth.json`和`session-budget.json`可复用；独立演示或新机器用mvp_cli init创建新的文件，设本次足够上限。auth须包含样本请求者固定身份。累计格式沿M03计数/上界，恢复不清零；只有serve和显式probe --live联网。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli --help
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_probe --output .local/m08/offline-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --stage feature --output .local/m08/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --samples --stage feature --output .local/m08/samples-new.json
+# 合并后沿用累计预算，换新输出文件。
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --stage main --output .local/m08/main-new.json
+```
+
+--auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；真实feature验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出；main最小复验三类/Dense/缺槽位/未知及持久回放。报告PASS和退出0同时满足才验收。

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>DeepHelp 调试</title>
+<style>body{font:16px system-ui;max-width:950px;margin:32px auto;padding:0 20px}textarea{width:100%;height:110px}input{margin:8px;width:210px}button{padding:8px 20px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:18px}label{display:inline-block}td,th{text-align:left;padding:6px;border-bottom:1px solid #ddd}table{width:100%}</style>
+<h1>DeepHelp · 单条完整问题</h1>
+<p>支持优惠未享受、券不可用、订单活动查询。工具业务数据为合成数据。跨消息补槽、多问题合并、审批和业务写操作尚未启用。</p>
+<p>示例：订单 000031 未享受优惠；订单 000042 的券 000009 不能用；查询订单 000053 参加的活动。</p>
+<label>本机访问令牌<input id="token" type="password" autocomplete="off"></label>
+<label>会话<input id="session" value="debug-session"></label>
+<textarea id="text">订单 000031 未享受优惠，请查一下</textarea>
+<p><button id="send">发送新消息</button> <button id="repeat" disabled>重投同一消息</button></p>
+<p id="status"></p><h2>回复</h2><pre id="reply"></pre>
+<h2>阶段耗时与调用数</h2><table><thead><tr><th>阶段</th><th>状态</th><th>毫秒</th><th>模型</th><th>工具</th></tr></thead><tbody id="steps"></tbody></table>
+<h2>事实、证据与完整结果</h2><pre id="result"></pre>
+<script>
+let last=null;const by=id=>document.getElementById(id);
+async function send(repeat){
+  if(!repeat)last={channel:'debug',session_id:by('session').value,message_id:crypto.randomUUID(),raw_text:by('text').value,occurred_at:new Date().toISOString()};
+  by('send').disabled=by('repeat').disabled=true;by('status').textContent='处理中…';
+  try{const r=await fetch('/converse',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+by('token').value},body:JSON.stringify(last)});const d=await r.json();
+    by('reply').textContent=d.reply;by('result').textContent=JSON.stringify(d,null,2);by('status').textContent='HTTP '+r.status+' · '+d.outcome;
+    by('steps').replaceChildren();for(const s of d.stages||[]){const tr=document.createElement('tr');for(const v of [s.stage,s.status,s.elapsed_ms.toFixed(2),s.model_calls,s.tool_calls]){const td=document.createElement('td');td.textContent=String(v);tr.append(td)}by('steps').append(tr)}
+  }catch(e){by('status').textContent='请求失败：'+e.message}finally{by('send').disabled=false;by('repeat').disabled=!last}
+}by('send').onclick=()=>send(false);by('repeat').onclick=()=>send(true);
+</script></html>
