@@ -61,13 +61,13 @@
 
 ## 验证与交付
 
-Windows从根使用本机已验证的py -3.11 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。特性分支与合并main均执行：
+Windows从根使用本机已验证的py -3.14 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。特性分支与合并main均执行：
 
 ```powershell
-py -3.11 -m uv run --locked ruff check conftest.py modules/deephelp-app
-py -3.11 -m uv run --locked ruff format --check conftest.py modules/deephelp-app
-py -3.11 -m uv run --locked mypy
-py -3.11 -m uv run --locked pytest
+py -3.14 -m uv run --locked ruff check conftest.py modules/deephelp-app
+py -3.14 -m uv run --locked ruff format --check conftest.py modules/deephelp-app
+py -3.14 -m uv run --locked mypy
+py -3.14 -m uv run --locked pytest
 git diff --check
 ```
 

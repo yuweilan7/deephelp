@@ -1,0 +1,17 @@
+{
+  "source": "synthetic; no provider account or customer data",
+  "responses": [
+    {
+      "id": "synthetic-chat",
+      "model": "synthetic",
+      "choices": [{"message": {"role": "assistant", "content": "SYNTHETIC_OK"}, "finish_reason": "stop"}],
+      "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}
+    },
+    {
+      "id": "synthetic-embedding",
+      "model": "synthetic",
+      "data": [{"index": 1, "embedding": [0, 2]}, {"index": 0, "embedding": [2, 0]}],
+      "usage": {"prompt_tokens": 4, "total_tokens": 4}
+    }
+  ]
+}

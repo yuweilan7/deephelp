@@ -188,7 +188,9 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config.validate_live()
         if config.mode == "live":
-            raise ConfigurationError("M01 live ModelGateway is NOT_IMPLEMENTED; see M03")
+            raise ConfigurationError(
+                "Live business converse is NOT_IMPLEMENTED; use deephelp_app.live_probe for M03"
+            )
         async with AsyncExitStack() as stack:
             sink = JsonlTrace(Path(config.trace_path)) if trace is None else trace
             stack.push_async_callback(sink.aclose)

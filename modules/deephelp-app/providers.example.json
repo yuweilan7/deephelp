@@ -1,0 +1,26 @@
+{
+  "provider": "qianwen",
+  "chat": {
+    "model": "qwen3.8-flash",
+    "base_url_env": "DEEPHELP_MODEL_BASE_URL",
+    "api_key_env": "DEEPHELP_MODEL_API_KEY",
+    "input_cny_per_million": "8",
+    "output_cny_per_million": "8"
+  },
+  "embedding": {
+    "model": "qwen3.7-text-embedding-flash",
+    "base_url_env": "DEEPHELP_MODEL_BASE_URL",
+    "api_key_env": "DEEPHELP_MODEL_API_KEY",
+    "input_cny_per_million": "8",
+    "output_cny_per_million": "0"
+  },
+  "embedding_revision": null,
+  "dimension": 1024,
+  "normalization": "l2",
+  "allow_zero_embedding_indices": true,
+  "strict_schema": true,
+  "tool_calling": true,
+  "batch_size": 20,
+  "cache_entries": 64,
+  "cache_bytes": 4194304
+}
