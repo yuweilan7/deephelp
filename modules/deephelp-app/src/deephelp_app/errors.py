@@ -20,6 +20,8 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.APPROVAL_INVALID: 409,
     ErrorCode.APPROVAL_EXPIRED: 409,
     ErrorCode.OPERATION_UNKNOWN: 409,
+    ErrorCode.PROVIDER_QUOTA_EXHAUSTED: 503,
+    ErrorCode.MODEL_CAPABILITY_UNAVAILABLE: 502,
 }
 
 
@@ -33,12 +35,16 @@ class AppError(Exception):
         status_code: int | None = None,
         *,
         retryable: bool = False,
+        provider_request_id: str | None = None,
+        provider_code: str | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.safe_message = message
         self.status_code = HTTP_STATUS[code] if status_code is None else status_code
         self.retryable = retryable
+        self.provider_request_id = provider_request_id
+        self.provider_code = provider_code
 
 
 class ConfigurationError(RuntimeError):

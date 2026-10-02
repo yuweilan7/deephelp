@@ -11,7 +11,7 @@
 | `asyncio.to_thread` | 类似交给线程池，适合短同步文件 I/O/阻塞 SDK；普通 CPython 线程受 GIL 影响，纯 Python CPU 工作不保证提速 |
 | `ProcessPoolExecutor` | 独立进程执行 CPU 工作，可绕过同一解释器的 GIL；参数/返回值须可序列化，有启动与内存成本 |
 
-从仓库根执行 `py -3.11 -m uv run --locked python -m deephelp_app.experiments`，业务解释器为 Python 3.14.7。三个实验不访问网络、不使用 API key。
+从仓库根执行 `py -3.14 -m uv run --locked python -m deephelp_app.experiments`，业务解释器为 Python 3.14.7。三个实验不访问网络、不使用 API key。
 
 1. **独立 I/O：** 两次合成等待先串行再由 TaskGroup 并发。返回 A/B 结果、并发峰值和两种耗时。串行峰值为 1、并发为 2；通常串行耗时接近两段等待之和，并发接近较长一段。测试验证任务重叠，具体耗时仅供观察。
 2. **失败和超时：** 一个子任务等待另一个已启动，再抛异常或耗尽自身 timeout。TaskGroup 取消等待中的兄弟任务；兄弟记录取消、执行 `finally` 清理，组在全部任务收尾后抛异常组。实验只记录预期失败；生产代码必须映射成明确错误，不能当成功。

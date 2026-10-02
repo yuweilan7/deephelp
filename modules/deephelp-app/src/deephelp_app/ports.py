@@ -1,11 +1,26 @@
 from typing import Protocol
 
-from deephelp_app.domain.models import RequestEnvelope, ResponseEnvelope, VerifiedIdentity
+from deephelp_app.domain.models import (
+    ChatRequest,
+    ChatResult,
+    EmbeddingResult,
+    RequestEnvelope,
+    ResponseEnvelope,
+    VerifiedIdentity,
+)
 from deephelp_app.execution import ExecutionBudget
 
 
 class ModelGateway(Protocol):
     async def complete(self, text: str, budget: ExecutionBudget) -> str: ...
+
+
+class ChatPort(Protocol):
+    async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult: ...
+
+
+class EmbeddingPort(Protocol):
+    async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult: ...
 
 
 class Repository(Protocol):
