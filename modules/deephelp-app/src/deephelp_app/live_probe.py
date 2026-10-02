@@ -60,6 +60,8 @@ async def probe(args: argparse.Namespace) -> int:
     try:
         original = json.loads(state_path.read_text(encoding="utf-8-sig"))
         required_calls = 4 if args.stage == "feature" else 2
+        if args.extended:
+            required_calls += 2
         remaining_calls = original["max_calls"] - original["attempts"]
         remaining_tokens = original["max_tokens"] - original["charged_tokens"]
         initial_cost = Decimal(
@@ -234,6 +236,70 @@ async def probe(args: argparse.Namespace) -> int:
                         "cache_extra_calls": 0,
                     }
                 )
+                if args.extended:
+                    long_messages = [
+                        ChatMessage(role="user", content="Synthetic context. " * 100)
+                        for _ in range(40)
+                    ]
+                    long_messages.append(
+                        ChatMessage(role="user", content="Reply exactly OK. No other output.")
+                    )
+                    extended = await gateway.chat(
+                        ChatRequest(messages=long_messages, max_output_tokens=8192), budget
+                    )
+                    if (extended.content or "").strip() != "OK":
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Long context content differs"
+                        )
+                    results.append(
+                        {
+                            "capability": "extended_chat",
+                            "message_count": len(long_messages),
+                            "content_bytes": sum(
+                                len(m.content.encode()) for m in long_messages if m.content
+                            ),
+                            "requested_output_tokens": 8192,
+                            "usage": extended.usage.model_dump(),
+                            "provider_request_id": extended.provider_request_id,
+                        }
+                    )
+                    thinking = await gateway.chat(
+                        ChatRequest(
+                            messages=[
+                                ChatMessage(
+                                    role="user",
+                                    content=(
+                                        "Compute 17*19 internally, then return JSON with "
+                                        "order_id 0007 and status synthetic."
+                                    ),
+                                )
+                            ],
+                            response_format="json_schema",
+                            output_schema=PROBE_SCHEMA,
+                            max_output_tokens=2048,
+                            enable_thinking=True,
+                            thinking_budget=2048,
+                        ),
+                        budget,
+                    )
+                    diagnostic = gateway.diagnostics[-1]
+                    if (
+                        thinking.structured != {"order_id": "0007", "status": "synthetic"}
+                        or not diagnostic.get("thinking_enabled")
+                        or not diagnostic.get("reasoning_content_length")
+                    ):
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Thinking/schema content differs"
+                        )
+                    results.append(
+                        {
+                            "capability": "thinking_schema",
+                            "thinking_enabled": True,
+                            "reasoning_content_length": diagnostic["reasoning_content_length"],
+                            "usage": thinking.usage.model_dump(),
+                            "provider_request_id": thinking.provider_request_id,
+                        }
+                    )
                 report.update(status="PASS")
             except AppError as exc:
                 report.update(
@@ -272,6 +338,11 @@ def main() -> int:
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--stage", choices=["feature", "main"], required=True)
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
+    parser.add_argument(
+        "--extended",
+        action="store_true",
+        help="Also verify larger context/output and thinking/schema",
+    )
     parser.add_argument("--budget-state", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--max-calls", type=int, required=True)

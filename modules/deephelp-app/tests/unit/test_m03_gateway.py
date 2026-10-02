@@ -16,6 +16,77 @@ from deephelp_app.providers import EndpointConfig, ProviderConfig, create_gatewa
 pytestmark = pytest.mark.unit
 
 
+async def test_larger_context_output_and_tool_catalog_reach_provider():
+    messages = [ChatMessage(role="user", content="synthetic " * 200) for _ in range(40)]
+    tools = [ModelTool(name=f"tool_{i}", parameters={"type": "object"}) for i in range(17)]
+
+    def handler(request):
+        payload = json.loads(request.content)
+        assert len(request.content) > 65536
+        assert len(payload["messages"]) == 40 and len(payload["tools"]) == 17
+        assert payload["max_tokens"] == 8192
+        return httpx.Response(200, json=chat_data())
+
+    g = gateway(handler)
+    try:
+        result = await g.chat(
+            ChatRequest(messages=messages, tools=tools, max_output_tokens=8192),
+            budget(tokens=200000, cost="3"),
+        )
+        assert result.content == "OK"
+    finally:
+        await g.client.aclose()
+
+
+async def test_thinking_is_configurable_and_hidden_text_stays_out_of_diagnostics():
+    def handler(request):
+        payload = json.loads(request.content)
+        assert payload["enable_thinking"] and payload["thinking_budget"] == 512
+        data = chat_data()
+        data["choices"][0]["message"]["reasoning_content"] = "PRIVATE_HIDDEN_REASONING"
+        return httpx.Response(200, json=data)
+
+    g = gateway(handler, enable_thinking=True)
+    try:
+        result = await g.chat(chat_request(thinking_budget=512), budget())
+        assert result.content == "OK" and "PRIVATE_HIDDEN_REASONING" not in str(g.diagnostics)
+        assert g.diagnostics[-1]["reasoning_content_length"] == len("PRIVATE_HIDDEN_REASONING")
+    finally:
+        await g.client.aclose()
+
+
+async def test_request_can_disable_provider_thinking_default():
+    def handler(request):
+        payload = json.loads(request.content)
+        assert payload["enable_thinking"] is False and "thinking_budget" not in payload
+        return httpx.Response(200, json=chat_data())
+
+    g = gateway(handler, enable_thinking=True)
+    try:
+        assert (await g.chat(chat_request(enable_thinking=False), budget())).content == "OK"
+    finally:
+        await g.client.aclose()
+
+
+async def test_thinking_allowance_is_reserved_before_dispatch():
+    dispatched = False
+
+    def handler(request):
+        nonlocal dispatched
+        dispatched = True
+        return httpx.Response(200, json=chat_data())
+
+    g = gateway(handler)
+    try:
+        with pytest.raises(AppError) as exc:
+            await g.chat(
+                chat_request(enable_thinking=True, thinking_budget=8192), budget(tokens=3000)
+            )
+        assert exc.value.code == ErrorCode.BUDGET_EXHAUSTED and not dispatched
+    finally:
+        await g.client.aclose()
+
+
 def budget(attempts=5, retries=0, tokens=50000, cost="1"):
     return ExecutionBudget.start(5, attempts, retries, token_limit=tokens, cost_limit=Decimal(cost))
 

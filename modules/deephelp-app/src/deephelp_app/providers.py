@@ -38,10 +38,12 @@ class ProviderConfig(BaseModel):
     allow_zero_embedding_indices: bool = False
     strict_schema: bool = True
     tool_calling: bool = True
+    enable_thinking: bool = False
+    thinking_budget: int = Field(default=8192, ge=1)
     batch_size: int = Field(default=20, ge=1, le=20)
-    max_texts: int = Field(default=128, ge=1, le=128)
-    max_request_bytes: int = Field(default=32768, ge=1024, le=65536)
-    max_response_bytes: int = Field(default=2097152, ge=1024, le=4194304)
+    max_texts: int = Field(default=128, ge=1)
+    max_request_bytes: int = Field(default=1048576, ge=1024)
+    max_response_bytes: int = Field(default=16777216, ge=1024)
     cache_entries: int = Field(default=64, ge=0, le=256)
     cache_bytes: int = Field(default=4194304, ge=0, le=8388608)
 

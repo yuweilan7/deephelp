@@ -4,7 +4,7 @@
 
 ## 服务器入口
 
-SSH 后进入 `/srv/deephelp-infra`。服务器运行中间件，不运行应用/Agent。业务账号为 deephelp_app、业务库为 deephelp；root/admin 只用于管理。MySQL、Redis、Milvus/WebUI 均发布到服务器 loopback，经客户端隧道访问。etcd 只在项目容器网络提供 Milvus 元数据，不发布主机端口。
+SSH 后进入 `/srv/deephelp-infra`。服务器运行中间件，不运行应用/Agent。账号 deephelp_app 默认使用完整权限，方便单人学习与实验：MySQL 全局权限及授权能力、Redis 全命令/键/频道、Milvus 内置 admin 角色。保留已有密码与管理账号。MySQL、Redis、Milvus/WebUI 均发布到服务器 loopback，经客户端隧道访问。etcd 只在项目容器网络提供 Milvus 元数据，不发布主机端口。
 
 | 脚本 | 用途 |
 |---|---|
@@ -38,3 +38,19 @@ Milvus合成重建在本机、隧道开启时从仓库根运行 `infra/.venv314/
 etcd3.5.23以256MiB/0.25CPU独立运行，复用`/srv/deephelp-data/milvus/etcd`；Milvus2.6.23以`ETCD_USE_EMBED=false`连接它，保留本地Woodpecker及原数据目录。原`embedEtcd.yaml`仅供回退参考，不能让嵌入和独立etcd同时写同一目录。维护重启使用`stop-milvus.sh`→`start-milvus.sh`，再doctor、本机health与M05只读verify；单独重启Milvus也应先检查etcd健康。回退前停两容器、冷备当前目录，按备份恢复匹配配置/数据后再验，禁止通过空库启动掩盖缺失记录。迁移及实际重启证据见[M05交接](../handoffs/M05.md)。
 
 Redis AOF/RDB 关闭，缓存丢失是预期行为；业务事实、幂等、审批和最终状态归 MySQL。MySQL/Redis/Milvus 的角色与 checkpoint 门禁见 [ARCHITECTURE](../docs/ARCHITECTURE.md)。
+
+## 学习环境权限
+
+从本机仓库根运行；继续使用既有 P00 客户端与私下配置。`--apply` 更新已有环境并实际验收；省略它只验收，仍会创建并清理专用合成测试库/集合/缓存。输出必须为新的 .local 文件。
+
+```powershell
+infra/.venv314/Scripts/python.exe infra/client/learning-access.py --apply --output .local/learning-access/apply-new.json
+infra/.venv314/Scripts/python.exe infra/client/learning-access.py --output .local/learning-access/verify-new.json
+infra/.venv314/Scripts/python.exe infra/client/check-redis-acl.py --output .local/learning-access/redis-new.json
+```
+
+MySQL 取消账号专属连接/每小时配额，总连接数采用151；Redis ACL 为 `~* &* +@all`；Milvus 给应用账号授予 admin，已有角色保留。调整同时写服务器 MySQL 初始化SQL、mysql.cnf和Redis ACL文件，现有数据、密码与来源材料保留。MySQL/Milvus账号授权本身持久保存；Redis ACL LOAD即时生效，Redis重启后从同一文件加载。
+
+MySQL旧授权/初始化SQL/配置及Redis原ACL保存在服务器专用备份目录，维护工具的私下报告记录具体位置。Redis ACL为单文件bind mount，工具原位写入并保留inode/权限；不能通过更换文件inode让运行容器继续读旧ACL。恢复Redis使用对应备份及 `update-redis-acl.py --restore`，该脚本位于仓库 infra/scripts；不要重新运行退役bootstrap覆盖当前学习配置。
+
+测试实际覆盖脚本/CAS/事务/有序集合、MySQL视图/触发器/存储过程/19连接、Milvus独立库与内容检索。清库、关闭服务等权限通过ACL DRYRUN检查，不在权限验收中执行。中间件账号权限与应用的用户归属/版本/幂等规则分别维护。

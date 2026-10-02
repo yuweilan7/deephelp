@@ -53,6 +53,8 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 `health` 做 MySQL SELECT、Redis PING、Milvus 版本/数据库/集合列表读取，报告为 `.local/infra-health/client-health.json`。`check` 只测端口；用 `-Action stop` 关闭本脚本管理的隧道。POSIX 入口、备份和恢复见 [infra](../infra/README.md) 与 [运维说明](../infra/OPERATIONS.md)。
 
+当前是单人学习环境，三个中间件应用账号采用完整权限，不保留P00的命令/键前缀/角色及账号连接配额限制。权限更新和内容验收见[运维入口](../infra/OPERATIONS.md#学习环境权限)。这与应用代码中的用户归属、幂等和业务事实校验分别维护。
+
 ## 模型记录按需读取
 
 先读 `.local/model-pool-summary.md`，再查询 `.local/model-pool.json` 中所需候选；原始目录/额度/用量快照由该索引引用。核对快照时间、到期时间和当前账户额度；已验证范围见 PROJECT_STATE，不将两个候选的实测外推到全部目录。
@@ -71,6 +73,8 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 py -3.14 -m uv run --locked python -m deephelp_app.live_probe --help
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
 ```
+
+追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。feature共6次、main共4次实际请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
 
 feature 分别检查四项能力，main 对无代码变化的合并进行 chat/embed 最小复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
 

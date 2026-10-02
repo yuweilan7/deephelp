@@ -869,16 +869,20 @@ class ModelTool(DTO):
 
 
 class ChatRequest(DTO):
-    messages: list[ChatMessage] = Field(min_length=1, max_length=32)
-    max_output_tokens: PositiveCount = Field(default=128, le=4096)
+    messages: list[ChatMessage] = Field(min_length=1)
+    max_output_tokens: PositiveCount = 2048
+    enable_thinking: StrictBool | None = None
+    thinking_budget: PositiveCount | None = None
     response_format: Literal["text", "json_schema", "json_object"] = "text"
     output_schema: dict[str, object] | None = None
-    tools: list[ModelTool] = Field(default_factory=list, max_length=16)
+    tools: list[ModelTool] = Field(default_factory=list)
     tool_choice: Identifier | None = None
     repair_once: bool = False
 
     @model_validator(mode="after")
     def valid_request(self) -> ChatRequest:
+        if self.enable_thinking is False and self.thinking_budget is not None:
+            raise ValueError("Thinking budget requires thinking mode")
         if (self.response_format != "text") != (self.output_schema is not None):
             raise ValueError("Structured output requires an explicit schema")
         names = [tool.name for tool in self.tools]
