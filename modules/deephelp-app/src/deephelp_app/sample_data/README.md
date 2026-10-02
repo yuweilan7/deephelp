@@ -41,3 +41,7 @@ M02样本不修改；`corpus.frozen_preview()`适配非空标签记录，原文�
 Milvus另存namespace、dataset_version、model_signature、split、content_hash、FP32 vector及JSON metadata；metadata含source/variant、record_hash、原文件hash、batch_id、corpus_digest、registry_version和attributes。全签名保存在collection description，不存连接/客户端/秘密。record_hash覆盖完整CorpusRecord，batch_id绑定文件及scope；改变标签/内容/签名须新版本，先导入验证再切指针。
 
 dev报告doc Recall@1/3及候选Recall@1/2，每类分母单列；错例保留query ID与候选原分数。未知/否定不纳入有标签召回分母；召回成功不证明最终接管、槽位或业务回答正确。dev供未来阈值校准，regression不能当未见test。
+
+## M06故障数据
+
+`mcp-faults.json`为独立`mcp-faults-v1`配置，只引用business.json合成订单，不修改M02样本。七项配置覆盖延迟、模拟500/限流、缺字段、矛盾、注入文字及超大体积；通过可信服务启动配置加载，不成为模型工具参数。默认正常模式不加载故障；feature验收入口显式使用此配置。

@@ -2,6 +2,8 @@
 
 这是运行环境入口。当前应用为 M01 离线骨架；中间件可连接、模型目录可读不代表业务联调完成。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
+M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度或云库配置。预览、真实协议验收与参数见[应用README](../modules/deephelp-app/README.md#m06真实mcp只读工具)。其--live只启动受控本机进程，不运行P00或开启应用converse业务路径。
+
 ## 本机配置与新机器接手
 
 同机先读 `.local/DEPENDENCIES.md`：凭据路径、实例、端口、最近检查及恢复入口；机器索引为 `.local/dependency-access.json`。两者被 Git 忽略，不含秘密正文。

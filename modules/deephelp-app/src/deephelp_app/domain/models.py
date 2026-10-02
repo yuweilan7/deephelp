@@ -97,6 +97,7 @@ class ErrorCode(StrEnum):
     INVALID_ARGUMENT = "INVALID_ARGUMENT"
     UNAUTHENTICATED = "UNAUTHENTICATED"
     FORBIDDEN = "FORBIDDEN"
+    NOT_FOUND = "NOT_FOUND"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
     TIMEOUT = "TIMEOUT"
@@ -665,6 +666,30 @@ class ToolResult(DTO):
         if self.status == ToolStatus.FAILED and (self.error is None or self.missing_slots):
             raise ValueError("Failed tool needs a classified error")
         return self
+
+
+class ToolInvocationEnvelope(DTO):
+    """Internal signed MCP metadata, never a model-visible tool argument."""
+
+    request: ToolRequest
+    request_id: Identifier
+    trace_id: Identifier
+    call_id: Identifier
+
+
+class ToolInvocationRecord(DTO):
+    call_id: Identifier
+    operation_id: Identifier
+    run_id: Identifier
+    question_id: Identifier
+    request_id: Identifier
+    trace_id: Identifier
+    identity: VerifiedIdentity
+    tool_name: ToolName
+    parameters: ToolParameters
+    status: Literal["started", "succeeded", "failed", "cancelled"]
+    error_code: ErrorCode | None = None
+    evidence_ids: tuple[Identifier, ...] = ()
 
 
 class SOPStatus(StrEnum):

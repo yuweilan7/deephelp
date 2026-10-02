@@ -127,4 +127,12 @@ FakeRepository 的内存用例按 tenant/user/channel/message 作用域保留首
 
 ## 兼容性与发布
 
+M06复用上述ToolRequest/ToolResult，新增内部ToolInvocationEnvelope（请求及request/trace/call ID）和ToolInvocationRecord（主体、实际参数、状态、错误码、证据ID）。增加NOT_FOUND/404，不自动重试；既有类型和字段默认行为保持兼容。两个工具仍为get_order_benefits与check_coupon，模型可见参数只有order_id和对应必需coupon_id。
+
+ToolPort.execute(request, question, budget, context=已验证RequestEnvelope)返回ToolResult。入口必须提供可信context；网关校验它与request/question的主体、session、槽位、版本及可执行状态。stdio不提供登录认证：本特性的独立合成调用者只证明协议和归属检查，应用认证接入由M08负责。
+
+受控stdio子进程通过环境接收随机会话密钥；每次调用的内部_meta携带HMAC-SHA256签名信封，绑定主体、参数、版本及唯一call ID。服务端验证签名、拒绝重放并再次核对订单/券归属；正文身份和故障开关不在schema中。密钥/签名不返回模型或写入ledger。ledger/health为签名保护的管理resource，不注册为工具。
+
+单次调用预留共享ExecutionBudget后发送，不自动重试；内部相对预算含当前已预留的一次调用。超时返回TIMEOUT，主动取消保持CancelledError；实际已发送的失败保留客户端call ID供ledger核对。成功事实需匹配操作、工具版本、对象、类型和证据hash；缺字段/矛盾/超大返回体以MODEL_OUTPUT_INVALID收口，无成功事实。工具返回中的文字仅作为数据。ledger的succeeded表示合成查询完成，网关对损坏响应的拒绝另记diagnostics；ledger不是副作用账本或幂等保证。
+
 当前特性主写者发布被消费的具体类型和示例；下游导入同一包，不能复制DTO定义。新增可选字段说明默认行为；删字段/改枚举/改变幂等范围必须升级契约并回归直接消费者。全局锁与迁移单独审查，不能两个会话同时修改。

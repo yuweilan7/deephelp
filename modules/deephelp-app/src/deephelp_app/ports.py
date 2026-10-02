@@ -6,8 +6,11 @@ from deephelp_app.domain.models import (
     DenseResult,
     DenseScope,
     EmbeddingResult,
+    Question,
     RequestEnvelope,
     ResponseEnvelope,
+    ToolRequest,
+    ToolResult,
     VerifiedIdentity,
 )
 from deephelp_app.execution import ExecutionBudget
@@ -29,6 +32,17 @@ class DenseRetrieverPort(Protocol):
     async def retrieve(
         self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
     ) -> DenseResult: ...
+
+
+class ToolPort(Protocol):
+    async def execute(
+        self,
+        request: ToolRequest,
+        question: Question,
+        budget: ExecutionBudget,
+        *,
+        context: RequestEnvelope,
+    ) -> ToolResult: ...
 
 
 class Repository(Protocol):

@@ -19,6 +19,7 @@ class ExecutionBudget:
     retry_remaining: int
     attempts_used: int = 0
     retries_used: int = 0
+    tool_steps_used: int = 0
     token_limit: int | None = None
     cost_limit: Decimal | None = None
     tokens_used: int = 0
@@ -107,6 +108,7 @@ class ExecutionBudget:
         return BudgetUsed(
             attempts=self.attempts_used,
             retries=self.retries_used,
+            tool_steps=self.tool_steps_used,
             tokens=self.tokens_used if self.token_limit is not None else None,
             cost=self.cost_used if self.cost_limit is not None else None,
             token_upper_bound=self.token_upper_bound if self.token_limit is not None else None,
