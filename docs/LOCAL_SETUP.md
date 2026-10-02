@@ -53,19 +53,19 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 先读 `.local/model-pool-summary.md`，再查询 `.local/model-pool.json` 中所需候选；原始目录/额度/用量快照由该索引引用。核对快照时间、到期时间和当前账户额度；已验证范围见 PROJECT_STATE，不将两个候选的实测外推到全部目录。
 
-候选保留耗尽/过期及观察时间，自动换模型尚未实现。额度耗尽、普通限流、鉴权和网络错误要区分；切换资格、次数及总预算由 [M03](MODULES/M03_MODEL_GATEWAY.md) 实测后约束。Embedding 不允许同维模型静默混入同一集合，签名变化必须新版本集合与重建。目录和额度快照不能替代真实能力验收。
+候选保留额度状态及观察时间；模型使用遵循 [AGENTS](../AGENTS.md)。免费额度用完可换用能力合适的候选，也可使用账号余额继续调用；当前代码尚未实现自动切换，须显式更新模型配置并完成对应真实验收。Embedding签名变化必须新版本集合与重建，不能将同维模型静默混入旧集合。目录和额度快照不能替代实际可调用性与能力验证。
 
 ## M03 受控真实验收
 
-配置模板为 [providers.example.json](../modules/deephelp-app/providers.example.json)，能力及兼容规则见 [模型矩阵](MODEL_CAPABILITIES.md)。凭据只通过环境变量读取；chat/embed 可分别指定自己的 URL/Key 环境字段。每次先核验账户、当前模型额度及有效期；免费用完即停开关不能从额度数字推断，本机查询的账户 PAYG limit 不是硬停保障。脚本不修改账户开关、不自动切模型。
+配置模板为 [providers.example.json](../modules/deephelp-app/providers.example.json)，能力及兼容规则见 [模型矩阵](MODEL_CAPABILITIES.md)。凭据只通过环境变量读取，chat/embed可分别配置；调用前核验鉴权、可调用性和所需能力。脚本不修改账户开关，也不自动选择替代模型。
 
-先按 [AGENTS](../AGENTS.md) 的效果优先原则，在PLAN写明本特性的目标、数据范围和累计预算，再在 `.local` 初始化对应文件。`max_calls`、`max_tokens`按必要上下文、输出、效果对照和诊断/复验余量设置；费用沿用已有适用授权，可记录`max_cost_cny="100"`，不自行收紧成¥1。初次初始化记录`attempts=0`、`tokens=0`、`charged_tokens=0`、`stages=[]`等脚本所需字段；恢复执行沿用已有文件与已用量，不能重新归零或重建文件扩大总授权。费用字段使用保守的请求预留/usage单价上界，不冒充账单金额。
+运行上限由当前任务设置，覆盖必要输入、输出、诊断与复验。脚本仍要求调用/token/费用参数及.local累计文件，用于防止失控调用；恢复执行沿用原累计记录，不归零。字段和历史报告留.local，具体金额与用量不复制到常驻说明。先查看参数，再设置本次验证的`$probeBudgetFile`、`$probeReportFile`、`$probeCalls`、`$probeTokens`和`$probeCost`：
 
-以下保留已完成M03短接口探针的实际入口及阶段上限，不是业务效果验收的预算模板。`.local/m03/session-budget.json`已累计12次请求，次数上限已用满；原文件含历史¥1上限，保留真实记录，不能归零重跑。后续特性在适用授权内说明新任务范围与预算，阶段参数须为完整验证留足余量：
+`$probeBudgetFile`须指向已初始化的.local累计文件：任务上限字段为`max_calls`、`max_tokens`、`max_cost_cny`，计数为`attempts`、`tokens`、`charged_tokens`，并保留`cost_upper_cny`、`uncertain_attempts`及`stages`。新任务从零初始化计数；恢复已有任务不得清零。
 
 ```powershell
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage feature --budget-state .local/m03/session-budget.json --output .local/m03/feature.json --max-calls 4 --max-tokens 8000 --max-cost 0.1
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage main --budget-state .local/m03/session-budget.json --output .local/m03/main.json --max-calls 2 --max-tokens 4000 --max-cost 0.05
+py -3.14 -m uv run --locked python -m deephelp_app.live_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
 ```
 
 feature 分别检查四项能力，main 对无代码变化的合并进行 chat/embed 最小复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
