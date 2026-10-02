@@ -59,9 +59,9 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 配置模板为 [providers.example.json](../modules/deephelp-app/providers.example.json)，能力及兼容规则见 [模型矩阵](MODEL_CAPABILITIES.md)。凭据只通过环境变量读取；chat/embed 可分别指定自己的 URL/Key 环境字段。每次先核验账户、当前模型额度及有效期；免费用完即停开关不能从额度数字推断，本机查询的账户 PAYG limit 不是硬停保障。脚本不修改账户开关、不自动切模型。
 
-先在 `.local` 写明已授权的累计预算。例如经授权的学习验收预算文件可包含 `max_calls=12`、`max_tokens=20000`、`max_cost_cny="1"`、`attempts=0`、`tokens=0`、`charged_tokens=0`、`stages=[]`。恢复执行沿用已有文件与已用量，不能重新归零。费用字段使用更保守的请求预留/usage 单价上界，不冒充账单金额。
+先按 [AGENTS](../AGENTS.md) 的效果优先原则，在PLAN写明本特性的目标、数据范围和累计预算，再在 `.local` 初始化对应文件。`max_calls`、`max_tokens`按必要上下文、输出、效果对照和诊断/复验余量设置；费用沿用已有适用授权，可记录`max_cost_cny="100"`，不自行收紧成¥1。初次初始化记录`attempts=0`、`tokens=0`、`charged_tokens=0`、`stages=[]`等脚本所需字段；恢复执行沿用已有文件与已用量，不能重新归零或重建文件扩大总授权。费用字段使用保守的请求预留/usage单价上界，不冒充账单金额。
 
-本轮文件已经包含开发前探针与修复调用；以下是受控入口，重复运行会继续扣累计预算：
+以下保留已完成M03短接口探针的实际入口及阶段上限，不是业务效果验收的预算模板。`.local/m03/session-budget.json`已累计12次请求，次数上限已用满；原文件含历史¥1上限，保留真实记录，不能归零重跑。后续特性在适用授权内说明新任务范围与预算，阶段参数须为完整验证留足余量：
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage feature --budget-state .local/m03/session-budget.json --output .local/m03/feature.json --max-calls 4 --max-tokens 8000 --max-cost 0.1
