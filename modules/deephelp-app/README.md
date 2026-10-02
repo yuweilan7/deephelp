@@ -4,12 +4,12 @@
 
 ## 从仓库根目录运行
 
-项目使用 uv 0.12.13：
+项目要求 uv 0.12.13。本机 PATH 中裸 `uv` 当前为0.12.10，使用已验证的 `py -3.11 -m uv` 启动器；业务解释器仍由根 `.python-version` 指定为3.14.7：
 
 ```powershell
-uv sync --locked --all-packages
-uv run --locked python --version
-uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+py -3.11 -m uv sync --locked --all-packages
+py -3.11 -m uv run --locked python --version
+py -3.11 -m uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 成员应用使用根 `.python-version` 精确指定的 Python 3.14.7。新增依赖时由当前模块主写者从根执行 `uv lock`，不创建成员锁文件。
@@ -17,7 +17,7 @@ uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 -
 配置只从环境加载，不自动发现 dotenv。需要本机配置时显式运行：
 
 ```powershell
-uv run --locked --env-file .env.local uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+py -3.11 -m uv run --locked --env-file .env.local uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 `.env.example` 可复制为 `.env.local`；后者由 Git 忽略。设置中的密钥使用 `SecretStr`，密钥和上游地址均不参与设置序列化/repr。不要自行打印环境或完整设置对象。默认 `dev/test` 均使用 fake，客户端拒绝网络，不因存在密钥自动切换 live。
@@ -71,14 +71,14 @@ FakeRepository 只供合成测试；按 tenant/user/channel/message 隔离并深
 ## 检查与实验
 
 ```powershell
-uv run --locked ruff check conftest.py modules/deephelp-app
-uv run --locked ruff format --check conftest.py modules/deephelp-app
-uv run --locked mypy
-uv run --locked pytest
-uv run --locked pytest -m unit
-uv run --locked pytest -m integration
-uv run --locked pytest -m e2e
-uv run --locked python -m deephelp_app.experiments
+py -3.11 -m uv run --locked ruff check conftest.py modules/deephelp-app
+py -3.11 -m uv run --locked ruff format --check conftest.py modules/deephelp-app
+py -3.11 -m uv run --locked mypy
+py -3.11 -m uv run --locked pytest
+py -3.11 -m uv run --locked pytest -m unit
+py -3.11 -m uv run --locked pytest -m integration
+py -3.11 -m uv run --locked pytest -m e2e
+py -3.11 -m uv run --locked python -m deephelp_app.experiments
 ```
 
 测试统一阻止外部 DNS/连接，只允许本机 loopback 合成 HTTP。integration 使用真实 httpcore 连接池验证取消归还连接槽；e2e 仅是进程内 ASGI 应用边界，不表示业务或云端 e2e。耗时实验输出对照值，CI 用并发峰值、事件顺序、清理状态和 heartbeat 判据，不用毫秒阈值。

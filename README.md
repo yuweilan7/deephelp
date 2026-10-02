@@ -1,54 +1,36 @@
 # DeepHelp
 
-复刻《客诉场景的自动驾驶 DeepHelp》中可迁移、可验证的核心机制，并补齐权限、幂等、恢复和评测等生产边界。M01 已提供离线异步骨架；业务 Agent、真实模型与持久化尚未实现。
+用 Python 复刻《客诉场景的自动驾驶 DeepHelp》的核心机制：分层意图识别、多轮问题归属、分层记忆、SOP/MCP 工具执行、调试与评测。当前只有 M01 异步骨架，业务功能和真实联调尚未完成。
 
-## 当前入口
+## 先看这两份
 
-- [AGENTS.md](AGENTS.md)：每次本地实施会话必须遵守的工程规则
-- [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md)：唯一进度事实
-- [docs/PLAN_MODULE_PROMPT.md](docs/PLAN_MODULE_PROMPT.md)：模块规划与是否拆分的判定规则
-- [docs/MODULES](docs/MODULES)：M00-M21 共 22 份模块专属规格
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、[docs/CONTRACTS.md](docs/CONTRACTS.md)：架构与跨模块语义
-- [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)：跨模块场景和运行验收基线
-- [handoffs](handoffs)：已完成阶段向直接后继交接的事实
+- [路线图](docs/ROADMAP.md)：每个模块做成什么、哪些是核心、哪些可后移、怎样分支和验收。
+- [当前状态](docs/PROJECT_STATE.md)：已经实现和验证了什么，接下来允许做什么。
 
-`planning/Mxx/` 只在规划某个模块时创建：始终以一份 `PLAN.md` 为入口，确有独立验收边界时才增加 `Sxx_*.md`。它不是第二套长期知识库。
+M00–M21 是 22 份能力规格，包含已完成设计、核心复刻、工程加固和可选扩展。不是 22 个服务，也不要求每次做完一整个 M。第一次真实闭环在 M08；核心深化完成后，审批恢复、部署演练、物流迁移和框架比较可单独选择。
 
-## 推荐工作方式
+## 每次的工作方式
 
-1. 在 ChatGPT 客户端打开仓库，调用本地 `deephelp-module-planner` Skill 并指定当前模块，例如“规划 M01”。
-2. Skill 从仓库读取当前状态、模块规格、直接前置交接、相关代码和 PDF 对应页，判断 `DIRECT / DECOMPOSE / PROBE_FIRST / VERIFY_EXISTING`。
-3. 用 Astra 极高在一个主会话中按 `planning/Mxx/PLAN.md` 顺序实施和测试；已有 S 时逐个完成，不再递归规划。
-4. 模块完成后更新 `handoffs/Mxx.md` 与 `docs/PROJECT_STATE.md`。复杂模块可针对固定 commit 做一次独立只读审查。
+从 M02 起：同步 main → 从 main 新建一条 feature 分支 → 只做一个特性 → 测试和必要真实验证 → add、中文 commit、push feature → 合并 main 并复验 → push main → 同步 feature 并核对本地/远端 SHA → 回到 main。依赖千问 API 或腾讯云中间件的特性，真实依赖失败就停下来报告，不靠 Mock 通过验收。
 
-原 PDF 放在本机 `docs/` 下即可，`docs/*.pdf` 已被 Git 忽略；身份与页码索引见 [docs/SOURCE_MAP.md](docs/SOURCE_MAP.md)。不要把原 PDF、内部截图、真实客户标识或凭据提交到公共仓库。
+只维护一份短计划和一份模块验收记录；无需额外会话、递归 Prompt、多个 Agent 或一组交接文件。你可以直接说“实施 Mxx 的某个特性”，Agent 按 [AGENTS.md](AGENTS.md) 和 [规划规则](docs/PLAN_MODULE_PROMPT.md) 执行。
 
-## 工程基线
+## 工程和运行入口
 
-- Python 3.14.7，根目录一个 uv workspace 和一个 `uv.lock`
-- 首个业务包由 M01 在 `modules/deephelp-app/` 创建
-- MySQL 保存业务事实，Redis 是可重建缓存，Milvus 是可重建检索投影
-- 主路线为 FastAPI/Pydantic/LangGraph；AgentScope 仅作为 M21 可选对照
-- 22 个开发阶段不等于 22 个 Python 包、服务或会话
+Python 3.14.7；根 uv workspace 和一个 `uv.lock`；业务代码在 `modules/deephelp-app/`。MySQL 保存业务事实，Redis/Milvus 是可重建缓存或索引。保留现有 `infra/`，不重新安装 P00。
+
+本机 PATH 中的 uv 版本较旧，以下使用已验证的 Python 3.11 uv 启动器；实际应用解释器仍为 Python 3.14.7。安装、启动、检查和异步实验见 [应用 README](modules/deephelp-app/README.md)。Windows PowerShell 从仓库根运行：
 
 ```powershell
-cd D:\IdeaProject\deephelp
-uv sync --locked --all-packages
-uv run python --version
+py -3.11 -m uv sync --locked --all-packages
+py -3.11 -m uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+py -3.11 -m uv run --locked pytest
 ```
 
-已有 `infra/` 是 P00 历史基础设施，不因开始 M01 而重建。当前真实进度和未验证门禁以 `docs/PROJECT_STATE.md` 为准。
+`/health` 只验证骨架；`/converse` 返回 HTTP 501 和 NOT_IMPLEMENTED。它们不证明真实模型或数据库可用。
 
-## M01 运行入口
+## 其他文档何时看
 
-安装、启动、测试和三个异步实验见 [modules/deephelp-app/README.md](modules/deephelp-app/README.md)，一页异步说明见 [docs/M01_ASYNC_GUIDE.md](docs/M01_ASYNC_GUIDE.md)。
+架构变化查 [ARCHITECTURE](docs/ARCHITECTURE.md)，接口变化查 [CONTRACTS](docs/CONTRACTS.md)，需要知道设计原因查 [DECISIONS](docs/DECISIONS.md)。[ACCEPTANCE](docs/ACCEPTANCE.md) 保存跨模块测试场景；[SOURCE_MAP](docs/SOURCE_MAP.md) 对照 PDF 页码；[RISKS](docs/RISKS.md) 只在相关风险出现时查。[handoffs](handoffs) 是已经完成模块的真实证据，不必每次全部阅读。
 
-Windows 上从仓库根运行：
-
-```powershell
-uv sync --locked --all-packages
-uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
-uv run --locked pytest
-```
-
-根 `.python-version` 精确锁定 Python 3.14.7，`uv sync` 会按该版本创建项目虚拟环境。`GET /health` 返回骨架健康信息；`POST /converse` 返回 HTTP 501 和 `NOT_IMPLEMENTED`。
+原 PDF 放在本机 `docs/`，由 Git 忽略；原件、截图、内部地址、真实客户标识和凭据不提交公共仓库。
