@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /srv/deephelp-infra
-for ref in mysql:8.4.11 redis:8.2.8-alpine milvusdb/milvus:v2.6.23; do
+for ref in mysql:8.4.11 redis:8.2.8-alpine quay.io/coreos/etcd:v3.5.23 milvusdb/milvus:v2.6.23; do
   bash scripts/disk-guard.sh pull
   timeout 1200 docker pull "$ref"
 done
 python3 - <<'PY'
 import json,subprocess,pathlib
-refs={'MYSQL_IMAGE':'mysql:8.4.11','REDIS_IMAGE':'redis:8.2.8-alpine','MILVUS_IMAGE':'milvusdb/milvus:v2.6.23'}
+refs={'MYSQL_IMAGE':'mysql:8.4.11','REDIS_IMAGE':'redis:8.2.8-alpine','MILVUS_IMAGE':'milvusdb/milvus:v2.6.23','ETCD_IMAGE':'quay.io/coreos/etcd:v3.5.23'}
 r={};lines=[]
 for key,tag in refs.items():
     d=json.loads(subprocess.check_output(['docker','image','inspect',tag]))[0]

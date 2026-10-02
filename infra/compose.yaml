@@ -53,6 +53,35 @@ services:
       retries: 3
     logging: *bounded-log
     networks: [middleware]
+  etcd:
+    image: ${ETCD_IMAGE:?Run pull-images.sh first}
+    container_name: deephelp-etcd
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    command:
+      - etcd
+      - --name=default
+      - --data-dir=/etcd
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-peer-urls=http://127.0.0.1:2380
+      - --initial-advertise-peer-urls=http://localhost:2380
+      - --initial-cluster=default=http://localhost:2380
+      - --auto-compaction-mode=revision
+      - --auto-compaction-retention=1000
+      - --quota-backend-bytes=536870912
+    volumes:
+      - /srv/deephelp-data/milvus/etcd:/etcd
+    healthcheck:
+      test: [CMD, etcdctl, --endpoints=http://127.0.0.1:2379, endpoint, health]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    logging: *bounded-log
+    networks: [middleware]
   milvus:
     image: ${MILVUS_IMAGE:?Run pull-images.sh first}
     container_name: deephelp-milvus
@@ -63,9 +92,8 @@ services:
     stop_grace_period: 120s
     command: [milvus, run, standalone]
     environment:
-      ETCD_USE_EMBED: 'true'
-      ETCD_DATA_DIR: /var/lib/milvus/etcd
-      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
+      ETCD_USE_EMBED: 'false'
+      ETCD_ENDPOINTS: etcd:2379
       COMMON_STORAGETYPE: local
       COMMON_SECURITY_DEFAULTROOTPASSWORD: ${MILVUS_BOOTSTRAP_PASSWORD:?Secrets bootstrap required}
       DEPLOY_MODE: STANDALONE
@@ -84,6 +112,9 @@ services:
       start_period: 120s
     logging: *bounded-log
     networks: [middleware]
+    depends_on:
+      etcd:
+        condition: service_healthy
 networks:
   middleware:
     name: deephelp-middleware

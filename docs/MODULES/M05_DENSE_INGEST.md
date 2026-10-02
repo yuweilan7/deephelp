@@ -10,7 +10,7 @@
 将“已标注意图的客诉语料”导入 Milvus，建立可比较的 Dense 检索基线。这里不是对 PDF 分块做问答，也不是把 SOP 全文当所有意图的训练样本。
 
 ## 环境门禁
-先读取 P00 的 infra 验收和实际 Milvus/PyMilvus 版本；当前优先复用已验收的云端受限 Milvus；真实模型和数据接入前复测容量。本机完整 Milvus 仅为另行授权的后备，不自动部署。现有远程实例不可达或能力不满足时立即暂停并报告，保留代码和离线结果，不能把 fake/Lite 当正式验收，也不合并或继续后续依赖特性。不能自动起另一套 etcd/MinIO，不能下载未审核的大镜像。
+先读取P00的infra验收和实际Milvus/PyMilvus版本；优先复用云端受限Milvus，真实模型和数据接入前复测容量。本机完整Milvus仅为另行授权的后备，不自动部署。现有实例故障按AGENTS在项目范围内修复；确认不可恢复时停止推进/合并，保留代码和离线结果，不能把fake/Lite当正式验收。M05重启修复将原嵌入etcd元数据改为同机独立服务，先健康再启动Milvus，见ADR021；不能通过空库、另一套Milvus/MinIO或未经审核的大镜像绕过原数据验证。
 
 ## 数据和 schema
 借鉴原文 1024 维向量、content、intentCode、metadata，采用 M02 的注册表和 M03 的 embedding_signature。基线使用 FloatVector（FP32），这是为调试与兼容性做的明确改造；原文 Float16Vector 在本模块可做小型独立对照，先验证所选 SDK/索引和类型转换，未验证就不启用，不能静默变型。所有查询/导入明确 namespace/dataset_version/model_signature。短期意图样本和后续多轮事件投影分 collection，避免跨类型召回。
@@ -29,4 +29,4 @@ Dense 检索使用真实 Embedding；确定性随机向量仅可测试接口。�
 
 ## 接口与分期边界
 
-只把获准的 train/reference 语料写入检索集合，dev/test 问题及其近义变体组不得入库；保持查询集与索引语料的 manifest 可比对。M05 的导入批次状态可用有界原子文件 manifest，或复用已存在的受控存储，不能依赖尚未实现的 M10。旧 p00_acceptance 是协议探针而非意图库，禁止重建它来冒充业务验证。重启持久性测试需明确维护/隔离目标授权。
+只把获准的 train/reference 语料写入检索集合，dev/test 问题及其近义变体组不得入库；保持查询集与索引语料的 manifest 可比对。M05 的导入批次状态可用有界原子文件 manifest，或复用已存在的受控存储，不能依赖尚未实现的 M10。旧 p00_acceptance 是协议探针而非意图库，禁止重建它来冒充业务验证。现有专用云实验环境的重启持久性测试已按AGENTS授权，实施前记录目标与复验范围。

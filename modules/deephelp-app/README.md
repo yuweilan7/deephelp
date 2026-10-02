@@ -22,6 +22,7 @@ Python 3.14.7 异步骨架及 M02 `0.2.0-m02` 离线契约；启动/凭据见 [L
 | `live_probe.py` | 独立受控真实验收；累计预算、脱敏结构与环境签名 |
 | `trace.py` | 串行线程文件写、JSONL / 内存 trace |
 | `text_entity.py` / `text_entity_probe.py` | M04文本保真、原文实体证据、规则候选 / 离线演示和受控内容验收 |
+| `corpus.py` / `dense.py` / `milvus_dense.py` / `dense_cli.py` | M05语料校验、可续跑导入、Dense候选、Milvus及版本指针 / 内容验收 |
 | `experiments.py` | 三个离线异步实验，说明见 [学习材料](../../docs/learning/M01_ASYNC_GUIDE.md) |
 
 lifespan 通过 AsyncExitStack 管理共享 httpx 客户端，包括启动中途失败。每请求只创建一次 ExecutionBudget；排队、子调用与重试共用总 deadline，子 timeout 不延长它。只读且显式 retry_safe 的操作可有限重试；编程异常/取消继续传播，stream 在取消/错误时归还连接槽。默认连接 10、并发 2、deadline 5 秒、子 timeout 1 秒、调用 3 次、重试 1 次；均由设置校验。
@@ -69,3 +70,25 @@ py -3.14 -m uv run --locked python -m deephelp_app.text_entity_probe
 TextEntityResult保留完整原文、清洗分段、观察、当前实体、冲突、未解析字段、话语功能和规则候选；跨度与枚举语义见[CONTRACTS](../../docs/CONTRACTS.md)。confirmed由调用者提供已授权的前置消息实体；M04不访问会话存储。下游必须检查unresolved_fields，即使保留的旧实体仍在entities中，也不能绕过澄清执行工具。规则带条件/排除项/优先级/证据/version；300不确定最终主意图，600再统一消费。converse业务入口仍待M08。
 
 清洗只规范全半角ASCII及空白，不删否定、表情、日期/金额/数量或改拼写；Regex读取完整原文。模型值必须在原文且可核对字段语义，未知不猜、多值不最后写入获胜、较低可信结果不覆盖已确认值。trace新增300_TEXT_ENTITY事件，仅含诊断ID、长度、层次、数量/耗时/错误，不含正文或提示。
+
+## M05语料与Dense基线
+
+从根运行离线预览，模型/云库调用为0：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.dense_cli preview
+py -3.14 -m uv run --locked python -m deephelp_app.dense_cli preview --source $denseCorpusFile
+py -3.14 -m uv run --locked python -m deephelp_app.dense_cli --help
+```
+
+输入为UTF-8 JSONL/带表头CSV；无表头XLSX只接受一个工作表，必须用`--columns`指定字段→A/B等列字母映射，字段保存为文本，拒绝公式且不计算缓存值。每文件最多2MiB/1000行，content最多2000字符；缺字段、空行、未知/父节点标签、层级不符、重复ID/规范化正文、跨split来源/近义组均拒绝整批。数据字典见[合成数据说明](src/deephelp_app/sample_data/README.md)。
+
+默认从M02的`cases.json`适配30条非空意图标签记录：6条reference入库、12条dev评测、12条regression仅保留manifest；另6条未知/否定不作为有标签参考语料。来源/近义组独立，这些公开样本不能当未见test。真实命令见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)。
+
+`DenseImporter(embeddings, store, capacity).import_corpus(preview, scope, budget, manifest)`复用同一预算与EmbeddingPort，默认8条串行批次。先容量检查再建立/校验集合；稳定doc_id upsert，逐批回读正文、标签、版本、metadata和FP32向量。manifest原子保存pending/completed及每条完整FP32向量的SHA256；未知写入结果按相同主键续跑，已完成批次仍须回读并核对哈希。已验证且本次无写入的重导不重复flush，避免服务器0.1/s限流。manifest锁阻止同文件并发；异常/取消释放锁，进程崩溃遗留锁须核对后处理。
+
+DenseScope绑定namespace/dataset_version/完整EmbeddingSignature/registry版本；集合名从整个scope派生，description绑定scope及索引digest。FloatVector FP32、FLAT/COSINE；同维度不同模型不共用集合。每批检查P00容量门禁，最多保留4个M05集合；到上限安排维护，不能无限建集合绕过容量。
+
+`DenseRetriever.retrieve(text, scope, budget, top_k=3)`实现DenseRetrieverPort，返回原始命中和`per_intent_max_v1`候选：每意图独立取最佳一条，再按cosine排序，同分按code/doc_id稳定排序；不求和样本分数。保留doc_id、code、raw_score、score_kind、metadata与版本；不产生最终IntentDecision或接管阈值。namespace是语料范围，不能替代用户鉴权。
+
+`activate`只把回读完整且manifest VERIFIED的集合写入本机原子指针；`rollback`复验上一版本后切回，失败保留现指针。它不是业务账本或多主机发布系统。`verify/search/evaluate`不创建或修复集合，持久性复验不能用重新导入掩盖丢数据。维护删除只支持指定scope内已有synthetic记录及显式开关，恢复使用同语料的新manifest。BM25/Hybrid、最终意图识别与业务converse留后续模块。

@@ -6,9 +6,10 @@
 |---|---|---|---|
 | MySQL | 8.4.11 | 512 MiB / 0.5 | 3306 → 13306 |
 | Redis | 8.2.8-alpine | 128 MiB / 0.25；maxmemory 64 MiB | 6379 → 16379 |
-| Milvus Standalone Embedded | 2.6.23 | 5 GiB / 2.75 | 19530 → 19530；WebUI 9091 → 19091 |
+| etcd（Milvus元数据） | 3.5.23 | 256 MiB / 0.25 | 仅容器网络，无主机端口 |
+| Milvus Standalone | 2.6.23 | 5 GiB / 2.75 | 19530 → 19530；WebUI 9091 → 19091 |
 
-镜像 tag/digest 在服务器 `infra/.env`，客户端依赖锁在 [requirements.lock.txt](client/requirements.lock.txt)。Milvus 使用 embedded etcd / 本地 Woodpecker WAL，数据为独立 bind 目录；磁盘采用 SOFT_GUARD。4 核 / 8 GB 环境用于小数据、低并发实验；4 维合成向量只证明接口能力。
+镜像 tag/digest 在服务器 `infra/.env`，客户端依赖锁在 [requirements.lock.txt](client/requirements.lock.txt)。Milvus 使用同机独立 etcd / 本地 Woodpecker WAL，数据为 bind 目录；etcd 复用原嵌入实例的元数据目录，健康后才启动 Milvus，原因见 [ADR021](../docs/DECISIONS.md)。磁盘采用 SOFT_GUARD。4 核 / 8 GB 环境用于小数据、低并发实验；4 维合成向量只证明接口能力。
 
 ## 客户端脚本
 

@@ -880,3 +880,80 @@ class EmbeddingResult(DTO):
         ):
             raise ValueError("Embedding vectors require finite values and the signed dimension")
         return self
+
+
+class CorpusRecord(DTO):
+    doc_id: Identifier
+    content: Annotated[str, Field(strict=True, min_length=1, max_length=2000, pattern=r"\S")]
+    intent_code: IntentCode
+    split: Literal["reference", "train", "dev", "test", "regression"]
+    source_group: Identifier
+    variant_group: Identifier
+    synthetic: Literal[True]
+    label_path: tuple[Identifier, ...] | None = None
+    metadata: dict[str, str] = Field(default_factory=dict, max_length=16)
+
+    @model_validator(mode="after")
+    def registered_label(self) -> CorpusRecord:
+        from deephelp_app.domain.registry import complaint_registry
+
+        definition = complaint_registry().get(self.intent_code)
+        levels = tuple(x for x in (definition.l1, definition.l2, definition.l3, definition.l4) if x)
+        if len(self.doc_id.encode("utf-8")) > 128:
+            raise ValueError("doc_id exceeds Milvus byte limit")
+        if not definition.is_actionable or (
+            self.label_path is not None and self.label_path != levels
+        ):
+            raise ValueError("Unknown/non-actionable code or conflicting label hierarchy")
+        if any(len(k) > 128 or len(v) > 512 for k, v in self.metadata.items()):
+            raise ValueError("Metadata exceeds bounded string sizes")
+        return self
+
+
+class DenseScope(DTO):
+    namespace: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,63}$")]
+    dataset_version: Identifier
+    signature: EmbeddingSignature
+    registry_version: Literal["complaints-v1"] = REGISTRY_VERSION
+
+    @model_validator(mode="after")
+    def milvus_byte_limits(self) -> DenseScope:
+        if len(self.dataset_version.encode("utf-8")) > 128:
+            raise ValueError("dataset_version exceeds Milvus byte limit")
+        return self
+
+    @property
+    def fingerprint(self) -> str:
+        return hashlib.sha256(
+            json.dumps(self.model_dump(mode="json"), sort_keys=True).encode()
+        ).hexdigest()
+
+    @property
+    def collection_name(self) -> str:
+        return "m05_intent_" + self.fingerprint[:32]
+
+
+class DenseHit(DTO):
+    doc_id: Identifier
+    intent_code: IntentCode
+    content: str
+    raw_score: Annotated[float, Field(allow_inf_nan=False, ge=-1.001, le=1.001)]
+    score_kind: Literal["cosine"] = "cosine"
+    metadata: dict[str, object]
+    scope: DenseScope
+
+
+class DenseCandidate(DTO):
+    intent_code: IntentCode
+    raw_score: Annotated[float, Field(allow_inf_nan=False)]
+    score_kind: Literal["cosine"] = "cosine"
+    rank: PositiveCount
+    evidence_doc_id: Identifier
+    aggregation: Literal["per_intent_max_v1"] = "per_intent_max_v1"
+
+
+class DenseResult(DTO):
+    scope: DenseScope
+    hits: tuple[DenseHit, ...]
+    candidates: tuple[DenseCandidate, ...]
+    policy_version: Literal["dense-baseline-v1"] = "dense-baseline-v1"

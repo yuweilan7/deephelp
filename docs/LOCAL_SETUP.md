@@ -84,3 +84,22 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.text_en
 ```
 
 live使用transport retries=0、子timeout和共享总deadline；预算预留先落盘、独占锁阻止并发穿透。金额为保守配置估算，不是账单。原始探针/报告和临时运行参数仅留.local，不提交客户数据或凭据；此入口不访问云业务库/MCP/P00 full，也不执行SOP。
+
+## M05导入与Dense检索
+
+从根运行，默认preview离线；其他命令必须显式`--live`，复用已有Milvus应用账号、SSH只读容量探针和M03 provider配置。先health/可调用性/容量，再写M05专用合成集合。每次运行设置足够的调用/token/费用累计上限，沿用M03字段：max_calls/max_tokens/max_cost_cny、attempts/tokens/charged_tokens/cost_upper_cny/uncertain_attempts；文件在.local，恢复不得归零。M05调用计数包括Milvus应用层操作，token/费用只计模型调用；默认重试0、总timeout300秒，可显式调整。PyMilvus2.6.17在SDK timeout非空时按时间窗口重试而非retry_times；本适配器使用SDK timeout=None/retry_times=0，外层async deadline把每个操作限制在15秒。
+
+设置本任务的`$denseBudgetFile`、`$denseManifestFile`、`$densePointerFile`和`$denseReportFile`后执行：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.dense_cli preview
+py -3.14 -m uv run --locked python -m deephelp_app.dense_cli --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_cli accept --live --budget-state $denseBudgetFile --manifest $denseManifestFile --pointer $densePointerFile --output $denseReportFile
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_cli verify --live --budget-state $denseBudgetFile --manifest $denseManifestFile --output $denseReportFile
+```
+
+默认namespace=m05_synthetic、dataset-version=m05-smoke-v1。自备文件先preview，运行时加`--source`；CSV/JSONL/XLSX字典见[合成数据说明](../modules/deephelp-app/src/deephelp_app/sample_data/README.md)。`import`导入/续跑，`search --query`检索，`evaluate`独立dev评测；`accept`额外检查重复导入和内容指标，新manifest时模拟一次真实upsert后的客户端确认丢失（不宣称云故障）。
+
+新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
+
+输出/预算/manifest/指针应使用不同.local路径；原始内容/诊断/临时上限只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务MySQL/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。

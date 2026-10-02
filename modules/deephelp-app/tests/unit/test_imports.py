@@ -29,6 +29,10 @@ with (
         import deephelp_app.domain.checks
         import deephelp_app.domain.registry
         import deephelp_app.samples
+        import deephelp_app.corpus
+        import deephelp_app.dense
+        import deephelp_app.milvus_dense
+        import deephelp_app.dense_cli
     assert not client.called
     assert not pool.called
 """
