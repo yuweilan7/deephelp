@@ -114,3 +114,22 @@ feature验正确金额/券状态/证据、双用户同进程并发、越权、�
 默认启动限15秒、单工具5秒、并发4、返回体64KiB、ledger256次；每请求复用ExecutionBudget，排队占总deadline，调用前预留，重试0。smoke默认总120秒/48次，参数`--timeout`/`--max-calls`仅本轮上限。主动取消传播CancelledError；SDK发送取消并回收子进程，服务端相对deadline提供额外上限。
 
 默认MockConfig无故障；feature加载[故障fixture](src/deephelp_app/sample_data/mcp-faults.json)。支持延迟、下游500/限流、缺字段、矛盾、注入文字和超大结果，都是合成业务故障。`gateway.ledger()`读取签名保护的管理resource，不是模型工具；记录实际主体/参数、request/trace/operation/call及证据ID。可选ledger_path将有界合成快照写入新文件；密钥/签名不写盘。服务端查询完成而网关拒绝损坏输出时，ledger保留实际查询成功，diagnostics记录MODEL_OUTPUT_INVALID。ledger不提供业务副作用持久性或幂等；业务写工具仍需M15。
+
+## M07最小SOP执行
+
+三份 [SOP配置](src/deephelp_app/sop_data/) 对应优惠未享受、券不可用、订单活动查询；[schema](src/deephelp_app/sop_data/schema.json) 与 [Prompt](src/deephelp_app/sop_data/sop-react-v1.txt) 均版本化。配置限定 `lookup → evaluate`，分支只比较事实字段的 `eq/empty/nonempty`，不执行表达式。优惠未到账时已有查询不能解释原因，返回事实并转人工；券/活动按证据返回状态，查询可用不承诺结算成功。
+
+根目录运行下面的演示：固定模型动作回放、本机真实SDK stdio和合成业务数据，外部模型/云库调用为0。输出三份完整SOPResult和真实ledger。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.sop_probe
+py -3.14 -m uv run --locked python -m deephelp_app.sop_probe --help
+```
+
+`SOPExecutor(model: ChatPort, tools: ToolPort).execute(question, budget, context=可信RequestEnvelope, run_id=...)` 是独立受控执行单元。输入Question已确定意图、归属、实体来源和SOP版本；入口先鉴权/核对版本，缺槽位或未解决更正返回WAITING_SLOT，模型/工具0。完整Question须为ACTIVE；执行器不重新分类、不写问题状态，主流程用既有 `response_from_sop` 映射CLARIFY/WAITING_SLOT等状态。
+
+模型每步只选一个已声明工具或 `finish_sop/handoff_sop` 控制信号；取得成功观察后，阶段固定原生finish_sop调用，避免模型改为文字回复。控制信号由本地代码处理，不是MCP工具。参数必须逐项等于已验证槽位，未知/写工具、换订单/附带身份和重复已完成查询均拒绝。用户/工具文字留在不可信消息中，SOP/白名单只来自本地配置。观察复用M06的关联、对象、类型、证据hash和金额/券状态检查，配置所需事实不足不得RESOLVED。结论由配置分支产生并引用实际工具证据，模型不填写事实/状态。
+
+每份配置包含max_steps、max_tool_calls、总时限、模型/工具子时限、单次与总重试上限；所有模型/工具共享原ExecutionBudget，参数不能放大调用者预算。只对明确的限流/下游不可用只读失败有限重试，timeout/取消/鉴权/坏结果不重试。ToolRequest可用 `timeout_seconds` 收紧网关子时限；ToolPort可用运行时 `on_dispatch(call_id)` 在发送await前记录ID，总deadline收口仍可对账。失败调用ID保留，失败没有事实；ledger是合成查询审计，不是持久副作用账本。
+
+真实模型+真实MCP内容验收、累计预算初始化和参数见 [LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m07真实模型与sop验收)。默认pytest无外部网络，覆盖三个SOP正常/缺资料/失败、循环、注入、版本、证据、共享预算、重试、timeout和取消；真实stdio与固定回放组合属于本机集成。converse业务接入留M08，润色/复杂SOP治理/审批留对应后续模块。

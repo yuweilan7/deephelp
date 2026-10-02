@@ -136,3 +136,9 @@ ToolPort.execute(request, question, budget, context=已验证RequestEnvelope)返
 单次调用预留共享ExecutionBudget后发送，不自动重试；内部相对预算含当前已预留的一次调用。超时返回TIMEOUT，主动取消保持CancelledError；实际已发送的失败保留客户端call ID供ledger核对。成功事实需匹配操作、工具版本、对象、类型和证据hash；缺字段/矛盾/超大返回体以MODEL_OUTPUT_INVALID收口，无成功事实。工具返回中的文字仅作为数据。ledger的succeeded表示合成查询完成，网关对损坏响应的拒绝另记diagnostics；ledger不是副作用账本或幂等保证。
 
 当前特性主写者发布被消费的具体类型和示例；下游导入同一包，不能复制DTO定义。新增可选字段说明默认行为；删字段/改枚举/改变幂等范围必须升级契约并回归直接消费者。全局锁与迁移单独审查，不能两个会话同时修改。
+
+M07发布 `SOPExecutorPort.execute(question, budget, context=可信RequestEnvelope, run_id=...) → SOPResult`。Question承载已确定意图、唯一带来源槽位、归属和固定SOP版本；执行器先检查主体/session/状态/版本，缺失或冲突槽位返回WAITING_SLOT，模型/工具0。它不重新分类或修改Question；已有response_from_sop负责状态映射。独立受控执行单元未依赖LangGraph，未来执行框架只替换这个端口。
+
+ToolRequest新增可选 `timeout_seconds=null`，null沿用网关子时限，非空只能收紧；身份/预算/timeout均不在模型参数schema中。ToolPort.execute增加可选运行时 `on_dispatch(call_id)` 回调，默认null兼容原消费者，网关在发送await前调用；它不属于DTO，用于总deadline期间保留已发送尝试。M06的事实/证据检查提取为共享validate_observation，网关与执行器使用同一规则。
+
+SOPResult与ResponseEnvelope的tool_call_ids语义细化为所有已发送尝试，包含失败/被取消的调用，ID不重复。所有工具证据必须指向其中的成功调用；失败ID自身不是成功证据，RESOLVED仍必须有事实/证据。旧有全成功结果兼容；缺槽位仍禁止工具ID。入口FORBIDDEN仍是无事实/调用的REJECTED；已鉴权运行中查询被下游拒绝可为ERROR/FAILED并保留实际调用ID，不能发布对象事实。业务envelope仍0.2.0-m02，现有消费者完整回归；此边界不实现持久审计/审批账本。

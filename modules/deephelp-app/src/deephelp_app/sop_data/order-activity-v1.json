@@ -1,0 +1,69 @@
+{
+  "schema_version": "m07-sop-v1",
+  "sop_id": "order-activity-v1",
+  "version": "order-activity-v1",
+  "intent_code": "ORDER_ACTIVITY_QUERY",
+  "prompt_version": "sop-react-v1",
+  "tool_version": "m06-readonly-v1",
+  "required_slots": [
+    "order_id"
+  ],
+  "allowed_tools": [
+    "get_order_benefits"
+  ],
+  "steps": [
+    "lookup",
+    "evaluate"
+  ],
+  "required_facts": [
+    "order_id",
+    "paid",
+    "discount",
+    "discount_status",
+    "activity_ids",
+    "activity_labels"
+  ],
+  "evidence_version": "business-fixtures-v1",
+  "stop_conditions": [
+    "missing_slots",
+    "invalid_action",
+    "repeated_call",
+    "deadline",
+    "max_steps",
+    "max_tools"
+  ],
+  "handoff_conditions": [
+    "model_handoff",
+    "insufficient_evidence",
+    "unmatched_branch"
+  ],
+  "limits": {
+    "max_steps": 4,
+    "max_tool_calls": 2,
+    "total_seconds": 60,
+    "model_seconds": 30,
+    "tool_seconds": 5,
+    "retries_per_call": 1,
+    "total_retries": 1
+  },
+  "branches": [
+    {
+      "condition": {
+        "fact": "activity_ids",
+        "op": "nonempty",
+        "value": null
+      },
+      "status": "RESOLVED",
+      "conclusion": "订单证据列出了参加的活动，活动标识和名称见查询事实。"
+    },
+    {
+      "condition": {
+        "fact": "activity_ids",
+        "op": "empty",
+        "value": null
+      },
+      "status": "RESOLVED",
+      "conclusion": "订单查询证据未列出参加的活动。"
+    }
+  ]
+}

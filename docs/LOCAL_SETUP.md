@@ -4,6 +4,8 @@
 
 M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度或云库配置。预览、真实协议验收与参数见[应用README](../modules/deephelp-app/README.md#m06真实mcp只读工具)。其--live只启动受控本机进程，不运行P00或开启应用converse业务路径。
 
+M07默认演示使用固定模型回放加本机真实stdio，不消费模型额度；显式--live才调用千问。输入是合成已分类Question和专用业务fixture，入口见[应用README](../modules/deephelp-app/README.md#m07最小sop执行)。
+
 ## 本机配置与新机器接手
 
 同机先读 `.local/DEPENDENCIES.md`：凭据路径、实例、端口、最近检查及恢复入口；机器索引为 `.local/dependency-access.json`。两者被 Git 忽略，不含秘密正文。
@@ -105,3 +107,19 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_c
 新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
 
 输出/预算/manifest/指针应使用不同.local路径；原始内容/诊断/临时上限只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务MySQL/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。
+
+## M07真实模型与SOP验收
+
+先按模型摘要核对任务所需chat候选的原生工具能力与可调用性，M07不调用Embedding或云业务库。真实验收用现有ProviderConfig、共享预算和自建MCP只读服务；身份/订单/券均合成。配置与Prompt版本固定，未做主意图识别或回复润色。
+
+本轮设置足够的调用/token/费用/总时限，并初始化专用`.local`累计文件；字段沿用M03的`max_calls/max_tokens/max_cost_cny`、`attempts/tokens/charged_tokens/cost_upper_cny/uncertain_attempts/stages`。调用数包含模型与MCP实际尝试，费用是保守配置估算。恢复沿用原文件、不清零；独占锁、发请求前持久预留与未知尝试不退款防止穿透。报告须为新的`.local`文件，与预算/锁路径不同。
+
+设置本次的`$sopBudgetFile`、`$sopReportFile`、`$sopCalls`、`$sopTokens`、`$sopCost`后，从根执行：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.sop_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.sop_probe --live --stage feature --budget-state $sopBudgetFile --output $sopReportFile --max-calls $sopCalls --max-tokens $sopTokens --max-cost $sopCost
+# 合并后换新报告路径，--stage main，累计预算保持同一文件。
+```
+
+feature验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败，核对实际事实、证据与ledger；main最小复验三类正常业务路径和退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。

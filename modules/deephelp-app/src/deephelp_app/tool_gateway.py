@@ -1,12 +1,11 @@
 """One owned SDK session per lifespan; only verified read-only requests reach MCP."""
 
 import asyncio
-import hashlib
 import json
 import math
 import secrets
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, TextIO
@@ -25,16 +24,12 @@ from deephelp_app.domain.checks import (
     validate_tool_result,
 )
 from deephelp_app.domain.models import (
-    DTO,
     ErrorCode,
     ErrorDetail,
-    FactKind,
-    Money,
     Question,
     RequestEnvelope,
     ToolInvocationEnvelope,
     ToolInvocationRecord,
-    ToolName,
     ToolRequest,
     ToolResult,
     ToolStatus,
@@ -50,6 +45,7 @@ from deephelp_app.mcp_protocol import (
     registered_tools,
     sign_metadata,
     validate_arguments,
+    validate_observation,
 )
 
 
@@ -176,6 +172,7 @@ class ToolGateway:
         budget: ExecutionBudget,
         *,
         context: RequestEnvelope,
+        on_dispatch: Callable[[str], None] | None = None,
     ) -> ToolResult:
         """Context is injected by the authenticated entry point, never model tool arguments."""
         call_id = "call-" + uuid4().hex
@@ -216,6 +213,8 @@ class ToolGateway:
                 try:
                     dispatched = True
                     budget.tool_steps_used += 1
+                    if on_dispatch:
+                        on_dispatch(call_id)
                     wire = await self._connected().call_tool(
                         request.tool_name.value, arguments, meta=meta
                     )
@@ -231,7 +230,9 @@ class ToolGateway:
                 return self._parse(request, call_id, wire)
 
             # No automatic retry: timeout/cancellation has a unique observable invocation.
-            result = await self.calls.call(operation, budget, retry_safe=False)
+            result = await self.calls.call(
+                operation, budget, retry_safe=False, child_timeout=request.timeout_seconds
+            )
             self._record(request, context, result)
             return result
         except asyncio.CancelledError:
@@ -305,71 +306,12 @@ class ToolGateway:
                 or result.upstream_request_id != call_id
             ):
                 raise ValueError
-            self._validate_facts(request, result)
+            validate_observation(request, result)
             return result
         except ValueError, TypeError, ValidationError:
             raise AppError(
                 ErrorCode.MODEL_OUTPUT_INVALID, "Invalid or contradictory MCP result"
             ) from None
-
-    @staticmethod
-    def _validate_facts(request: ToolRequest, result: ToolResult) -> None:
-        facts = {f.name: f for f in result.facts}
-        expected = (
-            {
-                "order_id": FactKind.TEXT,
-                "paid": FactKind.MONEY,
-                "discount": FactKind.MONEY,
-                "discount_status": FactKind.TEXT,
-                "activity_ids": FactKind.TEXT,
-                "activity_labels": FactKind.TEXT,
-            }
-            if request.tool_name == ToolName.GET_ORDER_BENEFITS
-            else {
-                "order_id": FactKind.TEXT,
-                "coupon_id": FactKind.TEXT,
-                "coupon_status": FactKind.TEXT,
-                "minimum_spend": FactKind.MONEY,
-                "usable": FactKind.FLAG,
-            }
-        )
-        if (
-            len(facts) != len(result.facts)
-            or set(facts) != set(expected)
-            or any(facts[k].kind != kind for k, kind in expected.items())
-            or facts["order_id"].value != request.parameters.order_id
-            or len(result.evidence_refs) != 1
-        ):
-            raise ValueError
-        ref = result.evidence_refs[0]
-        values = {
-            k: (f.value.model_dump(mode="json") if isinstance(f.value, DTO) else f.value)
-            for k, f in facts.items()
-        }
-        if (
-            ref.version != "business-fixtures-v1"
-            or ref.locator != request.parameters.order_id
-            or ref.content_hash != hashlib.sha256(canonical(values)).hexdigest()
-            or any(f.evidence_ids != (ref.evidence_id,) for f in result.facts)
-        ):
-            raise ValueError
-        if request.tool_name == ToolName.GET_ORDER_BENEFITS:
-            paid, discount = facts["paid"].value, facts["discount"].value
-            status = facts["discount_status"].value
-            if (
-                not isinstance(paid, Money)
-                or not isinstance(discount, Money)
-                or discount.amount > paid.amount
-                or status not in {"applied", "not_eligible", "missing"}
-                or (status != "applied" and discount.amount != 0)
-            ):
-                raise ValueError
-        elif (
-            facts["coupon_id"].value != request.parameters.coupon_id
-            or facts["coupon_status"].value not in {"usable", "expired", "threshold_not_met"}
-            or facts["usable"].value != (facts["coupon_status"].value == "usable")
-        ):
-            raise ValueError
 
 
 def process_alive(pid: int) -> bool:

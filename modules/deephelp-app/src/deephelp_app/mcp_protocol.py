@@ -9,7 +9,16 @@ from jsonschema import Draft202012Validator
 from mcp.types import RequestParamsMeta, Tool, ToolAnnotations
 from pydantic import ValidationError
 
-from deephelp_app.domain.models import ErrorCode, ToolName, ToolParameters, ToolResult
+from deephelp_app.domain.models import (
+    DTO,
+    ErrorCode,
+    FactKind,
+    Money,
+    ToolName,
+    ToolParameters,
+    ToolRequest,
+    ToolResult,
+)
 from deephelp_app.errors import AppError
 
 TOOL_VERSION = "m06-readonly-v1"
@@ -103,3 +112,62 @@ def verify_metadata(secret: str, meta: RequestParamsMeta | None) -> dict[str, An
         return payload
     except ValueError, TypeError:
         raise AppError(ErrorCode.FORBIDDEN, "Trusted execution context required") from None
+
+
+def validate_observation(request: ToolRequest, result: ToolResult) -> None:
+    facts = {f.name: f for f in result.facts}
+    expected = (
+        {
+            "order_id": FactKind.TEXT,
+            "paid": FactKind.MONEY,
+            "discount": FactKind.MONEY,
+            "discount_status": FactKind.TEXT,
+            "activity_ids": FactKind.TEXT,
+            "activity_labels": FactKind.TEXT,
+        }
+        if request.tool_name == ToolName.GET_ORDER_BENEFITS
+        else {
+            "order_id": FactKind.TEXT,
+            "coupon_id": FactKind.TEXT,
+            "coupon_status": FactKind.TEXT,
+            "minimum_spend": FactKind.MONEY,
+            "usable": FactKind.FLAG,
+        }
+    )
+    if (
+        len(facts) != len(result.facts)
+        or set(facts) != set(expected)
+        or any(facts[k].kind != kind for k, kind in expected.items())
+        or facts["order_id"].value != request.parameters.order_id
+        or len(result.evidence_refs) != 1
+    ):
+        raise ValueError
+    ref = result.evidence_refs[0]
+    values = {
+        k: (f.value.model_dump(mode="json") if isinstance(f.value, DTO) else f.value)
+        for k, f in facts.items()
+    }
+    if (
+        ref.version != "business-fixtures-v1"
+        or ref.locator != request.parameters.order_id
+        or ref.content_hash != hashlib.sha256(canonical(values)).hexdigest()
+        or any(f.evidence_ids != (ref.evidence_id,) for f in result.facts)
+    ):
+        raise ValueError
+    if request.tool_name == ToolName.GET_ORDER_BENEFITS:
+        paid, discount = facts["paid"].value, facts["discount"].value
+        status = facts["discount_status"].value
+        if (
+            not isinstance(paid, Money)
+            or not isinstance(discount, Money)
+            or discount.amount > paid.amount
+            or status not in {"applied", "not_eligible", "missing"}
+            or (status != "applied" and discount.amount != 0)
+        ):
+            raise ValueError
+    elif (
+        facts["coupon_id"].value != request.parameters.coupon_id
+        or facts["coupon_status"].value not in {"usable", "expired", "threshold_not_met"}
+        or facts["usable"].value != (facts["coupon_status"].value == "usable")
+    ):
+        raise ValueError
