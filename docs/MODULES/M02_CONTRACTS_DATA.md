@@ -1,34 +1,41 @@
-# M02｜领域契约、意图目录与从第一天开始的评测
+# M02｜当前闭环的数据类型、意图目录和固定样本
 
-**阶段：** A 基础
+**定位：** 核心复刻的基础；本次只修订规格，未启动实施。
+**前置：** M00、M01。
+**来源：** PDF 文件页25–30、51–54、55–66、71。字段、权限和数据划分是工程设计；实施流程见 `docs/ROADMAP.md`。
 
-**前置：** M00, M01
+## 做成什么
 
-**来源：** 原 PDF 文件页 25–30、51–54、55–66、71。以下未由原文给出的实现细节均为本复刻方案的工程要求。
+让 M03–M08 导入同一套输入、实体、意图、工具和响应类型，并能用固定样本验证三类客诉。示例：“订单 DEMO-001 没享受优惠”对应合法意图；缺订单应表示待补资料，不能生成成功工具结果。
 
-## 本模块目标
-建立模块间唯一一版数据契约和可追溯的小型数据资产，阻止多个 Pro 会话各自命名状态、定义不同的 confidence、修改同一个意图 code。评测从这里开始，不等系统做完才补测试。
+这是一组能力规格，通常按“共享类型”“意图目录与样本”两个特性顺序完成，各用一条 feature 分支；不要求一次写完所有未来协议。
 
-## 必须冻结的契约
-RequestEnvelope 包含经过入口确认的 tenant/user/session、message_id、request_id、原文与时间；Question/Case 保存状态、实体、活动版本；EventContext 保存聚合后的文本、来源 message_ids、实体及冲突；IntentDecision 保存候选、各阶段证据、最终 code、decision（accept/clarify/handoff/reject）和原因；ToolRequest/ToolResult、SOPResult、ResponseEnvelope 有严格 schema。
+## 当前需要的内容
 
-区分 evidence_score（cosine/BM25/fusion 等带来源分数）、classifier_probability、经验证的 decision confidence。不能一律叫 confidence 再用同一阈值。定义 ExecutionBudget（时间、调用、token、tool步骤、重试）、EvidenceRef、VersionManifest。字段过多时分实体，但不丢掉拒识、未知值和失败可诊断性。
+在 M01 的 `deephelp_app.domain.models` 原位扩展，不再创建另一套 DTO：
 
-Question 状态至少覆盖 ACTIVE、WAITING_SLOT、WAITING_APPROVAL、RESOLVED、HANDED_OFF、CANCELLED；允许不适用状态被分期关闭。图运行状态与这些业务状态分开。同一 message 幂等接收，同一 operation_id 幂等执行。明确错误何时可重试、何时需问用户、何时人工接管。
+- Request/Response：可信身份、session/message/request/run/trace/question 标识、输入原文/时间、outcome、错误、下一步、事实和证据。身份不能由请求正文或模型指定。
+- 实体与问题：实体值、消息出处和冲突；Question 的归属、当前状态、版本。订单/券/SKU 用字符串；金额用 Decimal 或规范十进制字符串，说明币种/精度。
+- IntentDecision：合法 code、候选、score_kind、最终选择和 accept/clarify/handoff/reject；不能把 cosine、BM25 和分类概率混叫 confidence。
+- Tool/SOP 结果和 EvidenceRef：有类型的事实、实际调用/证据引用、缺槽位与失败。VersionManifest 扩展当前实际用到的版本；未配置的版本保持 null。
+- ExecutionBudget 复用 M01 运行时预算机制，定义序列化摘要；DTO 不保存时钟、连接、锁或 SDK 对象。
 
-## 意图和测试数据
-依据 p25–30 的层级和例子构造合法的自有目录，不声称看到了完整原始表。code 稳定且唯一，层级用显式 l1/l2/l3/l4 与父子关系字段维护，不能从 CS_* 下划线数量猜业务层级。保留 is_actionable、required_slots、sop_id 和 registry_version。先选优惠未享受、优惠券不可用、订单活动查询等 3–5 类，用合成订单/券/商详 fixture 支撑真实逻辑，不照抄真实客户编号。
+状态枚举与未来安全语义仍参考 CONTRACTS，但 M02 只实现本阶段可校验的结构。M07 首次消费 SOP 时细化相关字段；M10 细化缓存/投影事件；M15 细化审批领取/恢复。未来字段可预留且明确禁用，不能把未来功能当作已实现，也不能因预留字段要求先建审批数据库。
 
-先写 30–60 条确定期望的 smoke/e2e 数据与开发集，并预留扩展到 500+ 的结构。数据每条含 case_id、来源/合成标记、variant_group、split、expected_intent、expected_entities、expected_tool_calls、expected_terminal_state。将同一问题的近义改写和同模板实例分在同一 split，避免训练/测试泄漏。测试集需人工或确定性业务规则核验，不能仅依赖生成它的模型再给自己打分。
+数据库幂等键、唯一约束和版本语义记录在 CONTRACTS；真实 MySQL 行为留 M08/M10，持久审批和写操作留 M15。
 
-## 评测口径先定义
-分类正确率和 macro-F1；已接管样本的覆盖率/错误率；拒识与澄清率；实体保真；工具选择/参数正确率；脚本场景完成率；危险写操作误执行率；耗时与调用成本。不能把 Mock 场景完成率命名为真实线上一次解决率。硬安全门禁优先于综合分数。
+## 意图目录与数据
 
-## 必测与交付
-非法枚举、未知 intentCode、缺 provenance、金额/编号类型损失、重复 message_id、相同 session 的两个 question、跨用户检索过滤都要有契约测试。为 p52 的 code/topK 不一致设一致性约束：最终选择若非 top1 必须有显式经过验证的路由理由，不能无声切换。
+选优惠未享受、券不可用、订单活动查询等3–5类。注册表包含稳定唯一 code、显式 l1/l2/l3/l4/父子关系、is_actionable、required_slots、sop_id 和版本。原文没有完整可用目录，不从下划线数量猜层级，不复制内部客户记录。
 
-交付 schema/示例 JSON、意图注册表、少量冻结 fixture、数据版本清单、测试断言及 contracts 变更流程。共享 schema、全局 lock 和 DB migration 只能由本模块的主集成人统一发布。下游只能提变更请求，不能私自复制另一版 DTO。
+建立30–60条固定 smoke/regression 与开发样本，包含 case_id、合成标记、variant_group、split、预期意图/实体/工具调用/结束状态。合成订单、券、活动 fixture 给 M06 实际业务分支使用。同一来源的近义改写与模板实例不跨 train/reference、dev、test；开发回归集和未来未见评测集分开。
 
-## 接口与分期边界
+先定义准确率、macro-F1、覆盖/错误接管、实体保真、工具参数和脚本场景完成率的口径；M02 不实现完整500条评测平台，不承诺线上一次解决率。
 
-本模块发布唯一类型、注册表与合成 fixture；复用并补全 M01 最小类型。数据库唯一约束/权限语义先形成规格，M08 实现最小消息/问题账本，M10 扩展生命周期和投影，M15 完成审批/操作恢复；不要提前实现后三个模块。订单等编号用字符串，金额用 Decimal 或规范十进制字符串并明确币种/精度。只有实际执行过的测试才算通过，不能把契约样例标成 MySQL 行为验证。
+## 怎样验收
+
+JSON round-trip、非法枚举/未知code、缺实体来源、金额/前导零保真有断言。缺订单 → CLARIFY/WAITING_SLOT/工具0；跨归属请求被拒；同session两个问题不混为一个。相同 message_id 的 payload 冲突语义可做类型/内存用例，明确不是 MySQL 唯一约束验证。
+
+最终意图与 top1 不同而没有合法策略理由时拒收决策。未来审批样例只校验示例结构和禁用写工具，不能声称审批执行通过。
+
+交付代码中的唯一类型、注册表、fixture、必要 JSON 示例和相关测试；只更新一份 M02 handoff/STATE。此模块没有真实外部依赖，验收不消耗千问额度、不连接或迁移云库。

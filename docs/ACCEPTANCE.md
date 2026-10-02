@@ -17,7 +17,9 @@
 | I03 | 真实MCP协议 | list_tools/call_tool超时/非法参数 | 协议/白名单/错误归一化；不是函数Mock | M06，当前NOT_RUN |
 | L01 | 真实模型live | chat/schema/tool/embed各一次受限探针 | 独立能力证据、成本/失败记录 | M03，当前NOT_RUN |
 | E01 | 真实e2e | 真实模型+Milvus+MCP Mock三类场景 | 完整trace和工具ledger；注明合成业务 | M08，当前NOT_RUN |
-| F01 | 真实进程故障 | checkpoint落后账本/审批并发 | 恢复不越权不重放效果 | M15，当前NOT_RUN |
+| F01 | 真实进程故障（选做写入加固） | checkpoint落后账本/审批并发 | 恢复不越权不重放效果 | M15，当前NOT_RUN；不阻塞只读核心 |
+
+核心复刻、规模扩展和独立加固分期见 ROADMAP。D04涉及旧审批、D06、F01及下文审批fixtures均为M15运行要求；只读核心只验更正/归属/证据/隔离等适用部分。文档样例不能计作运行通过，真实依赖失败按AGENTS暂停。
 
 ## 设计接口复核方法
 

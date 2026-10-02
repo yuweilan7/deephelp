@@ -10,7 +10,7 @@
 将“已标注意图的客诉语料”导入 Milvus，建立可比较的 Dense 检索基线。这里不是对 PDF 分块做问答，也不是把 SOP 全文当所有意图的训练样本。
 
 ## 环境门禁
-先读取 P00 的 infra 验收和实际 Milvus/PyMilvus 版本；当前优先复用已验收的云端受限 Milvus；真实模型和数据接入前复测容量。本机完整 Milvus 仅为另行授权的后备，不自动部署。没有可用实例时可做单测/生成配置，但不把 fake 或 Lite 测试算作真实 Milvus 接口通过。不能自动起另一套 etcd/MinIO，不能下载未审核的大镜像。
+先读取 P00 的 infra 验收和实际 Milvus/PyMilvus 版本；当前优先复用已验收的云端受限 Milvus；真实模型和数据接入前复测容量。本机完整 Milvus 仅为另行授权的后备，不自动部署。现有远程实例不可达或能力不满足时立即暂停并报告，保留代码和离线结果，不能把 fake/Lite 当正式验收，也不合并或继续后续依赖特性。不能自动起另一套 etcd/MinIO，不能下载未审核的大镜像。
 
 ## 数据和 schema
 借鉴原文 1024 维向量、content、intentCode、metadata，采用 M02 的注册表和 M03 的 embedding_signature。基线使用 FloatVector（FP32），这是为调试与兼容性做的明确改造；原文 Float16Vector 在本模块可做小型独立对照，先验证所选 SDK/索引和类型转换，未验证就不启用，不能静默变型。所有查询/导入明确 namespace/dataset_version/model_signature。短期意图样本和后续多轮事件投影分 collection，避免跨类型召回。
