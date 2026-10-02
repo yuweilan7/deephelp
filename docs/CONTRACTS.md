@@ -6,6 +6,14 @@
 
 ## 哪个阶段实现什么
 
+M04增量类型仍在唯一domain/models.py，业务envelope保持0.2.0-m02，无破坏性接口变化：
+
+- TextCleanResult含raw_text、cleaned_text、连续完整segments及width-whitespace-v1；不截断原文。分段start/end是cleaned_text字符索引，段拼接必须还原完整cleaned_text。
+- ExtractedEntity继承Entity；start/end是raw_text的Python字符索引，source.excerpt必须等于该切片，value等于该片段的全半角ASCII规范化。layer=regex/api/strong；confidence_kind=deterministic/model_grounded，不是校准概率。disposition保留observed/negated/correction。同消息更正保留所有observations；跨消息更正复用EntityConflict及旧/新来源。
+- TextEntityResult含唯一槽位entities、全部observations、conflicts、unresolved_fields、demand_type、rule_matches、layers与提取/提示版本。已确认旧值可为保留历史而继续出现在entities；只要槽位列于unresolved_fields，下游就必须澄清，不能据该值执行工具。模型不能覆盖confirmed；confirmed必须来自已授权的前置消息，归属回查属于M11/主流程。
+- model_coverage_complete为null表示未用API，false表示所需字段没有得到完整且有效的原文分段覆盖（包括分段上限或后段失败）。这类模型观察保留但不确认新槽位；完整Regex实体仍可保留。layers分列调用数、接受/拒绝观察数、耗时、错误/request ID及API原文段范围。
+- RuleMatch只含已登记叶子的candidate_code、条件/排除项对应的rule_id/version、优先级及原文证据。规则表complaint-rules-v1在text_entity.py；300不产生IntentDecision/final_code、不路由SOP，600统一消费候选。demand_type=main/supplement/new_topic/unknown只作话语功能标签，不等于主意图或已完成问题归属。
+
 M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、ModelUsage、EmbeddingSignature/EmbeddingResult，仍在唯一 domain/models.py；ChatPort/EmbeddingPort 在 ports.py。旧 ModelGateway.complete 保留兼容，业务 envelope 版本仍为 0.2.0-m02。预算增加可空 token_upper_bound/cost_upper_bound 与默认 0 的 uncertain_attempts，不改已有状态/身份语义；新增 PROVIDER_QUOTA_EXHAUSTED / MODEL_CAPABILITY_UNAVAILABLE 非重试错误。费用 cost 是配置单价下的保守估计，未知尝试只留上界，真实付款不由 DTO 推断。
 
 调用者必须共享原 ExecutionBudget，model 调用前有正 token/cost 上限；超时/取消不释放可能已发生的计费预留。ChatResult 保存 usage/finish_reason/provider_request_id 与校验过的 schema/tool 字段，EmbeddingResult 按输入顺序含签名、缓存命中和索引适配标记。模型结果不是业务事实，模型工具调用不是 ToolResult 或 MCP 执行证据；下游仍做白名单、身份/归属和参数核验。接口与版本限制见 [模型矩阵](MODEL_CAPABILITIES.md)。

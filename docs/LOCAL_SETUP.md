@@ -69,3 +69,18 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_pr
 ```
 
 feature 分别检查四项能力，main 对无代码变化的合并进行 chat/embed 最小复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
+
+## M04固定内容验收
+
+默认演示离线，入口见[应用README](../modules/deephelp-app/README.md)。真实验收使用版本化合成黄金样本及固定补充边界；feature检查完整22例，main检查长文/否定/更正/未知、两类API字段和直接/引号混合订单冲突。配置可选strong-providers时另验真实强端口内容；这项与实际层间升级分别记录。报告包含来源、未解析字段、分层命中/调用/耗时及脱敏trace；命中率口径为该层接受至少一个观察的样本数/经过该层的样本数，不是模型准确率。
+
+先查看帮助，设置本任务的累计文件、报告及调用/token/费用上限。累计文件字段与M03相同，恢复继续沿用，不能归零；--output必须与预算/锁文件不同。可选强端口是独立ProviderConfig文件，只改chat候选及保守单价配置，放.local，核对能力并实测后注入；不用或不可恢复时按AGENTS收口。当前M04已验证qwen3.8-flash/qwen3.8-max，不能外推其他模型。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.text_entity_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.text_entity_probe --live --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
+# 需要强端口时追加：--strong-providers $entityStrongProviders
+# 合并后最小真实复验将 --stage 改为 main，并继续使用同一累计预算。
+```
+
+live使用transport retries=0、子timeout和共享总deadline；预算预留先落盘、独占锁阻止并发穿透。金额为保守配置估算，不是账单。原始探针/报告和临时运行参数仅留.local，不提交客户数据或凭据；此入口不访问云业务库/MCP/P00 full，也不执行SOP。

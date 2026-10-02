@@ -21,6 +21,7 @@ Python 3.14.7 异步骨架及 M02 `0.2.0-m02` 离线契约；启动/凭据见 [L
 | `gateway.py` / `providers.py` / `model_fakes.py` | M03 ChatPort/EmbeddingPort 实现、显式配置、合成 fixture |
 | `live_probe.py` | 独立受控真实验收；累计预算、脱敏结构与环境签名 |
 | `trace.py` | 串行线程文件写、JSONL / 内存 trace |
+| `text_entity.py` / `text_entity_probe.py` | M04文本保真、原文实体证据、规则候选 / 离线演示和受控内容验收 |
 | `experiments.py` | 三个离线异步实验，说明见 [学习材料](../../docs/learning/M01_ASYNC_GUIDE.md) |
 
 lifespan 通过 AsyncExitStack 管理共享 httpx 客户端，包括启动中途失败。每请求只创建一次 ExecutionBudget；排队、子调用与重试共用总 deadline，子 timeout 不延长它。只读且显式 retry_safe 的操作可有限重试；编程异常/取消继续传播，stream 在取消/错误时归还连接槽。默认连接 10、并发 2、deadline 5 秒、子 timeout 1 秒、调用 3 次、重试 1 次；均由设置校验。
@@ -52,3 +53,19 @@ unit 验证类型、设置、预算和实验；integration 用真实本机 httpc
 ChatResult 包含 usage、finish_reason、provider_request_id、校验后的 schema 或 tool_calls。严格输出用 json_schema 并本地校验；显式 repair_once 最多一次修复，继续扣原预算。网关只解析工具协议，不执行 MCP 或业务写工具。Embedding 返回输入顺序的向量、provider/model/revision/dimension/normalization 签名、缓存计数与全零索引适配标记，规则和配置见 [模型矩阵](../../docs/MODEL_CAPABILITIES.md)。
 
 请求先预留调用/token/费用上界，收到合法 usage 才结算预留。超时、取消或未知 usage 保留可能发生的计费占用，缓存命中不新增 API 费用。`gateway.record_diagnostics(path)` 写出最多 100 条结构 cassette，不含 prompt、正文、参数、凭据；`model_fakes.FakeGateway` 回放明确合成 fixture，费用为零。离线测试覆盖失败分类、重试上限、共享预算、一次修复、全零索引、向量校验和缓存隔离。
+
+## M04文本与实体
+
+从根运行不调用模型的演示：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.text_entity_probe
+```
+
+演示校验20条无需API的合成黄金样本，并显示长文尾订单的原文跨度、分段数及分层计量。黄金集共22条，另2条带引号编号需要结构化API，真实验收入口见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，证据见[M04交接](../../handoffs/M04.md)。这是固定回归集，不是未见评测或训练语料。
+
+`TextEntityProcessor(primary=None, strong=None, policy=TextPolicy(), trace=None).process(request, budget, confirmed=(), fields=None)`使用原ExecutionBudget，清洗与抽取并行。默认Regex；显式注入ChatPort才启用缺失/冲突字段的结构化提取，可另注入强端口。TextPolicy配置清洗分段、模型分段/数量、子timeout及输出上限；范围经本地校验，没有隐式重试或新建预算。模型扫描选中的所有原文段；后段失败/覆盖上限必须澄清，不能拿前段命中确认整个长文。
+
+TextEntityResult保留完整原文、清洗分段、观察、当前实体、冲突、未解析字段、话语功能和规则候选；跨度与枚举语义见[CONTRACTS](../../docs/CONTRACTS.md)。confirmed由调用者提供已授权的前置消息实体；M04不访问会话存储。下游必须检查unresolved_fields，即使保留的旧实体仍在entities中，也不能绕过澄清执行工具。规则带条件/排除项/优先级/证据/version；300不确定最终主意图，600再统一消费。converse业务入口仍待M08。
+
+清洗只规范全半角ASCII及空白，不删否定、表情、日期/金额/数量或改拼写；Regex读取完整原文。模型值必须在原文且可核对字段语义，未知不猜、多值不最后写入获胜、较低可信结果不覆盖已确认值。trace新增300_TEXT_ENTITY事件，仅含诊断ID、长度、层次、数量/耗时/错误，不含正文或提示。
