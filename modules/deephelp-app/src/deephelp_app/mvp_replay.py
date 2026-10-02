@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 
+from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, TrackedTools
 from deephelp_app.corpus import frozen_preview
 from deephelp_app.domain.models import (
@@ -24,6 +25,7 @@ from deephelp_app.execution import ExecutionBudget
 from deephelp_app.intent import IntentService
 from deephelp_app.ledger import MemoryLedger
 from deephelp_app.mcp_mock import MockConfig
+from deephelp_app.memory import MemoryService
 from deephelp_app.samples import load_corpus
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.text_entity import TextEntityProcessor, TextPolicy, clean_text
@@ -143,4 +145,8 @@ class ReplayAssembly:
                     prompt="mvp-intent-v1",
                     policy="slot-policy-v1",
                 ),
+                memory=MemoryService(self.ledger)
+                if isinstance(self.ledger, MemoryCaseRepository)
+                else None,
+                cases=self.ledger if isinstance(self.ledger, MemoryCaseRepository) else None,
             )

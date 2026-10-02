@@ -1,4 +1,4 @@
-"""Single-message MVP pipeline; ports are reused by later modules, not copied."""
+"""Shared conversation pipeline with explicit case context; event attribution belongs to M11."""
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
@@ -37,7 +37,14 @@ from deephelp_app.errors import AppError
 from deephelp_app.execution import ExecutionBudget
 from deephelp_app.intent import IntentService
 from deephelp_app.ledger import MessageLedger, Receipt
-from deephelp_app.ports import ChatPort, EmbeddingPort, SOPExecutorPort, ToolPort
+from deephelp_app.ports import (
+    CaseRepository,
+    ChatPort,
+    EmbeddingPort,
+    MemoryPort,
+    SOPExecutorPort,
+    ToolPort,
+)
 from deephelp_app.sop_config import SOPDefinition, load_sops
 from deephelp_app.text_entity import TextEntityProcessor
 from deephelp_app.trace import TraceEvent, TraceSink
@@ -173,11 +180,18 @@ class Conversation:
         trace: TraceSink,
         versions: VersionManifest,
         definitions: dict[IntentCode, SOPDefinition] | None = None,
+        memory: MemoryPort | None = None,
+        cases: CaseRepository | None = None,
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
+        self.memory = memory
+        self.cases = cases
         self.disabled = tuple(
-            f for f in DISABLED if f != "hybrid" or not hasattr(intent.scope, "analyzer_version")
+            f
+            for f in DISABLED
+            if (f != "hybrid" or not hasattr(intent.scope, "analyzer_version"))
+            and (f not in {"memory", "redis_projection", "cross_message_slots"} or memory is None)
         )
         self.definitions = load_sops() if definitions is None else definitions
 
@@ -236,16 +250,17 @@ class Conversation:
 
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         initial = budget.usage()
-        # Hints are authorized, then explicitly unsupported; they never select an old run.
+        # Authorize hints before receipt lookup; a hint never resumes an old run.
         if request.question_hint:
             old = await self.ledger.question(
                 request.identity, request.session_id, request.question_hint
             )
             if old is None:
                 raise AppError(ErrorCode.FORBIDDEN, "Object access denied")
-            raise AppError(
-                ErrorCode.INVALID_ARGUMENT, "M08 requires a new complete question without hint"
-            )
+            if not getattr(self.ledger, "supports_continuation", False):
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT, "M08 requires a new complete question without hint"
+                )
         receipt = await self.ledger.accept(request)
         if not receipt.acquired:
             await self.trace.emit(
@@ -292,22 +307,67 @@ class Conversation:
                         async with self.stage(name, request, receipt, budget, stats):
                             budget.remaining_seconds()
                     async with self.stage(STAGES[2], request, receipt, budget, stats):
-                        text = await self.text.process(request, budget)
+                        text = await self.text.process(
+                            request,
+                            budget,
+                            confirmed=question.entities,
+                            fields=question.active_intent.required_slots
+                            if question.active_intent
+                            else None,
+                        )
+                        confirmed_names = {
+                            e.name
+                            for e in text.observations
+                            if e.disposition != "negated"
+                            and (
+                                e.disposition == "correction"
+                                or any(
+                                    e.name == old.name and e.value == old.value
+                                    for old in question.entities
+                                )
+                                or e.name not in {old.name for old in question.entities}
+                            )
+                        }
+                        unresolved = set(text.unresolved_fields) | (
+                            set(question.unresolved_fields) - confirmed_names
+                        )
+                        text = text.model_copy(
+                            update={
+                                "unresolved_fields": tuple(
+                                    sorted(unresolved, key=lambda n: n.value)
+                                )
+                            }
+                        )
                     async with self.stage(STAGES[3], request, receipt, budget, stats):
+                        if self.memory:
+                            await self.memory.load(request.identity, request.session_id, budget)
                         entities = tuple(
                             e for e in text.entities if e.name not in text.unresolved_fields
                         )
                     async with self.stage(STAGES[4], request, receipt, budget, stats):
-                        # Explicit passthrough: one current message -> one fresh question.
+                        previous_question = question
+                        # Explicit membership comes from acceptance; automatic grouping is M11.
                         question = question.model_copy(
                             update={
-                                "entities": entities,
-                                "conflicts": tuple(text.conflicts),
-                                "versions": self.versions,
+                                "entities": tuple(text.entities),
+                                "conflicts": (*question.conflicts, *text.conflicts),
+                                "unresolved_fields": text.unresolved_fields,
+                                "versions": question.versions
+                                if question.active_intent
+                                else self.versions,
                             }
                         )
                     async with self.stage(STAGES[5], request, receipt, budget, stats):
-                        decision = await self.intent.recognize(text, budget)
+                        if request.question_hint and question.active_intent:
+                            try:
+                                decision = await self.intent.recognize(
+                                    text, budget, context_intent=question.active_intent
+                                )
+                            except AppError:
+                                question = previous_question
+                                raise
+                        else:
+                            decision = await self.intent.recognize(text, budget)
                     definition: SOPDefinition | None = None
                     async with self.stage(STAGES[6], request, receipt, budget, stats):
                         if decision.final_code:
@@ -324,12 +384,18 @@ class Conversation:
                             )
                     if response is None:
                         assert definition is not None and decision.final_code is not None
+                        if (
+                            request.question_hint
+                            and question.active_intent
+                            and question.versions.sop != definition.version
+                        ):
+                            raise AppError(ErrorCode.VERSION_CONFLICT, "Pinned SOP version changed")
                         question = question.model_copy(
                             update={
                                 "active_intent": decision.final_code,
-                                "versions": self.versions.model_copy(
-                                    update={"sop": definition.version}
-                                ),
+                                "versions": (
+                                    question.versions if request.question_hint else self.versions
+                                ).model_copy(update={"sop": definition.version}),
                             }
                         )
                         async with self.stage(STAGES[7], request, receipt, budget, stats):
@@ -350,6 +416,7 @@ class Conversation:
                                 next_action=NextAction.PROVIDE_SLOTS,
                             )
                         else:
+                            question = question.model_copy(update={"status": QuestionStatus.ACTIVE})
                             async with self.stage(STAGES[9], request, receipt, budget, stats):
                                 result = await self.sop.execute(
                                     question, budget, context=request, run_id=receipt.run_id
@@ -366,6 +433,14 @@ class Conversation:
                                 versions=question.versions,
                                 budget_used=usage_delta(budget, initial),
                             )
+                            if self.memory and result.status == SOPStatus.WAITING_SLOT:
+                                response = response.model_copy(
+                                    update={
+                                        "reply": "缺少或无法确认 "
+                                        + "、".join(s.value for s in result.missing_slots)
+                                        + "。请带本问题编号补充或更正；也可以发送完整的新问题。"
+                                    }
+                                )
             except asyncio.CancelledError:
                 cancelled = True
                 response = self.error(request, receipt, ErrorCode.TIMEOUT, "执行已取消。")

@@ -43,7 +43,13 @@ class IntentService:
         self.model, self.dense, self.scope = model, dense, scope
         self.top_k = top_k
 
-    async def recognize(self, text: TextEntityResult, budget: ExecutionBudget) -> IntentDecision:
+    async def recognize(
+        self,
+        text: TextEntityResult,
+        budget: ExecutionBudget,
+        *,
+        context_intent: IntentCode | None = None,
+    ) -> IntentDecision:
         available = tuple(e.name for e in text.entities if e.name not in text.unresolved_fields)
         if re.search(
             r"我没有.{0,16}问题|不用查|不想查询|不需要查询|不是来投诉|不需要你调用",
@@ -55,6 +61,36 @@ class IntentService:
                 available_slots=available,
             )
         codes = list(dict.fromkeys(m.candidate_code for m in text.rule_matches))
+        if context_intent is not None:
+            from deephelp_app.domain.models import DemandType, ErrorCode
+            from deephelp_app.errors import AppError
+
+            if (codes and codes != [context_intent]) or text.demand_type == DemandType.NEW_TOPIC:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT, "Hint and current topic differ; send a new question"
+                )
+            codes = [context_intent]
+            return IntentDecision(
+                decision=Decision.ACCEPT
+                if set(context_intent.required_slots) <= set(available)
+                else Decision.CLARIFY,
+                final_code=context_intent,
+                candidates=(
+                    IntentCandidate(
+                        code=context_intent, rank=1, score=1, score_kind=ScoreKind.RULE
+                    ),
+                ),
+                available_slots=available,
+                reason_code="explicit_question_context",
+                stage_evidence=(
+                    EvidenceRef(
+                        evidence_id="explicit-question-context",
+                        source=EvidenceSource.MESSAGE,
+                        record_id=text.message_id,
+                        summary="Explicit question hint retains its pinned intent",
+                    ),
+                ),
+            )
         if len(codes) > 1:
             return IntentDecision(
                 decision=Decision.HANDOFF, reason_code="multiple_intents", available_slots=available

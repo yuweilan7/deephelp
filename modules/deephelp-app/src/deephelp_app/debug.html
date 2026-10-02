@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><title>DeepHelp 调试</title>
 <style>body{font:16px system-ui;max-width:950px;margin:32px auto;padding:0 20px}textarea{width:100%;height:110px}input{margin:8px;width:210px}button{padding:8px 20px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:18px}label{display:inline-block}td,th{text-align:left;padding:6px;border-bottom:1px solid #ddd}table{width:100%}</style>
-<h1>DeepHelp · 单条完整问题</h1>
-<p>支持优惠未享受、券不可用、订单活动查询。工具业务数据为合成数据。跨消息补槽、多问题合并、审批和业务写操作尚未启用。</p>
+<h1>DeepHelp · 多问题查询</h1>
+<p>支持优惠未享受、券不可用、订单活动查询。工具业务数据为合成数据。新问题可同时保留；选择开放问题后补充编号或更正信息。审批和业务写操作尚未启用。</p>
 <p>示例：订单 000031 未享受优惠；订单 000042 的券 000009 不能用；查询订单 000053 参加的活动。</p>
 <label>本机访问令牌<input id="token" type="password" autocomplete="off"></label>
 <label>会话<input id="session" value="debug-session"></label>
+<p><label>本条消息属于 <select id="question"><option value="">新问题</option></select></label> <button id="refresh">刷新开放问题</button></p>
 <textarea id="text">订单 000031 未享受优惠，请查一下</textarea>
 <p><button id="send">发送新消息</button> <button id="repeat" disabled>重投同一消息</button></p>
 <p id="status"></p><h2>回复</h2><pre id="reply"></pre>
@@ -13,12 +14,20 @@
 <h2>事实、证据与完整结果</h2><pre id="result"></pre>
 <script>
 let last=null;const by=id=>document.getElementById(id);
+async function refresh(preferred){
+  const r=await fetch('/memory?session_id='+encodeURIComponent(by('session').value),{headers:{Authorization:'Bearer '+by('token').value}});const d=await r.json();
+  if(!r.ok)throw new Error(d.reply||'记忆读取失败');
+  const select=by('question');const chosen=preferred||select.value;select.replaceChildren(new Option('新问题',''));
+  for(const q of d.active_questions){const option=new Option((q.active_intent||'未分类')+' · '+q.status+' · '+q.entities.map(e=>e.value).join(' / ')+' · '+q.question_id.slice(0,8),q.question_id);option.dataset.version=q.version;select.append(option)}
+  if([...select.options].some(o=>o.value===chosen))select.value=chosen;
+}
 async function send(repeat){
-  if(!repeat)last={channel:'debug',session_id:by('session').value,message_id:crypto.randomUUID(),raw_text:by('text').value,occurred_at:new Date().toISOString()};
+  if(!repeat){last={channel:'debug',session_id:by('session').value,message_id:crypto.randomUUID(),raw_text:by('text').value,occurred_at:new Date().toISOString()};const q=by('question').selectedOptions[0];if(q.value){last.question_hint=q.value;last.expected_question_version=Number(q.dataset.version)}}
   by('send').disabled=by('repeat').disabled=true;by('status').textContent='处理中…';
   try{const r=await fetch('/converse',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+by('token').value},body:JSON.stringify(last)});const d=await r.json();
     by('reply').textContent=d.reply;by('result').textContent=JSON.stringify(d,null,2);by('status').textContent='HTTP '+r.status+' · '+d.outcome;
     by('steps').replaceChildren();for(const s of d.stages||[]){const tr=document.createElement('tr');for(const v of [s.stage,s.status,s.elapsed_ms.toFixed(2),s.model_calls,s.tool_calls]){const td=document.createElement('td');td.textContent=String(v);tr.append(td)}by('steps').append(tr)}
+    if(r.ok)await refresh(d.question_id);
   }catch(e){by('status').textContent='请求失败：'+e.message}finally{by('send').disabled=false;by('repeat').disabled=!last}
-}by('send').onclick=()=>send(false);by('repeat').onclick=()=>send(true);
+}by('send').onclick=()=>send(false);by('repeat').onclick=()=>send(true);by('refresh').onclick=()=>refresh().catch(e=>by('status').textContent=e.message);
 </script></html>
