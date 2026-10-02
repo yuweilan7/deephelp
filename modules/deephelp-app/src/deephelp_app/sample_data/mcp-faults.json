@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "version": "mcp-faults-v1",
+  "faults": {
+    "DEMO-D01": {"kind": "injection"},
+    "DEMO-D04": {"kind": "rate_limit"},
+    "DEMO-C01": {"kind": "upstream_500"},
+    "DEMO-C02": {"kind": "missing_field"},
+    "DEMO-C04": {"kind": "contradictory"},
+    "DEMO-A01": {"kind": "oversized"},
+    "000053": {"delay_seconds": 10}
+  }
+}

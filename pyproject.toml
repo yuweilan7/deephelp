@@ -29,7 +29,7 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "--strict-markers"
 markers = [
     "unit: isolated offline tests",
-    "integration: synthetic adapters and loopback HTTP only",
+    "integration: synthetic adapters, owned local MCP stdio and loopback HTTP only",
     "live: explicit configuration and budget gate; no real gateway in M01",
     "e2e: offline application boundary; not business or cloud acceptance",
 ]

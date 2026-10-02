@@ -4,6 +4,7 @@ HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.INVALID_ARGUMENT: 422,
     ErrorCode.UNAUTHENTICATED: 401,
     ErrorCode.FORBIDDEN: 403,
+    ErrorCode.NOT_FOUND: 404,
     ErrorCode.NOT_IMPLEMENTED: 501,
     ErrorCode.INTERNAL_ERROR: 500,
     ErrorCode.TIMEOUT: 504,

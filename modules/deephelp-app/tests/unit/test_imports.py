@@ -33,6 +33,10 @@ with (
         import deephelp_app.dense
         import deephelp_app.milvus_dense
         import deephelp_app.dense_cli
+        import deephelp_app.mcp_protocol
+        import deephelp_app.mcp_mock
+        import deephelp_app.tool_gateway
+        import deephelp_app.mcp_smoke
     assert not client.called
     assert not pool.called
 """

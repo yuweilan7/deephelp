@@ -12,7 +12,8 @@
 | M03 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M03.md) | chat/schema/tool/embed分别实测；1024维签名、有界缓存/预算/诊断；工具协议合成，不是MCP或业务闭环 |
 | M04 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M04.md) | 完整原文/分段、Regex→API→可选强模型、证据/更正/规则候选；300不确定主意图，非业务闭环 |
 | M05 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M05.md) | 版本化合成语料、真实1024维Embedding/Milvus、Dense候选/独立dev评测；不是最终分类或业务闭环 |
-| M06–M14、M16–M18 | NOT_IMPLEMENTED | 规格存在；按用户启动的特性顺序实施 |
+| M06 | IMPLEMENTED_LIVE_VERIFIED | 本机正式SDK stdio发现/调用、两个合成只读工具、鉴权/取消/退出；[交接](../handoffs/M06.md)；非企业下游或业务闭环 |
+| M07–M14、M16–M18 | NOT_IMPLEMENTED | 规格存在；按用户启动的特性顺序实施 |
 | M15、M19 | HARDENING_NOT_IMPLEMENTED | 可后移，业务写工具前必须M15 |
 | M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
 | 模型/业务联调 | MODEL_GATEWAY_LIVE_VERIFIED；业务 NOT_RUN | 选定两模型四能力通过；真实千问+合成短文本，未运行M08或企业工具 |
@@ -23,11 +24,13 @@ M04新增兼容 DTO TextCleanResult / ExtractedEntity / RuleMatch / TextEntityRe
 
 M05新增CorpusRecord/DenseScope/DenseHit/DenseCandidate/DenseResult及DenseRetrieverPort，版本集合隔离、幂等小批导入、未知提交续跑、逐条FP32向量hash与完整回读、本机版本切换/回退。只有reference/train入库，默认6条reference、12条独立dev：文档Recall@1=11/12、Recall@3=12/12，候选Recall@1=11/12、Recall@2=12/12；M02-028首位错误保留，未设最终接管阈值。合成dev不是未见test；qwen3.7-text-embedding-flash签名revision仍null。PyMilvus2.6.17加入应用及根锁。
 
-最近全工程离线验证：Ruff检查/格式、mypy退出0；Python3.14.7下 **306 passed、1 skipped**，1396条pytest-asyncio policy API弃用警告；M05新增54项用例，样本/fixture和原M01–M04消费者保持通过。integration使用合成ASGI/loopback HTTP，e2e验证组装/退出，不是业务或云端e2e。M02–M05无业务库迁移，内存消息冲突不等于MySQL唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
+M06新增正式mcp2.2.0依赖、两个M02命名只读工具、ToolPort/ToolGateway、受控stdio服务和独立smoke。身份/参数/版本/调用ID通过HMAC内部信封绑定，服务端再次检查订单/券归属；模型参数无身份/签名/故障开关，写工具拒绝。共享预算、排队deadline、单工具timeout、64KiB返回体与有界ledger；坏结构/矛盾不发布事实，注入文字只作数据。真实协议下金额/券状态/证据、双用户同进程并发、跨用户/租户、无签名/篡改/重放、故障、取消后会话复用和退出均验证。ledger为合成调用记录，管理resource需签名；不是副作用账本。当前调用者为可信合成入口，应用登录鉴权和converse接入仍待M08；未启动M07。
+
+最近全工程无外部网络回归：Ruff检查/格式、mypy退出0；Python3.14.7下 **350 passed、1 skipped**，1621条pytest-asyncio policy API弃用警告；M06新增44项用例，样本/fixture和原M01–M05消费者保持通过。integration包含合成ASGI/loopback HTTP及正式SDK本机stdio子进程，e2e验证组装/退出，不是业务或云端e2e。M02–M06无业务库迁移，内存消息冲突不等于MySQL唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
 
 LOCAL_SETUP指向本机凭据、模型摘要和连接结果；调用前实时核对可调用性。Windows入口统一py -3.14 -m uv，解释器3.14.7、uv0.12.13；根workspace和单一锁保留。模型选用遵循[AGENTS](../AGENTS.md)的学习效果优先原则，允许使用候选池和账号余额；当前网关仍为固定模型配置，自动切换未实现，默认不开启live。短输出、请求大小与推理模式限制见[模型矩阵](MODEL_CAPABILITIES.md)，业务质量对照未执行。
 
-M04/M05实际探针、累计运行上限及原始报告分别留.local/m04、.local/m05；默认回归和演示离线。M05两个专用集合实际删除/恢复、过滤、版本切换/回退与服务重启持久性均通过。重启暴露Milvus内嵌etcd选举启动故障，冷备后复用原元数据改为同机独立etcd3.5.23，健康后启动Milvus2.6.23；两种真实重启及全量记录/向量hash与查询通过，MySQL/Redis未重启。云端cap总6016MiB/3.75CPU，etcd无主机端口；未验整机重启/高可用/大规模。机制和回退见ADR021/OPERATIONS，维护授权已按用户要求写入AGENTS。未调用业务库、MCP或P00 full，未启动M06。
+M04/M05实际探针、累计运行上限及原始报告分别留.local/m04、.local/m05；默认演示离线。M05两个专用集合实际删除/恢复、过滤、版本切换/回退与服务重启持久性均通过。重启暴露Milvus内嵌etcd选举启动故障，冷备后复用原元数据改为同机独立etcd3.5.23，健康后启动Milvus2.6.23；两种真实重启及全量记录/向量hash与查询通过，MySQL/Redis未重启。云端cap总6016MiB/3.75CPU，etcd无主机端口；未验整机重启/高可用/大规模。机制和回退见ADR021/OPERATIONS，维护授权已按用户要求写入AGENTS。M06协议报告留.local/m06，只启动本机合成服务；本轮未调用模型、业务库或P00 full。
 
 原始P00报告、旧安装提示、一次性生成工具和上游参考副本已移出当前工作树，保存在 `.local/archive/context-cleanup-20261002/` 和Git历史。运行配置、运维/验收工具、原PDF、M01源码/测试和模块规格保留；本次未启动下一M。
 

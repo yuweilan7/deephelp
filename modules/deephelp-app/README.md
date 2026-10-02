@@ -23,6 +23,7 @@ Python 3.14.7 异步骨架及 M02 `0.2.0-m02` 离线契约；启动/凭据见 [L
 | `trace.py` | 串行线程文件写、JSONL / 内存 trace |
 | `text_entity.py` / `text_entity_probe.py` | M04文本保真、原文实体证据、规则候选 / 离线演示和受控内容验收 |
 | `corpus.py` / `dense.py` / `milvus_dense.py` / `dense_cli.py` | M05语料校验、可续跑导入、Dense候选、Milvus及版本指针 / 内容验收 |
+| `mcp_protocol.py` / `mcp_mock.py` / `tool_gateway.py` / `mcp_smoke.py` | M06只读注册表、真实stdio服务、可信工具网关 / 合成内容与故障验收 |
 | `experiments.py` | 三个离线异步实验，说明见 [学习材料](../../docs/learning/M01_ASYNC_GUIDE.md) |
 
 lifespan 通过 AsyncExitStack 管理共享 httpx 客户端，包括启动中途失败。每请求只创建一次 ExecutionBudget；排队、子调用与重试共用总 deadline，子 timeout 不延长它。只读且显式 retry_safe 的操作可有限重试；编程异常/取消继续传播，stream 在取消/错误时归还连接槽。默认连接 10、并发 2、deadline 5 秒、子 timeout 1 秒、调用 3 次、重试 1 次；均由设置校验。
@@ -92,3 +93,24 @@ DenseScope绑定namespace/dataset_version/完整EmbeddingSignature/registry版�
 `DenseRetriever.retrieve(text, scope, budget, top_k=3)`实现DenseRetrieverPort，返回原始命中和`per_intent_max_v1`候选：每意图独立取最佳一条，再按cosine排序，同分按code/doc_id稳定排序；不求和样本分数。保留doc_id、code、raw_score、score_kind、metadata与版本；不产生最终IntentDecision或接管阈值。namespace是语料范围，不能替代用户鉴权。
 
 `activate`只把回读完整且manifest VERIFIED的集合写入本机原子指针；`rollback`复验上一版本后切回，失败保留现指针。它不是业务账本或多主机发布系统。`verify/search/evaluate`不创建或修复集合，持久性复验不能用重新导入掩盖丢数据。维护删除只支持指定scope内已有synthetic记录及显式开关，恢复使用同语料的新manifest。BM25/Hybrid、最终意图识别与业务converse留后续模块。
+
+## M06真实MCP只读工具
+
+`get_order_benefits(order_id)`查询M02合成订单实付、优惠及活动；`check_coupon(order_id, coupon_id)`查询券状态、门槛和可用性。ID保持字符串和前导零。正常查询返回唯一ToolResult及实际call ID、事实、证据引用和内容hash；不存在、越权、坏参数或坏结果不发布成功事实。写工具不注册，refund_order等名称明确拒绝。
+
+从仓库根运行，前两条只预览，不启动进程。`--live`启动正式SDK的本机stdio子进程，实际执行list_tools/call_tool；不调用模型/云库，也不运行P00。输出需使用新的.local文件名，重跑更换名字：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.mcp_smoke
+py -3.14 -m uv run --locked python -m deephelp_app.mcp_smoke --help
+py -3.14 -m uv run --locked python -m deephelp_app.mcp_smoke --live --stage feature --output .local/m06/feature.json
+py -3.14 -m uv run --locked python -m deephelp_app.mcp_smoke --live --stage main --output .local/m06/main.json
+```
+
+feature验正确金额/券状态/证据、双用户同进程并发、越权、不存在、模拟500/限流、缺字段/矛盾/体积、恶意文字、timeout和外部取消、取消后复用、ledger与退出；main最小复验发现、两工具内容、归属及退出。报告PASS还需退出码0。完整schema/身份篡改/签名重放/预算/启动失败/生命周期取消由`tests/integration/test_m06_stdio.py`的真实stdio回归验证，纯校验测试在`tests/unit/test_m06_contracts.py`。
+
+下游通过`ToolPort.execute(request, question, budget, context=可信RequestEnvelope)`消费；`ToolGateway.open()`在服务生命周期中进入一次，多次调用复用一个Client/子进程。入口注入已验证context；网关核对Question的主体、session、槽位及状态，内部签名信封传给服务端再次检查订单/券归属。工具schema没有user_id、凭据、内部签名或故障开关。M06合成调用者不是登录认证；接入真实应用入口在M08实施。
+
+默认启动限15秒、单工具5秒、并发4、返回体64KiB、ledger256次；每请求复用ExecutionBudget，排队占总deadline，调用前预留，重试0。smoke默认总120秒/48次，参数`--timeout`/`--max-calls`仅本轮上限。主动取消传播CancelledError；SDK发送取消并回收子进程，服务端相对deadline提供额外上限。
+
+默认MockConfig无故障；feature加载[故障fixture](src/deephelp_app/sample_data/mcp-faults.json)。支持延迟、下游500/限流、缺字段、矛盾、注入文字和超大结果，都是合成业务故障。`gateway.ledger()`读取签名保护的管理resource，不是模型工具；记录实际主体/参数、request/trace/operation/call及证据ID。可选ledger_path将有界合成快照写入新文件；密钥/签名不写盘。服务端查询完成而网关拒绝损坏输出时，ledger保留实际查询成功，diagnostics记录MODEL_OUTPUT_INVALID。ledger不提供业务副作用持久性或幂等；业务写工具仍需M15。

@@ -12,6 +12,8 @@
 ## 最小工具体系
 第一批至少两个只读工具，例如 query_order(order_id) 和 query_coupon_or_activity(order_id/coupon_id)，由 M02 的固定数据提供可重复结果。后续可扩展商详/结算/收银台查询。写操作只定义 dry-run/拒绝接口，未完成 M15 审批和幂等前不能实际改变模拟权益。
 
+本特性沿用M02名称：get_order_benefits(order_id)与check_coupon(order_id, coupon_id)。正式SDK及stdio生命周期依据[官方Python SDK](https://py.sdk.modelcontextprotocol.io/client/transports/)；运行入口见[应用README](../../modules/deephelp-app/README.md)。当前只选stdio，Streamable HTTP按实际网络需求另做。
+
 工具 schema 描述输入类型、必填字段、证据结果和错误；规范错误包括 NOT_FOUND、FORBIDDEN、INVALID_ARGUMENT、TIMEOUT、UPSTREAM_UNAVAILABLE。模型看到的 tool description 不承担鉴权。认证上下文由服务端注入，工具不能接受模型随便填入 user_id 后信任其权限。order_id 属于别人的 fixture 必须拒绝。
 
 本机首先使用正式 SDK 的 stdio MCP server，避免额外端口；需要模拟网络时再加经过官方文档核对的 Streamable HTTP。传输和 server lifecycle 放在 ToolGateway 适配层，不能为每个工具新起无限子进程。stderr/log 与协议输出隔离。不要随意以旧 SSE 示例代替当前运输协议。
