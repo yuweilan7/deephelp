@@ -6,6 +6,7 @@ from pydantic import SecretStr, ValidationError
 
 from deephelp_app.domain.models import (
     ConverseInput,
+    EvidenceRef,
     Outcome,
     RequestEnvelope,
     ResponseEnvelope,
@@ -130,5 +131,7 @@ async def test_fake_repository_scope_and_read_isolation(message):
         is None
     )
     copy = await repository.get(identity, "local", "message-1")
-    copy.facts.append({"synthetic": "mutation"})
-    assert (await repository.get(identity, "local", "message-1")).facts == []
+    copy.evidence_refs.append(
+        EvidenceRef(evidence_id="synthetic-mutation", source="message", record_id="message-1")
+    )
+    assert (await repository.get(identity, "local", "message-1")).evidence_refs == []

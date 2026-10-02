@@ -18,6 +18,7 @@ from deephelp_app.domain.models import (
     ConverseInput,
     ErrorCode,
     ErrorDetail,
+    NextAction,
     Outcome,
     RequestEnvelope,
     ResponseEnvelope,
@@ -55,14 +56,19 @@ def local_test_identity(request: Request) -> VerifiedIdentity:
 def error_response(
     request_id: str, trace_id: str, error: AppError, budget_used: BudgetUsed
 ) -> JSONResponse:
+    outcome = Outcome.ERROR
+    next_action = None
+    if error.code in {ErrorCode.UNAUTHENTICATED, ErrorCode.FORBIDDEN}:
+        outcome = Outcome.REJECTED
+    elif error.code == ErrorCode.MISSING_SLOT:
+        outcome, next_action = Outcome.CLARIFY, NextAction.PROVIDE_SLOTS
+    elif error.code in {ErrorCode.UNKNOWN_INTENT, ErrorCode.NO_SOP}:
+        outcome, next_action = Outcome.HANDOFF, NextAction.CONTACT_SUPPORT
     envelope = ResponseEnvelope(
         request_id=request_id,
         trace_id=trace_id,
-        outcome=(
-            Outcome.REJECTED
-            if error.code in {ErrorCode.UNAUTHENTICATED, ErrorCode.FORBIDDEN}
-            else Outcome.ERROR
-        ),
+        outcome=outcome,
+        next_action=next_action,
         reply=error.safe_message,
         error=ErrorDetail(code=error.code, message=error.safe_message, retryable=error.retryable),
         budget_used=budget_used,

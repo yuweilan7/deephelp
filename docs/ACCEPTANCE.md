@@ -9,9 +9,9 @@
 | D05 | 设计走查 | qA→qB→补qA | 两问题不合并，m3回qA或澄清 | 设计基线；运行版M11 |
 | D06 | 设计走查 | 工具成功+崩溃+重复resume | 效果至多一次；UNKNOWN先对账 | 设计基线；运行版M15 |
 | D07 | 设计兼容 | 两份接口视角请求/响应草案 | ID/状态/错误/next_action语义一致 | CONTRACTS / ARCHITECTURE，不等于业务集成 |
-| U01 | 业务unit（未来） | 清洗截断、前导零、否定、更正 | 事实保真/来源完整 | M02/M04，当前NOT_RUN |
-| U02 | 业务unit（未来） | 最终code非top1无有效override | 拒收决策；不返回假正常 | M02/M12，当前NOT_RUN |
-| U03 | 业务unit（未来） | 幂等键冲突/缺槽位/跨租户 | 错误分类固定、禁止工具/错误case写入 | M02/M08，当前NOT_RUN |
+| U01 | 契约/业务unit | 清洗截断、前导零、否定、更正 | 事实保真/来源完整 | M02类型/来源/金额/更正与固定样本；M04清洗运行验收 |
+| U02 | 契约/业务unit | 最终code非top1无有效override | 拒收决策；不返回假正常 | M02决策/策略及实体证据校验；M12真实分类级联 |
+| U03 | 契约/业务unit | 幂等键冲突/缺槽位/跨租户 | 错误分类固定、禁止工具/错误case写入 | M02内存消息/状态映射/归属与工具守卫；M08 MySQL事实源验收 |
 | I01 | MySQL/Redis integration | 提交成功缓存失败、清空缓存 | 事实不丢，outbox重建 | M10，当前NOT_RUN |
 | I02 | Milvus integration | stale ACTIVE/同维异模型 | MySQL回查过滤/signature拒绝 | M05/M10，当前NOT_RUN |
 | I03 | 真实MCP协议 | list_tools/call_tool超时/非法参数 | 协议/白名单/错误归一化；不是函数Mock | M06，当前NOT_RUN |

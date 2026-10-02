@@ -9,11 +9,43 @@ from fastapi import Request
 from pydantic import SecretStr
 
 from deephelp_app.app import create_app
-from deephelp_app.errors import ConfigurationError
+from deephelp_app.domain.models import ErrorCode
+from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.settings import Settings
 from deephelp_app.trace import JsonlTrace, MemoryTrace, request_context
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize(
+    "code,status,outcome",
+    [
+        (ErrorCode.FORBIDDEN, 403, "REJECTED"),
+        (ErrorCode.IDEMPOTENCY_CONFLICT, 409, "ERROR"),
+        (ErrorCode.VERSION_CONFLICT, 409, "ERROR"),
+        (ErrorCode.MISSING_SLOT, 200, "CLARIFY"),
+        (ErrorCode.UNKNOWN_INTENT, 200, "HANDOFF"),
+        (ErrorCode.NO_SOP, 200, "HANDOFF"),
+    ],
+)
+async def test_m02_error_mapping_at_http_boundary(code, status, outcome):
+    app = create_app(Settings(mode="test"), trace=MemoryTrace())
+
+    @app.get("/_synthetic_m02_error")
+    async def failure():
+        raise AppError(code, "Synthetic safe closeout")
+
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app), base_url="http://local"
+        ) as client:
+            response = await client.get("/_synthetic_m02_error")
+    assert response.status_code == status
+    body = response.json()
+    assert body["schema_version"] == body["versions"]["contract"] == "0.2.0-m02"
+    assert body["outcome"] == outcome and body["error"]["code"] == code
+    assert body["facts"] == body["evidence_refs"] == body["tool_call_ids"] == []
+    assert body["run_id"] is body["question_id"] is None
 
 
 async def test_missing_key_fake_startup_and_shared_client_shutdown(message):
