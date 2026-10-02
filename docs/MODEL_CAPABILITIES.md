@@ -6,6 +6,7 @@
 |---|---|---|---|---|---|
 | qwen3.8-flash / chat/completions | 支持 | json_schema + 本地 Draft202012 校验 | 原生 function 字段 | 不使用 | enable_thinking=false；工具字段完整时兼容 finish_reason=stop |
 | qwen3.7-text-embedding-flash / embeddings | 不使用 | 不使用 | 不使用 | 1024 维有序列表 | 对此模型显式允许全零 index 时按返回位置映射；正常完整索引则排序；其他坏索引拒绝 |
+| qwen3.8-max / chat/completions（M04可选强端口） | M04真实调用通过 | M04实体schema及0007保真实测 | 未验 | 未验 | enable_thinking=false；只确认M04合成提取范围，见[M04交接](../handoffs/M04.md) |
 
 官方能力说明：[结构化输出](https://help.aliyun.com/zh/model-studio/qwen-structured-output)、[Embedding 兼容接口](https://help.aliyun.com/zh/model-studio/embedding-interfaces-compatible-with-openai)、[模型信息](https://help.aliyun.com/zh/model-studio/qwen3-7-text-embedding-flash)。文档宣称支持不代替交接中的真实检查。
 
