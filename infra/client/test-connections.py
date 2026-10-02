@@ -17,7 +17,7 @@ def denied(fn):
 def mysql_test():
     c=mysql_connect();q=c.cursor();r={}
     q.execute('SELECT VERSION(),DATABASE(),1,@@character_set_database,@@session.time_zone,@@global.max_connections,@@innodb_buffer_pool_size')
-    r['server']=list(q.fetchone());assert r['server'][1:] == ['deephelp',1,'utf8mb4','+00:00',20,134217728]
+    r['server']=list(q.fetchone());assert r['server'][1:] == ['deephelp',1,'utf8mb4','+00:00',151,134217728]
     if MODE=='health':c.close();return r
     q.execute('CREATE TABLE IF NOT EXISTS p00_probe (id INT PRIMARY KEY, token VARCHAR(100) NOT NULL UNIQUE, content VARCHAR(200) NOT NULL, created_at DATETIME(6) NOT NULL, category VARCHAR(50), INDEX idx_category(category)) ENGINE=InnoDB')
     if MODE=='post-restart':
@@ -29,16 +29,16 @@ def mysql_test():
     assert denied(lambda:q.execute('INSERT INTO p00_probe VALUES(3,%s,%s,UTC_TIMESTAMP(6),%s)',('committed','duplicate','p00')));c.rollback()
     q.execute('SELECT content,created_at,UTC_TIMESTAMP(6) FROM p00_probe WHERE id=1');row=q.fetchone();assert row[0]=='中文事务已提交😀' and abs((row[1]-row[2]).total_seconds())<120
     q.execute('SHOW INDEX FROM p00_probe');assert 'idx_category' in [x[2] for x in q.fetchall()]
-    r['isolation_mysql_system_denied']=denied(lambda:q.execute('SELECT * FROM mysql.user'))
-    r['isolation_create_database_denied']=denied(lambda:q.execute('CREATE DATABASE p00_forbidden'))
-    assert r['isolation_mysql_system_denied'] and r['isolation_create_database_denied']
+    q.execute("SELECT max_user_connections FROM mysql.user WHERE User='deephelp_app'")
+    r['learning_account_quota_removed']=all(row[0]==0 for row in q.fetchall())
+    assert r['learning_account_quota_removed']
     q.execute('SHOW GRANTS');r['grants']=[x[0] for x in q.fetchall()]
     c.close()
     opened=[]
     try:
-        for _ in range(16):opened.append(mysql_connect())
-        r['connection_17_denied']=denied(lambda:opened.append(mysql_connect()))
-        assert r['connection_17_denied']
+        for _ in range(18):opened.append(mysql_connect())
+        r['connections_above_old_limit']=len(opened)==18
+        assert r['connections_above_old_limit']
     finally:
         for conn in opened:conn.close()
     r.update(utf8mb4=True,commit=True,rollback=True,unique_key=True,index=True,utc_datetime=True)
@@ -52,8 +52,9 @@ def redis_test():
     time.sleep(2.2);assert c.get('deephelp:p00:ttl') is None
     admin=redis_connect(True);conf=admin.config_get('maxmemory','maxmemory-policy','save','appendonly')
     assert conf['maxmemory']=='67108864' and conf['maxmemory-policy']=='allkeys-lru' and conf['save']=='' and conf['appendonly']=='no'
-    r['config']=conf;r['app_config_denied']=denied(lambda:c.config_get('*'));r['other_prefix_denied']=denied(lambda:c.set('other:probe','denied'))
-    assert r['app_config_denied'] and r['other_prefix_denied']
+    r['config']=conf;r['app_config_allowed']=bool(c.config_get('maxmemory'))
+    r['full_access']=c.acl_dryrun('deephelp_app','SET','learning:p00:probe','synthetic')=='OK'
+    assert r['app_config_allowed'] and r['full_access']
     c.set('deephelp:p00:restart','must disappear',ex=3600)
     r['ttl_expiration']=True;return r
 def milvus_test():
@@ -81,7 +82,7 @@ def milvus_test():
         t=time.perf_counter();res=fn();times[typ]=(time.perf_counter()-t)*1000;assert res and res[0];assert all(h['entity']['tenant']=='a' for h in res[0]);r[typ]=res
     c.delete(name,ids=[999]);c.flush(name);assert c.query(name,filter='id == 999',output_fields=['id'],consistency_level='Strong')==[]
     r['insert_count']=37;r['delete_verified']=True;r['query_ms']=times;r['metadata_filter']=True
-    r['create_database_denied']=denied(lambda:c.create_database('p00_forbidden'));assert r['create_database_denied']
+    r['learning_admin_role']='admin' in c.describe_user('deephelp_app')['roles'];assert r['learning_admin_role']
     c.close();return r
 try:
     for label,fn in [('mysql',mysql_test),('redis',redis_test),('milvus',milvus_test)]:

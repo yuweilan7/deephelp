@@ -154,3 +154,5 @@ M09保留DenseScope原字段/指纹/集合名，新增其子类HybridScope：必
 Hit/Candidate的score_kind增量支持cosine/bm25/fusion：COSINE有界，BM25非负无界，fusion由归一化WeightedRanker返回。Hit保留raw_dense/raw_sparse/fusion_score/rank/matched_sources；null表示该文档不在该路线的前K候选中，不表示真实相似度为零。每路ANN和最终返回均K，融合联合候选最多2K，不能声称计算量相同。按意图取实际返回样本的最大分数，不按样本数量求和。DenseResult保留旧默认，增加mode、候选预算、权重和本次三路总检索耗时；单路SDK耗时在A/B报告中另列。所有分数不是最终正确概率。
 
 IntentDecision增加可选`retrieval=null`，保存600实际候选/分数/版本；分类结果仍由唯一IntentService给出，原envelope版本和消费者兼容。M09发布指针一次原子替换已验证scope、manifest、完整冻结策略与上一版本；启动核对index/dev/test摘要、权重及候选预算。旧M05指针仍装配原Dense端口，M09指针装配Hybrid，不自动改默认配置。checkpoint/审批/写工具边界不变。
+
+学习环境网关扩展：ChatRequest默认输出2048 token，移除4096输出、32消息与16工具声明的本地上限；新增可选enable_thinking=null（继承ProviderConfig）和thinking_budget=null（继承配置）。ProviderConfig默认不开推理、思考额度8192；思考启用后在原预算预留中另计思考额度。请求/响应默认1MiB/16MiB，可配置更大；max_texts默认128，可配置更大。模型自身能力/错误、任务deadline/累计预算与结构/工具参数验证仍由原网关处理。既有业务调用显式输出参数不改变，消费者继续导入同一DTO。

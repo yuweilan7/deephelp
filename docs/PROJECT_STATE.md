@@ -6,6 +6,7 @@
 |---|---|---|
 | 工程 | Python3.14.7；根uv workspace、单一uv.lock；modules/deephelp-app | uv须满足根pyproject要求，本机启动器见LOCAL_SETUP |
 | P00 | MySQL SELECT、Redis鉴权PING、Milvus元数据读取均PASS；报告 `.local/infra-health/client-health.json` | 只读连接验证，不是容量/业务检索/full复验；[历史交接](../handoffs/P00.md) |
+| 学习环境权限/API | LIVE_VERIFIED；[权限及API交接](../handoffs/P00.md#学习环境权限与api调整) | 三个中间件应用账号全权限；Redis实际重启后复验、模型六项内容验证；未跑P00 full |
 | M00 | DESIGN_ACCEPTED；[交接](../handoffs/M00.md) | 设计基线，不是已实现业务系统 |
 | M01 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M01.md) | 默认离线入口保持501；业务入口见M08，真实网关见M03 |
 | M02 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M02.md) | `0.2.0-m02` 唯一类型、三类意图、36 条合成固定样本；无模型/云库/审批执行，非业务闭环 |
@@ -35,9 +36,9 @@ M08新增单条完整问题Conversation及唯一600 IntentService、MySQL消息/
 
 M08真实HTTP十条内容路径通过（21模型尝试、9工具调用），12条原始固定样本真实验证意图/参数12/12，旧outcome11/12；M02-001无依据确认未到账原因而转人工。完整36条离线回放只是串联验证：标签36/36、参数24/36、旧outcome20/36，8 ANSWERED/18 CLARIFY/7 HANDOFF/3 ERROR；16差异保留，12个字段语义不足澄清、3个下游归属拒绝、1个M07保守转人工，不是全样本模型质量/业务成功率。原始报告在.local/m08。跨消息补槽/事件合并、Redis投影/记忆、完整级联、LangGraph、回复模型润色、审批/写工具和企业下游未启用；RUNNING硬中断不自动恢复。未跑P00 full或云服务/主机重启，资源重建不冒充这些验证。
 
-最近全工程无外部网络回归：Ruff检查/格式、mypy退出0；Python3.14.7下 **519 passed、1 skipped**，2845条pytest-asyncio policy API弃用警告；M08新增63项、M09新增34项用例，原M01–M07消费者保持通过。integration包含合成ASGI/loopback HTTP及正式SDK本机stdio子进程，e2e验证组装/退出，默认pytest不代表云端业务e2e，M08显式probe另验真实云服务/合成业务。M02–M07无业务库迁移；M08增加专用三表且实际验证唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
+最近全工程无外部网络回归：Ruff检查/格式、mypy退出0；Python3.14.7下 **523 passed、1 skipped**，2881条pytest-asyncio policy API弃用警告；M08新增63项、M09新增34项用例，网关参数扩展新增4项，原M01–M07消费者保持通过。integration包含合成ASGI/loopback HTTP及正式SDK本机stdio子进程，e2e验证组装/退出，默认pytest不代表云端业务e2e，M08显式probe另验真实云服务/合成业务。M02–M07无业务库迁移；M08增加专用三表且实际验证唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
 
-LOCAL_SETUP指向本机凭据、模型摘要和连接结果；调用前实时核对可调用性。Windows入口统一py -3.14 -m uv，解释器3.14.7、uv0.12.13；根workspace和单一锁保留。模型选用遵循[AGENTS](../AGENTS.md)的学习效果优先原则，允许使用候选池和账号余额；当前网关仍为固定模型配置，自动切换未实现，默认不开启live。短输出、请求大小与推理模式限制见[模型矩阵](MODEL_CAPABILITIES.md)，业务质量对照未执行。
+LOCAL_SETUP指向本机凭据、模型摘要和连接结果；调用前实时核对可调用性。Windows入口统一py -3.14 -m uv，解释器3.14.7、uv0.12.13；根workspace和单一锁保留。模型选用遵循[AGENTS](../AGENTS.md)的学习效果优先原则，允许使用候选池和账号余额；当前网关仍为固定模型配置，自动切换未实现，默认不开启live。请求大小与输出按任务配置，推理支持按配置/请求开启；详情见[模型矩阵](MODEL_CAPABILITIES.md)，业务质量对照未执行。
 
 M04/M05实际探针、累计运行上限及原始报告分别留.local/m04、.local/m05；默认演示离线。M05两个专用集合实际删除/恢复、过滤、版本切换/回退与服务重启持久性均通过。重启暴露Milvus内嵌etcd选举启动故障，冷备后复用原元数据改为同机独立etcd3.5.23，健康后启动Milvus2.6.23；两种真实重启及全量记录/向量hash与查询通过，MySQL/Redis未重启。云端cap总6016MiB/3.75CPU，etcd无主机端口；未验整机重启/高可用/大规模。机制和回退见ADR021/OPERATIONS，维护授权已按用户要求写入AGENTS。M06协议报告留.local/m06，只启动本机合成服务；本轮未调用模型、业务库或P00 full。
 

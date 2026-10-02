@@ -4,7 +4,7 @@
 
 | 模型 / 路径 | chat | 严格 schema | tool fields | Embedding | 适配 |
 |---|---|---|---|---|---|
-| qwen3.8-flash / chat/completions | 支持 | json_schema + 本地 Draft202012 校验 | 原生 function 字段 | 不使用 | enable_thinking=false；工具字段完整时兼容 finish_reason=stop |
+| qwen3.8-flash / chat/completions | 支持 | json_schema + 本地 Draft202012 校验；思考模式亦实测 | 原生 function 字段 | 不使用 | 推理可按配置/请求开启；工具字段完整时兼容 finish_reason=stop |
 | qwen3.7-text-embedding-flash / embeddings | 不使用 | 不使用 | 不使用 | 1024 维有序列表 | 对此模型显式允许全零 index 时按返回位置映射；正常完整索引则排序；其他坏索引拒绝 |
 | qwen3.8-max / chat/completions（M04可选强端口） | M04真实调用通过 | M04实体schema及0007保真实测 | 未验 | 未验 | enable_thinking=false；只确认M04合成提取范围，见[M04交接](../handoffs/M04.md) |
 
@@ -12,7 +12,7 @@
 
 签名为 provider=qianwen、model=qwen3.7-text-embedding-flash、revision=null、dimension=1024、normalization=l2、text_normalization=nfc-strip-v1。revision 未由 API 提供，明确未知；日期不是伪造的模型修订号。当前指纹 `emb-sha256:a70c2435830cfe74268228dba115ed8bdbf49ff17f65529a2f9e58a98e849b5f`。网关显式做 L2 归一化；API 原向量模长接近 1 不等于客户端归一化策略。签名任一字段变化必须创建新集合/reindex 后切换，不复用旧缓存或混入已有 collection；同名 alias 的供应商内部漂移仍需后续版本治理，不能声称 API 向量等同 BGE-M3。
 
-Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。按唯一输入分批（每批最多 20、单次最多 128），LRU 最多 64 项及估算内存 4MiB，配置有更低上限；缓存只驻内存、结果复制、没有无限磁盘缓存。全零索引适配由此模型的独立批次/单输入对照证明，不扩展到未知模型。
+Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。按唯一输入分批（每批最多 20、单次默认最多 128（可配置）），LRU 最多 64 项及估算内存 4MiB，配置有更低上限；缓存只驻内存、结果复制、没有无限磁盘缓存。全零索引适配由此模型的独立批次/单输入对照证明，不扩展到未知模型。
 
 默认只用一个网络重试层：httpx transport retries=0，AsyncCalls 受同一预算约束，可指数退避和有限抖动。live 专用入口 retry=0。JSON/schema 必须本地验证；显式 repair_once 最多修复一次且不重建预算。未知工具、截断 JSON、维度异常、NaN/Infinity、零向量和模型名变化返回 MODEL_OUTPUT_INVALID。网关解析工具调用但不执行业务工具。
 
@@ -26,9 +26,9 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 
 | 已实现项 | 对业务效果的影响与验收要求 |
 |---|---|
-| ChatRequest默认输出128 token，字段上限4096 token；complete()沿用默认值 | 短协议探针可用；业务显式设置足够输出长度，需要更长输出时先调整契约与预算并验证。网关拒绝finish_reason=length，不能将截断内容当完整答案 |
-| Chat消息最多32条；请求体默认32768字节、配置上限65536字节 | 这是本地输入边界，不是模型上下文窗口。按实际历史、检索证据和工具结果检查容量；超限报错，没有自动保留业务关键内容的裁剪器，不能静默删事实来适配 |
-| enable_thinking固定false，尚无任务级推理开关 | 只验证过当前模式的协议能力；复杂判断/回答在对应特性中验证是否需要推理，并据此适配 |
+| ChatRequest默认输出2048 token，无本地4096上限；业务可显式覆盖 | 实际接受8192输出参数；最终长度受模型服务能力和任务预算影响。finish_reason=length仍拒收，不把截断当完整答案 |
+| 移除Chat消息32条、工具声明16条的固定上限；请求/响应默认1MiB/16MiB，配置无固定上限 | 41条消息、76034字节正文实测；这不是模型最大上下文证明。可按任务调整字节限制，超限显式报错，未增加静默摘要/裁剪 |
+| ProviderConfig和ChatRequest支持enable_thinking及thinking_budget | 请求覆盖配置；默认保留非思考模式兼容。已实测qwen3.8-flash思考+严格schema及用量；发送前将思考额度纳入原累计预算，只记录推理长度，不保存推理正文 |
 | 选定qwen3.8-flash与qwen3.7-text-embedding-flash | 已通过chat/schema/tool/embed接口验收；未比较业务判断、中文回答或语义检索效果，不能认定最优，也不能仅凭Flash名称认定质量不足 |
 | Embedding只做NFC/两端strip、相同文本+signature缓存和批次去重 | 没有摘要压缩或语义近似复用；原位置恢复、结果复制和缓存隔离已有测试 |
 

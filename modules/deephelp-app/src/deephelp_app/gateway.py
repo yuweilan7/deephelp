@@ -126,7 +126,8 @@ class QianwenGateway:
         if len(encoded) > self.config.max_request_bytes:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Model request exceeds byte limit")
         # UTF-8 byte count plus framing allowance deliberately overestimates these bounded
-        # text-only prompts; thinking/search/SDK retries are disabled. Usage overruns fail closed.
+        # text-only prompts; explicit thinking allowance is included by the caller.
+        # Search and SDK retries are disabled. Usage overruns fail closed.
         reserved_tokens = len(encoded) + 1024 + max_output
         reserved_cost = self._cost(
             endpoint,
@@ -253,14 +254,26 @@ class QianwenGateway:
                     for call in message.tool_calls
                 ]
             messages.append(item)
+        thinking = (
+            self.config.enable_thinking
+            if request.enable_thinking is None
+            else request.enable_thinking
+        )
+        thinking_allowance = (
+            (request.thinking_budget or self.config.thinking_budget) if thinking else 0
+        )
+        if request.thinking_budget is not None and not thinking:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Thinking budget requires thinking mode")
         body: dict[str, object] = {
             "model": self.config.chat.model,
             "messages": messages,
             "max_tokens": request.max_output_tokens,
-            "enable_thinking": False,
+            "enable_thinking": thinking,
             "temperature": 0,
             "stream": False,
         }
+        if thinking:
+            body["thinking_budget"] = thinking_allowance
         if request.response_format == "json_schema":
             if not self.config.strict_schema:
                 raise AppError(
@@ -293,7 +306,7 @@ class QianwenGateway:
             self.config.chat,
             self._chat_credentials,
             budget,
-            request.max_output_tokens,
+            request.max_output_tokens + thinking_allowance,
         )
         try:
             choices = data["choices"]
@@ -345,6 +358,8 @@ class QianwenGateway:
                     "finish_reason": result.finish_reason,
                     "tool_names": [call.name for call in tool_calls],
                     "content_length": len(result.content or ""),
+                    "thinking_enabled": thinking,
+                    "reasoning_content_length": len(message.get("reasoning_content") or ""),
                 }
             )
             return result
