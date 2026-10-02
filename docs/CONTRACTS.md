@@ -1,6 +1,8 @@
 # 跨模块语义契约
 
-版本：`0.1.3-draft`，在M00语义基线上明确分期；M01代码仍使用既有`0.1.2-m01`，本次不修改已实现接口。本文描述当前和未来共用语义，不声明类/表已存在。M02原位发布M03–M08实际需要的类型；后续模块首次消费时增量细化，不在M02一次冻结全部未来协议。破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增ADR。
+当前发布契约：`0.2.0-m02`，唯一类型见 `modules/deephelp-app/src/deephelp_app/domain/models.py`。从 M01 的 `0.1.2-m01` 升级：facts/evidence 由自由 dict/string 改为 Fact/EvidenceRef，next_action 改为枚举，新增 run_status、tool_call_ids、missing_slots；旧版本 envelope 拒收。现有 API、预算、fake 和离线消费者按新类型回归；converse 的业务执行边界见 PROJECT_STATE。
+
+本文同时约束未来模块，不声明数据库表或审批能力已存在。后续首次消费时增量细化，不在 M02 冻结全部未来协议。破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增 ADR。
 
 ## 哪个阶段实现什么
 
@@ -52,6 +54,18 @@ VersionManifest：schema/contract、registry、dataset/split、embedding_signatu
 
 ExecutionBudget：deadline、remaining_attempts、retry_remaining、tool_steps、token/cost_limit、used计数及reason；费用未配置时live禁用。时间/次数/金额任一耗尽即停止，单个策略不能重新创建预算“续命”。
 
+### 当前类型的具体边界
+
+- `ConverseInput` 只含不可信消息字段；`RequestEnvelope.identity` 由可信入口注入。DTO 结构不替代鉴权，`domain/checks.py` 检查完整 tenant/user、session/question 归属及工具上下文；真实存储回查由后续消费者负责。
+- 目录版本 `complaints-v1`，三类 actionable code 为 DISCOUNT_MISSING / COUPON_UNUSABLE / ORDER_ACTIVITY_QUERY；另有三个不可执行父节点，l1–l4 与 parent 显式校验。规则/分类候选只能选择叶子，不接受未知 code。
+- 候选 `rank` 显式从 1 连续排列，原始 `score_kind` 保留；不能跨不同打分种类直接比较大小。当前非 top1 策略仅 `prefer_complete_slots_v1`：top1 缺槽、选择项槽位齐全，并有可与实际实体消息核对的证据；任意解释或未知策略 ID 拒收。该策略不替代 M12 分类与阈值校准。
+- ID 与实体值是严格字符串；实体必须有 message_id/excerpt。Question 保存当前每槽唯一值、旧/新 EntityConflict 和成员消息，明确更正不可丢旧来源。金额为非负 Decimal，输入只收 Decimal/十进制字符串，CNY 最多两位小数，不静默舍入。
+- Fact 声明 text/money/flag 并引用证据 ID。ToolResult 成功需要 call_id 与同一调用的 tool evidence；SOP/Response 中工具调用 ID 与 tool evidence 必须一致，RESOLVED/ANSWERED 需要有证据的事实。这些是本地结构约束，真实调用 ledger 与合法证据回查由 M06–M08 保证。
+- `response_from_sop` 只做状态映射：WAITING_SLOT → CLARIFY / WAITING_SLOT / run SUCCEEDED / 工具 0；不是 SOP 执行器。缺槽位不能接收成功事实或调用。当前只读工具白名单为 get_order_benefits、check_coupon，参数 hash、当前实体/归属/意图及预算均须检查。
+- `ExecutionBudget.snapshot()` 复用 M01 同一运行时预算，将 deadline 表达为当时剩余秒数；序列化摘要不含单调时钟或运行时对象，不能拿摘要重建/延长原预算。token/cost/tool 上限未知保持 null；真实运行时额度计量属于 M03/M07。
+- WAITING_APPROVAL/PENDING_APPROVAL 枚举仅保留名称，当前 Question/Response 拒收；没有批准/resume 输入或写工具。审批执行与数据库唯一约束没有因此被实现。
+- 合成目录/样本/指标定义见应用 `sample_data/README.md`，固定回归数据不得冒充 M17 未见评测集。
+
 ## 状态必须区分
 
 Question：ACTIVE / WAITING_SLOT / WAITING_APPROVAL / RESOLVED / HANDED_OFF / CANCELLED。
@@ -85,7 +99,9 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 | 不适用 | 拒绝于入口的请求没有业务run/question，允许null；未调用工具的evidence/tool列表可为空 |
 | 非法 | 字段格式、枚举、归属或版本不合法，分别按INVALID_ARGUMENT、FORBIDDEN、VERSION_CONFLICT处理；不能当缺槽位放行 |
 
-上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联 run/结果；未知主意图和缺槽位不等于非法 HTTP 请求。兼容样例和非 top1 反例见 `ACCEPTANCE.md`；它们是待 M02 落为类型和测试的设计基线，不是已发布 API。
+上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联 run/结果；未知主意图和缺槽位不等于非法 HTTP 请求。HTTP 默认映射见 `errors.HTTP_STATUS`：身份 401/403、幂等/版本冲突 409、输入 422、限流 429、超时 504；UNKNOWN_INTENT/MISSING_SLOT/NO_SOP 是 HTTP 200 的正常人工/澄清收口。总 deadline 可明确映射 504。审批/操作未知错误的映射是未来边界，不表示审批可用。
+
+FakeRepository 的内存用例按 tenant/user/channel/message 作用域保留首次结果；同逻辑消息换 request/trace/received_at 不替换 run，正文/session/occurred_at/question_hint/schema 变化返回 IDEMPOTENCY_CONFLICT。它没有事务、持久化或进程崩溃保证，M08 仍须验证 MySQL 唯一约束。兼容及后续业务验收责任见 `ACCEPTANCE.md`。
 
 审批记录必须绑定operation_id、参数hash、SOP版本、question_version、主体和期限，并以版本条件更新确保PENDING→APPROVED最多一次。批准后由执行领取事务再次核验绑定与授权，将PREPARED→IN_FLIGHT并标识唯一执行者；批准记录本身不触发第二次工具调用。领取前的实体更正撤销旧审批并取消未发送操作/等待run；已经IN_FLIGHT或UNKNOWN的操作不得伪标CANCELLED，应冻结原参数并对账。
 

@@ -1,0 +1,1504 @@
+{
+  "version": "smoke-v1",
+  "synthetic": true,
+  "cases": [
+    {
+      "case_id": "M02-001",
+      "synthetic": true,
+      "source_group": "source-discount-basic",
+      "variant_group": "discount-basic",
+      "split": "reference",
+      "scenario": "discount-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-basic",
+        "message_id": "msg-M02-001",
+        "raw_text": "订单 DEMO-D01 没享受优惠，请查原因。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D01",
+            "source": {
+              "message_id": "msg-M02-001",
+              "excerpt": "DEMO-D01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-D01",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-002",
+      "synthetic": true,
+      "source_group": "source-discount-basic",
+      "variant_group": "discount-basic",
+      "split": "reference",
+      "scenario": "discount-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-basic",
+        "message_id": "msg-M02-002",
+        "raw_text": "帮我看看 DEMO-D01，结算优惠没有到账。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D01",
+            "source": {
+              "message_id": "msg-M02-002",
+              "excerpt": "DEMO-D01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-D01",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-003",
+      "synthetic": true,
+      "source_group": "source-discount-missing-order",
+      "variant_group": "discount-missing-order",
+      "split": "dev",
+      "scenario": "discount-missing-order",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-missing-order",
+        "message_id": "msg-M02-003",
+        "raw_text": "这笔订单没享受优惠，订单号还没找到。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "order_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-004",
+      "synthetic": true,
+      "source_group": "source-discount-missing-order",
+      "variant_group": "discount-missing-order",
+      "split": "dev",
+      "scenario": "discount-missing-order",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-missing-order",
+        "message_id": "msg-M02-004",
+        "raw_text": "支付时没有减价，我稍后补订单编号。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "order_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-005",
+      "synthetic": true,
+      "source_group": "source-discount-leading-zero",
+      "variant_group": "discount-leading-zero",
+      "split": "regression",
+      "scenario": "discount-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-leading-zero",
+        "message_id": "msg-M02-005",
+        "raw_text": "订单 000031 显示优惠少了，请核对，前导零要保留。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000031",
+            "source": {
+              "message_id": "msg-M02-005",
+              "excerpt": "000031"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "000031",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-006",
+      "synthetic": true,
+      "source_group": "source-discount-leading-zero",
+      "variant_group": "discount-leading-zero",
+      "split": "regression",
+      "scenario": "discount-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-leading-zero",
+        "message_id": "msg-M02-006",
+        "raw_text": "我想核实编号 000031 的优惠，金额是 10.00 元。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000031",
+            "source": {
+              "message_id": "msg-M02-006",
+              "excerpt": "000031"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "000031",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-007",
+      "synthetic": true,
+      "source_group": "source-discount-not-eligible",
+      "variant_group": "discount-not-eligible",
+      "split": "dev",
+      "scenario": "discount-not-eligible",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-not-eligible",
+        "message_id": "msg-M02-007",
+        "raw_text": "DEMO-D04 未达到活动条件还能减价吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D04",
+            "source": {
+              "message_id": "msg-M02-007",
+              "excerpt": "DEMO-D04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-D04",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-008",
+      "synthetic": true,
+      "source_group": "source-discount-not-eligible",
+      "variant_group": "discount-not-eligible",
+      "split": "dev",
+      "scenario": "discount-not-eligible",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-not-eligible",
+        "message_id": "msg-M02-008",
+        "raw_text": "订单 DEMO-D04 没满门槛所以没享受优惠，请解释。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D04",
+            "source": {
+              "message_id": "msg-M02-008",
+              "excerpt": "DEMO-D04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-D04",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-009",
+      "synthetic": true,
+      "source_group": "source-discount-forbidden",
+      "variant_group": "discount-forbidden",
+      "split": "regression",
+      "scenario": "discount-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-forbidden",
+        "message_id": "msg-M02-009",
+        "raw_text": "查一下他人的订单 DEMO-D05 为什么没有优惠。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D05",
+            "source": {
+              "message_id": "msg-M02-009",
+              "excerpt": "DEMO-D05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-010",
+      "synthetic": true,
+      "source_group": "source-discount-forbidden",
+      "variant_group": "discount-forbidden",
+      "split": "regression",
+      "scenario": "discount-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-forbidden",
+        "message_id": "msg-M02-010",
+        "raw_text": "朋友订单 DEMO-D05 的优惠详情能给我吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "DISCOUNT_MISSING",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-D05",
+            "source": {
+              "message_id": "msg-M02-010",
+              "excerpt": "DEMO-D05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-011",
+      "synthetic": true,
+      "source_group": "source-discount-negation",
+      "variant_group": "discount-negation",
+      "split": "regression",
+      "scenario": "discount-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-negation",
+        "message_id": "msg-M02-011",
+        "raw_text": "我没有优惠未享受的问题，也不需要查询订单。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-012",
+      "synthetic": true,
+      "source_group": "source-discount-negation",
+      "variant_group": "discount-negation",
+      "split": "regression",
+      "scenario": "discount-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-discount-negation",
+        "message_id": "msg-M02-012",
+        "raw_text": "不是来投诉优惠的，请别替我发起补偿。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-013",
+      "synthetic": true,
+      "source_group": "source-coupon-basic",
+      "variant_group": "coupon-basic",
+      "split": "reference",
+      "scenario": "coupon-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-basic",
+        "message_id": "msg-M02-013",
+        "raw_text": "订单 DEMO-C01 的券 COUPON-C01 用不了，请查门槛。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C01",
+            "source": {
+              "message_id": "msg-M02-013",
+              "excerpt": "DEMO-C01"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C01",
+            "source": {
+              "message_id": "msg-M02-013",
+              "excerpt": "COUPON-C01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "DEMO-C01",
+              "coupon_id": "COUPON-C01"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-014",
+      "synthetic": true,
+      "source_group": "source-coupon-basic",
+      "variant_group": "coupon-basic",
+      "split": "reference",
+      "scenario": "coupon-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-basic",
+        "message_id": "msg-M02-014",
+        "raw_text": "COUPON-C01 无法用于 DEMO-C01，能解释原因吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C01",
+            "source": {
+              "message_id": "msg-M02-014",
+              "excerpt": "DEMO-C01"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C01",
+            "source": {
+              "message_id": "msg-M02-014",
+              "excerpt": "COUPON-C01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "DEMO-C01",
+              "coupon_id": "COUPON-C01"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-015",
+      "synthetic": true,
+      "source_group": "source-coupon-missing-coupon",
+      "variant_group": "coupon-missing-coupon",
+      "split": "dev",
+      "scenario": "coupon-missing-coupon",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-missing-coupon",
+        "message_id": "msg-M02-015",
+        "raw_text": "订单 DEMO-C02 的券不能用，券号还没找到。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C02",
+            "source": {
+              "message_id": "msg-M02-015",
+              "excerpt": "DEMO-C02"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "coupon_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-016",
+      "synthetic": true,
+      "source_group": "source-coupon-missing-coupon",
+      "variant_group": "coupon-missing-coupon",
+      "split": "dev",
+      "scenario": "coupon-missing-coupon",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-missing-coupon",
+        "message_id": "msg-M02-016",
+        "raw_text": "DEMO-C02 使用券失败，我稍后发券编号。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C02",
+            "source": {
+              "message_id": "msg-M02-016",
+              "excerpt": "DEMO-C02"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "coupon_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-017",
+      "synthetic": true,
+      "source_group": "source-coupon-leading-zero",
+      "variant_group": "coupon-leading-zero",
+      "split": "regression",
+      "scenario": "coupon-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-leading-zero",
+        "message_id": "msg-M02-017",
+        "raw_text": "订单 000042 的券 000009 不可用，两个编号前导零要保留。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000042",
+            "source": {
+              "message_id": "msg-M02-017",
+              "excerpt": "000042"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "000009",
+            "source": {
+              "message_id": "msg-M02-017",
+              "excerpt": "000009"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "000042",
+              "coupon_id": "000009"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-018",
+      "synthetic": true,
+      "source_group": "source-coupon-leading-zero",
+      "variant_group": "coupon-leading-zero",
+      "split": "regression",
+      "scenario": "coupon-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-leading-zero",
+        "message_id": "msg-M02-018",
+        "raw_text": "核查 000009 在订单 000042 的可用状态，别改成数字。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000042",
+            "source": {
+              "message_id": "msg-M02-018",
+              "excerpt": "000042"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "000009",
+            "source": {
+              "message_id": "msg-M02-018",
+              "excerpt": "000009"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "000042",
+              "coupon_id": "000009"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-019",
+      "synthetic": true,
+      "source_group": "source-coupon-expired",
+      "variant_group": "coupon-expired",
+      "split": "dev",
+      "scenario": "coupon-expired",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-expired",
+        "message_id": "msg-M02-019",
+        "raw_text": "订单 DEMO-C04 的券 COUPON-C04 过期了还能用吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C04",
+            "source": {
+              "message_id": "msg-M02-019",
+              "excerpt": "DEMO-C04"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C04",
+            "source": {
+              "message_id": "msg-M02-019",
+              "excerpt": "COUPON-C04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "DEMO-C04",
+              "coupon_id": "COUPON-C04"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-020",
+      "synthetic": true,
+      "source_group": "source-coupon-expired",
+      "variant_group": "coupon-expired",
+      "split": "dev",
+      "scenario": "coupon-expired",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-expired",
+        "message_id": "msg-M02-020",
+        "raw_text": "COUPON-C04 在 DEMO-C04 上显示已过期，请核查。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C04",
+            "source": {
+              "message_id": "msg-M02-020",
+              "excerpt": "DEMO-C04"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C04",
+            "source": {
+              "message_id": "msg-M02-020",
+              "excerpt": "COUPON-C04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "check_coupon",
+            "parameters": {
+              "order_id": "DEMO-C04",
+              "coupon_id": "COUPON-C04"
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-021",
+      "synthetic": true,
+      "source_group": "source-coupon-forbidden",
+      "variant_group": "coupon-forbidden",
+      "split": "regression",
+      "scenario": "coupon-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-forbidden",
+        "message_id": "msg-M02-021",
+        "raw_text": "帮我看朋友的 DEMO-C05 和 COUPON-C05 为什么不能用。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C05",
+            "source": {
+              "message_id": "msg-M02-021",
+              "excerpt": "DEMO-C05"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C05",
+            "source": {
+              "message_id": "msg-M02-021",
+              "excerpt": "COUPON-C05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-022",
+      "synthetic": true,
+      "source_group": "source-coupon-forbidden",
+      "variant_group": "coupon-forbidden",
+      "split": "regression",
+      "scenario": "coupon-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-forbidden",
+        "message_id": "msg-M02-022",
+        "raw_text": "我想查他人的券 COUPON-C05 在 DEMO-C05 的状态。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "COUPON_UNUSABLE",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-C05",
+            "source": {
+              "message_id": "msg-M02-022",
+              "excerpt": "DEMO-C05"
+            }
+          },
+          {
+            "name": "coupon_id",
+            "value": "COUPON-C05",
+            "source": {
+              "message_id": "msg-M02-022",
+              "excerpt": "COUPON-C05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-023",
+      "synthetic": true,
+      "source_group": "source-coupon-negation",
+      "variant_group": "coupon-negation",
+      "split": "regression",
+      "scenario": "coupon-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-negation",
+        "message_id": "msg-M02-023",
+        "raw_text": "我没有券不可用的问题，只是打个招呼。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-024",
+      "synthetic": true,
+      "source_group": "source-coupon-negation",
+      "variant_group": "coupon-negation",
+      "split": "regression",
+      "scenario": "coupon-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-coupon-negation",
+        "message_id": "msg-M02-024",
+        "raw_text": "不是券用不了，不需要你调用查券工具。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-025",
+      "synthetic": true,
+      "source_group": "source-activity-basic",
+      "variant_group": "activity-basic",
+      "split": "reference",
+      "scenario": "activity-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-basic",
+        "message_id": "msg-M02-025",
+        "raw_text": "订单 DEMO-A01 参加了什么活动？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A01",
+            "source": {
+              "message_id": "msg-M02-025",
+              "excerpt": "DEMO-A01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-A01",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-026",
+      "synthetic": true,
+      "source_group": "source-activity-basic",
+      "variant_group": "activity-basic",
+      "split": "reference",
+      "scenario": "activity-basic",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-basic",
+        "message_id": "msg-M02-026",
+        "raw_text": "查询 DEMO-A01 对应的活动信息。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A01",
+            "source": {
+              "message_id": "msg-M02-026",
+              "excerpt": "DEMO-A01"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-A01",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-027",
+      "synthetic": true,
+      "source_group": "source-activity-missing-order",
+      "variant_group": "activity-missing-order",
+      "split": "dev",
+      "scenario": "activity-missing-order",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-missing-order",
+        "message_id": "msg-M02-027",
+        "raw_text": "帮我查订单参加了什么活动，编号稍后发。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "order_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-028",
+      "synthetic": true,
+      "source_group": "source-activity-missing-order",
+      "variant_group": "activity-missing-order",
+      "split": "dev",
+      "scenario": "activity-missing-order",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-missing-order",
+        "message_id": "msg-M02-028",
+        "raw_text": "想了解订单活动，订单号暂时没找到。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [],
+        "tools": [],
+        "outcome": "CLARIFY",
+        "question_status": "WAITING_SLOT",
+        "missing_slots": [
+          "order_id"
+        ],
+        "next_action": "provide_slots",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-029",
+      "synthetic": true,
+      "source_group": "source-activity-leading-zero",
+      "variant_group": "activity-leading-zero",
+      "split": "regression",
+      "scenario": "activity-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-leading-zero",
+        "message_id": "msg-M02-029",
+        "raw_text": "查询订单 000053 的活动，编号开头的零不能丢。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000053",
+            "source": {
+              "message_id": "msg-M02-029",
+              "excerpt": "000053"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "000053",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-030",
+      "synthetic": true,
+      "source_group": "source-activity-leading-zero",
+      "variant_group": "activity-leading-zero",
+      "split": "regression",
+      "scenario": "activity-leading-zero",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-leading-zero",
+        "message_id": "msg-M02-030",
+        "raw_text": "000053 参加了哪些活动，请按原编号查询。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "000053",
+            "source": {
+              "message_id": "msg-M02-030",
+              "excerpt": "000053"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "000053",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-031",
+      "synthetic": true,
+      "source_group": "source-activity-none",
+      "variant_group": "activity-none",
+      "split": "dev",
+      "scenario": "activity-none",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-none",
+        "message_id": "msg-M02-031",
+        "raw_text": "DEMO-A04 是否没有参加任何活动？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A04",
+            "source": {
+              "message_id": "msg-M02-031",
+              "excerpt": "DEMO-A04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-A04",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-032",
+      "synthetic": true,
+      "source_group": "source-activity-none",
+      "variant_group": "activity-none",
+      "split": "dev",
+      "scenario": "activity-none",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-none",
+        "message_id": "msg-M02-032",
+        "raw_text": "订单 DEMO-A04 的活动列表是空的吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A04",
+            "source": {
+              "message_id": "msg-M02-032",
+              "excerpt": "DEMO-A04"
+            }
+          }
+        ],
+        "tools": [
+          {
+            "tool_name": "get_order_benefits",
+            "parameters": {
+              "order_id": "DEMO-A04",
+              "coupon_id": null
+            }
+          }
+        ],
+        "outcome": "ANSWERED",
+        "question_status": "RESOLVED",
+        "missing_slots": [],
+        "next_action": "none",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-033",
+      "synthetic": true,
+      "source_group": "source-activity-forbidden",
+      "variant_group": "activity-forbidden",
+      "split": "regression",
+      "scenario": "activity-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-forbidden",
+        "message_id": "msg-M02-033",
+        "raw_text": "查询别人的订单 DEMO-A05 参加的活动。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A05",
+            "source": {
+              "message_id": "msg-M02-033",
+              "excerpt": "DEMO-A05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-034",
+      "synthetic": true,
+      "source_group": "source-activity-forbidden",
+      "variant_group": "activity-forbidden",
+      "split": "regression",
+      "scenario": "activity-forbidden",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-forbidden",
+        "message_id": "msg-M02-034",
+        "raw_text": "我不是 DEMO-A05 的主人，能查它的活动吗？",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "entities": [
+          {
+            "name": "order_id",
+            "value": "DEMO-A05",
+            "source": {
+              "message_id": "msg-M02-034",
+              "excerpt": "DEMO-A05"
+            }
+          }
+        ],
+        "tools": [],
+        "outcome": "REJECTED",
+        "question_status": null,
+        "missing_slots": [],
+        "next_action": "fix_request",
+        "error_code": "FORBIDDEN"
+      }
+    },
+    {
+      "case_id": "M02-035",
+      "synthetic": true,
+      "source_group": "source-activity-negation",
+      "variant_group": "activity-negation",
+      "split": "regression",
+      "scenario": "activity-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-negation",
+        "message_id": "msg-M02-035",
+        "raw_text": "不用查订单活动，我只是问候一下。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    },
+    {
+      "case_id": "M02-036",
+      "synthetic": true,
+      "source_group": "source-activity-negation",
+      "variant_group": "activity-negation",
+      "split": "regression",
+      "scenario": "activity-negation",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "message": {
+        "channel": "synthetic",
+        "session_id": "session-activity-negation",
+        "message_id": "msg-M02-036",
+        "raw_text": "我不想查询活动，请不要自动查订单。",
+        "occurred_at": "2026-10-02T10:00:00+08:00"
+      },
+      "expected": {
+        "intent": null,
+        "entities": [],
+        "tools": [],
+        "outcome": "HANDOFF",
+        "question_status": "HANDED_OFF",
+        "missing_slots": [],
+        "next_action": "contact_support",
+        "error_code": null
+      }
+    }
+  ]
+}

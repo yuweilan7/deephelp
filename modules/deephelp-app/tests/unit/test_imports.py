@@ -26,6 +26,9 @@ with (
         import deephelp_app.experiments
         import deephelp_app.fakes
         import deephelp_app.trace
+        import deephelp_app.domain.checks
+        import deephelp_app.domain.registry
+        import deephelp_app.samples
     assert not client.called
     assert not pool.called
 """

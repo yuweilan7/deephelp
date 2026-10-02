@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from deephelp_app.domain.models import BudgetUsed, ErrorCode
+from deephelp_app.domain.models import BudgetSnapshot, BudgetUsed, ErrorCode
 from deephelp_app.errors import AppError
 
 
@@ -43,6 +43,20 @@ class ExecutionBudget:
 
     def usage(self) -> BudgetUsed:
         return BudgetUsed(attempts=self.attempts_used, retries=self.retries_used)
+
+    def snapshot(self) -> BudgetSnapshot:
+        remaining = max(0.0, self.deadline - asyncio.get_running_loop().time())
+        return BudgetSnapshot(
+            remaining_seconds=remaining,
+            remaining_attempts=self.remaining_attempts,
+            retry_remaining=self.retry_remaining,
+            used=self.usage(),
+            stop_reason=(
+                ErrorCode.BUDGET_EXHAUSTED
+                if remaining == 0 or self.remaining_attempts == 0
+                else None
+            ),
+        )
 
 
 class AsyncCalls:

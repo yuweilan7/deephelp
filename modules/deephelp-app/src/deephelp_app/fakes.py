@@ -1,6 +1,14 @@
 import asyncio
+import hashlib
+import json
 
-from deephelp_app.domain.models import RequestEnvelope, ResponseEnvelope, VerifiedIdentity
+from deephelp_app.domain.models import (
+    ErrorCode,
+    RequestEnvelope,
+    ResponseEnvelope,
+    VerifiedIdentity,
+)
+from deephelp_app.errors import AppError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 
 
@@ -31,8 +39,11 @@ class FakeModelGateway:
 
 
 class FakeRepository:
+    """Process-local message replay semantics, not MySQL uniqueness or durable acceptance."""
+
     def __init__(self) -> None:
         self._values: dict[tuple[str, str, str, str], ResponseEnvelope] = {}
+        self._payload_hashes: dict[tuple[str, str, str, str], str] = {}
 
     async def get(
         self, identity: VerifiedIdentity, channel: str, message_id: str
@@ -47,4 +58,17 @@ class FakeRepository:
             request.channel,
             request.message_id,
         )
+        # Only logical message content is stable; transport request/trace/received IDs differ.
+        payload = request.model_dump(
+            mode="json",
+            include={"session_id", "raw_text", "occurred_at", "question_hint", "schema_version"},
+        )
+        payload_hash = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if key in self._values:
+            if self._payload_hashes[key] != payload_hash:
+                raise AppError(ErrorCode.IDEMPOTENCY_CONFLICT, "Message payload conflicts")
+            return
+        self._payload_hashes[key] = payload_hash
         self._values[key] = response.model_copy(deep=True)

@@ -1,0 +1,56 @@
+{
+  "synthetic": true,
+  "request": {
+    "schema_version": "0.2.0-m02",
+    "channel": "synthetic",
+    "session_id": "session-discount-missing-order",
+    "message_id": "msg-M02-003",
+    "raw_text": "这笔订单没享受优惠，订单号还没找到。",
+    "occurred_at": "2026-10-02T10:00:00+08:00",
+    "identity": {
+      "tenant_id": "synthetic-tenant",
+      "user_id": "synthetic-user-a"
+    },
+    "request_id": "req-demo",
+    "trace_id": "trace-demo",
+    "received_at": "2026-10-02T10:00:01+08:00"
+  },
+  "missing_order_response": {
+    "schema_version": "0.2.0-m02",
+    "request_id": "req-demo",
+    "trace_id": "trace-demo",
+    "run_id": "run-demo",
+    "question_id": "question-demo",
+    "outcome": "CLARIFY",
+    "question_status": "WAITING_SLOT",
+    "reply": "请提供订单号。",
+    "facts": [],
+    "evidence_refs": [],
+    "tool_call_ids": [],
+    "missing_slots": [
+      "order_id"
+    ],
+    "next_action": "provide_slots",
+    "error": null,
+    "versions": {
+      "contract": "0.2.0-m02",
+      "registry": "complaints-v1",
+      "dataset": "smoke-v1",
+      "split": "dev",
+      "sop": null,
+      "policy": "slot-policy-v1"
+    },
+    "budget_used": {
+      "attempts": 0,
+      "retries": 0,
+      "tool_steps": 0,
+      "tokens": null,
+      "cost": null
+    }
+  },
+  "future_approval_disabled": {
+    "outcome": "PENDING_APPROVAL",
+    "question_status": "WAITING_APPROVAL",
+    "note": "仅保留枚举；当前 ResponseEnvelope 拒收，业务写工具不在白名单。"
+  }
+}
