@@ -4,6 +4,8 @@
 
 本项目目标是复刻 PDF 的核心机制。先读 `docs/PROJECT_STATE.md` 和 `docs/ROADMAP.md`，再读当前模块规格、直接前置 handoff、要修改的代码和测试。接口变化才读 `docs/CONTRACTS.md`；架构或来源争议才查 `ARCHITECTURE / DECISIONS / SOURCE_MAP` 和 PDF 对应页。全项目审查可以读全部文档，普通实施不需要。
 
+接手本机运行或检查真实依赖时，先读 `docs/LOCAL_SETUP.md`，再按其中入口读取被 Git 忽略的 `.local/DEPENDENCIES.md` 和 `.local/model-pool.json`。前者记录本机凭据位置、连接方式及最新检查报告，后者记录模型目录、额度快照与候选池；不存在时按公开启动说明补配置。不得把历史额度当作实时资格，模型切换仍须符合当前特性的能力、预算和 embedding signature 约束。
+
 M 编号是能力目录，不是必须一次做完的任务，也不是一个 Python 包。每次只实现一个能演示和验收的特性；核心路线、工程加固和可选扩展以 ROADMAP 为准。用户未启动下一个特性时不继续实现。
 
 ## 分支、测试、合并

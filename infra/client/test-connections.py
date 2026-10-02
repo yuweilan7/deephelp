@@ -1,8 +1,14 @@
 """Synthetic acceptance only. Never emits passwords or DSNs. Run on developer PC."""
-import datetime,json,logging,pathlib,socket,sys,time,uuid
+import argparse,datetime,json,logging,pathlib,socket,sys,time,uuid
 from settings import BASE,settings,mysql_connect,redis_connect,milvus_connect
 logging.getLogger('pymilvus').setLevel(logging.CRITICAL)
-MODE=sys.argv[1] if len(sys.argv)>1 else 'full'
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('mode',nargs='?',choices=['health','full','post-restart'],default='full')
+parser.add_argument('--report-dir',type=pathlib.Path,default=BASE/'reports',help='Directory for the local JSON report')
+args=parser.parse_args()
+MODE=args.mode
+REPORT_DIR=args.report_dir
+REPORT_DIR.mkdir(parents=True,exist_ok=True)
 out={'mode':MODE,'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'viewpoint':'Windows developer PC through SSH tunnel'}
 def denied(fn):
     try:fn()
@@ -94,5 +100,5 @@ except Exception as e:
     out['status']='FAIL';out['error_type']=type(e).__name__;out['error']=str(e)
     print('ACCEPTANCE_FAILED',type(e).__name__,str(e),flush=True)
 finally:
-    (BASE/'reports'/('client-'+MODE+'.json')).write_text(json.dumps(out,ensure_ascii=False,indent=2,default=str),encoding='utf-8')
+    (REPORT_DIR/('client-'+MODE+'.json')).write_text(json.dumps(out,ensure_ascii=False,indent=2,default=str),encoding='utf-8')
 if out['status']!='PASS':sys.exit(1)

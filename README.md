@@ -19,6 +19,8 @@ M00–M21 是 22 份能力规格，包含已完成设计、核心复刻、工程
 
 Python 3.14.7；根 uv workspace 和一个 `uv.lock`；业务代码在 `modules/deephelp-app/`。MySQL 保存业务事实，Redis/Milvus 是可重建缓存或索引。保留现有 `infra/`，不重新安装 P00。
 
+本机凭据从哪里加载、SSH 隧道如何启动、模型额度记录在哪里，统一见 [本地启动与依赖交接](docs/LOCAL_SETUP.md)。同一工作目录的下一位接手者可按该入口找到 `.local/DEPENDENCIES.md` 中的本机记录；新机器按公开说明重新提供凭据。
+
 本机 PATH 中的 uv 版本较旧，以下使用已验证的 Python 3.11 uv 启动器；实际应用解释器仍为 Python 3.14.7。安装、启动、检查和异步实验见 [应用 README](modules/deephelp-app/README.md)。Windows PowerShell 从仓库根运行：
 
 ```powershell

@@ -22,7 +22,7 @@ fi
 ports=("$MYSQL_PORT" "$REDIS_PORT" "$MILVUS_LOCAL_PORT" "$MILVUS_WEBUI_PORT")
 if [[ "$action" == check || "$action" == health ]];then
  for p in "${ports[@]}"; do timeout 2 bash -c "</dev/tcp/127.0.0.1/$p"; echo "127.0.0.1:$p reachable";done
- if [[ "$action" == health ]];then "${DEEPHELP_PYTHON:-python3}" "$base/client/test-connections.py" health;fi
+ if [[ "$action" == health ]];then "${DEEPHELP_PYTHON:-python3}" "$base/client/test-connections.py" health --report-dir "$base/../.local/infra-health";fi
  exit 0
 fi
 if managed_pid >/dev/null;then echo 'Managed tunnel already running';exit 0;fi
