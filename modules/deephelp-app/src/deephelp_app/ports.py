@@ -36,6 +36,12 @@ class DenseRetrieverPort(Protocol):
     ) -> DenseResult: ...
 
 
+class HybridRetrieverPort(DenseRetrieverPort, Protocol):
+    async def compare(
+        self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
+    ) -> dict[str, DenseResult]: ...
+
+
 class ToolPort(Protocol):
     async def execute(
         self,

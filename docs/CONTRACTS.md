@@ -148,3 +148,9 @@ M08复用`0.2.0-m02`，ResponseEnvelope新增可选`stages=()`、`intent_decisio
 `Conversation.run(request,budget)`处理当前完整消息，只有600进入IntentService。`MessageLedger.accept`返回新领取或原run/Question/结果，`finish`以原Question version+1及RUNNING条件更新run/Question；同消息payload内容范围沿用既有契约，传输ID不进入hash。MySQL三表的唯一接收与终结事务已由M08消费；相同消息回放使用本次request/trace ID、原run/question与事实结果、当前预算0。RUNNING仅返回进行中引用，不抢占或恢复；不承诺硬中断后的自动恢复。
 
 M08缺槽位提示新消息完整重发，跨消息entities/事件/记忆未启用；question_hint先按主体/session回查，再以INVALID_ARGUMENT拒绝恢复，未授权hint为FORBIDDEN。取消终态保留已发送调用ID，但无成功事实；提交失败不返回ANSWERED。唯一事实模板只消费经M06/M07核验的Fact与配置结论。本机Bearer令牌映射可信合成身份，正文无身份/批准字段；不等于企业登录系统。M01未组装业务端口时的离线501行为保持兼容。
+
+M09保留DenseScope原字段/指纹/集合名，新增其子类HybridScope：必须显式`index_kind=intent_hybrid`，`analyzer_version=jieba-search-cn-lower-v1`，独立`m09_intent_`集合。历史/事件集合不能进入此端口；尚无用户历史召回，不以意图scope替代用户namespace/state权限过滤。HybridRetrieverPort继承DenseRetrieverPort，新增同query `compare`，仍返回同一DenseResult/Hit/Candidate；无第二套领域类型。
+
+Hit/Candidate的score_kind增量支持cosine/bm25/fusion：COSINE有界，BM25非负无界，fusion由归一化WeightedRanker返回。Hit保留raw_dense/raw_sparse/fusion_score/rank/matched_sources；null表示该文档不在该路线的前K候选中，不表示真实相似度为零。每路ANN和最终返回均K，融合联合候选最多2K，不能声称计算量相同。按意图取实际返回样本的最大分数，不按样本数量求和。DenseResult保留旧默认，增加mode、候选预算、权重和本次三路总检索耗时；单路SDK耗时在A/B报告中另列。所有分数不是最终正确概率。
+
+IntentDecision增加可选`retrieval=null`，保存600实际候选/分数/版本；分类结果仍由唯一IntentService给出，原envelope版本和消费者兼容。M09发布指针一次原子替换已验证scope、manifest、完整冻结策略与上一版本；启动核对index/dev/test摘要、权重及候选预算。旧M05指针仍装配原Dense端口，M09指针装配Hybrid，不自动改默认配置。checkpoint/审批/写工具边界不变。

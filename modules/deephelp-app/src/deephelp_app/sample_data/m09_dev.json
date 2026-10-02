@@ -1,0 +1,146 @@
+[
+  {
+    "query_id": "M09-dev-01",
+    "text": "付完钱才发现本该少付的那部分一分没少",
+    "category": "semantic",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-dev-1",
+    "variant_group": "m09-dev-1"
+  },
+  {
+    "query_id": "M09-dev-02",
+    "text": "手里的那张抵扣凭证到了付款时却被拒绝",
+    "category": "semantic",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-dev-2",
+    "variant_group": "m09-dev-2"
+  },
+  {
+    "query_id": "M09-dev-03",
+    "text": "想知道这一单都搭上了哪些促销",
+    "category": "semantic",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-dev-3",
+    "variant_group": "m09-dev-3"
+  },
+  {
+    "query_id": "M09-dev-04",
+    "text": "SKU-A7 订单00123456 满减未减免",
+    "category": "exact",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-dev-4",
+    "variant_group": "m09-dev-4"
+  },
+  {
+    "query_id": "M09-dev-05",
+    "text": "券C1001 订单00123457 过期不可用",
+    "category": "exact",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-dev-5",
+    "variant_group": "m09-dev-5"
+  },
+  {
+    "query_id": "M09-dev-06",
+    "text": "SKU-C9 订单00123458 免息活动名称查询",
+    "category": "exact",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-dev-6",
+    "variant_group": "m09-dev-6"
+  },
+  {
+    "query_id": "M09-dev-07",
+    "text": "不是问优惠券能不能用，问题是折扣消失了",
+    "category": "negation",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-dev-7",
+    "variant_group": "m09-dev-7"
+  },
+  {
+    "query_id": "M09-dev-08",
+    "text": "不是优惠未到账，是领到的券不能在收银台用",
+    "category": "negation",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-dev-8",
+    "variant_group": "m09-dev-8"
+  },
+  {
+    "query_id": "M09-dev-09",
+    "text": "优惠券没问题，不查价格，只想列出订单的活动",
+    "category": "negation",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-dev-9",
+    "variant_group": "m09-dev-9"
+  },
+  {
+    "query_id": "M09-dev-10",
+    "text": "该减的钱没减，优会没到账",
+    "category": "typo",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-dev-10",
+    "variant_group": "m09-dev-10"
+  },
+  {
+    "query_id": "M09-dev-11",
+    "text": "优恵券付钱时选不了",
+    "category": "typo",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-dev-11",
+    "variant_group": "m09-dev-11"
+  },
+  {
+    "query_id": "M09-dev-12",
+    "text": "新商品ZXY99这单有哪些优惠活动",
+    "category": "oov",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-dev-12",
+    "variant_group": "m09-dev-12"
+  },
+  {
+    "query_id": "M09-dev-13",
+    "text": "今天天气怎么样",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-dev-13",
+    "variant_group": "m09-dev-13"
+  },
+  {
+    "query_id": "M09-dev-14",
+    "text": "请解释Python协程",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-dev-14",
+    "variant_group": "m09-dev-14"
+  },
+  {
+    "query_id": "M09-dev-15",
+    "text": "优惠没到账，另外我有一张券不能用",
+    "category": "multiple",
+    "gold": null,
+    "source_group": "m09-dev-15",
+    "variant_group": "m09-dev-15"
+  },
+  {
+    "query_id": "M09-dev-16",
+    "text": "先查订单参与的活动，再处理券无法使用的问题",
+    "category": "multiple",
+    "gold": null,
+    "source_group": "m09-dev-16",
+    "variant_group": "m09-dev-16"
+  },
+  {
+    "query_id": "M09-dev-17",
+    "text": "本来写着免息，账单居然多了一笔利息",
+    "category": "semantic",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-dev-17",
+    "variant_group": "m09-dev-17"
+  },
+  {
+    "query_id": "M09-dev-18",
+    "text": "SKU-B8 优惠券金额门槛不满足",
+    "category": "exact",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-dev-18",
+    "variant_group": "m09-dev-18"
+  }
+]

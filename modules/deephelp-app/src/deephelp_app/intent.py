@@ -7,6 +7,7 @@ from deephelp_app.domain.models import (
     ChatMessage,
     ChatRequest,
     Decision,
+    DenseResult,
     DenseScope,
     EvidenceRef,
     EvidenceSource,
@@ -34,8 +35,13 @@ INTENT_SCHEMA: dict[str, object] = {
 
 
 class IntentService:
-    def __init__(self, model: ChatPort, dense: DenseRetrieverPort, scope: DenseScope) -> None:
+    def __init__(
+        self, model: ChatPort, dense: DenseRetrieverPort, scope: DenseScope, *, top_k: int = 3
+    ) -> None:
+        if not 1 <= top_k <= 20:
+            raise ValueError("Intent candidate budget must be 1..20")
         self.model, self.dense, self.scope = model, dense, scope
+        self.top_k = top_k
 
     async def recognize(self, text: TextEntityResult, budget: ExecutionBudget) -> IntentDecision:
         available = tuple(e.name for e in text.entities if e.name not in text.unresolved_fields)
@@ -55,6 +61,7 @@ class IntentService:
             )
         evidence: tuple[EvidenceRef, ...] = ()
         kind = ScoreKind.RULE
+        result: DenseResult | None = None
         if codes:
             m = text.rule_matches[0]
             evidence = (
@@ -74,10 +81,12 @@ class IntentService:
                     reason_code="long_unmatched_input",
                     available_slots=available,
                 )
-            result = await self.dense.retrieve(text.clean.cleaned_text, self.scope, budget)
+            result = await self.dense.retrieve(
+                text.clean.cleaned_text, self.scope, budget, top_k=self.top_k
+            )
             evidence = tuple(
                 EvidenceRef(
-                    evidence_id=f"dense-{h.doc_id}",
+                    evidence_id=f"{result.retrieval_mode}-{h.doc_id}",
                     source=EvidenceSource.DATASET,
                     record_id=h.doc_id,
                     version=self.scope.dataset_version,
@@ -126,6 +135,7 @@ class IntentService:
                     reason_code="unsupported_intent",
                     available_slots=available,
                     stage_evidence=evidence,
+                    retrieval=result,
                 )
             codes = [IntentCode(str(row["code"]))]
             kind = ScoreKind.MODEL_CHOICE  # categorical selection=1, never calibrated confidence
@@ -138,5 +148,8 @@ class IntentService:
             candidates=(IntentCandidate(code=code, rank=1, score=1, score_kind=kind),),
             available_slots=available,
             stage_evidence=evidence,
-            reason_code="rule_selected" if kind == ScoreKind.RULE else "dense_llm_verified",
+            retrieval=result,
+            reason_code="rule_selected"
+            if kind == ScoreKind.RULE
+            else f"{result.retrieval_mode if result else 'dense'}_llm_verified",
         )

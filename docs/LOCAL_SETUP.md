@@ -141,3 +141,13 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_pro
 ```
 
 --auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；真实feature验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出；main最小复验三类/Dense/缺槽位/未知及持久回放。报告PASS和退出0同时满足才验收。
+
+## M09中文BM25与融合对照
+
+先health与所需Embedding内容/分词/服务端稀疏能力检查，再用现有专用Milvus。默认preview离线；命令、冻结语料与三路对照见[应用README](../modules/deephelp-app/README.md#m09中文bm25与融合对照)。复用既有provider和M05容量/manifest机制，但创建独立M09版本集合，保留旧Dense集合。默认K=3；导入和查询使用同一版本的服务端Jieba配置，分词可直接analyze核对。
+
+本轮先设置足够的`$hybridCalls`、`$hybridTokens`、`$hybridCost`及专用`$hybridBudgetFile`；`hybrid_cli init --budget-state $hybridBudgetFile --max-calls $hybridCalls --max-tokens $hybridTokens --max-cost $hybridCost`只创建本机累计文件，已有文件拒绝重置。其他live命令继续传同一--budget-state；不同命令使用新的--output，不能覆盖证据或控制文件。SDK timeout=None/retry_times=0、15秒外层子时限，整体默认1800秒；原始报告/诊断与本次运行上限只留.local。
+
+`tune`只在dev选择0.25/0.5/0.75的Dense权重，按candidate Recall@1→MRR→接近0.5→较小权重选择，冻结index/dev/test摘要及K。`evaluate --classify`只用已冻结策略运行test：按三方案实际返回证据调用同一600分类逻辑，多诉求/无关含确定性守卫；不执行SOP。不得根据test错例改权重后仍宣称未见test。`activate`验证完整内容/向量哈希后发布语料与策略；`rollback`验证并原子恢复上一组合，服务须重建应用资源才读取新指针。
+
+M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid端口；默认仍为`.local/m05/active.json`。合并main复验M09只读verify/compare及M08真实HTTP最小路径，继续同一累计预算；不跑P00 full，不查询历史/事件集合。该小合成对照不证明企业效果、15+情境或500+规模。

@@ -500,6 +500,7 @@ class IntentDecision(DTO):
     registry_version: Literal["complaints-v1"] = REGISTRY_VERSION
     policy_version: Literal["slot-policy-v1"] = POLICY_VERSION
     override: IntentOverride | None = None
+    retrieval: DenseResult | None = None
 
     @model_validator(mode="after")
     def selection_policy(self) -> IntentDecision:
@@ -983,27 +984,64 @@ class DenseScope(DTO):
         return "m05_intent_" + self.fingerprint[:32]
 
 
+class HybridScope(DenseScope):
+    """Immutable intent corpus; future event/history indexes need a separate scope/Port."""
+
+    analyzer_version: Literal["jieba-search-cn-lower-v1"] = "jieba-search-cn-lower-v1"
+    index_kind: Literal["intent_hybrid"]
+
+    @property
+    def collection_name(self) -> str:
+        return "m09_intent_" + self.fingerprint[:32]
+
+
 class DenseHit(DTO):
     doc_id: Identifier
     intent_code: IntentCode
     content: str
-    raw_score: Annotated[float, Field(allow_inf_nan=False, ge=-1.001, le=1.001)]
-    score_kind: Literal["cosine"] = "cosine"
+    raw_score: Annotated[float, Field(allow_inf_nan=False)]
+    score_kind: Literal["cosine", "bm25", "fusion"] = "cosine"
     metadata: dict[str, object]
-    scope: DenseScope
+    scope: HybridScope | DenseScope
+    raw_dense: Annotated[float, Field(allow_inf_nan=False)] | None = None
+    raw_sparse: Annotated[float, Field(allow_inf_nan=False, ge=0)] | None = None
+    fusion_score: Annotated[float, Field(allow_inf_nan=False, ge=0, le=1.001)] | None = None
+    rank: PositiveCount | None = None
+    matched_sources: tuple[Literal["dense", "bm25"], ...] = ()
+
+    @model_validator(mode="after")
+    def score_range(self) -> DenseHit:
+        if self.score_kind == "cosine" and not -1.001 <= self.raw_score <= 1.001:
+            raise ValueError("Cosine score outside range")
+        if self.score_kind == "bm25" and self.raw_score < 0:
+            raise ValueError("BM25 score must be nonnegative")
+        if self.score_kind == "fusion" and (
+            self.fusion_score != self.raw_score or not self.matched_sources
+        ):
+            raise ValueError("Fusion requires score and actual route provenance")
+        return self
 
 
 class DenseCandidate(DTO):
     intent_code: IntentCode
     raw_score: Annotated[float, Field(allow_inf_nan=False)]
-    score_kind: Literal["cosine"] = "cosine"
+    score_kind: Literal["cosine", "bm25", "fusion"] = "cosine"
     rank: PositiveCount
     evidence_doc_id: Identifier
     aggregation: Literal["per_intent_max_v1"] = "per_intent_max_v1"
 
 
 class DenseResult(DTO):
-    scope: DenseScope
+    scope: HybridScope | DenseScope
     hits: tuple[DenseHit, ...]
     candidates: tuple[DenseCandidate, ...]
-    policy_version: Literal["dense-baseline-v1"] = "dense-baseline-v1"
+    policy_version: Literal["dense-baseline-v1", "hybrid-weighted-v1"] = "dense-baseline-v1"
+    retrieval_mode: Literal["dense", "bm25", "hybrid"] = "dense"
+    candidate_budget: PositiveCount | None = None
+    dense_weight: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)] | None = None
+    elapsed_ms: Annotated[float, Field(ge=0, allow_inf_nan=False)] | None = None
+
+
+# Resolve the incremental evidence reference without a second family of retrieval DTOs.
+IntentDecision.model_rebuild()
+ResponseEnvelope.model_rebuild()
