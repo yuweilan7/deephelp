@@ -1,38 +1,17 @@
 # DeepHelp
 
-用 Python 复刻《客诉场景的自动驾驶 DeepHelp》的核心机制：分层意图识别、多轮问题归属、分层记忆、SOP/MCP 工具执行、调试与评测。当前只有 M01 异步骨架，业务功能和真实联调尚未完成。
+用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。当前完成M00设计、M01异步骨架和中间件只读连接验证；业务Agent尚未实现。
 
-## 先看这两份
+| 需要什么 | 入口 |
+|---|---|
+| 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
+| 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
+| 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
+| Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
+| M01 API、资源与测试边界 | [应用README](modules/deephelp-app/README.md) |
 
-- [路线图](docs/ROADMAP.md)：每个模块做成什么、哪些是核心、哪些可后移、怎样分支和验收。
-- [当前状态](docs/PROJECT_STATE.md)：已经实现和验证了什么，接下来允许做什么。
+Python3.14.7；根uv workspace、一个uv.lock、一个Git仓库。业务代码在modules/deephelp-app，运维在infra；后续增量实现，不按M编号重建工程。每次一个特性，从同步main新建feature，验证后中文commit、push、合并并同步分支。
 
-M00–M21 是 22 份能力规格，包含已完成设计、核心复刻、工程加固和可选扩展。不是 22 个服务，也不要求每次做完一整个 M。第一次真实闭环在 M08；核心深化完成后，审批恢复、部署演练、物流迁移和框架比较可单独选择。
+按任务读取：接口查CONTRACTS，架构查ARCHITECTURE，裁决/来源查DECISIONS与SOURCE_MAP，难例查ACCEPTANCE，只读直接前置handoff。学习材料在docs/learning，历史过程资料不作当前实施指令。
 
-## 每次的工作方式
-
-从 M02 起：同步 main → 从 main 新建一条 feature 分支 → 只做一个特性 → 测试和必要真实验证 → add、中文 commit、push feature → 合并 main 并复验 → push main → 同步 feature 并核对本地/远端 SHA → 回到 main。依赖千问 API 或腾讯云中间件的特性，真实依赖失败就停下来报告，不靠 Mock 通过验收。
-
-只维护一份短计划和一份模块验收记录；无需额外会话、递归 Prompt、多个 Agent 或一组交接文件。你可以直接说“实施 Mxx 的某个特性”，Agent 按 [AGENTS.md](AGENTS.md) 和 [规划规则](docs/PLAN_MODULE_PROMPT.md) 执行。
-
-## 工程和运行入口
-
-Python 3.14.7；根 uv workspace 和一个 `uv.lock`；业务代码在 `modules/deephelp-app/`。MySQL 保存业务事实，Redis/Milvus 是可重建缓存或索引。保留现有 `infra/`，不重新安装 P00。
-
-本机凭据从哪里加载、SSH 隧道如何启动、模型额度记录在哪里，统一见 [本地启动与依赖交接](docs/LOCAL_SETUP.md)。同一工作目录的下一位接手者可按该入口找到 `.local/DEPENDENCIES.md` 中的本机记录；新机器按公开说明重新提供凭据。
-
-本机 PATH 中的 uv 版本较旧，以下使用已验证的 Python 3.11 uv 启动器；实际应用解释器仍为 Python 3.14.7。安装、启动、检查和异步实验见 [应用 README](modules/deephelp-app/README.md)。Windows PowerShell 从仓库根运行：
-
-```powershell
-py -3.11 -m uv sync --locked --all-packages
-py -3.11 -m uv run --locked uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
-py -3.11 -m uv run --locked pytest
-```
-
-`/health` 只验证骨架；`/converse` 返回 HTTP 501 和 NOT_IMPLEMENTED。它们不证明真实模型或数据库可用。
-
-## 其他文档何时看
-
-架构变化查 [ARCHITECTURE](docs/ARCHITECTURE.md)，接口变化查 [CONTRACTS](docs/CONTRACTS.md)，需要知道设计原因查 [DECISIONS](docs/DECISIONS.md)。[ACCEPTANCE](docs/ACCEPTANCE.md) 保存跨模块测试场景；[SOURCE_MAP](docs/SOURCE_MAP.md) 对照 PDF 页码；[RISKS](docs/RISKS.md) 只在相关风险出现时查。[handoffs](handoffs) 是已经完成模块的真实证据，不必每次全部阅读。
-
-原 PDF 放在本机 `docs/`，由 Git 忽略；原件、截图、内部地址、真实客户标识和凭据不提交公共仓库。
+原PDF和凭据只留本机。新机器按LOCAL_SETUP提供配置；有免费额度、库能连接都不等于业务链路已验收。
