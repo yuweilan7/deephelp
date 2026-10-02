@@ -17,15 +17,18 @@ from deephelp_app.domain.models import (
     DenseResult,
     DenseScope,
     ErrorCode,
+    HybridScope,
     VerifiedIdentity,
     VersionManifest,
 )
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
+from deephelp_app.hybrid import HybridRetriever
 from deephelp_app.intent import IntentService
 from deephelp_app.ledger import MySQLLedger
 from deephelp_app.mcp_mock import MockConfig
 from deephelp_app.milvus_dense import MilvusDenseStore, create_client
+from deephelp_app.milvus_hybrid import MilvusHybridStore
 from deephelp_app.providers import ProviderConfig, create_gateway
 from deephelp_app.settings import Settings
 from deephelp_app.sop import SOPExecutor
@@ -169,7 +172,30 @@ class LiveAssembly:
             ProviderConfig.load(providers),
             load_json(pointer),
         )
-        self.scope = DenseScope.model_validate(self.pointer.get("active"))
+        active = self.pointer.get("active")
+        self.scope = (
+            HybridScope.model_validate(active)
+            if isinstance(active, dict) and active.get("index_kind") == "intent_hybrid"
+            else DenseScope.model_validate(active)
+        )
+        self.top_k = 3
+        if isinstance(self.scope, HybridScope):
+            from deephelp_app.hybrid_eval import dataset, validate_selection
+
+            corpus, queries = dataset()
+            selection = self.pointer.get("selection")
+            if not isinstance(selection, dict) or self.pointer.get("format") != "m09-pointer-v1":
+                raise ConfigurationError("Hybrid pointer requires a frozen retrieval policy")
+            top_k = selection.get("candidate_budget")
+            if not isinstance(top_k, int) or isinstance(top_k, bool) or not 1 <= top_k <= 20:
+                raise ConfigurationError("Hybrid candidate budget must be an integer 1..20")
+            validate_selection(selection, self.scope, corpus.index_digest, queries, top_k)
+            self.top_k = top_k
+            if (
+                self.pointer.get("corpus_digest") != corpus.index_digest
+                or self.pointer.get("dense_weight") != selection["dense_weight"]
+            ):
+                raise ConfigurationError("Hybrid pointer corpus/weight mismatch")
         if self.scope.signature != self.config.signature():
             raise ConfigurationError("Active collection embedding signature differs")
         self.mock = mock
@@ -192,7 +218,10 @@ class LiveAssembly:
             stack.push_async_callback(milvus.close)
             # Startup validates the already-published corpus, without repairing or importing it.
             startup = ExecutionBudget.start(30, 10, 0)
-            await MilvusDenseStore(milvus, startup).validate(
+            store_type = (
+                MilvusHybridStore if isinstance(self.scope, HybridScope) else MilvusDenseStore
+            )
+            await store_type(milvus, startup).validate(
                 self.scope, str(self.pointer["corpus_digest"])
             )
             tools = ToolGateway(config=self.mock)
@@ -205,6 +234,11 @@ class LiveAssembly:
                     self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
                 ) -> DenseResult:
                     # The store receives the caller's budget, never the startup budget.
+                    if isinstance(scope, HybridScope):
+                        weight = float(str(assembly.pointer.get("dense_weight", 0.5)))
+                        return await HybridRetriever(
+                            model, MilvusHybridStore(milvus, budget), dense_weight=weight
+                        ).retrieve(text, scope, budget, top_k=top_k)
                     return await DenseRetriever(model, MilvusDenseStore(milvus, budget)).retrieve(
                         text, scope, budget, top_k=top_k
                     )
@@ -222,7 +256,12 @@ class LiveAssembly:
             yield Conversation(
                 ledger,
                 TextEntityProcessor(model, trace=trace),
-                IntentService(model, RequestDense(), assembly.scope),
+                IntentService(
+                    model,
+                    RequestDense(),
+                    assembly.scope,
+                    top_k=assembly.top_k,
+                ),
                 SOPExecutor(model, TrackedTools(tools)),
                 trace,
                 versions,

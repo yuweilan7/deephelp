@@ -45,3 +45,9 @@ dev报告doc Recall@1/3及候选Recall@1/2，每类分母单列；错例保留qu
 ## M06故障数据
 
 `mcp-faults.json`为独立`mcp-faults-v1`配置，只引用business.json合成订单，不修改M02样本。七项配置覆盖延迟、模拟500/限流、缺字段、矛盾、注入文字及超大体积；通过可信服务启动配置加载，不成为模型工具参数。默认正常模式不加载故障；feature验收入口显式使用此配置。
+
+## M09检索对照
+
+`m09_corpus.jsonl`为12条独立reference（每类4条），沿用CorpusRecord；`m09_dev.json`为18条开发查询，`m09_test.json`为24条冻结查询。全部合成、同一作者构造，SKU/订单/券编号均非企业数据。查询query_id/text/category/gold/source_group/variant_group必须独立于索引和另一split，gold=null表示无单一支持意图；运行时检查重复内容/组泄漏。只有reference入Milvus。
+
+dev含14条单类+4条无关/多诉求；test含18条单类（各6条）+6条无关/多诉求。category覆盖semantic/exact/negation/typo/oov/unrelated/multiple，不是原文完整语料或500+独立评测。样本在首轮dev查询前固定；选参只用dev，test错例完整保留、不回流本轮索引。后续改变样本/分词/模型或已依据test修改参数时必须另版本和新冻结组。

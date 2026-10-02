@@ -176,6 +176,9 @@ class Conversation:
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
+        self.disabled = tuple(
+            f for f in DISABLED if f != "hybrid" or not hasattr(intent.scope, "analyzer_version")
+        )
         self.definitions = load_sops() if definitions is None else definitions
 
     @asynccontextmanager
@@ -274,7 +277,7 @@ class Conversation:
                 next_action=NextAction.RETRY_LATER,
                 replayed=True,
                 reply="该消息已有处理中或中断的执行记录；本次未重新调用工具。请联系人工核对。",
-                disabled_features=DISABLED,
+                disabled_features=self.disabled,
             )
         stats = RunTrace()
         token = current_run.set(stats)
@@ -409,7 +412,7 @@ class Conversation:
                 update={
                     "stages": tuple(by_name[n] for n in STAGES),
                     "intent_decision": decision,
-                    "disabled_features": DISABLED,
+                    "disabled_features": self.disabled,
                     "versions": question.versions,
                     "budget_used": usage_delta(budget, initial),
                 }

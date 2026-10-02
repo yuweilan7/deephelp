@@ -1,0 +1,194 @@
+[
+  {
+    "query_id": "M09-test-01",
+    "text": "宣传说会便宜，付款后看着还是原价",
+    "category": "semantic",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-1",
+    "variant_group": "m09-test-1"
+  },
+  {
+    "query_id": "M09-test-02",
+    "text": "讲好的利息减免没有在账单上兑现",
+    "category": "semantic",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-2",
+    "variant_group": "m09-test-2"
+  },
+  {
+    "query_id": "M09-test-03",
+    "text": "账户里的抵用凭证在付款页面一直灰着",
+    "category": "semantic",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-3",
+    "variant_group": "m09-test-3"
+  },
+  {
+    "query_id": "M09-test-04",
+    "text": "领了可以省钱的券，系统偏偏不让我选",
+    "category": "semantic",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-4",
+    "variant_group": "m09-test-4"
+  },
+  {
+    "query_id": "M09-test-05",
+    "text": "帮我看看这个订单赶上了什么促销",
+    "category": "semantic",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-5",
+    "variant_group": "m09-test-5"
+  },
+  {
+    "query_id": "M09-test-06",
+    "text": "这笔购买报名的是哪一项优惠项目",
+    "category": "semantic",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-6",
+    "variant_group": "m09-test-6"
+  },
+  {
+    "query_id": "M09-test-07",
+    "text": "订单00123456 SKU-A7 收银台满减优惠未享受",
+    "category": "exact",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-7",
+    "variant_group": "m09-test-7"
+  },
+  {
+    "query_id": "M09-test-08",
+    "text": "免息分期利息未减免，付款没有优惠",
+    "category": "exact",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-8",
+    "variant_group": "m09-test-8"
+  },
+  {
+    "query_id": "M09-test-09",
+    "text": "C1002订单结算不适用，无法选择优惠券",
+    "category": "exact",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-9",
+    "variant_group": "m09-test-9"
+  },
+  {
+    "query_id": "M09-test-10",
+    "text": "SKU-B8券C1001门槛不足，收银台不可用",
+    "category": "exact",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-10",
+    "variant_group": "m09-test-10"
+  },
+  {
+    "query_id": "M09-test-11",
+    "text": "查询00123458订单免息活动详细信息",
+    "category": "exact",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-11",
+    "variant_group": "m09-test-11"
+  },
+  {
+    "query_id": "M09-test-12",
+    "text": "SKU-C9的促销活动名称是什么",
+    "category": "exact",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-12",
+    "variant_group": "m09-test-12"
+  },
+  {
+    "query_id": "M09-test-13",
+    "text": "券能够使用，但订单的折扣没有体现",
+    "category": "negation",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-13",
+    "variant_group": "m09-test-13"
+  },
+  {
+    "query_id": "M09-test-14",
+    "text": "不要查满减到账，问的是券为什么过期无法使用",
+    "category": "negation",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-14",
+    "variant_group": "m09-test-14"
+  },
+  {
+    "query_id": "M09-test-15",
+    "text": "不投诉没减钱，只查询这单参与活动的名字",
+    "category": "negation",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-15",
+    "variant_group": "m09-test-15"
+  },
+  {
+    "query_id": "M09-test-16",
+    "text": "优慧答应减掉的钱没兑现",
+    "category": "typo",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m09-test-16",
+    "variant_group": "m09-test-16"
+  },
+  {
+    "query_id": "M09-test-17",
+    "text": "结算时优会券显示不可用",
+    "category": "typo",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m09-test-17",
+    "variant_group": "m09-test-17"
+  },
+  {
+    "query_id": "M09-test-18",
+    "text": "SKU-Z9这个从没买过的商品参加了什么活动",
+    "category": "oov",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m09-test-18",
+    "variant_group": "m09-test-18"
+  },
+  {
+    "query_id": "M09-test-19",
+    "text": "帮我查快递到哪里了",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-test-19",
+    "variant_group": "m09-test-19"
+  },
+  {
+    "query_id": "M09-test-20",
+    "text": "订单00123456我要退款退货",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-test-20",
+    "variant_group": "m09-test-20"
+  },
+  {
+    "query_id": "M09-test-21",
+    "text": "not eligible ZXQ991，随便聊聊",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-test-21",
+    "variant_group": "m09-test-21"
+  },
+  {
+    "query_id": "M09-test-22",
+    "text": "满减没兑现；还有另一笔订单的券过期用不了",
+    "category": "multiple",
+    "gold": null,
+    "source_group": "m09-test-22",
+    "variant_group": "m09-test-22"
+  },
+  {
+    "query_id": "M09-test-23",
+    "text": "查订单的活动，同时查另一个订单为何没有优惠",
+    "category": "multiple",
+    "gold": null,
+    "source_group": "m09-test-23",
+    "variant_group": "m09-test-23"
+  },
+  {
+    "query_id": "M09-test-24",
+    "text": "我没有优惠券不可用的问题，不需要你调用查询",
+    "category": "unrelated",
+    "gold": null,
+    "source_group": "m09-test-24",
+    "variant_group": "m09-test-24"
+  }
+]

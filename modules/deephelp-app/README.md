@@ -166,3 +166,27 @@ py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --auth .local/m08
 | 回复模型润色、LangGraph | 使用事实模板及现有SOPExecutorPort |
 | 持久审批、业务写工具、崩溃领取 | 写工具禁用；RUNNING不盲目重放 |
 | 企业接口、15+情境、500+未见评测 | 合成三类及固定样本不代表这些规模/质量 |
+
+## M09中文BM25与融合对照
+
+复用M05语料读取、版本签名、幂等导入与回读，新增服务端Jieba/BM25稀疏索引和WeightedRanker。输入是同一完整query，输出Dense、BM25、Hybrid三路命中、原始/融合分数、来源、rank及每意图最佳证据；不自动接管分类。每路ANN和最终返回K相同，融合联合候选最多2K；评测分别记录三路SDK耗时，生产retrieve为保留诊断也执行三路，不等于只发一次hybrid_search。
+
+从根执行；除preview/init外必须显式--live，先按[LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m09中文bm25与融合对照)检查真实依赖并初始化累计预算。以下使用本机默认.local/m09路径，输出须新文件：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.hybrid_cli preview
+py -3.14 -m uv run --locked python -m deephelp_app.hybrid_cli --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli import --live --output .local/m09/import-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli analyze --live --query "优惠券 不 未 not SKU-A7 订单00123456 免息 收银台" --output .local/m09/analyzer-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli compare --live --query "手里的抵用凭证在付款页面一直灰着" --output .local/m09/compare-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli tune --live --output .local/m09/dev-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli evaluate --live --classify --output .local/m09/test-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli activate --live --output .local/m09/publish-report.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.hybrid_cli verify --live --output .local/m09/verify-report.json
+```
+
+12条reference仅入库；18条dev选权重，24条test只评测。输入只经M04全半角ASCII/空白规范化，三路使用同一文本和一次Embedding，不改写问题；无关/多诉求不计单类Recall分母，计入后续分类。报告保留逐例、按意图/类别统计、失败ID与延迟；资源快照不冒充压测峰值。评分语义与边界见[CONTRACTS](../../docs/CONTRACTS.md)，实际指标见[交接](../../handoffs/M09.md)。
+
+集合名绑定scope/signature/analyzer版本；迁移使用新dataset-version/manifest/selection。每次导入做现有数据占用与新版本峰值容量门禁，最多保留两个M09版本。`delete --allow-delete-synthetic --doc-id`只删当前scope既有合成记录，随后对照核对检索缺失；原记录/向量或同语料新manifest用于恢复，不能覆盖原验证证据。`rollback`恢复上一已验证语料和完整策略，不查询旧集合中的样本。
+
+M08的serve/ask/probe追加`--pointer .local/m09/active.json`即可接入同一600服务，响应intent_decision.retrieval保留真实候选与版本；规则先行、缺槽位禁工具、MySQL账本、事实回复不变。更换指针后重建应用资源；默认Dense入口保留。M11可复用返回类型，但需自己的隔离scope/查询端口，不能把事件/用户历史装入本意图集合。
