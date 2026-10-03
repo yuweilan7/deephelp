@@ -61,7 +61,7 @@
 
 ## 验证与交付
 
-Windows从根使用本机已验证的py -3.14 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。特性分支与合并main均执行：
+Windows从根使用本机已验证的py -3.14 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。以下检查和适用的真实验收只在特性分支执行：
 
 ```powershell
 py -3.14 -m uv run --locked ruff check conftest.py modules/deephelp-app
@@ -71,7 +71,7 @@ py -3.14 -m uv run --locked pytest
 git diff --check
 ```
 
-另跑特性必要验证：文档查链接/命令，接口回归消费者，真实依赖通过专用探针和路径。M01的--live只检查配置，不是模型验收；纯离线改动不强制联网。
+另跑特性必要验证：文档查链接/命令，接口回归消费者，真实依赖通过专用探针和路径。M01的--live只检查配置，不是模型验收；纯离线改动不强制联网。用户2026-10-03更新交付约定：特性验收通过后直接合并/推送main，不再main复验；main仅保存与同步代码。历史文档中的main探针示例是可选运行入口，不构成交付要求。Git冲突、push失败、SHA不一致仍按AGENTS停止报告。
 
 | 任务 | 验证边界 |
 |---|---|

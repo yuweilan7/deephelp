@@ -397,7 +397,7 @@ M17审批范围由独立冻结数据驱动，同一报告格式保存每个操�
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli approval --live --stage feature --output .local/m17-approval/feature-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli approval --live --stage main --baseline .local/m17-approval/feature-new.json --output .local/m17-approval/main-new.json
+# 特性验收通过后按AGENTS合并/推送main，不再重复main验收
 # 四组只读比较和审批检查合并为一次发布判定
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --approvals --output .local/m17/combined-new.json
 ```

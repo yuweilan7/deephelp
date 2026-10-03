@@ -16,7 +16,7 @@ M是能力目录，不是部署单元。每次一个可演示、可验收特性�
 
 1. 确认工作区干净；切换main，`git fetch origin`、`git pull --ff-only origin main`，创建 `feature/<特性名>`。
 2. 实现并通过特性验收及ROADMAP检查。审查差异，仅 `git add -- <明确文件>` 暂存本任务文件；检查 `git diff --cached --check`，中文commit，再 `git push -u origin <特性分支>`。
-3. 确认特性已推送、工作区干净；切回main并pull，`git merge --no-ff <特性分支>`，使用中文合并说明。合并后跑规定检查与必要真实验证，通过后push main。基线变化先审查并重验受影响路径。
+3. 确认特性已推送、工作区干净；切回main并pull，`git merge --no-ff <特性分支>`，使用中文合并说明，然后push main。所有验收在特性分支完成；main只用于合并、保存与同步代码，不再重复静态检查、测试、构建或真实探针。基线变化先审查；若影响已验收行为，返回特性分支处理并验证，不在main复验。
 4. 切回特性，`git merge --ff-only main`、push、fetch；核对本地两个分支、对应远端跟踪分支及 `git ls-remote` 的两个远端SHA全部一致。保留已完成分支，最后回到干净main；下一特性另建分支。
 
 提交标题 `类型(范围): 中文说明`。逐条检查退出码；冲突、验证/push失败或SHA不一致即停并报告，不能报完成。不覆盖用户未提交修改，不自动stash，不用reset --hard、clean -fd或force push。纯讨论、只读审查和纯规划不自动commit/push。最终报告改动、验证、提交说明及同步SHA。
