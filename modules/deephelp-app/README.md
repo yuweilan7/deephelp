@@ -368,3 +368,27 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.debug_p
 ```
 
 探针可显式指定--auth/--budget-state/--pointer/--providers，默认使用M16累计预算和M09检索指针；恢复/main继续同一预算，不重置。实际三类事实、自动补充、未知及正式SDK工具超时、四次真实受限润色、鉴权/脱敏、零调用重放、新追踪资源与MySQL新池回读逐项检查；main复验正常/缺槽位/补充及持久回放。工具超时通过专用合成对象延迟和真实child timeout触发，不冒充企业故障。清理自己创建的事件集合，保留MySQL合成事实/outbox；不跑P00 full或企业写接口。报告须新路径，原始内容/诊断与任务预算只留.local。
+
+## M17 冻结评测与增量对照
+
+输入公开合成单消息/多轮会话，输出同数据四组逐条结果、混淆矩阵、错例、空分母说明和发布判定。四组依次为Rule+Dense、Hybrid、Memory/EventCluster、再加FastText；检索使用同一M09集合及K，Dense不使用未经校准的分数接管，其他组沿用M12的dev冻结门限。模型、Prompt/SOP、调用上限保持一致；语义与业务gold由确定性规则/版本化business.json核验。规格见[M17](../../docs/MODULES/M17_EVALUATION.md)，数据边界见[sample_data](src/deephelp_app/sample_data/README.md#m17-冻结评测数据)。
+
+```powershell
+# 审计冻结hash、标签/对象依据、历史语料及split/模板组隔离
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation_cli audit
+# 默认离线全量：语义/SOP固定适配器及正式SDK本机stdio/loopback HTTP，非模型质量
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation_cli run --output .local/m17/offline-new.json
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m17_evaluation.py modules/deephelp-app/tests/integration/test_m17_evaluation_flow.py
+# 新机器/新任务初始化正数运行上限；已有任务继续原累计文件
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --max-calls $m17Calls --max-tokens $m17Tokens --max-cost $m17Cost
+& infra/client/tunnel.ps1 -Action health
+# 默认只跑数据中固定live_sample，显式--all-cases才跑真实全量
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --stage feature --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --output .local/m17/live-feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --stage main --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --baseline .local/m17/live-feature-new.json --output .local/m17/live-main-new.json
+```
+
+默认真实入口复用.local/m09/active.json、.local/m13/active.json、.local/m17/auth.json及session-budget.json，可显式指定--pointer/--fasttext-pointer/--auth/--budget-state/--providers。必须先有已验证M09集合和M13模型；没有产物时真实对照停止。恢复/main不重置任务累计上限，报告用新路径。整轮默认1800秒，每请求90秒/40次/2重试；只读业务工具与模型共用原有预算。模型可调用性以内容探针与实际路径为准。
+
+报告包含代码文件hash和Git状态、数据/模型/索引/Prompt/SOP/词典/策略签名、逐消息结果、实体来源和实际工具ledger；test/regression分别统计。Recall@K只统计实际发生的有标签检索，规则命中不虚构召回；额外memory query分别计入观测。费用是配置单价估算，非最终账单；离线真实调用/token/费用为null。会话完成要求每条业务检查与同/异事件关系都正确，单条正确不抵消错拆分。非关键日志不承担账本。
+
+缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。当前规模与真实抽样覆盖见PROJECT_STATE；500+及企业质量仍需后续独立特性。
