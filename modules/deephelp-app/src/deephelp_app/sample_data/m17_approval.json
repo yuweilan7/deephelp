@@ -1,0 +1,162 @@
+{
+  "format": "m17-approval-freeze-v1",
+  "synthetic": true,
+  "gold_method": "deterministic operation contract and durable synthetic effect/call ledger",
+  "operations": [
+    {
+      "case": "before_interrupt",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": false
+    },
+    {
+      "case": "approval_checkpoint_gap",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": false
+    },
+    {
+      "case": "before_tool",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": true
+    },
+    {
+      "case": "effect_before_ledger",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": true
+    },
+    {
+      "case": "ledger_before_checkpoint",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": false
+    },
+    {
+      "case": "lost_tool_response",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": true
+    },
+    {
+      "case": "downstream_process_crash",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true,
+      "query_required": true
+    },
+    {
+      "case": "definite_absence",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 2,
+      "replay_required": true,
+      "query_required": true
+    },
+    {
+      "case": "real_http",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1,
+      "replay_required": true
+    },
+    {
+      "case": "reject",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "revoke",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "expired",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "reject_sop_changed",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "revoke_sop_changed",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "expired_decide_sop_changed",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "expired_resume_sop_changed",
+      "status": "CANCELLED",
+      "effects": 0,
+      "execute_calls": 0
+    },
+    {
+      "case": "concurrent",
+      "status": "SUCCEEDED",
+      "effects": 1,
+      "execute_calls": 1
+    }
+  ],
+  "unauthorized_cases": [
+    "http_authentication",
+    "http_parameter_binding",
+    "tenant_id_isolation",
+    "user_id_isolation",
+    "session_id_isolation",
+    "run_id_isolation"
+  ],
+  "required_checks": [
+    "approval_authentication",
+    "http_parameter_binding",
+    "ordinary_message_does_not_approve",
+    "pending_no_effect",
+    "pending_correction_blocked",
+    "isolated_cache_deleted",
+    "isolated_milvus_projection_deleted",
+    "projection_lag_observed",
+    "http_explicit_approval",
+    "http_effect_and_fact",
+    "http_resume_replay",
+    "original_receipt_replays_final",
+    "m16_current_approval_view",
+    "concurrent_approvers",
+    "concurrent_resume_unique_effect",
+    "reject_no_effect",
+    "revoke_no_effect",
+    "expired_no_effect",
+    "reject_sop_changed_no_effect",
+    "revoke_sop_changed_no_effect",
+    "expired_decide_sop_changed_no_effect",
+    "expired_resume_sop_changed_no_effect",
+    "tenant_id_isolation",
+    "user_id_isolation",
+    "session_id_isolation",
+    "run_id_isolation"
+  ]
+}

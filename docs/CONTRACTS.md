@@ -252,6 +252,8 @@ m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检
 
 同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中followup依赖未启用的事件上下文，只作诊断，不参与消息完成基线门禁。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组的followup仍严格比较，独立query不能排除。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。
 
+M17审批扩展沿用`m17-evaluation-v1`，新增`approvals`：冻结数据digest/案例顺序、逐操作rows、越权尝试的before/after真实账本、效果/发送/查询次数和独立release_gate。`approval`独立范围routes为空；组合`run --approvals`时只读范围及审批范围都必须通过。baseline必须同一代码/配置/冻结选择，审批列缺失、范围变化或安全失败不能接受。报告不包含服务key/令牌；实际模型HTTP与固定动作恢复协议分别说明。
+
 ## M18 反馈契约
 
 FeedbackCandidate复用DTO/IntentCode，只接收专用合成身份与m18-collect的MySQL已完成run；run_id唯一采集，candidate_id稳定，文本/实体/出处先脱敏。observation记录原决策、结果、工具证据和trace，不能证明标签。RouteReview按corpus/fasttext/rule独立记录审核者、理由、方法、标签及拒绝/争议/撤回；独立于heldout的确认必需。确定性晋级只接受已登记的合成来源、组/编号中立文本/语义标签一致，不接受置信分或SOP成功作为证据。
