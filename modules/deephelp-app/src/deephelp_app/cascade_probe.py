@@ -214,6 +214,13 @@ async def run(args: argparse.Namespace) -> int:
                             row.intent_decision
                             and row.intent_decision.cascade_steps[-1].layer == "fallback"
                         )
+                    if name == "fallback":
+                        checks["fallback:registered_discount"] = bool(
+                            row.intent_decision
+                            and row.intent_decision.final_code
+                            and row.intent_decision.final_code.value == "DISCOUNT_MISSING"
+                        )
+                        checks["fallback:amounts"] = all(v in row.reply for v in ("99.90", "10.00"))
 
                 body, original = requests[
                     -3

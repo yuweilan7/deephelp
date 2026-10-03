@@ -242,6 +242,8 @@ MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有
 
 正式live的同一`/converse`现已自动归属，无需给每条补充手工附问题编号。只有600调用统一主意图服务，内部顺序为规则→当前Hybrid→必要的已确认事件增强Hybrid→有限schema兜底。`--pointer .local/m09/active.json`启用已校准Hybrid；旧默认M05指针仍兼容，但不直接按Dense分数接管。已绑定问题保持原意图，FastText仍disabled。机制/短路表见[M12规格](../../docs/MODULES/M12_CASCADE_PIPELINE.md)。
 
+归属判断和主意图兜底均使用`event-judge.example.json`配置的强模型（当前qwen3.8-max），按完整语义区分应减未减与一般金额询问/退款；提取、Embedding及SOP沿原provider配置。响应版本记录兜底模型及`m12-fallback-v2`，阶段计数仍分别核算实际调用，不额外重分类。
+
 复用已有凭据/合成身份、M09指针和M10迁移。先health和模型可调用性；新任务设置足够的调用/token/费用累计上限，init只生成新本机文件，恢复不得归零。已存在的`.local/m12/session-budget.json`可继续使用，init不能覆盖它。
 
 ```powershell
