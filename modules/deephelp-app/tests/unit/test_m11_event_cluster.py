@@ -3,7 +3,6 @@ from datetime import timedelta
 
 import pytest
 
-from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.domain.models import (
     ClusterCitation,
     ClusterJudgement,
@@ -25,8 +24,9 @@ from deephelp_app.event_cluster import (
     EventAggregationService,
     PersistentEventAggregation,
 )
-from deephelp_app.event_replay import ReplayJudge, envelope, sequences
 from deephelp_app.execution import ExecutionBudget
+from deephelp_app.learning.cases_fake import MemoryCaseRepository
+from deephelp_app.learning.event_replay import ReplayJudge, envelope, sequences
 
 
 def budget() -> ExecutionBudget:

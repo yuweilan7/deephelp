@@ -80,7 +80,7 @@ ExecutionBudget：deadline、remaining_attempts、retry_remaining、tool_steps�
 - `response_from_sop` 只做状态映射：WAITING_SLOT → CLARIFY / WAITING_SLOT / run SUCCEEDED / 工具 0；不是 SOP 执行器。缺槽位不能接收成功事实或调用。当前只读工具白名单为 get_order_benefits、check_coupon，参数 hash、当前实体/归属/意图及预算均须检查。
 - `ExecutionBudget.snapshot()` 复用 M01 同一运行时预算，将 deadline 表达为当时剩余秒数；序列化摘要不含单调时钟或运行时对象，不能拿摘要重建/延长原预算。token/cost/tool 上限未知保持 null；真实运行时额度计量属于 M03/M07。
 - WAITING_APPROVAL/PENDING_APPROVAL 由 M15 显式装配启用，必须绑定 plan/run/operation；普通消息没有批准/resume 字段。未配置 M15 时仍沿 M14 计划移交，详见下文 M15 契约。
-- 合成目录/样本/指标定义见应用 `sample_data/README.md`，固定回归数据不得冒充 M17 未见评测集。
+- 合成目录/样本/指标定义见应用 `assets/README.md`，固定回归数据不得冒充 M17 未见评测集。
 
 ## 状态必须区分
 
@@ -267,6 +267,8 @@ exports只使用获准路线；FastText回流只进train，保留原dev/test；k
 m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名及providers/data摘要。构建新集合，启动完整向量/hash及模型回读；固定M17抽样+独立发布样本内容/安全全通过、审核快照未变化才显式更新本机演示active/previous。装配时读取固定三路文件，原M09业务指针保持原资产。兼容演示入口保持本机指针语义。
 
 完整发布入口使用唯一DTO `ReleaseManifest(format=m18-release-v1)`，保存所有文件hash、完整FastText预处理/词典签名、SOPRegistry及snapshot、包内Prompt摘要、两路模型配置、代码内容/基线commit、审核来源与成功评测摘要；其JSON摘要为release身份。相同version不能改内容。注册/启用前完整远端向量/hash回读，代码内容不符拒绝装配，不能用更新的二进制执行旧清单。DTO不携带连接或锁。
+
+运行/学习边界重整保持上述DTO格式；成功评测报告新增`code_integrity_scope=runtime-v2`与`tooling_digest`。准备发布同时核对运行内容指纹与当前完整评测工具/冻结输入指纹；运行装配核对绑定报告、运行工件及runtime-v2指纹，不加载评测器或dev/test。旧清单/无范围标记的报告不能用于新代码；目录或运行字节变化须新完整清单与内容验收。
 
 `ReleasePointer`由MySQL active表给出channel/revision/active/previous；文件不再决定完整发布入口的active。switch以显式expected revision短事务锁定并CAS，来源行在同一事务核验；相同目标与当前revision幂等，旧revision返回409。发布事件与active同事务提交。prepared工件/远端验证不占用发布事务。
 

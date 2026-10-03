@@ -3,7 +3,7 @@ from collections import Counter
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.samples import (
+from deephelp_app.evaluation.samples import (
     BusinessFixtures,
     SampleCorpus,
     load_business_fixtures,

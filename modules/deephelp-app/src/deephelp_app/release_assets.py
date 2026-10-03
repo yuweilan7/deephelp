@@ -3,11 +3,10 @@
 from pathlib import Path
 from typing import Any
 
+from deephelp_app.asset_integrity import evaluation_provenance, file_digest, provenance
 from deephelp_app.corpus import digest
 from deephelp_app.domain.models import ReleaseManifest
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import file_digest
-from deephelp_app.evaluation_cli import provenance
 from deephelp_app.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.flywheel_assets import read_data, verify_files, verify_remote
 from deephelp_app.mvp_runtime import BudgetSession
@@ -26,7 +25,7 @@ def prepare_manifest(
     *,
     validation_path: Path | None = None,
 ) -> ReleaseManifest:
-    data = verify_files(assets)
+    data = verify_files(assets, validation_inputs=True)
     validation_path = validation_path or assets.parent / "validation.json"
     validation = read_data(validation_path)
     if validation.get("status") != "PASS" or validation.get("assets_digest") != digest(data):
@@ -40,7 +39,9 @@ def prepare_manifest(
     code = provenance()
     judge = providers.parent / "event-judge.example.json"
     if (
-        validation.get("sop_snapshot") != registry.snapshot_hash
+        validation.get("code_integrity_scope") != "runtime-v2"
+        or validation.get("tooling_digest") != evaluation_provenance()["tooling_digest"]
+        or validation.get("sop_snapshot") != registry.snapshot_hash
         or validation.get("code_digest") != code["package_digest"]
         or validation.get("judge_providers_digest") != file_digest(judge)
         or validation.get("providers_digest") != file_digest(providers)
@@ -78,7 +79,7 @@ def prepare_manifest(
 def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     if any(file_digest(Path(path)) != value for path, value in manifest.files.items()):
         raise ConfigurationError("Immutable release artifact changed or disappeared")
-    data = verify_files(Path(manifest.assets_path))
+    data = verify_files(Path(manifest.assets_path), validation_inputs=False)
     dense = read_data(Path(data["dense_pointer"]))
     classifier = FastTextClassifier(pointer_manifest(Path(data["fasttext_pointer"])))
     registry = SOPRegistry.model_validate(manifest.sop_registry)
@@ -99,6 +100,7 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
         or data["source"] != manifest.review_snapshot
         or digest(validation) != manifest.validation_digest
         or validation.get("status") != "PASS"
+        or validation.get("code_integrity_scope") != "runtime-v2"
         or validation.get("assets_digest") != manifest.assets_digest
         or validation.get("sop_snapshot") != manifest.sop_snapshot
         or validation.get("code_digest") != manifest.code_digest

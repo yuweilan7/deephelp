@@ -7,15 +7,15 @@ node. Language variants alone do not define a new business scenario.
 import json
 from pathlib import Path
 
+from deephelp_app.demo.fixtures import BusinessFixtures
+from deephelp_app.demo.scenarios import SOPScenario
+from deephelp_app.demo.tool_config import MockConfig
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.mcp_mock import MockConfig
-from deephelp_app.samples import BusinessFixtures
-from deephelp_app.sop_acceptance import SOPScenario
 from deephelp_app.sop_governance import SOPRegistry, bundled_registry
 
-CATALOG = Path(__file__).parent / "sop_data/business-catalog-v2.json"
-FIXTURES = CATALOG.with_name("business-fixtures-v2.json")
-REGISTRY = CATALOG.with_name("business-registry-v2.json")
+CATALOG = Path(__file__).parent / "assets/evaluation/business-catalog-v2.json"
+FIXTURES = Path(__file__).parent / "assets/demo/business-fixtures-v2.json"
+REGISTRY = Path(__file__).parent / "sop_data/business-registry-v2.json"
 
 
 def business_registry() -> SOPRegistry:

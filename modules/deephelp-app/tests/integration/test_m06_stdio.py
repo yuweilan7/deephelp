@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 from mcp.shared.exceptions import MCPError
 
+from deephelp_app.demo.tool_config import FaultSpec, MockConfig
 from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope, ToolStatus
 from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mcp_mock import FaultSpec, MockConfig
 from deephelp_app.mcp_protocol import LEDGER_URI, sign_metadata
-from deephelp_app.mcp_smoke import accept, invoke, synthetic_request, wait_record
+from deephelp_app.probes.mcp_smoke import accept, invoke, synthetic_request, wait_record
 from deephelp_app.tool_gateway import ToolGateway, process_alive
 
 pytestmark = pytest.mark.integration

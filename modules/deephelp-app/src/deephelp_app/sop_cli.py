@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.sop_governance import RegistryStore, SOPRegistry, bundled_registry
 
 

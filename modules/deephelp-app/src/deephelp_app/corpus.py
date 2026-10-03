@@ -14,7 +14,6 @@ from xml.etree import ElementTree as ET
 from pydantic import ValidationError
 
 from deephelp_app.domain.models import CorpusRecord
-from deephelp_app.samples import load_corpus
 
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 1000
@@ -232,6 +231,8 @@ def read_corpus(path: Path, *, columns: dict[str, str] | None = None) -> CorpusP
 
 
 def frozen_preview() -> CorpusPreview:
+    from deephelp_app.evaluation.samples import load_corpus
+
     """M02 gold-null cases remain query-only and are evaluated separately by future classifiers."""
     cases = [c for c in load_corpus().cases if c.expected.intent is not None]
     raw = [
@@ -247,5 +248,5 @@ def frozen_preview() -> CorpusPreview:
         }
         for c in cases
     ]
-    source = files("deephelp_app").joinpath("sample_data/cases.json").read_bytes()
+    source = files("deephelp_app").joinpath("assets/evaluation/cases.json").read_bytes()
     return validate_records(list(enumerate(raw, 1)), hashlib.sha256(source).hexdigest())

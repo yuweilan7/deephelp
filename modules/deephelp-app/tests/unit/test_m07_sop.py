@@ -7,6 +7,8 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from deephelp_app.demo.mcp_server import MockBackend
+from deephelp_app.demo.tool_config import MockConfig
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.models import (
     EntityConflict,
@@ -23,11 +25,10 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError
 from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mcp_mock import MockBackend, MockConfig
+from deephelp_app.learning.sop_replay import ReplayModel
+from deephelp_app.probes.sop_probe import sop_question
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_config import SOPDefinition, load_sops
-from deephelp_app.sop_probe import sop_question
-from deephelp_app.sop_replay import ReplayModel
 
 pytestmark = pytest.mark.unit
 

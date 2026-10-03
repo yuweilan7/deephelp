@@ -8,11 +8,11 @@ from pathlib import Path
 
 import httpx
 
+from deephelp_app.demo.scenarios import proposal_registry
 from deephelp_app.domain.models import ApprovalCommand, ResumeCommand
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import LocalAuth
-from deephelp_app.sop_acceptance import proposal_registry
 from deephelp_app.sop_governance import RegistryStore
 
 

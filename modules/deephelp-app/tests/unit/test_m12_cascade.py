@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from deephelp_app.cascade import CascadePolicy, ScoreGate, StructuredFallback
-from deephelp_app.cascade_tune import select_gate
 from deephelp_app.domain.models import (
     ChatResult,
     Decision,
@@ -18,10 +17,11 @@ from deephelp_app.domain.models import (
     ModelUsage,
 )
 from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.event_replay import envelope
+from deephelp_app.evaluation.cascade_tune import select_gate
 from deephelp_app.execution import ExecutionBudget
 from deephelp_app.intent import IntentService
-from deephelp_app.mvp_replay import REPLAY_SCOPE
+from deephelp_app.learning.event_replay import envelope
+from deephelp_app.learning.mvp_replay import REPLAY_SCOPE
 from deephelp_app.text_entity import TextEntityProcessor
 
 pytestmark = pytest.mark.unit

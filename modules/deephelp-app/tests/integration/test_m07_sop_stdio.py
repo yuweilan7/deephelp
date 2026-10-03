@@ -2,12 +2,12 @@ import asyncio
 
 import pytest
 
+from deephelp_app.demo.tool_config import FaultSpec, MockConfig
 from deephelp_app.domain.models import ErrorCode, IntentCode, SOPStatus
 from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mcp_mock import FaultSpec, MockConfig
+from deephelp_app.learning.sop_replay import ReplayModel
+from deephelp_app.probes.sop_probe import demo, sop_question
 from deephelp_app.sop import SOPExecutor
-from deephelp_app.sop_probe import demo, sop_question
-from deephelp_app.sop_replay import ReplayModel
 from deephelp_app.tool_gateway import ToolGateway, process_alive
 
 pytestmark = pytest.mark.integration

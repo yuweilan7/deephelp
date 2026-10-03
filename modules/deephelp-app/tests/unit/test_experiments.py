@@ -1,6 +1,6 @@
 import pytest
 
-from deephelp_app.experiments import cancellation_experiment, cpu_comparison, io_comparison
+from deephelp_app.learning.experiments import cancellation_experiment, cpu_comparison, io_comparison
 
 pytestmark = pytest.mark.unit
 

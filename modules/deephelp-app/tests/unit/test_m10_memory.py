@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from redis.exceptions import RedisError
 
 from deephelp_app.cases import bounded_history, summary, validate_transition
-from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.domain.models import (
     LifecycleCommand,
     MemoryMessage,
@@ -21,6 +20,7 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError
 from deephelp_app.execution import ExecutionBudget
+from deephelp_app.learning.cases_fake import MemoryCaseRepository
 from deephelp_app.ledger import payload_hash
 from deephelp_app.memory import MemoryService, RedisMemory, scope_key
 

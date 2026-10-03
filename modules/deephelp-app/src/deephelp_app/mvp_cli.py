@@ -15,7 +15,7 @@ import uvicorn
 from deephelp_app.approval_store import ApprovalRepository
 from deephelp_app.domain.models import ConverseInput
 from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import (
     BudgetSession,
     LiveAssembly,

@@ -11,8 +11,7 @@ from deephelp_app.dense import atomic_json
 from deephelp_app.domain.models import ReleaseManifest
 from deephelp_app.errors import ConfigurationError
 from deephelp_app.flywheel_assets import read_data
-from deephelp_app.flywheel_validation import validate
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import BudgetSession, LocalAuth, live_app
 from deephelp_app.release_assets import prepare_manifest, release_hash, verify_complete
 from deephelp_app.release_runtime import ReleaseRuntime
@@ -71,6 +70,8 @@ async def run(args: argparse.Namespace) -> int:
                 if args.sop
                 else bundled_registry()
             )
+            from deephelp_app.evaluation.flywheel_validation import validate
+
             report = await validate(
                 store,
                 local_path(args.assets),

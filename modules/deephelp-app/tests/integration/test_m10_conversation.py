@@ -6,9 +6,9 @@ import httpx
 import pytest
 
 from deephelp_app.app import create_app
-from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.domain.models import VerifiedIdentity
-from deephelp_app.mvp_replay import ReplayAssembly
+from deephelp_app.learning.cases_fake import MemoryCaseRepository
+from deephelp_app.learning.mvp_replay import ReplayAssembly
 from deephelp_app.settings import Settings
 from deephelp_app.trace import MemoryTrace
 

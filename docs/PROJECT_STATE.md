@@ -125,3 +125,17 @@ M18完整发布新增四张增量表，receipt事务同时绑定问题及run引�
 - M15后续升级：saver/下游协议或版本变化需重跑兼容与故障矩阵，企业写/补偿接口另需真实门禁。
 
 MySQL保存业务事实，Redis/Milvus是可重建投影，checkpoint不是账本。门禁按当前特性启用，不阻塞纯离线工作。
+
+## 运行、验收与学习边界
+
+2026-10-03特性 `feature/runtime-learning-boundaries` 已实现并在特性分支通过验收。明确业务入口为 `python -m deephelp_app`（init/migrate/serve/ask），原mvp_cli调用同一实现；运行命令见应用README/LOCAL_SETUP。学习骨架的默认create_app保持501，正式业务不再创建fake或导入live_probe/evaluation CLI。Hybrid启动只读已发布selection及运行语料/策略，dev/test摘要保留为来源，完整数据校验仍在开发选参/发布门禁执行。
+
+37个Python模块迁入learning/probes/evaluation/demo，22份数据资源移动后与原Git文件逐字节一致，资源README迁至assets；SOP/schema/Prompt及业务规模SOP注册表保留。运行策略/词典、合成业务事实、冻结验收与学习数据已分目录；fixture类型及路径/指纹工具独立。只删除37个已确认无源文件、可再生的旧模块字节码缓存；没有删除业务资产、来源、凭据或.local目录。
+
+最终Git LF字节上的Ruff/152文件格式、109源文件mypy、根单锁检查与构建通过；pytest **887 passed、1 skipped**。wheel内146份文件逐字节匹配源码，安装后禁止学习/探针/评测导入与冻结数据读取的组装/生命周期通过。文档209个链接及32个命令模块可定位。M17冻结审计仍为548会话/1820消息，数据/清单hash保持。
+
+真实模型chat/schema/tool/1024维Embedding内容预检通过；最终专用Hybrid真实HTTP报告 `.local/runtime-boundaries/business-abbea08eb82545e5.json` 15项全通过，覆盖三类事实、缺槽禁工具、自动补槽、用户/租户隔离、认证、payload冲突、零调用重放、新MySQL池终态及专用投影清理/MCP退出。整个业务运行在禁止导入学习/探针/评测及读取其数据的条件下完成。
+
+完整发布采用runtime-v2运行内容指纹，成功报告另绑定tooling_digest；prepare仍校验当前完整工具/冻结输入、精确SOP/模型/代码，serve只回读绑定运行工件与不可变成功报告。旧完整清单实际拒绝新包。最终 `.local/runtime-boundaries/complete-release-v2/report.json` 为PASS/退出0，两版各14/14消息、11/11会话及23项发布/审批/UNKNOWN检查通过。前一轮v1在行尾规范化前通过，保留为过程证据；最终以v2及Git LF字节为准，未改旧报告/工件或默认业务指针。
+
+48份本机运行配置/活动指针/原完整版本工件及两份PDF的保留hash核对通过；待审批/UNKNOWN/审计引用继续阻止退休。无Python/workspace/根锁/依赖/infra或数据库结构变化，无新仓库/核心代码副本。真实服务与合成业务；未重跑1820消息全量真实模型、P00 full、部署或M19–M21，特性交付后停止。必要证据见M18 handoff。

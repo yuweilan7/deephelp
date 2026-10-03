@@ -13,9 +13,11 @@ from fastapi import FastAPI, Request
 from deephelp_app.app import create_app
 from deephelp_app.approval import ApprovalService
 from deephelp_app.approval_store import ApprovalRepository
+from deephelp_app.assets import asset_path
 from deephelp_app.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
+from deephelp_app.demo.tool_config import MockConfig
 from deephelp_app.dense import DenseRetriever, atomic_json, load_json
 from deephelp_app.domain.models import (
     DenseResult,
@@ -31,7 +33,6 @@ from deephelp_app.event_cluster import EventAggregationService, StructuredCluste
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.hybrid import HybridRetriever
 from deephelp_app.intent import IntentService
-from deephelp_app.mcp_mock import MockConfig
 from deephelp_app.memory import MemoryService, RedisMemory
 from deephelp_app.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.milvus_hybrid import MilvusHybridStore
@@ -239,16 +240,18 @@ class LiveAssembly:
             self.sop_registry = SOPRegistry.model_validate(release_manifest.sop_registry)
             self.sop_snapshots = (self.sop_registry,)
         if isinstance(self.scope, HybridScope):
-            from deephelp_app.hybrid_eval import dataset, validate_selection
+            from deephelp_app.corpus import read_corpus
+            from deephelp_app.retrieval_policy import validate_published_selection
 
-            corpus, queries = dataset()
+            corpus = read_corpus(asset_path("m09_corpus.jsonl"))
+            corpus.require_valid()
             selection = self.pointer.get("selection")
             if not isinstance(selection, dict) or self.pointer.get("format") != "m09-pointer-v1":
                 raise ConfigurationError("Hybrid pointer requires a frozen retrieval policy")
             top_k = selection.get("candidate_budget")
             if not isinstance(top_k, int) or isinstance(top_k, bool) or not 1 <= top_k <= 20:
                 raise ConfigurationError("Hybrid candidate budget must be an integer 1..20")
-            validate_selection(selection, self.scope, corpus.index_digest, queries, top_k)
+            validate_published_selection(selection, self.scope, corpus.index_digest, top_k)
             self.top_k = top_k
             if (
                 self.pointer.get("corpus_digest") != corpus.index_digest
@@ -313,7 +316,7 @@ class LiveAssembly:
                 ledger, StructuredClusterJudge(strong_model), similarity=event_index
             )
             policy_path = (
-                self.cascade_policy_path or Path(__file__).parent / "sample_data/m12_policy.json"
+                self.cascade_policy_path or Path(__file__).parent / "assets/runtime/m12_policy.json"
             )
             policy = (
                 CascadePolicy.load(policy_path)

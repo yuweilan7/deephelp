@@ -34,7 +34,9 @@ from deephelp_app.text_entity import (
 from deephelp_app.trace import MemoryTrace
 
 pytestmark = pytest.mark.unit
-CORPUS = json.loads(files("deephelp_app").joinpath("sample_data/text-golden.json").read_text())
+CORPUS = json.loads(
+    files("deephelp_app").joinpath("assets/evaluation/text-golden.json").read_text()
+)
 
 
 def request(text="订单0007", message_id="m04-current"):

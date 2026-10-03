@@ -5,7 +5,7 @@ import pytest
 
 from deephelp_app.corpus import digest
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import (
+from deephelp_app.evaluation.core import (
     DATA,
     MANIFEST,
     MODES,
@@ -17,7 +17,7 @@ from deephelp_app.evaluation import (
     release_gate,
     score,
 )
-from deephelp_app.evaluation_cli import compare_reports
+from deephelp_app.evaluation.evaluation_cli import compare_reports
 
 pytestmark = pytest.mark.unit
 

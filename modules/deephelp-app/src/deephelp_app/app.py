@@ -37,7 +37,6 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.fakes import FakeModelGateway, FakeRepository
 from deephelp_app.ports import ModelGateway, Repository
 from deephelp_app.settings import Settings
 from deephelp_app.trace import JsonlTrace, TraceEvent, TraceSink, request_context
@@ -52,8 +51,8 @@ class OfflineTransport(httpx.AsyncBaseTransport):
 class Resources:
     client: httpx.AsyncClient
     calls: AsyncCalls
-    gateway: ModelGateway
-    repository: Repository
+    gateway: ModelGateway | None
+    repository: Repository | None
     trace: TraceSink
     conversation: Conversation | None = None
 
@@ -214,7 +213,7 @@ def create_app(
         config.validate_live()
         if config.mode == "live" and conversation_factory is None:
             raise ConfigurationError(
-                "Live business converse is NOT_IMPLEMENTED; use deephelp_app.live_probe for M03"
+                "Legacy live mode is NOT_IMPLEMENTED; use python -m deephelp_app serve"
             )
         if config.mode == "mvp" and conversation_factory is None:
             raise ConfigurationError("MVP requires explicit adapters and authenticated identity")
@@ -242,9 +241,13 @@ def create_app(
                 )
             )
             calls = AsyncCalls(config.llm_concurrency, config.child_timeout)
-            app.state.resources = Resources(
-                client, calls, FakeModelGateway(calls), FakeRepository(), sink
-            )
+            gateway: ModelGateway | None = None
+            repository: Repository | None = None
+            if conversation_factory is None:
+                from deephelp_app.learning.fakes import FakeModelGateway, FakeRepository
+
+                gateway, repository = FakeModelGateway(calls), FakeRepository()
+            app.state.resources = Resources(client, calls, gateway, repository, sink)
             if conversation_factory is not None:
                 app.state.resources.conversation = await stack.enter_async_context(
                     conversation_factory(client, sink)

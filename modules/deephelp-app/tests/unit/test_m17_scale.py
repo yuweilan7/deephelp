@@ -9,12 +9,12 @@ from deephelp_app.business_catalog import business_cases, validate_catalog
 from deephelp_app.corpus import digest
 from deephelp_app.domain.models import DemandType, ResponseEnvelope
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import DATA, audit
-from deephelp_app.evaluation_runtime import EvaluationAssembly
+from deephelp_app.evaluation.core import DATA, audit
+from deephelp_app.evaluation.evaluation_runtime import EvaluationAssembly
+from deephelp_app.evaluation.mvp_acceptance import api_client
 from deephelp_app.event_cluster import fragments, function_of
-from deephelp_app.event_replay import envelope
 from deephelp_app.flywheel import FeedbackCandidate, isolation
-from deephelp_app.mvp_acceptance import api_client
+from deephelp_app.learning.event_replay import envelope
 from deephelp_app.settings import Settings
 
 pytestmark = pytest.mark.unit

@@ -17,12 +17,12 @@ from deephelp_app.domain.models import (
     VersionManifest,
 )
 from deephelp_app.errors import AppError
+from deephelp_app.evaluation.sop_acceptance import proposal_registry, scenario_config, scenarios
 from deephelp_app.execution import ExecutionBudget
+from deephelp_app.learning.sop_replay import ReplayModel
+from deephelp_app.probes.sop_probe import sop_question
 from deephelp_app.sop import SOPExecutor
-from deephelp_app.sop_acceptance import proposal_registry, scenario_config, scenarios
 from deephelp_app.sop_governance import RegistryStore, SOPRegistry, bundled_registry
-from deephelp_app.sop_probe import sop_question
-from deephelp_app.sop_replay import ReplayModel
 from deephelp_app.tool_gateway import ToolGateway, process_alive
 
 pytestmark = pytest.mark.integration

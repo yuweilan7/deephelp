@@ -1,8 +1,8 @@
 # 本地启动与依赖交接
 
-这是运行环境入口。M08启动见文末；中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
+这是运行环境入口。现有三类业务使用 `python -m deephelp_app serve`，完整版本使用release_cli serve；参数见[业务启动入口](../modules/deephelp-app/README.md#业务启动入口)。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
-用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。下文历史main探针示例保留为可选运行方法，不要求合并后复验；当前规则以AGENTS/ROADMAP为准。
+用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。当前文档仅列特性分支验收命令；历史main证据留Git历史与handoff，当前规则以AGENTS/ROADMAP为准。
 
 M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度或云库配置。预览、真实协议验收与参数见[应用README](../modules/deephelp-app/README.md#m06真实mcp只读工具)。其--live只启动受控本机进程，不运行P00或开启应用converse业务路径。
 
@@ -33,14 +33,14 @@ py -3.14 -m uv --version
 py -3.14 -m pip install --upgrade "uv==0.12.13"
 ```
 
-首次准备和启动离线应用：
+首次准备依赖并启动业务（复用已配置身份、累计预算和已发布指针）：
 
 ```powershell
 py -3.14 -m uv sync --locked --all-packages
-py -3.14 -m uv run --locked --env-file .env.local uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
 ```
 
-配置只从环境读取，不自动发现 dotenv。默认 dev/test 使用 fake；`/converse` 返回占位结果。配置 Key 不会开启真实模型调用，接口边界见 [应用说明](../modules/deephelp-app/README.md)。
+配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。仅学习骨架使用 `uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000`，其dev/test模式使用fake、`/converse`保持501。业务启动不导入probes/evaluation/learning，也不读取包内dev/test；显式故障配置及评测命令才加载对应工具，见[资源职责](../modules/deephelp-app/src/deephelp_app/assets/README.md)。
 
 解释器核验：`py -3.14 -m uv run --locked python -c "import sys; assert sys.version_info[:3] == (3, 14, 7); print(sys.executable)"`。旧启动入口的历史验证原文保留 Git 历史，当前运行命令统一使用 3.14.7。uv 为独立工具；版本门禁不会降低应用的 Python 要求。
 
@@ -72,25 +72,25 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 `$probeBudgetFile`须指向已初始化的.local累计文件：任务上限字段为`max_calls`、`max_tokens`、`max_cost_cny`，计数为`attempts`、`tokens`、`charged_tokens`，并保留`cost_upper_cny`、`uncertain_attempts`及`stages`。新任务从零初始化计数；恢复已有任务不得清零。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.live_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.live_probe --live --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
+py -3.14 -m uv run --locked python -m deephelp_app.probes.live_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.live_probe --live --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
 ```
 
-追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。feature共6次、main共4次实际请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
+追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。特性扩展验收共6次请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
 
-feature 分别检查四项能力，main 对无代码变化的合并进行 chat/embed 最小复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
+特性分支分别检查四项能力，main不复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
 
 ## M04固定内容验收
 
-默认演示离线，入口见[应用README](../modules/deephelp-app/README.md)。真实验收使用版本化合成黄金样本及固定补充边界；feature检查完整22例，main检查长文/否定/更正/未知、两类API字段和直接/引号混合订单冲突。配置可选strong-providers时另验真实强端口内容；这项与实际层间升级分别记录。报告包含来源、未解析字段、分层命中/调用/耗时及脱敏trace；命中率口径为该层接受至少一个观察的样本数/经过该层的样本数，不是模型准确率。
+默认演示离线，入口见[应用README](../modules/deephelp-app/README.md)。真实验收使用版本化合成黄金样本及固定补充边界；特性分支检查完整22例，包括长文/否定/更正/未知、两类API字段和直接/引号混合订单冲突。配置可选strong-providers时另验真实强端口内容；这项与实际层间升级分别记录。报告包含来源、未解析字段、分层命中/调用/耗时及脱敏trace；命中率口径为该层接受至少一个观察的样本数/经过该层的样本数，不是模型准确率。
 
 先查看帮助，设置本任务的累计文件、报告及调用/token/费用上限。累计文件字段与M03相同，恢复继续沿用，不能归零；--output必须与预算/锁文件不同。可选强端口是独立ProviderConfig文件，只改chat候选及保守单价配置，放.local，核对能力并实测后注入；不用或不可恢复时按AGENTS收口。当前M04已验证qwen3.8-flash/qwen3.8-max，不能外推其他模型。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.text_entity_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.text_entity_probe --live --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
+py -3.14 -m uv run --locked python -m deephelp_app.probes.text_entity_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.text_entity_probe --live --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
 # 需要强端口时追加：--strong-providers $entityStrongProviders
-# 合并后最小真实复验将 --stage 改为 main，并继续使用同一累计预算。
+# 恢复当前特性的验收时使用新报告，继续原累计预算；main不复验。
 ```
 
 live使用transport retries=0、子timeout和共享总deadline；预算预留先落盘、独占锁阻止并发穿透。金额为保守配置估算，不是账单。原始探针/报告和临时运行参数仅留.local，不提交客户数据或凭据；此入口不访问云业务库/MCP/P00 full，也不执行SOP。
@@ -108,7 +108,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_c
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_cli verify --live --budget-state $denseBudgetFile --manifest $denseManifestFile --output $denseReportFile
 ```
 
-默认namespace=m05_synthetic、dataset-version=m05-smoke-v1。自备文件先preview，运行时加`--source`；CSV/JSONL/XLSX字典见[合成数据说明](../modules/deephelp-app/src/deephelp_app/sample_data/README.md)。`import`导入/续跑，`search --query`检索，`evaluate`独立dev评测；`accept`额外检查重复导入和内容指标，新manifest时模拟一次真实upsert后的客户端确认丢失（不宣称云故障）。
+默认namespace=m05_synthetic、dataset-version=m05-smoke-v1。自备文件先preview，运行时加`--source`；CSV/JSONL/XLSX字典见[合成数据说明](../modules/deephelp-app/src/deephelp_app/assets/README.md)。`import`导入/续跑，`search --query`检索，`evaluate`独立dev评测；`accept`额外检查重复导入和内容指标，新manifest时模拟一次真实upsert后的客户端确认丢失（不宣称云故障）。
 
 新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
 
@@ -123,12 +123,12 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_c
 设置本次的`$sopBudgetFile`、`$sopReportFile`、`$sopCalls`、`$sopTokens`、`$sopCost`后，从根执行：
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.sop_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.sop_probe --live --stage feature --budget-state $sopBudgetFile --output $sopReportFile --max-calls $sopCalls --max-tokens $sopTokens --max-cost $sopCost
-# 合并后换新报告路径，--stage main，累计预算保持同一文件。
+py -3.14 -m uv run --locked python -m deephelp_app.probes.sop_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.sop_probe --live --stage feature --budget-state $sopBudgetFile --output $sopReportFile --max-calls $sopCalls --max-tokens $sopTokens --max-cost $sopCost
+# 恢复时使用新报告路径，累计预算保持同一文件。
 ```
 
-feature验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败，核对实际事实、证据与ledger；main最小复验三类正常业务路径和退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
+feature验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败，核对实际事实、证据与ledger并核对资源退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
 
 
 ## M08闭环启动与验收
@@ -139,14 +139,13 @@ feature验三类正常查询、过期券、空活动、用户/工具注入及三
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli --help
-py -3.14 -m uv run --locked python -m deephelp_app.mvp_probe --output .local/m08/offline-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --stage feature --output .local/m08/feature-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --samples --stage feature --output .local/m08/samples-new.json
-# 合并后沿用累计预算，换新输出文件。
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --stage main --output .local/m08/main-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.probes.mvp_probe --output .local/m08/offline-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.mvp_probe --live --http --stage feature --output .local/m08/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.mvp_probe --live --http --samples --stage feature --output .local/m08/samples-new.json
+# 恢复当前特性的验收时沿用累计预算，换新输出文件。
 ```
 
---auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；真实feature验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出；main最小复验三类/Dense/缺槽位/未知及持久回放。报告PASS和退出0同时满足才验收。
+--auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；真实feature验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出。报告PASS和退出0同时满足才验收。
 
 ## M09中文BM25与融合对照
 
@@ -156,7 +155,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_pro
 
 `tune`只在dev选择0.25/0.5/0.75的Dense权重，按candidate Recall@1→MRR→接近0.5→较小权重选择，冻结index/dev/test摘要及K。`evaluate --classify`只用已冻结策略运行test：按三方案实际返回证据调用同一600分类逻辑，多诉求/无关含确定性守卫；不执行SOP。不得根据test错例改权重后仍宣称未见test。`activate`验证完整内容/向量哈希后发布语料与策略；`rollback`验证并原子恢复上一组合，服务须重建应用资源才读取新指针。
 
-M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid端口；默认仍为`.local/m05/active.json`。合并main复验M09只读verify/compare及M08真实HTTP最小路径，继续同一累计预算；不跑P00 full，不查询历史/事件集合。该小合成对照不证明企业效果、15+情境或500+规模。
+M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid端口；默认仍为`.local/m05/active.json`。M09只读verify/compare及M08真实HTTP路径在特性分支验收，继续同一累计预算；不跑P00 full，不查询历史/事件集合。该小合成对照不证明企业效果、15+情境或500+规模。
 
 ## M10 多问题记忆
 
@@ -164,12 +163,12 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 
 ## M14 SOP治理
 
-离线校验/发布/回退、固定合成情境及真实验收参数见[应用运行入口](../modules/deephelp-app/README.md#m14-sop治理与场景验收)。复用现有模型、M08/M10专用业务表、M09指针及本机正式SDK stdio，默认应用使用包内治理注册表；自建发布目录用`mvp_cli serve --sop-directory`，在新装配时生效。先核对模型候选与health，新任务设置独立累计预算，恢复与main复验沿用同一文件/新报告。只验真实服务与合成业务；审批计划是人工移交数据，M15之前不执行变更，不运行P00 full。
+离线校验/发布/回退、固定合成情境及真实验收参数见[应用运行入口](../modules/deephelp-app/README.md#m14-sop治理与场景验收)。复用现有模型、M08/M10专用业务表、M09指针及本机正式SDK stdio，默认应用使用包内治理注册表；自建发布目录用`mvp_cli serve --sop-directory`，在新装配时生效。先核对模型候选与health，新任务设置独立累计预算，恢复沿用同一文件/新报告。只验真实服务与合成业务；审批计划是人工移交数据，M15之前不执行变更，不运行P00 full。
 
 ## M18 反馈演示
 
-完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。使用现有专用MySQL的四张增量反馈表、Milvus新版本集合、M13 CPU训练接口及正式SDK合成只读工具；不新增依赖或改根锁。通用Chat按用户授权改为qwen3.8-max，切换先验chat/schema/tool；Embedding仍为原qwen3.7-text-embedding-flash签名。初始化独立累计预算和稳定脱敏key，main/恢复沿用原文件，报告和资产用新目录。构建检查保留双版本的实际容量，所有模型/云资源工件留.local。默认M09指针不换；本机演示active是独立控制文件，完整单事实源发布加固另做。
+完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。使用现有专用MySQL的四张增量反馈表、Milvus新版本集合、M13 CPU训练接口及正式SDK合成只读工具；不新增依赖或改根锁。通用Chat按用户授权改为qwen3.8-max，切换先验chat/schema/tool；Embedding仍为原qwen3.7-text-embedding-flash签名。初始化独立累计预算和稳定脱敏key，恢复沿用原文件，报告和资产用新目录。构建检查保留双版本的实际容量，所有模型/云资源工件留.local。默认M09指针不换；本机演示active是独立控制文件；完整发布使用release_cli/MySQL单一active，参见应用入口。
 
 ## M15 持久审批
 
-运行/明确批准/恢复与两个进程saver门禁见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)。先health，再用增量015迁移创建现有MySQL上的独立审批、操作、checkpoint及合成效果表。LangGraph及其saver协议版本由根uv.lock锁定，使用应用自建MySQL适配，无新增数据库或云服务。loopback合成下游与应用需保留同一32-byte服务key；真实模型/HTTP验收继续原模型、M09指针和独立任务累计预算。恢复/main不重置预算，报告用新.local路径。进程恢复只覆盖已登记审批工作流，企业支付/退款/补偿或通用RUNNING自动领取未启用。
+运行/明确批准/恢复与两个进程saver门禁见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)。先health，再用增量015迁移创建现有MySQL上的独立审批、操作、checkpoint及合成效果表。LangGraph及其saver协议版本由根uv.lock锁定，使用应用自建MySQL适配，无新增数据库或云服务。loopback合成下游与应用需保留同一32-byte服务key；真实模型/HTTP验收继续原模型、M09指针和独立任务累计预算。恢复不重置预算，报告用新.local路径。进程恢复只覆盖已登记审批工作流，企业支付/退款/补偿或通用RUNNING自动领取未启用。

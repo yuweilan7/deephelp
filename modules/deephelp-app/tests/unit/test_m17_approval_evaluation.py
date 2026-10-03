@@ -3,8 +3,12 @@ import copy
 import pytest
 
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation_approval import approval_cases, approval_metrics, evaluate_approvals
-from deephelp_app.evaluation_cli import compare_reports
+from deephelp_app.evaluation.evaluation_approval import (
+    approval_cases,
+    approval_metrics,
+    evaluate_approvals,
+)
+from deephelp_app.evaluation.evaluation_cli import compare_reports
 
 pytestmark = pytest.mark.unit
 

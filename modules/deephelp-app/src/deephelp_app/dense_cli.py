@@ -22,7 +22,7 @@ from deephelp_app.dense import (
 from deephelp_app.domain.models import DenseScope, ErrorCode
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.milvus_dense import (
     MilvusDenseStore,
     SSHCapacity,

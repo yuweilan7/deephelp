@@ -22,10 +22,8 @@ from deephelp_app.domain.models import (
     ModelUsage,
 )
 from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
-from deephelp_app.hybrid_cli import validate_selection
-from deephelp_app.hybrid_eval import (
+from deephelp_app.evaluation.hybrid_cli import validate_selection
+from deephelp_app.evaluation.hybrid_eval import (
     choose_weight,
     classify,
     dataset,
@@ -33,6 +31,8 @@ from deephelp_app.hybrid_eval import (
     query_text,
     ranking,
 )
+from deephelp_app.execution import ExecutionBudget
+from deephelp_app.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
 from deephelp_app.milvus_dense import FIELDS
 from deephelp_app.milvus_hybrid import MilvusHybridStore, publish_hybrid
 from deephelp_app.providers import ProviderConfig
