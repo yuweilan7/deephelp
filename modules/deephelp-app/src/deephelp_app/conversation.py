@@ -251,7 +251,8 @@ class Conversation:
             and (f not in {"memory", "redis_projection", "cross_message_slots"} or memory is None)
             and (f != "event_merge" or events is None)
         )
-        self.disabled += ("fasttext",)
+        if not intent.cascade or not getattr(intent.cascade.fallback, "enabled", False):
+            self.disabled += ("fasttext",)
         self.definitions = load_sops() if definitions is None else definitions
 
     @asynccontextmanager

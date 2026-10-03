@@ -51,3 +51,9 @@ dev报告doc Recall@1/3及候选Recall@1/2，每类分母单列；错例保留qu
 `m09_corpus.jsonl`为12条独立reference（每类4条），沿用CorpusRecord；`m09_dev.json`为18条开发查询，`m09_test.json`为24条冻结查询。全部合成、同一作者构造，SKU/订单/券编号均非企业数据。查询query_id/text/category/gold/source_group/variant_group必须独立于索引和另一split，gold=null表示无单一支持意图；运行时检查重复内容/组泄漏。只有reference入Milvus。
 
 dev含14条单类+4条无关/多诉求；test含18条单类（各6条）+6条无关/多诉求。category覆盖semantic/exact/negation/typo/oov/unrelated/multiple，不是原文完整语料或500+独立评测。样本在首轮dev查询前固定；选参只用dev，test错例完整保留、不回流本轮索引。后续改变样本/分词/模型或已依据test修改参数时必须另版本和新冻结组。
+
+## M13 FastText 合成语料
+
+`m13_fasttext.json`共80条人工构造并逐条核对的合成句：40 train、20 dev、20 test；优惠未享受、券不可用、订单活动查询、unknown、multiple五类各8/4/4。来源均manual-synthetic-m13-v1，不是PDF完整语料或企业数据。sample_id/source_group/variant_group/split/label/text/synthetic/reviewed必需；同来源/改写组不能跨split，规范化重复句不能重复出现，未知label与缺类split拒收。
+
+语义组由本轮标注者声明，程序能检查组及文本重叠，不能自动证明所有自然语言近义句独立。全部句子同一作者、数量很小，heldout只指未用于本轮训练/选参；不声称真实未见分布或可信泛化。M02/M09文件不修改，本组不进入Milvus。`m13_dictionary.txt`只提供固定业务分词，训练/推理共用，其hash与Jieba基础词典hash写manifest；改变预处理必须新训练/评测版本。

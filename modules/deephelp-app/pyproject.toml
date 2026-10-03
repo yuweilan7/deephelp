@@ -13,6 +13,8 @@ dependencies = [
     "mcp==2.2.0",
     "aiomysql==0.3.2",
     "redis==6.4.0",
+    "fasttext-community==0.11.8",
+    "jieba==0.42.1",
 ]
 
 [build-system]

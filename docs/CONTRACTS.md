@@ -184,7 +184,7 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 
 500只消费已绑定`active_intent`的槽位相容性，不调用分类器：自动券号补充排除不需要券号的事件。`EventCandidate.active_intent=null`为兼容字段。多诉求/未知补充单独保存为待澄清事件，600及SOP跳过；无实际缺槽位的归属澄清保持ACTIVE，实际缺/冲突槽位才WAITING_SLOT，避免伪造missing_slots。独立M11仍保持原入口语义。
 
-600唯一进入`IntentService`，其内部规则、当前检索、必要记忆增强检索、FallbackPort顺序执行。已绑定事件保持意图；未绑定事件的增强查询只来自当前已授权聚合及确认实体，不混入其他问题或闭合历史。`FallbackPort.decide(text,retrievals,budget,context=...)`返回`FallbackResult(code,reason)`；supported与非空注册叶子双向一致，unknown/multiple必须code=null。schema不合法或虚构代码安全转人工；真实服务失败停止下探。FastText明确disabled。
+600唯一进入`IntentService`，其内部规则、当前检索、必要记忆增强检索、FallbackPort顺序执行。已绑定事件保持意图；未绑定事件的增强查询只来自当前已授权聚合及确认实体，不混入其他问题或闭合历史。`FallbackPort.decide(text,retrievals,budget,context=...)`返回`FallbackResult(code,reason)`；supported与非空注册叶子双向一致，unknown/multiple必须code=null。schema不合法或虚构代码安全转人工；真实服务失败停止下探。FastText默认disabled，M13显式指针可启用适配器。
 
 正式live的FallbackPort使用已验证的强模型端点，与500归属共用`event-judge.example.json`；VersionManifest.model/prompt记录主分类兜底模型与`m12-fallback-v2`。Embedding/提取/SOP继续使用原provider配置，其调用仍在各自阶段计量。
 
@@ -195,3 +195,15 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 节点串行更新唯一Question/entities，无并行reducer覆盖。合并保留全部来源及更正链，unresolved_fields始终阻断工具；900核验SOP版本，1000不再分类，1100只用经验证事实。短路都经过1200/1300；终态写最多5秒并在返回前成功提交，失败不发布ANSWERED。取消传播并保留调用ID，无成功事实。DTO没有客户端、锁或向量数组；checkpoint不承担账本职责。
 
 并发请求可能在原子接收前分别计算有界归属，只有唯一接收者进入600/SOP；落选请求的call_counts保留实际预处理用量。已有终态的正常重放先lookup，主分类/模型/工具均0。跨进程预处理不是分布式执行锁，副作用能力仍需M15。
+
+## M13 FastText 可选兜底契约
+
+`FastTextFallback`包装既有`FallbackPort`，仅在600规则/检索未接管后使用；默认构造仍为`StructuredFallback`。`FallbackResult.source`默认为structured，`fasttext`默认为null，旧Port及保存的结果保持可读。source=fasttext必须有同code且need_review=false的合法预测；其他来源可携带拒识诊断，不能把它解释成FastText最终选择。
+
+唯一DTO的`FastTextPrediction`保存五类显式label→code映射、top_k/rank/raw_probability、final_intent_code、confidence_kind=classifier_probability、is_actionable/need_review/unknown、理由、模型/预处理/门限版本及量化标记。unknown/multiple标签的code为null；已选code只能等于top1且理由为calibrated_top1。概率是绑定原始softmax值，包含1e-5数值偏移，不是正确概率；兼容IntentCandidate的score最多1，完整原值仍在CascadeStep.fasttext，不作跨来源概率比较。
+
+训练与推理共用全半角/空白规范化、Jieba0.42.1/HMM关闭、基础词典与业务词典hash；签名变化、绑定/模型hash/标签不匹配或模型损坏使显式启动失败。空输入、仅编号、OOV、低分/小间隔、未知/多诉求及非法预测不会接管，沿同一预算进入既有结构化兜底。FastText可先给出意图，600再排除未解析槽位决定CLARIFY；缺/冲突槽位仍禁工具。
+
+本地CPU推理单独保存elapsed_ms，不伪增模型API次数/token/费用；有界并发2、输入≤2000字符并共享deadline，取消等待该短CPU任务退出后传播。模型API保留原累计预算与有限重试。VersionManifest新增三个默认null字段fasttext_model/fasttext_preprocessing/fasttext_policy，已接收问题/重放保留原版本事实；指针变更在新装配时生效，不能改写旧run。
+
+manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和预处理签名。原版/量化分别只用dev校准，test不选参。activate先hash/标签/预处理/内容回读再原子替换active/previous，重复发布同版本不覆盖previous；失败保持旧指针，rollback同样先验证。该指针只选FastText，不替换M09语料或Embedding签名。

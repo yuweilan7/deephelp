@@ -268,7 +268,9 @@ source = { editable = "modules/deephelp-app" }
 dependencies = [
     { name = "aiomysql" },
     { name = "fastapi" },
+    { name = "fasttext-community" },
     { name = "httpx" },
+    { name = "jieba" },
     { name = "jsonschema" },
     { name = "mcp" },
     { name = "pydantic" },
@@ -281,7 +283,9 @@ dependencies = [
 requires-dist = [
     { name = "aiomysql", specifier = "==0.3.2" },
     { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "fasttext-community", specifier = "==0.11.8" },
     { name = "httpx", specifier = ">=0.28,<0.29" },
+    { name = "jieba", specifier = "==0.42.1" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
     { name = "mcp", specifier = "==2.2.0" },
     { name = "pydantic", specifier = ">=2.10,<3" },
@@ -329,6 +333,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/02/91e3416a8fdd715abb903a952a6bec7cdd8d14eed55d415fc8595524c319/fastapi-0.141.1.tar.gz", hash = "sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1", size = 425799, upload-time = "2026-07-29T17:18:05.568Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/03/10388a42375ee7e4ac9b94eb2c5c569c8b5795e377e701c9ac3ad63de890/fastapi-0.141.1-py3-none-any.whl", hash = "sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3", size = 131954, upload-time = "2026-07-29T17:18:04.364Z" },
+]
+
+[[package]]
+name = "fasttext-community"
+version = "0.11.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "requests" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/b4/954595e4fcb68028fcb237b3bc59d3031d97877a4bb7d8e86605daea6e84/fasttext_community-0.11.8.tar.gz", hash = "sha256:74ae47666840539dc9f488c3cd45e4d33223a31ff921f81ad7781325a6e397a2", size = 80376, upload-time = "2026-09-18T10:38:05.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/c9/f28b63f03c89986b2c95f9984873d2010d067fc0c958f23922aa98daf7f8/fasttext_community-0.11.8-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:d45b083d567facd9b78928da25362aaabe29e5d3e7da55f3a035cc43e4b62665", size = 363911, upload-time = "2026-09-18T10:36:53.69Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/6a/be46e08cec62ab7c67f603048701ef49e95d2dbdb9ceb1dbbab0827a908c/fasttext_community-0.11.8-cp314-cp314-macosx_11_0_universal2.whl", hash = "sha256:4d6d0a861a7cd1ea1a4bc45a464a5a048a11c828f6425b90785df653c0dd6467", size = 708674, upload-time = "2026-09-18T10:37:45.041Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/7c/448e8795212333b88aea9af462d86e9d1a22f039170dc83a609d1362bc1d/fasttext_community-0.11.8-cp314-cp314-macosx_11_0_x86_64.whl", hash = "sha256:eb2bbcb5615bf797defab67b1f83a76e7b367853f2291e86d64691703bccbf0d", size = 379840, upload-time = "2026-09-18T10:37:55.277Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/54/a6d96841d9c68693f121908c59c03792513f393962af2634da07940e9f35/fasttext_community-0.11.8-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c6b6b47c06879e16a8b7988975ec683ec6d40508c8c1da36719bc9b62c95e55d", size = 5304485, upload-time = "2026-09-18T10:37:33.113Z" },
+    { url = "https://files.pythonhosted.org/packages/13/2c/b4d5513a978bbf078a02ce26960664f10eee86f6225e470db92a20e75cbe/fasttext_community-0.11.8-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:575254435a497eb650090bdcb7282d150cd89b7adfc05f792bd8207e220966aa", size = 5470275, upload-time = "2026-09-18T10:37:22.031Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/08/2d2f796f8d69e192afa7122780588238975682a276b3cad5682dd0f32a5f/fasttext_community-0.11.8-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:f79a07275b92f4f79e0331d3a33264896e7b985a0a6d18f935ec90b326b621e7", size = 6159440, upload-time = "2026-09-18T10:37:15.659Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/20/83b705717533652a1e5eb04779a473de295542607ec5deb0fd549e28d9b6/fasttext_community-0.11.8-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:4f34f8baa9f3508d9313e6bfdaa6487ef030f4b91db5f1c17e6e3c9c13e33221", size = 6413523, upload-time = "2026-09-18T10:37:13.568Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/47/802fc0bbf1a4014a738cdc5d60b3e7ec90f5aa69d1c6de05dba553ecf0ef/fasttext_community-0.11.8-cp314-cp314-win_amd64.whl", hash = "sha256:dae0c6e793527a17b7a71a23006c4bc83f3b481d41b3e123fbbbe3b647ccc9e5", size = 487899, upload-time = "2026-09-18T10:37:47.956Z" },
 ]
 
 [[package]]
@@ -444,6 +469,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
 ]
+
+[[package]]
+name = "jieba"
+version = "0.42.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/cb/18eeb235f833b726522d7ebed54f2278ce28ba9438e3135ab0278d9792a2/jieba-0.42.1.tar.gz", hash = "sha256:055ca12f62674fafed09427f176506079bc135638a14e23e25be909131928db2", size = 19214172, upload-time = "2020-01-20T14:27:23.5Z" }
 
 [[package]]
 name = "jsonschema"
@@ -1032,6 +1063,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b", size = 2716969, upload-time = "2026-08-08T18:27:57.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
+]
+
+[[package]]
+name = "tqdm"
+version = "4.70.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846, upload-time = "2026-09-11T07:25:16.601Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl", hash = "sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73", size = 80199, upload-time = "2026-09-11T07:25:14.599Z" },
 ]
 
 [[package]]

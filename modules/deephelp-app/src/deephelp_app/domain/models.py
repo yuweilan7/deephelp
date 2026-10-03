@@ -154,6 +154,9 @@ class VersionManifest(DTO):
     sop: Identifier | None = None
     policy: Identifier | None = None
     code_commit: Identifier | None = None
+    fasttext_model: Identifier | None = None
+    fasttext_preprocessing: Identifier | None = None
+    fasttext_policy: Identifier | None = None
 
 
 class BudgetUsed(DTO):
@@ -497,9 +500,74 @@ class IntentOverride(DTO):
     evidence_refs: tuple[EvidenceRef, ...] = Field(min_length=1)
 
 
+FASTTEXT_LABELS: Final[dict[str, IntentCode | None]] = {
+    "__label__discount": IntentCode.DISCOUNT_MISSING,
+    "__label__coupon": IntentCode.COUPON_UNUSABLE,
+    "__label__activity": IntentCode.ORDER_ACTIVITY_QUERY,
+    "__label__unknown": None,
+    "__label__multiple": None,
+}
+
+
+class FastTextCandidate(DTO):
+    label: Identifier
+    code: IntentCode | None
+    rank: PositiveCount
+    # fastText exposes softmax + 1e-5; retain that raw score without renormalizing it.
+    raw_probability: float = Field(ge=0, le=1.0001, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def registered_label(self) -> FastTextCandidate:
+        if self.label not in FASTTEXT_LABELS or self.code != FASTTEXT_LABELS[self.label]:
+            raise ValueError("FastText label and registry code disagree")
+        return self
+
+
+class FastTextPrediction(DTO):
+    top_k: tuple[FastTextCandidate, ...] = Field(default=(), max_length=5)
+    final_intent_code: IntentCode | None = None
+    confidence_kind: Literal["classifier_probability"] = "classifier_probability"
+    is_actionable: bool = False
+    need_review: bool = True
+    unknown: bool = True
+    reason: Identifier
+    model_version: Identifier
+    preprocessing_signature: Identifier
+    policy_version: Identifier
+    quantized: bool
+    elapsed_ms: float = Field(ge=0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def consistent_selection(self) -> FastTextPrediction:
+        if [c.rank for c in self.top_k] != list(range(1, len(self.top_k) + 1)):
+            raise ValueError("FastText ranks must start at one")
+        if len({c.label for c in self.top_k}) != len(self.top_k):
+            raise ValueError("Duplicate FastText labels")
+        if any(c.code is not None and not c.code.actionable for c in self.top_k):
+            raise ValueError("FastText codes must be registry leaves")
+        if any(
+            a.raw_probability < b.raw_probability
+            for a, b in zip(self.top_k, self.top_k[1:], strict=False)
+        ):
+            raise ValueError("FastText candidates must be sorted by raw probability")
+        selected = self.final_intent_code is not None
+        if self.is_actionable != selected or self.need_review == selected:
+            raise ValueError("FastText selection and review flags disagree")
+        if selected and (
+            self.unknown
+            or not self.top_k
+            or self.top_k[0].code != self.final_intent_code
+            or self.reason != "calibrated_top1"
+        ):
+            raise ValueError("Only explained top1 actionable takeover is allowed")
+        return self
+
+
 class FallbackResult(DTO):
     code: IntentCode | None
     reason: Literal["supported", "unknown", "multiple"]
+    source: Literal["structured", "fasttext"] = "structured"
+    fasttext: FastTextPrediction | None = None
 
     @model_validator(mode="after")
     def consistent_choice(self) -> FallbackResult:
@@ -507,6 +575,12 @@ class FallbackResult(DTO):
             raise ValueError("Fallback reason and code disagree")
         if self.code is not None and not self.code.actionable:
             raise ValueError("Fallback needs an actionable registry code")
+        if self.source == "fasttext" and (
+            self.fasttext is None
+            or self.fasttext.need_review
+            or self.fasttext.final_intent_code != self.code
+        ):
+            raise ValueError("FastText fallback must match its validated prediction")
         return self
 
 
@@ -517,6 +591,7 @@ class CascadeStep(DTO):
     retrieval: DenseResult | None = None
     retrieval_calls: Count = 0
     model_calls: Count = 0
+    fasttext: FastTextPrediction | None = None
 
 
 class IntentDecision(DTO):

@@ -177,6 +177,7 @@ class LiveAssembly:
         mock: MockConfig | None = None,
         cascade_policy: Path | None = None,
         event_collection: str | None = None,
+        fasttext_pointer: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -192,6 +193,7 @@ class LiveAssembly:
         self.top_k = 3
         self.cascade_policy_path = cascade_policy
         self.event_collection = event_collection
+        self.fasttext_pointer = fasttext_pointer
         if isinstance(self.scope, HybridScope):
             from deephelp_app.hybrid_eval import dataset, validate_selection
 
@@ -293,6 +295,17 @@ class LiveAssembly:
                         text, scope, budget, top_k=top_k
                     )
 
+            fallback: Any = StructuredFallback(strong_model)
+            classifier = None
+            if self.fasttext_pointer is not None:
+                from deephelp_app.fasttext_runtime import (
+                    FastTextClassifier,
+                    FastTextFallback,
+                    pointer_manifest,
+                )
+
+                classifier = FastTextClassifier(pointer_manifest(self.fasttext_pointer))
+                fallback = FastTextFallback(classifier, fallback)
             versions = VersionManifest(
                 registry="complaints-v1",
                 dataset=self.scope.dataset_version,
@@ -302,6 +315,9 @@ class LiveAssembly:
                 provider=self.config.provider,
                 prompt="m12-fallback-v2",
                 policy="cascade-policy-v1",
+                fasttext_model=classifier.manifest.version if classifier else None,
+                fasttext_preprocessing=classifier.preprocessor.signature if classifier else None,
+                fasttext_policy=classifier.manifest.policy_version if classifier else None,
             )
             yield Conversation(
                 ledger,
@@ -312,7 +328,7 @@ class LiveAssembly:
                     assembly.scope,
                     top_k=assembly.top_k,
                     policy=policy,
-                    fallback=StructuredFallback(strong_model),
+                    fallback=fallback,
                 ),
                 SOPExecutor(model, TrackedTools(tools)),
                 trace,
