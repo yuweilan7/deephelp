@@ -34,6 +34,7 @@ from deephelp_app.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.milvus_hybrid import MilvusHybridStore
 from deephelp_app.milvus_memory import MilvusEventIndex
 from deephelp_app.providers import EndpointConfig, ProviderConfig, create_gateway
+from deephelp_app.reply import ReplyComposer
 from deephelp_app.settings import Settings
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_governance import RegistryStore, bundled_registry
@@ -168,6 +169,13 @@ def validate_control_paths(paths: list[Path], *, output: Path | None = None) -> 
             raise ConfigurationError("Report and derived trace paths overlap control files")
 
 
+def validate_trace_path(path: Path, controls: list[Path]) -> None:
+    validate_control_paths([*controls, path])
+    key = path.with_suffix(path.suffix + ".key").resolve()
+    if key in {control.resolve() for control in controls}:
+        raise ConfigurationError("Trace redaction key overlaps a control file")
+
+
 class LiveAssembly:
     def __init__(
         self,
@@ -180,6 +188,7 @@ class LiveAssembly:
         event_collection: str | None = None,
         fasttext_pointer: Path | None = None,
         sop_directory: Path | None = None,
+        reply_polish: bool = False,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -196,6 +205,7 @@ class LiveAssembly:
         self.cascade_policy_path = cascade_policy
         self.event_collection = event_collection
         self.fasttext_pointer = fasttext_pointer
+        self.reply_polish = reply_polish
         self.sop_snapshots = RegistryStore(sop_directory).history() if sop_directory else ()
         if sop_directory and not self.sop_snapshots:
             raise ConfigurationError(
@@ -349,6 +359,7 @@ class LiveAssembly:
                 memory=memory,
                 cases=ledger,
                 events=events,
+                reply_composer=ReplyComposer(model if self.reply_polish else None),
             )
 
 

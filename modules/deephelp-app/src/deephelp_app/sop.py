@@ -37,6 +37,7 @@ from deephelp_app.mcp_protocol import tool_schema, validate_arguments, validate_
 from deephelp_app.ports import ChatPort, ToolPort
 from deephelp_app.sop_config import SOPBranch, SOPDefinition, load_prompt, load_sops
 from deephelp_app.sop_governance import GovernedSOP, SOPRegistry
+from deephelp_app.trace import observe_sop_node
 
 CONTROL_SCHEMA: dict[str, object] = {
     "type": "object",
@@ -394,168 +395,180 @@ class SOPExecutor:
             budget.remaining_seconds()
             node = index[current]
             path.append(current)
-            if node.kind == "lookup":
-                assert node.tool and node.success and node.failure
-                expected = {slot: values[slot] for slot in tool_schema(node.tool)["required"]}
-                request = ChatRequest(
-                    messages=[
-                        *messages,
-                        ChatMessage(
-                            role="system",
-                            content=json.dumps(
-                                {
-                                    "ready_node": current,
-                                    "required_action": node.tool.value,
-                                    "verified_parameters": expected,
-                                },
-                                ensure_ascii=False,
+            with observe_sop_node(current, node.kind, calls) as node_observation:
+                if node.kind == "lookup":
+                    assert node.tool and node.success and node.failure
+                    expected = {slot: values[slot] for slot in tool_schema(node.tool)["required"]}
+                    request = ChatRequest(
+                        messages=[
+                            *messages,
+                            ChatMessage(
+                                role="system",
+                                content=json.dumps(
+                                    {
+                                        "ready_node": current,
+                                        "required_action": node.tool.value,
+                                        "verified_parameters": expected,
+                                    },
+                                    ensure_ascii=False,
+                                ),
                             ),
-                        ),
-                    ],
-                    tools=[ModelTool(name=node.tool.value, parameters=tool_schema(node.tool))],
-                    tool_choice=node.tool.value,
-                    max_output_tokens=4096,
-                )
-                try:
-                    async with asyncio.timeout(
-                        min(d.limits.model_seconds, budget.remaining_seconds())
-                    ):
-                        selected = await self.model.chat(request, budget)
-                except TimeoutError:
-                    raise AppError(ErrorCode.TIMEOUT, "SOP model selection timed out") from None
-                if selected.finish_reason == "length" or len(selected.tool_calls) != 1:
-                    raise AppError(
-                        ErrorCode.MODEL_OUTPUT_INVALID, "Flow requires one complete ready action"
+                        ],
+                        tools=[ModelTool(name=node.tool.value, parameters=tool_schema(node.tool))],
+                        tool_choice=node.tool.value,
+                        max_output_tokens=4096,
                     )
-                action = selected.tool_calls[0]
-                if action.name != node.tool.value or action.arguments != expected:
-                    raise AppError(
-                        ErrorCode.INVALID_ARGUMENT,
-                        "Action differs from ready node or verified slots",
-                    )
-                fingerprint = action.name + ":" + json.dumps(expected, sort_keys=True)
-                if fingerprint in seen:
-                    raise AppError(ErrorCode.INVALID_ARGUMENT, "Repeated flow lookup blocked")
-                seen.add(fingerprint)
-                # All lookups share the SOP retry allowance, not one allowance per source.
-                remaining_retries = max(
-                    0, d.limits.total_retries - (budget.retries_used - retries_at_start)
-                )
-                bounded = d.model_copy(
-                    update={
-                        "limits": d.limits.model_copy(update={"total_retries": remaining_retries})
-                    }
-                )
-                result = await self._lookup(
-                    bounded,
-                    question,
-                    context,
-                    run_id,
-                    budget,
-                    node.tool,
-                    validate_arguments(action.name, expected),
-                    calls,
-                )
-                if result.status != ToolStatus.SUCCEEDED:
-                    failure = result
-                    current = node.failure
-                    continue
-                observed[current] = result
-                messages.extend(
-                    [
-                        ChatMessage(role="assistant", tool_calls=[action]),
-                        ChatMessage(
-                            role="tool",
-                            tool_call_id=action.call_id,
-                            content=result.model_dump_json(),
-                        ),
-                    ]
-                )
-                current = node.success
-            elif node.kind == "branch":
-                facts = {
-                    key + "." + f.name: f.value
-                    for key, result in observed.items()
-                    for f in result.facts
-                }
-                assert node.default
-                try:
-                    current = next(
-                        (r.target for r in node.routes if r.condition.matches(facts)), node.default
-                    )
-                except KeyError, ValueError:
-                    raise AppError(
-                        ErrorCode.MODEL_OUTPUT_INVALID, "Flow condition lacks compatible facts"
-                    ) from None
-            else:
-                assert node.status and node.conclusion
-                if node.status == SOPStatus.FAILED:
-                    error = (
-                        failure.error
-                        if failure and failure.error
-                        else ErrorDetail(
-                            code=ErrorCode.MODEL_OUTPUT_INVALID,
-                            message="Flow stopped before a verified conclusion",
+                    try:
+                        async with asyncio.timeout(
+                            min(d.limits.model_seconds, budget.remaining_seconds())
+                        ):
+                            selected = await self.model.chat(request, budget)
+                    except TimeoutError:
+                        raise AppError(ErrorCode.TIMEOUT, "SOP model selection timed out") from None
+                    if selected.finish_reason == "length" or len(selected.tool_calls) != 1:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID,
+                            "Flow requires one complete ready action",
                         )
+                    action = selected.tool_calls[0]
+                    if action.name != node.tool.value or action.arguments != expected:
+                        raise AppError(
+                            ErrorCode.INVALID_ARGUMENT,
+                            "Action differs from ready node or verified slots",
+                        )
+                    fingerprint = action.name + ":" + json.dumps(expected, sort_keys=True)
+                    if fingerprint in seen:
+                        raise AppError(ErrorCode.INVALID_ARGUMENT, "Repeated flow lookup blocked")
+                    seen.add(fingerprint)
+                    # All lookups share the SOP retry allowance, not one allowance per source.
+                    remaining_retries = max(
+                        0, d.limits.total_retries - (budget.retries_used - retries_at_start)
                     )
-                    return self._failed(d, calls, error.code, error.message).model_copy(
-                        update={"node_path": tuple(path)}
-                    )
-                evidence = tuple(
-                    ref for result in observed.values() for ref in result.evidence_refs
-                )
-                merged: dict[str, Fact] = {}
-                for result in observed.values():
-                    for fact in result.facts:
-                        old = merged.get(fact.name)
-                        if old:
-                            if old.kind != fact.kind or old.value != fact.value:
-                                raise AppError(
-                                    ErrorCode.MODEL_OUTPUT_INVALID, "Conflicting source facts"
-                                )
-                            fact = fact.model_copy(
-                                update={"evidence_ids": (*old.evidence_ids, *fact.evidence_ids)}
+                    bounded = d.model_copy(
+                        update={
+                            "limits": d.limits.model_copy(
+                                update={"total_retries": remaining_retries}
                             )
-                        merged[fact.name] = fact
-                if evidence:
-                    merged["sop_conclusion"] = Fact(
-                        name="sop_conclusion",
-                        kind=FactKind.TEXT,
-                        value=node.conclusion,
-                        evidence_ids=tuple(r.evidence_id for r in evidence),
+                        }
                     )
-                plan = None
-                if node.status == SOPStatus.NEEDS_APPROVAL:
-                    assert node.proposal and question.versions.sop_snapshot
-                    parameters = ToolParameters(order_id=values["order_id"])
-                    plan = SOPPlan(
-                        operation_id="proposal-" + uuid4().hex,
-                        action=node.proposal,
-                        identity=context.identity,
-                        question_id=question.question_id,
-                        question_version=question.version,
-                        parameters=parameters,
-                        parameters_hash=tool_parameters_hash(parameters),
+                    result = await self._lookup(
+                        bounded,
+                        question,
+                        context,
+                        run_id,
+                        budget,
+                        node.tool,
+                        validate_arguments(action.name, expected),
+                        calls,
+                    )
+                    if result.status != ToolStatus.SUCCEEDED:
+                        node_observation["status"] = "failed"
+                        node_observation["error_code"] = (
+                            result.error.code.value if result.error else "MODEL_OUTPUT_INVALID"
+                        )
+                        node_observation["next_node"] = node.failure
+                        failure = result
+                        current = node.failure
+                        continue
+                    observed[current] = result
+                    messages.extend(
+                        [
+                            ChatMessage(role="assistant", tool_calls=[action]),
+                            ChatMessage(
+                                role="tool",
+                                tool_call_id=action.call_id,
+                                content=result.model_dump_json(),
+                            ),
+                        ]
+                    )
+                    current = node.success
+                    node_observation["next_node"] = current
+                elif node.kind == "branch":
+                    facts = {
+                        key + "." + f.name: f.value
+                        for key, result in observed.items()
+                        for f in result.facts
+                    }
+                    assert node.default
+                    try:
+                        current = next(
+                            (r.target for r in node.routes if r.condition.matches(facts)),
+                            node.default,
+                        )
+                        node_observation["next_node"] = current
+                    except KeyError, ValueError:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Flow condition lacks compatible facts"
+                        ) from None
+                else:
+                    assert node.status and node.conclusion
+                    if node.status == SOPStatus.FAILED:
+                        error = (
+                            failure.error
+                            if failure and failure.error
+                            else ErrorDetail(
+                                code=ErrorCode.MODEL_OUTPUT_INVALID,
+                                message="Flow stopped before a verified conclusion",
+                            )
+                        )
+                        return self._failed(d, calls, error.code, error.message).model_copy(
+                            update={"node_path": tuple(path)}
+                        )
+                    evidence = tuple(
+                        ref for result in observed.values() for ref in result.evidence_refs
+                    )
+                    merged: dict[str, Fact] = {}
+                    for result in observed.values():
+                        for fact in result.facts:
+                            old = merged.get(fact.name)
+                            if old:
+                                if old.kind != fact.kind or old.value != fact.value:
+                                    raise AppError(
+                                        ErrorCode.MODEL_OUTPUT_INVALID, "Conflicting source facts"
+                                    )
+                                fact = fact.model_copy(
+                                    update={"evidence_ids": (*old.evidence_ids, *fact.evidence_ids)}
+                                )
+                            merged[fact.name] = fact
+                    if evidence:
+                        merged["sop_conclusion"] = Fact(
+                            name="sop_conclusion",
+                            kind=FactKind.TEXT,
+                            value=node.conclusion,
+                            evidence_ids=tuple(r.evidence_id for r in evidence),
+                        )
+                    plan = None
+                    if node.status == SOPStatus.NEEDS_APPROVAL:
+                        assert node.proposal and question.versions.sop_snapshot
+                        parameters = ToolParameters(order_id=values["order_id"])
+                        plan = SOPPlan(
+                            operation_id="proposal-" + uuid4().hex,
+                            action=node.proposal,
+                            identity=context.identity,
+                            question_id=question.question_id,
+                            question_version=question.version,
+                            parameters=parameters,
+                            parameters_hash=tool_parameters_hash(parameters),
+                            sop_version=d.version,
+                            snapshot_hash=question.versions.sop_snapshot,
+                            evidence_ids=tuple(r.evidence_id for r in evidence),
+                        )
+                    return SOPResult(
+                        status=node.status,
+                        sop_id=d.sop_id,
                         sop_version=d.version,
-                        snapshot_hash=question.versions.sop_snapshot,
-                        evidence_ids=tuple(r.evidence_id for r in evidence),
+                        facts=tuple(merged.values()),
+                        evidence_refs=evidence,
+                        tool_call_ids=tuple(calls),
+                        next_action=NextAction.NONE
+                        if node.status == SOPStatus.RESOLVED
+                        else NextAction.REQUEST_APPROVAL
+                        if plan
+                        else NextAction.CONTACT_SUPPORT,
+                        reason=node.conclusion,
+                        plan=plan,
+                        node_path=tuple(path),
                     )
-                return SOPResult(
-                    status=node.status,
-                    sop_id=d.sop_id,
-                    sop_version=d.version,
-                    facts=tuple(merged.values()),
-                    evidence_refs=evidence,
-                    tool_call_ids=tuple(calls),
-                    next_action=NextAction.NONE
-                    if node.status == SOPStatus.RESOLVED
-                    else NextAction.REQUEST_APPROVAL
-                    if plan
-                    else NextAction.CONTACT_SUPPORT,
-                    reason=node.conclusion,
-                    plan=plan,
-                    node_path=tuple(path),
-                )
         raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Flow max_steps exhausted")
 
     @staticmethod

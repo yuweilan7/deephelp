@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><title>DeepHelp 调试</title>
-<style>body{font:16px system-ui;max-width:950px;margin:32px auto;padding:0 20px}textarea{width:100%;height:110px}input{margin:8px;width:210px}button{padding:8px 20px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:18px}label{display:inline-block}td,th{text-align:left;padding:6px;border-bottom:1px solid #ddd}table{width:100%}</style>
-<h1>DeepHelp · 多问题查询</h1>
+<style>body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 20px;color:#203040}textarea{width:100%;height:110px;box-sizing:border-box}input{margin:8px;width:210px}button{padding:8px 20px;cursor:pointer}button[aria-selected=true]{background:#203040;color:white}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:18px}label{display:inline-block}td,th{text-align:left;padding:6px;border-bottom:1px solid #ddd}table{width:100%}.note{color:#596b7a}nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}.panel[hidden]{display:none}summary{cursor:pointer;padding:12px;background:#edf2f5}h3{font-size:17px}</style>
+<h1>DeepHelp · 查询与调试</h1>
 <p>支持优惠未享受、券不可用、订单活动查询。工具业务数据为合成数据。新问题可同时保留；选择开放问题后补充编号或更正信息。审批和业务写操作尚未启用。</p>
 <p>示例：订单 000031 未享受优惠；订单 000042 的券 000009 不能用；查询订单 000053 参加的活动。</p>
 <label>本机访问令牌<input id="token" type="password" autocomplete="off"></label>
@@ -10,10 +10,27 @@
 <textarea id="text">订单 000031 未享受优惠，请查一下</textarea>
 <p><button id="send">发送新消息</button> <button id="repeat" disabled>重投同一消息</button></p>
 <p id="status"></p><h2>回复</h2><pre id="reply"></pre>
+<p id="presentation" class="note"></p>
 <h2>阶段耗时与调用数</h2><table><thead><tr><th>阶段</th><th>状态</th><th>毫秒</th><th>模型</th><th>工具</th></tr></thead><tbody id="steps"></tbody></table>
-<h2>事实、证据与完整结果</h2><pre id="result"></pre>
+<nav role="tablist" aria-label="调试视图"><button role="tab" data-view="intent" aria-selected="true">意图调试</button><button role="tab" data-view="turns" aria-selected="false">多轮调试</button><button role="tab" data-view="flow" aria-selected="false">流程调试</button><button id="export" disabled>导出当前视图</button></nav>
+<p id="debug-status" class="note" role="status">发送消息后读取同一份追踪。编号会使用稳定替代标识。</p>
+<section id="intent-panel" class="panel" role="tabpanel"><h2>意图：从输入到最终决策</h2><p>原文与清洗、规则命中及排除、候选来源与原始分数、级联选择和版本。</p><pre id="intent-data"></pre></section>
+<section id="turns-panel" class="panel" role="tabpanel" hidden><h2>多轮：消息归属与问题变化</h2><p>事实窗口、开放问题、已结历史、候选排除、归属引用、实体更正与投影generation。</p><pre id="turns-data"></pre></section>
+<section id="flow-panel" class="panel" role="tabpanel" hidden><h2>流程：实际执行与事实回复</h2><p>固定SOP、节点路径、阶段起止/错误、实际工具参数与证据、预算、模板与最终回复。审批恢复尚未启用。</p><pre id="flow-data"></pre></section>
+<details><summary>事实、证据与完整接口结果</summary><pre id="result"></pre></details>
 <script>
-let last=null;const by=id=>document.getElementById(id);
+let last=null,debugRun=null,activeView='intent';const by=id=>document.getElementById(id);
+function viewUrl(view,download=false){return '/debug/runs/'+encodeURIComponent(debugRun)+'/'+view+'?session_id='+encodeURIComponent(last.session_id)+(download?'&export=true':'')}
+async function loadDebug(run){
+  debugRun=run;by('export').disabled=true;
+  for(const view of ['intent','turns','flow'])by(view+'-data').textContent='读取中…';
+  if(!run){by('debug-status').textContent='本次没有已接收的执行记录。';return}
+  const results=await Promise.all(['intent','turns','flow'].map(async view=>{const r=await fetch(viewUrl(view),{headers:{Authorization:'Bearer '+by('token').value}});const d=await r.json();by(view+'-data').textContent=JSON.stringify(d,null,2);return {ok:r.ok,d}}));
+  const first=results[0];by('export').disabled=!results.every(r=>r.ok);
+  by('debug-status').textContent=first.ok?'同一执行 '+run+' · 原始追踪 '+first.d.trace_id+' · 缺失项 '+(first.d.incomplete.join('、')||'无')+' · 丢弃事件 '+first.d.dropped_events:(first.d.reply||'追踪不可用、已过期或已丢弃。');
+}
+for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>{activeView=tab.dataset.view;for(const v of ['intent','turns','flow'])by(v+'-panel').hidden=v!==activeView;for(const t of document.querySelectorAll('[data-view]'))t.setAttribute('aria-selected',String(t===tab))};
+by('export').onclick=async()=>{try{const r=await fetch(viewUrl(activeView,true),{headers:{Authorization:'Bearer '+by('token').value}});if(!r.ok)throw new Error('导出失败');const url=URL.createObjectURL(new Blob([await r.text()],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='deephelp-'+activeView+'.json';a.click();URL.revokeObjectURL(url)}catch(e){by('debug-status').textContent=e.message}};
 async function refresh(preferred){
   const r=await fetch('/memory?session_id='+encodeURIComponent(by('session').value),{headers:{Authorization:'Bearer '+by('token').value}});const d=await r.json();
   if(!r.ok)throw new Error(d.reply||'记忆读取失败');
@@ -26,8 +43,9 @@ async function send(repeat){
   by('send').disabled=by('repeat').disabled=true;by('status').textContent='处理中…';
   try{const r=await fetch('/converse',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+by('token').value},body:JSON.stringify(last)});const d=await r.json();
     by('reply').textContent=d.reply;by('result').textContent=JSON.stringify(d,null,2);by('status').textContent='HTTP '+r.status+' · '+d.outcome;
+    by('presentation').textContent=d.reply_presentation?'回复方式：'+d.reply_presentation.mode+' · 校验：'+d.reply_presentation.reason+' · '+d.reply_presentation.version:'';
     by('steps').replaceChildren();for(const s of d.stages||[]){const tr=document.createElement('tr');for(const v of [s.stage,s.status,s.elapsed_ms.toFixed(2),s.model_calls,s.tool_calls]){const td=document.createElement('td');td.textContent=String(v);tr.append(td)}by('steps').append(tr)}
-    if(r.ok)await refresh(d.question_id);
+    await loadDebug(d.run_id);if(r.ok)await refresh(d.question_id);
   }catch(e){by('status').textContent='请求失败：'+e.message}finally{by('send').disabled=false;by('repeat').disabled=!last}
 }by('send').onclick=()=>send(false);by('repeat').onclick=()=>send(true);by('refresh').onclick=()=>refresh().catch(e=>by('status').textContent=e.message);
 </script></html>
