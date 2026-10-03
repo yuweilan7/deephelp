@@ -960,6 +960,8 @@ class StageReport(DTO):
     intent_calls: Count = 0
     retrieval_calls: Count = 0
     error_code: ErrorCode | None = None
+    started_at: AwareDatetime | None = None
+    finished_at: AwareDatetime | None = None
 
 
 class CallCounts(DTO):
@@ -967,6 +969,25 @@ class CallCounts(DTO):
     model_calls: Count = 0
     retrieval_calls: Count = 0
     tool_calls: Count = 0
+
+
+class ReplyPresentation(DTO):
+    template: str
+    mode: Literal["template", "polished", "fallback"] = "template"
+    reason: Literal["disabled", "accepted", "invalid_output", "unavailable", "deadline"] = (
+        "disabled"
+    )
+    version: Literal["fact-reply-v1"] = "fact-reply-v1"
+
+
+class DebugSnapshot(DTO):
+    schema_version: Literal["debug-v1"] = "debug-v1"
+    scope_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    run_id: Identifier
+    question_id: Identifier
+    trace_id: Identifier
+    data: dict[str, object]
+    incomplete: tuple[str, ...] = ()
 
 
 class ResponseEnvelope(DTO):
@@ -995,6 +1016,7 @@ class ResponseEnvelope(DTO):
     call_counts: CallCounts = Field(default_factory=CallCounts)
     sop_plan: SOPPlan | None = None
     sop_node_path: tuple[Identifier, ...] = ()
+    reply_presentation: ReplyPresentation | None = None
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:

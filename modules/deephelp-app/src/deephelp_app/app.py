@@ -10,14 +10,16 @@ from uuid import UUID, uuid4
 import httpx
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from deephelp_app.conversation import Conversation
+from deephelp_app.debug import DebugView, export_json, project, scope_hash
 from deephelp_app.domain.models import (
     BudgetUsed,
     ConverseInput,
+    DebugSnapshot,
     ErrorCode,
     ErrorDetail,
     LifecycleCommand,
@@ -357,5 +359,38 @@ def create_app(
         if service is None or service.cases is None:
             raise AppError(ErrorCode.NOT_IMPLEMENTED, "Case repository is not configured", 501)
         return await service.cases.transition(identity, question_id, body)
+
+    @app.get("/debug/runs/{run_id}/{view}")
+    async def debug_view(
+        run_id: str,
+        view: DebugView,
+        request: Request,
+        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
+        export: bool = False,
+    ) -> Response:
+        identity = identity_provider(request)
+        sink = request.app.state.resources.trace
+        reader, key = getattr(sink, "read_debug", None), getattr(sink, "debug_key", None)
+        if reader is None or not isinstance(key, bytes):
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Debug trace is not configured", 501)
+        if len(run_id) > 128:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Invalid run identifier", 422)
+        snapshot = await reader(scope_hash(key, identity, session_id), run_id)
+        if snapshot is None:
+            # Foreign IDs and expired diagnostics return the same result.
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "追踪不可用、已过期或已丢弃。", 404)
+        value = project(
+            DebugSnapshot.model_validate(snapshot), view, dropped=getattr(sink, "dropped", 0)
+        )
+        if export:
+            return Response(
+                export_json(value),
+                media_type="application/json",
+                headers={
+                    "Content-Disposition": f'attachment; filename="deephelp-{view}.json"',
+                    "Cache-Control": "no-store",
+                },
+            )
+        return JSONResponse(value, headers={"Cache-Control": "no-store"})
 
     return app

@@ -219,3 +219,15 @@ manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和�
 `SOPResult.node_path`与`ResponseEnvelope.sop_node_path`记录实际配置节点。失败尝试仍保留tool_call_ids；部分来源失败不发布成功事实，最终结论由代码分支和成功证据产生。没有额外主分类或调度服务。
 
 `SOPStatus.NEEDS_APPROVAL`配`NextAction.REQUEST_APPROVAL`及唯一DTO `SOPPlan`。计划绑定operation_id、模拟动作、主体、问题ID/执行输入版本、只读预检参数及hash、SOP版本/完整快照和证据IDs；当前唯一模拟动作simulate_discount_adjustment没有可调用写工具。`response_from_sop`将其映射为HANDOFF/HANDED_OFF/run SUCCEEDED和`sop_plan`，明确未申请、批准或执行。PENDING_APPROVAL与WAITING_APPROVAL仍被DTO拒绝，M15前没有持久批准恢复。M15必须重新核对当时的最新问题版本、归属/状态/期限/参数与操作领取，不能直接把此计划当授权或复用普通消息批准。
+
+## M16 事实回复与调试契约
+
+`ResponseEnvelope.reply_presentation`默认null，旧保存结果/消费者兼容；新SOP回复包含template、mode、reason及fact-reply-v1。模板仅取通过原SOPResult事实/证据校验的字段；缺槽位、失败、人工及仅计划分别输出。可选`ReplyComposer`仅用严格opening/closing枚举选择固定非事实措辞，不接收自由正文；模型不接触金额/编号，非法结构/新增字段/超时/失败回退原模板，外部取消继续传播。同一共享预算计量，1100不重分类或调用业务工具。M14计划明确未申请/批准/执行。
+
+`StageReport.started_at/finished_at`默认null。正常执行记录真实13段起止；治理SOP节点通过任务上下文观察，保存node_id/kind、开始/结束、下一节点、错误及实际工具call_ids。工具观察含已核验参数/hash、child timeout、开始/结束、结构化结果/证据；并发不共享记录。旧ReAct仅有原阶段与工具记录，无虚构治理节点。
+
+终态成功提交后记录一条`TraceEvent.debug_snapshot`，唯一DTO `DebugSnapshot`包含主体/session的HMAC scope、原run/question/trace和已脱敏的显式输入/实体/决策/窗口/归属/固定SOP/节点/工具/回复/预算。输入另记accepted_question_version；投影完成未在本请求观察时明确标记，不把outbox排队当Redis/Milvus已完成。单快照目标上限128KiB，过大非关键段省略并写incomplete；trace不是业务账本，也不存隐藏推理。
+
+`GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`按与converse相同身份源鉴权，再匹配tenant/user/session。三个视图投影同一快照；重放run指向原执行trace，新请求计数仍0。跨主体/session与过期/丢弃/不存在均404且不泄露存在性；返回no-store。`export=true`生成JSON附件，危险公式字符串加单引号；CLI仅调用鉴权loopback API，不直接打开追踪文件。
+
+订单/券/消息及主体/session编号用同一本地key生成稳定替代ID，标准凭据键、Bearer/sk及隐藏推理字段遮盖；证据引用保持可关联。span偏移指向脱敏前原文，不能按替代ID长度重新解释。保留`.jsonl.key`以跨资源维持同scope与替代ID；其与auth/budget/pointer/provider不得重合。默认JsonlTrace单写者、128项非阻塞队列、2MiB×4文件和7天期限；超限/磁盘故障只丢非关键诊断，读取返回dropped_events/incomplete或404。MySQL消息/问题/终态及工具审计独立保留，不能随trace轮转删除。MemoryTrace仅供离线测试。

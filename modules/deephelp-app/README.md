@@ -339,3 +339,32 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.governe
 ```
 
 真实入口验19情境的模型动作/事实/ledger，再经实际HTTP验三流程、双来源、发布后旧问题补槽与新问题计划、MySQL新池回读、零调用重放及回退。整体timeout默认1200秒，各请求共享既有预算；transport重试0，固定故障情境关闭重试，执行器的有限重试另有回归。探针只清理自己创建的派生事件集合，保留MySQL合成事实/outbox、配置与恢复证据；不跑P00 full、云服务重启或企业写接口。
+
+## M16 事实回复与三类调试
+
+运行同一只读主链，在页面查看意图、多轮和流程三个视图。金额、编号、业务结论由事实模板输出；`--reply-polish`可选，模型只选固定语气，新增事实/坏结构/失败直接回退。M14的计划回复明确尚未申请/批准/执行。机制见[M16规格](../../docs/MODULES/M16_OUTPUT_DEBUG.md)，接口见[契约](../../docs/CONTRACTS.md#m16-事实回复与调试契约)。
+
+已有任务预算/身份可复用；新任务先按前文mvp_cli init创建并设本次足够运行上限。serve会调用真实模型/MySQL/Milvus及合成只读MCP；默认不开可选润色。浏览器地址为http://127.0.0.1:8000，令牌只从本机auth文件取出填入页面，不保存到浏览器存储。
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --auth .local/m16/auth.json --budget-state .local/m16/session-budget.json --trace-path .local/m16/demo.trace.jsonl --reply-polish
+# 返回run_id后，在另一个终端读取；$runId与$sessionId取本次响应和输入
+py -3.14 -m uv run --locked python -m deephelp_app.debug_cli intent --run-id $runId --session $sessionId --auth .local/m16/auth.json
+py -3.14 -m uv run --locked python -m deephelp_app.debug_cli turns --run-id $runId --session $sessionId --auth .local/m16/auth.json
+py -3.14 -m uv run --locked python -m deephelp_app.debug_cli flow --run-id $runId --session $sessionId --auth .local/m16/auth.json --output .local/m16/flow-export-new.json
+```
+
+三个鉴权API为`GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`，追加`export=true`下载脱敏JSON。同一run复用同一原始trace；重投不是新执行。编号是稳定替代ID，span偏移仍指向脱敏前原文。缺失段/丢弃数明确显示；404也可能表示非关键追踪已过期，业务结果仍从MySQL回放。trace及其`.jsonl.key`仅留本机，保留key才能在重新装配后识别原scope；不要手动删业务账本来清日志。
+
+默认详细追踪最多4个2MiB文件、7天期限、128项非阻塞队列；单快照过大省略段并标注incomplete。磁盘失败不撤销已提交事实，关键业务记录不参与日志轮转。一个trace路径只供一个写进程；不同服务实例使用不同路径。三个视图记录显式决策/证据，不展示隐藏推理；审批/恢复仍留M15。
+
+```powershell
+# 离线：固定合成模型回放，正式SDK stdio及实际loopback HTTP；无云调用
+py -3.14 -m uv run --locked python -m deephelp_app.debug_probe --output .local/m16/offline-new.json
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m16_output_debug.py modules/deephelp-app/tests/integration/test_m16_debug_views.py
+# 先health和模型内容探针；真实feature，合并后改stage=main并换新报告
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.debug_probe --live --stage feature --output .local/m16/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.debug_probe --live --stage main --output .local/m16/main-new.json
+```
+
+探针可显式指定--auth/--budget-state/--pointer/--providers，默认使用M16累计预算和M09检索指针；恢复/main继续同一预算，不重置。实际三类事实、自动补充、未知及正式SDK工具超时、四次真实受限润色、鉴权/脱敏、零调用重放、新追踪资源与MySQL新池回读逐项检查；main复验正常/缺槽位/补充及持久回放。工具超时通过专用合成对象延迟和真实child timeout触发，不冒充企业故障。清理自己创建的事件集合，保留MySQL合成事实/outbox；不跑P00 full或企业写接口。报告须新路径，原始内容/诊断与任务预算只留.local。

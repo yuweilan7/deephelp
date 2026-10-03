@@ -22,6 +22,7 @@ from deephelp_app.mvp_runtime import (
     LocalAuth,
     live_app,
     validate_control_paths,
+    validate_trace_path,
 )
 
 
@@ -110,6 +111,10 @@ def main() -> int:
     p.add_argument("--pointer", default=".local/m05/active.json")
     p.add_argument("--fasttext-pointer", help="Explicitly enable a dev-calibrated M13 artifact")
     p.add_argument(
+        "--reply-polish", action="store_true", help="Optional closed-vocabulary M16 wording"
+    )
+    p.add_argument("--trace-path", default=".local/m08/trace.jsonl")
+    p.add_argument(
         "--sop-directory", help="Published M14 registries; omitted uses bundled registry"
     )
     p.add_argument("--auth", default=".local/m08/auth.json")
@@ -131,13 +136,14 @@ def main() -> int:
         elif args.command == "ask":
             asyncio.run(ask(args))
         else:
-            validate_control_paths(
+            validate_trace_path(
+                local_path(args.trace_path),
                 [
                     local_path(args.auth),
                     local_path(args.budget_state),
                     local_path(args.pointer),
                     Path(args.providers),
-                ]
+                ],
             )
             gate = BudgetSession(local_path(args.budget_state))
             gate.open()
@@ -150,8 +156,14 @@ def main() -> int:
                     if args.fasttext_pointer
                     else None,
                     sop_directory=local_path(args.sop_directory) if args.sop_directory else None,
+                    reply_polish=args.reply_polish,
                 )
-                app = live_app(assembly, LocalAuth(local_path(args.auth)), gate)
+                app = live_app(
+                    assembly,
+                    LocalAuth(local_path(args.auth)),
+                    gate,
+                    trace_path=str(local_path(args.trace_path)),
+                )
                 uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
             finally:
                 gate.close()

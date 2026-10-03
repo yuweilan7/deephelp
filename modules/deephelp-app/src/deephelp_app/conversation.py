@@ -1,6 +1,7 @@
 """One sequential 13-stage pipeline; 500 owns membership, 600 owns main intent."""
 
 import asyncio
+import json
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -10,12 +11,14 @@ from time import perf_counter
 from typing import cast
 
 from deephelp_app.cascade import enhanced_query
+from deephelp_app.debug import sanitize, scope_hash
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.models import (
     BudgetUsed,
     CallCounts,
     ChatRequest,
     ChatResult,
+    DebugSnapshot,
     Decision,
     DenseResult,
     DenseScope,
@@ -26,7 +29,6 @@ from deephelp_app.domain.models import (
     IntentCode,
     IntentDecision,
     MemoryWindow,
-    Money,
     NextAction,
     Outcome,
     Question,
@@ -56,11 +58,12 @@ from deephelp_app.ports import (
     SOPExecutorPort,
     ToolPort,
 )
+from deephelp_app.reply import ReplyComposer
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_config import SOPDefinition, load_sops
 from deephelp_app.sop_governance import GovernedSOP
 from deephelp_app.text_entity import TextEntityProcessor
-from deephelp_app.trace import TraceEvent, TraceSink
+from deephelp_app.trace import TraceEvent, TraceSink, sop_node_observer
 
 STAGES = (
     "100_INPUT_VALIDATE",
@@ -99,6 +102,8 @@ class RunTrace:
     intent_calls: int = 0
     retrieval_calls: int = 0
     deferred: bool = False
+    tools: list[dict[str, object]] = field(default_factory=list)
+    sop_nodes: list[dict[str, object]] = field(default_factory=list)
 
     def counts(self) -> CallCounts:
         return CallCounts(
@@ -176,15 +181,42 @@ class TrackedTools:
         context: RequestEnvelope,
         on_dispatch: Callable[[str], None] | None = None,
     ) -> ToolResult:
+        started = datetime.now(UTC)
+        observation: dict[str, object] = {
+            "tool_name": request.tool_name.value,
+            "tool_version": request.tool_version,
+            "parameters": request.parameters.model_dump(mode="json"),
+            "parameters_hash": request.parameters_hash,
+            "started_at": started.isoformat(),
+            "call_id": None,
+            "timeout_seconds": request.timeout_seconds,
+        }
+
         def record(call_id: str) -> None:
+            observation["call_id"] = call_id
             if stats := current_run.get():
                 stats.tool_call_ids.append(call_id)
             if on_dispatch:
                 on_dispatch(call_id)
 
-        return await self.tools.execute(
-            request, question, budget, context=context, on_dispatch=record
-        )
+        try:
+            result = await self.tools.execute(
+                request, question, budget, context=context, on_dispatch=record
+            )
+            observation["result"] = result.model_dump(mode="json")
+            return result
+        except asyncio.CancelledError:
+            observation["error_code"] = "CANCELLED"
+            raise
+        except Exception as exc:
+            observation["error_code"] = (
+                exc.code.value if isinstance(exc, AppError) else "INTERNAL_ERROR"
+            )
+            raise
+        finally:
+            observation["finished_at"] = datetime.now(UTC).isoformat()
+            if stats := current_run.get():
+                stats.tools.append(observation)
 
 
 def usage_delta(budget: ExecutionBudget, initial: BudgetUsed) -> BudgetUsed:
@@ -195,33 +227,6 @@ def usage_delta(budget: ExecutionBudget, initial: BudgetUsed) -> BudgetUsed:
         if value is not None and old is not None:
             values[name] = max(value * 0, value - old)
     return BudgetUsed.model_validate(values)
-
-
-def fact_reply(result: SOPResult) -> str:
-    if result.status == SOPStatus.WAITING_SLOT:
-        names = "、".join(s.value for s in result.missing_slots)
-        return (
-            f"缺少或无法确认 {names}。请用一条新消息重新发送完整问题及这些编号；"
-            "当前不自动合并跨消息槽位。"
-        )
-    if result.status == SOPStatus.FAILED:
-        return "本次查询未取得可验证结论，请稍后重试或联系人工。"
-    facts = {f.name: f.value for f in result.facts}
-    parts = [f"订单 {facts['order_id']}。"] if "order_id" in facts else []
-    for key, label in (("paid", "实付"), ("discount", "已记录优惠")):
-        value = facts.get(key)
-        if isinstance(value, Money):
-            parts.append(f"{label} {value.amount:.2f} {value.currency}。")
-    if "coupon_id" in facts:
-        parts.append(f"券 {facts['coupon_id']}，状态 {facts.get('coupon_status')}。")
-    if "activity_ids" in facts:
-        parts.append(f"活动：{facts['activity_ids'] or '未查询到活动记录'}。")
-    # Only configured SOP conclusions are published. Raw tool/model prose is never a reply.
-    if "sop_conclusion" in facts:
-        parts.append(str(facts["sop_conclusion"]) + "。")
-    if result.status == SOPStatus.HANDED_OFF:
-        parts.append("需要人工进一步核实。")
-    return "".join(parts)
 
 
 class Conversation:
@@ -237,12 +242,14 @@ class Conversation:
         memory: MemoryPort | None = None,
         cases: CaseRepository | None = None,
         events: EventAggregationService | None = None,
+        reply_composer: ReplyComposer | None = None,
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
         self.memory = memory
         self.cases = cases
         self.events = events
+        self.reply_composer = reply_composer or ReplyComposer()
         self.event_ledger = cast(EventLedger, ledger)
         if events and not getattr(ledger, "supports_continuation", False):
             raise ValueError("Automatic events require a continuation-capable ledger")
@@ -252,6 +259,7 @@ class Conversation:
             if (f != "hybrid" or not hasattr(intent.scope, "analyzer_version"))
             and (f not in {"memory", "redis_projection", "cross_message_slots"} or memory is None)
             and (f != "event_merge" or events is None)
+            and (f != "llm_reply_polish" or self.reply_composer.model is None)
         )
         if not intent.cascade or not getattr(intent.cascade.fallback, "enabled", False):
             self.disabled += ("fasttext",)
@@ -271,6 +279,7 @@ class Conversation:
         stats: RunTrace,
     ) -> AsyncIterator[None]:
         start, models, tools = perf_counter(), stats.model_calls, budget.tool_steps_used
+        started_at = datetime.now(UTC)
         intents, retrievals = stats.intent_calls, stats.retrieval_calls
         stats.stage_error = None
         error: ErrorCode | None = None
@@ -298,6 +307,8 @@ class Conversation:
                 error_code=error,
                 intent_calls=stats.intent_calls - intents,
                 retrieval_calls=stats.retrieval_calls - retrievals,
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
             )
             stats.stages.append(report)
             if not stats.deferred:
@@ -441,8 +452,12 @@ class Conversation:
             )
         token = current_run.set(stats)
         question = receipt.question
+        node_token = sop_node_observer.set(stats.sop_nodes.append)
         decision: IntentDecision | None = None
         response: ResponseEnvelope | None = None
+        text: TextEntityResult | None = prepared.text if prepared else None
+        window: MemoryWindow | None = prepared.window if prepared else None
+        definition: SOPDefinition | GovernedSOP | None = None
         cancelled = False
         event = prepared.event if prepared else None
         if event and event.current_event_context:
@@ -537,7 +552,9 @@ class Conversation:
                             )
                         async with self.stage(STAGES[3], request, receipt, budget, stats):
                             if self.memory:
-                                await self.memory.load(request.identity, request.session_id, budget)
+                                window = await self.memory.load(
+                                    request.identity, request.session_id, budget
+                                )
                             entities = tuple(
                                 e for e in text.entities if e.name not in text.unresolved_fields
                             )
@@ -579,7 +596,7 @@ class Conversation:
                             decision = await self.intent.recognize(
                                 text, budget, memory_query=memory_query
                             )
-                    definition: SOPDefinition | GovernedSOP | None = None
+                    definition = None
                     async with self.stage(STAGES[6], request, receipt, budget, stats):
                         if decision.decision == Decision.CLARIFY and (
                             decision.final_code is None
@@ -670,23 +687,21 @@ class Conversation:
                                 if result.error:
                                     stats.stage_error = result.error.code
                         async with self.stage(STAGES[10], request, receipt, budget, stats):
+                            reply, presentation = await self.reply_composer.compose(
+                                result, budget, continuation=self.memory is not None
+                            )
                             response = response_from_sop(
                                 request,
                                 run_id=receipt.run_id,
                                 question_id=question.question_id,
                                 result=result,
-                                reply=fact_reply(result),
+                                reply=reply,
                                 versions=question.versions,
                                 budget_used=usage_delta(budget, initial),
                             )
-                            if self.memory and result.status == SOPStatus.WAITING_SLOT:
-                                response = response.model_copy(
-                                    update={
-                                        "reply": "缺少或无法确认 "
-                                        + "、".join(s.value for s in result.missing_slots)
-                                        + "。请带本问题编号补充或更正；也可以发送完整的新问题。"
-                                    }
-                                )
+                            response = response.model_copy(
+                                update={"reply_presentation": presentation}
+                            )
             except EventClarification:
                 question = question.model_copy(update={"aggregation_pending": True})
                 response = ResponseEnvelope(
@@ -782,11 +797,117 @@ class Conversation:
                     elapsed_ms=(perf_counter() - storage_start) * 1000,
                 )
             )
+            await self.capture_debug(
+                request,
+                response,
+                question,
+                text,
+                window,
+                definition,
+                stats,
+                input_question_version=receipt.question.version,
+            )
             if cancelled:
                 raise asyncio.CancelledError
             return response
         finally:
+            sop_node_observer.reset(node_token)
             current_run.reset(token)
+
+    async def capture_debug(
+        self,
+        request: RequestEnvelope,
+        response: ResponseEnvelope,
+        question: Question,
+        text: TextEntityResult | None,
+        window: MemoryWindow | None,
+        definition: SOPDefinition | GovernedSOP | None,
+        stats: RunTrace,
+        *,
+        input_question_version: int,
+    ) -> None:
+        key = getattr(self.trace, "debug_key", None)
+        if not isinstance(key, bytes) or response.run_id is None:
+            return
+        data: dict[str, object] = {
+            "input": {
+                **request.model_dump(mode="json"),
+                "accepted_question_version": input_question_version,
+            },
+            "text": text.model_dump(mode="json") if text else None,
+            "intent": response.intent_decision.model_dump(mode="json")
+            if response.intent_decision
+            else None,
+            "memory": window.model_dump(mode="json") if window else None,
+            "memory_activity": {
+                "fact_source": "mysql" if self.cases else "configured_ledger",
+                "read_generation": window.generation if window else None,
+                "terminal_question_version": question.version,
+                "outbox": "queued_by_terminal_commit" if self.cases else "not_configured",
+                "projection_completion": "not_observed_by_this_request",
+            },
+            "event": response.event_cluster.model_dump(mode="json")
+            if response.event_cluster
+            else None,
+            "question": question.model_dump(mode="json"),
+            "versions": response.versions.model_dump(mode="json"),
+            "stages": [s.model_dump(mode="json") for s in response.stages],
+            "tools": stats.tools,
+            "sop": definition.model_dump(mode="json") if definition else None,
+            "sop_nodes": stats.sop_nodes,
+            "response": response.model_dump(
+                mode="json", exclude={"event_cluster", "intent_decision", "stages"}
+            ),
+            "budget": response.budget_used.model_dump(mode="json"),
+        }
+        data = sanitize(data, key)
+        gaps: list[str] = []
+        if getattr(self.trace, "dropped", 0):
+            gaps.append("trace_events_dropped")
+        # Diagnostics can omit oversized sections; authoritative ledger facts are untouched.
+        for field_name in (
+            "memory",
+            "event",
+            "text",
+            "input",
+            "question",
+            "sop",
+            "tools",
+            "intent",
+        ):
+            if len(json.dumps(data, ensure_ascii=False).encode()) <= 128 * 1024:
+                break
+            data[field_name] = None
+            gaps.append(field_name + "_size_limit")
+        if len(json.dumps(data, ensure_ascii=False).encode()) > 128 * 1024:
+            data["response"] = {
+                "outcome": response.outcome.value,
+                "run_status": response.run_status.value if response.run_status else None,
+                "fact_count": len(response.facts),
+                "evidence_count": len(response.evidence_refs),
+            }
+            gaps.append("response_size_limit")
+        try:
+            await self.trace.emit(
+                TraceEvent(
+                    event="debug_snapshot",
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    run_id=response.run_id,
+                    question_id=question.question_id,
+                    debug=DebugSnapshot(
+                        scope_hash=scope_hash(key, request.identity, request.session_id),
+                        run_id=response.run_id,
+                        question_id=question.question_id,
+                        trace_id=request.trace_id,
+                        data=data,
+                        incomplete=tuple(gaps),
+                    ),
+                )
+            )
+        except Exception:
+            # Optional diagnostics never reverse a committed business result.
+            pass
 
     @staticmethod
     def error(
