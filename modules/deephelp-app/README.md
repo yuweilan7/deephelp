@@ -237,3 +237,38 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.event_p
 输出含`event_cluster`的当前事件、分组列表、原始消息引用、候选cosine/实体依据、排除原因、结构化裁决及图文本。自动判断不确定时，消息保存为独立待澄清问题且不作为后续自动候选；用其问题编号显式补充可解除待澄清。多个独立主诉先分成虚拟上下文并要求分条发送，不伪称一条消息已绑定多个持久问题。`--question-hint/--expected-version`可显式指定归属；重复消息须同时复用`--message-id`及`--occurred-at`，正文/session/hint变化仍拒绝。
 
 MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有`memory_cli project`异步投影；读取不依赖Redis，索引失败不编造相似边。集合沿用M10签名隔离，M11 probe单独创建集合、只领取自己的终态outbox，删除/重建核验后清理该集合。普通有状态请求数据库失败即停止；只有显式preview可使用当前消息。黄金样本见`sample_data/event_sequences.json`，其小合成效果不代表企业效果或完整自然语言覆盖。
+
+## M12 完整聚合与意图级联
+
+正式live的同一`/converse`现已自动归属，无需给每条补充手工附问题编号。只有600调用统一主意图服务，内部顺序为规则→当前Hybrid→必要的已确认事件增强Hybrid→有限schema兜底。`--pointer .local/m09/active.json`启用已校准Hybrid；旧默认M05指针仍兼容，但不直接按Dense分数接管。已绑定问题保持原意图，FastText仍disabled。机制/短路表见[M12规格](../../docs/MODULES/M12_CASCADE_PIPELINE.md)。
+
+复用已有凭据/合成身份、M09指针和M10迁移。先health和模型可调用性；新任务设置足够的调用/token/费用累计上限，init只生成新本机文件，恢复不得归零。已存在的`.local/m12/session-budget.json`可继续使用，init不能覆盖它。
+
+```powershell
+# 新累计文件可用hybrid_cli init创建；参数按当前任务设置，不固定长期额度
+py -3.14 -m uv run --locked python -m deephelp_app.hybrid_cli init --budget-state .local/m12/session-budget.json --max-calls $cascadeCalls --max-tokens $cascadeTokens --max-cost $cascadeCost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m12/session-budget.json
+
+# 同session依次发送：两个开放问题、明确更正、券号补充、订单补充
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --session m12-demo --text "我的订单未享受优惠"
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --session m12-demo --text "另外订单000053的券不能用"
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --session m12-demo --text "更正刚才的券问题：订单000042"
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --session m12-demo --text "补充：券000009"
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --session m12-demo --text "刚才优惠那单，订单000031"
+
+# 真实HTTP内容验收；main换stage与新报告，沿用同一预算
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.cascade_probe --live --stage feature --budget-state .local/m12/session-budget.json --output .local/m12/feature-new.json
+# 旧单消息MVP独立session回归，避免把每条样本误作多轮续接
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_probe --live --http --isolated-sessions --stage feature --pointer .local/m09/active.json --budget-state .local/m12/session-budget.json --output .local/m12/mvp-new.json
+```
+
+响应的`event_cluster`显示当前归属/原文引用/更正/排除原因，`intent_decision.cascade_steps`记录各层continue/接管/拒识和原始候选。`call_counts`为本请求主分类、模型、600检索及实际工具次数，重放为0；重放的stages保留原执行证据。`/health`显示M12/READ_ONLY_EVENT_CASCADE。缺业务槽位WAITING_SLOT、工具0；归属不确定单独保存待澄清消息，未确定的关系不会污染原问题。1200/1300及终态提交不能被普通短路绕过。
+
+需要重新校准时只用dev，保留现有发布配置，先生成新的.local策略与网格报告；更换scope/语料/融合权重必须重验。该入口只做检索校准，不执行业务SOP，也不读取test标签选参；正式发布前人工审查报告并回归。
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.cascade_tune --live --budget-state .local/m12/session-budget.json --policy-output .local/m12/policy-new.json --output .local/m12/dev-new.json
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m12_cascade.py modules/deephelp-app/tests/integration/test_m12_pipeline.py
+```
+
+probe使用专用session/事件集合，只删除自己的派生集合；MySQL合成事实和outbox保留，Redis缓存按TTL失效。当前原意图集合与语料、凭据、来源原件不修改，不运行P00 full。真实MCP协议与真实云服务使用合成业务；小样本不代表企业效果，审批/写操作仍需M15。

@@ -175,3 +175,21 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 `PersistentEventAggregation.process`通过M10接受消息、CAS终结和事务outbox保存归属。账本新增`lookup(request)`及可选可信`attribution=(question_id,expected_version)`；存储/幂等hash仍取原始请求，不能把内部选择的hint写成用户payload。scope/开放状态/版本/乱序/未完成run在事务内再验。重复终态原样回放事件图、模型/工具0；未知RUNNING拒绝重领。`ResponseEnvelope.event_cluster`和`Question.event_summary/aggregation_pending`均为默认兼容字段，无新表或依赖。
 
 摘要为有出处的原文摘录，保留实体冲突和更正来源，不能成为新业务事实。多个主诉结果的`current_event_context=null`且要求分条，数据库只保存待澄清消息，不宣称已建多个事实问题。待澄清问题可用明确hint补充；未归属补充不能污染既有问题。独立CLI与显式无持久化preview见应用README，完整500→600接入由M12完成。
+
+## M12 完整主链与级联契约
+
+明确补充订单/券号且只有一个相容开放事件、确实补其缺失槽位时，500按已确认绑定确定性关联，仍检查整簇和接收CAS；不调用归属模型。多个相容事件、更正或一般语义归属继续使用受控裁决。此守卫只消费既有事实，不进行主分类。
+
+同一`Conversation.run`装配`EventAggregationService`后，300提取当前原文一次，400读取MySQL事实窗口，500复用两者归属，再以原始请求payload及可信attribution原子接收。预接收的阶段trace缓冲到真实run/question确定后发布，不产生伪业务ID。已有终态先lookup直接回放；并发接收仍由原账本唯一键/CAS决定，不抢占RUNNING。未授权hint在写业务数据前拒绝。
+
+500只消费已绑定`active_intent`的槽位相容性，不调用分类器：自动券号补充排除不需要券号的事件。`EventCandidate.active_intent=null`为兼容字段。多诉求/未知补充单独保存为待澄清事件，600及SOP跳过；无实际缺槽位的归属澄清保持ACTIVE，实际缺/冲突槽位才WAITING_SLOT，避免伪造missing_slots。独立M11仍保持原入口语义。
+
+600唯一进入`IntentService`，其内部规则、当前检索、必要记忆增强检索、FallbackPort顺序执行。已绑定事件保持意图；未绑定事件的增强查询只来自当前已授权聚合及确认实体，不混入其他问题或闭合历史。`FallbackPort.decide(text,retrievals,budget,context=...)`返回`FallbackResult(code,reason)`；supported与非空注册叶子双向一致，unknown/multiple必须code=null。schema不合法或虚构代码安全转人工；真实服务失败停止下探。FastText明确disabled。
+
+`IntentDecision.policy_version=cascade-policy-v1`、`cascade_steps=()`为增量字段，步骤保留层次/action/reason及实际检索候选/原始分数、检索与模型尝试。直接接管保存实际有序候选且只选top1；Fallback选择为类别决策，其1不是概率，原召回排名仍在步骤中。当前/增强fusion分别校准，cosine/BM25未校准禁直接接管。配置绑定scope、语料摘要和融合权重；不匹配须重新校准，旧M05指针显式兼容无分数接管。
+
+`StageReport.intent_calls/retrieval_calls`及trace同名字段默认0。`ResponseEnvelope.call_counts`给出本请求的intent/model/retrieval/tool实际计数；正常业务主分类1，归属澄清/预处理故障/重放0。重放的stages仍是原执行证据，本次call_counts与budget_used重新计算，不能把历史阶段计数当新调用。模型计数含Embedding/归属/提取/SOP，检索计数为600检索Port尝试，工具计数为实际dispatch ID；不把这些次数合并为一个“分类次数”。
+
+节点串行更新唯一Question/entities，无并行reducer覆盖。合并保留全部来源及更正链，unresolved_fields始终阻断工具；900核验SOP版本，1000不再分类，1100只用经验证事实。短路都经过1200/1300；终态写最多5秒并在返回前成功提交，失败不发布ANSWERED。取消传播并保留调用ID，无成功事实。DTO没有客户端、锁或向量数组；checkpoint不承担账本职责。
+
+并发请求可能在原子接收前分别计算有界归属，只有唯一接收者进入600/SOP；落选请求的call_counts保留实际预处理用量。已有终态的正常重放先lookup，主分类/模型/工具均0。跨进程预处理不是分布式执行锁，副作用能力仍需M15。

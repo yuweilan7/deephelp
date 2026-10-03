@@ -6,8 +6,9 @@ from contextlib import asynccontextmanager
 
 import httpx
 
+from deephelp_app.cascade import CascadePolicy
 from deephelp_app.cases_fake import MemoryCaseRepository
-from deephelp_app.conversation import Conversation, CountedModel, TrackedTools
+from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
 from deephelp_app.corpus import frozen_preview
 from deephelp_app.domain.models import (
     ChatRequest,
@@ -21,11 +22,13 @@ from deephelp_app.domain.models import (
     ModelUsage,
     VersionManifest,
 )
+from deephelp_app.event_cluster import EventAggregationService
 from deephelp_app.execution import ExecutionBudget
 from deephelp_app.intent import IntentService
 from deephelp_app.ledger import MemoryLedger
 from deephelp_app.mcp_mock import MockConfig
 from deephelp_app.memory import MemoryService
+from deephelp_app.ports import ClusterJudgePort
 from deephelp_app.samples import load_corpus
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.text_entity import TextEntityProcessor, TextPolicy, clean_text
@@ -121,10 +124,18 @@ class RecordedDense:
 
 class ReplayAssembly:
     def __init__(
-        self, *, mock: MockConfig | None = None, ledger: MemoryLedger | None = None
+        self,
+        *,
+        mock: MockConfig | None = None,
+        ledger: MemoryLedger | None = None,
+        event_judge: ClusterJudgePort | None = None,
+        policy: CascadePolicy | None = None,
     ) -> None:
         self.ledger = ledger or MemoryLedger()
         self.tools = ToolGateway(config=mock)
+        self.event_judge, self.policy = event_judge, policy
+        if event_judge and not isinstance(self.ledger, MemoryCaseRepository):
+            raise ValueError("Replay events need MemoryCaseRepository")
 
     @asynccontextmanager
     async def open(
@@ -136,7 +147,9 @@ class ReplayAssembly:
             yield Conversation(
                 self.ledger,
                 TextEntityProcessor(counted, trace=trace),
-                IntentService(counted, RecordedDense(), REPLAY_SCOPE),
+                IntentService(
+                    counted, CountedRetriever(RecordedDense()), REPLAY_SCOPE, policy=self.policy
+                ),
                 SOPExecutor(counted, TrackedTools(self.tools)),
                 trace,
                 VersionManifest(
@@ -149,4 +162,7 @@ class ReplayAssembly:
                 if isinstance(self.ledger, MemoryCaseRepository)
                 else None,
                 cases=self.ledger if isinstance(self.ledger, MemoryCaseRepository) else None,
+                events=EventAggregationService(self.ledger, self.event_judge)
+                if isinstance(self.ledger, MemoryCaseRepository) and self.event_judge
+                else None,
             )

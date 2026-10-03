@@ -150,7 +150,10 @@ async def run(args: argparse.Namespace) -> int:
                 for name, message, identity, expected in cases:
                     token = next(t for t, i in auth.rows if i == identity)
                     body = message.model_copy(
-                        update={"message_id": nonce + "-" + name, "session_id": nonce}
+                        update={
+                            "message_id": nonce + "-" + name,
+                            "session_id": nonce + "-" + name if args.isolated_sessions else nonce,
+                        }
                     )
                     start = perf_counter()
                     reply = await client.post(
@@ -399,6 +402,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description="M08 full API regression / explicit live acceptance")
     p.add_argument("--live", action="store_true")
     p.add_argument("--http", action="store_true", help="Use an actual loopback HTTP server")
+    p.add_argument(
+        "--isolated-sessions",
+        action="store_true",
+        help="Give each single-message regression its own session",
+    )
     p.add_argument(
         "--samples", action="store_true", help="Live subset of original frozen M02 samples"
     )

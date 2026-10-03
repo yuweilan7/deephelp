@@ -34,6 +34,7 @@ from deephelp_app.domain.models import (
     RequestEnvelope,
     ResponseEnvelope,
     RunStatus,
+    TextEntityResult,
     VerifiedIdentity,
 )
 from deephelp_app.errors import AppError
@@ -112,9 +113,11 @@ def node_id(channel: str, message: str, start: int) -> str:
 def function_of(text: str, *, history: bool) -> DemandType:
     if NEW_TOPIC.search(text):
         return DemandType.NEW_TOPIC
-    if history and (SUPPLEMENT.search(text) or CORRECTION.search(text)):
+    if CORRECTION.search(text) or re.match(r"补充|刚才|刚刚|说错|更正|改为", text):
         return DemandType.SUPPLEMENT
-    if history and re.fullmatch(r"(?:订单(?:号)?[：:\s]*[A-Za-z0-9_-]+)[，,\s]*", text):
+    if SUPPLEMENT.search(text) and (history or demand_type(text, False) == DemandType.UNKNOWN):
+        return DemandType.SUPPLEMENT
+    if re.fullmatch(r"(?:订单(?:号)?[：:\s]*[A-Za-z0-9_-]+)[，,\s]*", text):
         return DemandType.SUPPLEMENT
     return demand_type(text, False)
 
@@ -135,6 +138,11 @@ def fragments(request: RequestEnvelope) -> list[tuple[int, int]]:
         p
         for p in pieces
         if re.search(r"不能|没|未|查|哪个|什么|为什么|不行", request.raw_text[p[0] : p[1]])
+        and re.search(r"订单|优惠|券|活动|收银台|满减|促销|免息", request.raw_text[p[0] : p[1]])
+        and (
+            re.search(r"优惠|券|活动|收银台|满减|促销|免息", request.raw_text[p[0] : p[1]])
+            or re.search(r"不能|没有|没|未|不行|不对", request.raw_text[p[0] : p[1]])
+        )
     ]
     return complaints if len(complaints) >= 2 else [(0, len(request.raw_text))]
 
@@ -295,9 +303,19 @@ class EventAggregationService:
         budget: ExecutionBudget,
         *,
         stateless_preview: bool = False,
+        extracted: TextEntityResult | None = None,
+        window: MemoryWindow | None = None,
+        allow_unclassified: bool = False,
     ) -> EventClusterResult:
         async with asyncio.timeout(budget.remaining_seconds()):
-            return await self._aggregate(request, budget, stateless_preview=stateless_preview)
+            return await self._aggregate(
+                request,
+                budget,
+                stateless_preview=stateless_preview,
+                extracted=extracted,
+                window=window,
+                allow_unclassified=allow_unclassified,
+            )
 
     async def _aggregate(
         self,
@@ -305,9 +323,19 @@ class EventAggregationService:
         budget: ExecutionBudget,
         *,
         stateless_preview: bool,
+        extracted: TextEntityResult | None = None,
+        window: MemoryWindow | None = None,
+        allow_unclassified: bool = False,
     ) -> EventClusterResult:
         diagnostics: list[str] = []
-        window = MemoryWindow() if stateless_preview else await self.assembler.load(request)
+        window = (
+            MemoryWindow() if stateless_preview else window or await self.assembler.load(request)
+        )
+        if any(
+            q.identity != request.identity or q.session_id != request.session_id
+            for q in window.active_questions
+        ):
+            raise AppError(ErrorCode.FORBIDDEN, "Event window scope mismatch")
         if stateless_preview:
             if request.question_hint:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "Stateless preview cannot attach a hint")
@@ -343,7 +371,11 @@ class EventAggregationService:
             )
         visible = {m.question_id for m in historical}
         eligible = {qid: q for qid, q in eligible.items() if qid in visible}
-        text = await self.text.process(request, budget, fields=())
+        text = extracted or await self.text.process(request, budget, fields=())
+        if text.message_id != request.message_id or text.clean.raw_text != request.raw_text:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Prepared extraction belongs to another message"
+            )
         spans = fragments(request)
         current_nodes: list[EventMessage] = []
         for start, end in spans:
@@ -433,6 +465,16 @@ class EventAggregationService:
             if conflicts and not correction and request.question_hint != qid:
                 reason = "entity_conflict"
             elif (
+                current.demand_type == DemandType.SUPPLEMENT
+                and not correction
+                and not request.question_hint
+                and q.active_intent
+                and EntityName.COUPON_ID in current_values
+                and EntityName.COUPON_ID not in q.active_intent.required_slots
+            ):
+                # Consume a confirmed binding; 500 never runs primary classification.
+                reason = "slot_not_required_by_event"
+            elif (
                 semantic_hit
                 and semantic_hit.raw_score is not None
                 and semantic_hit.raw_score < self.policy.min_similarity
@@ -452,6 +494,7 @@ class EventAggregationService:
                     raw_score=semantic_hit.raw_score if semantic_hit else None,
                     score_kind="cosine" if semantic_hit else None,
                     excluded_reason=reason,
+                    active_intent=q.active_intent,
                 )
             )
         available = sorted(
@@ -491,8 +534,26 @@ class EventAggregationService:
         elif current.demand_type == DemandType.NEW_TOPIC:
             diagnostics.append("explicit_new_topic")
         elif current.demand_type == DemandType.UNKNOWN:
-            disposition = "clarify"
-            diagnostics.append("unknown_message_function")
+            disposition = "new" if allow_unclassified else "clarify"
+            diagnostics.append(
+                "unclassified_current_message" if allow_unclassified else "unknown_message_function"
+            )
+        elif (
+            len(selected) == 1
+            and current.demand_type == DemandType.SUPPLEMENT
+            and not correction
+            and (bound := eligible[selected[0].question_id]).active_intent is not None
+            and (provided := set(current_values) & {EntityName.ORDER_ID, EntityName.COUPON_ID})
+            and provided <= set(bound.active_intent.required_slots)
+            and provided
+            & (
+                set(bound.active_intent.required_slots)
+                - {e.name for e in bound.entities if e.name not in bound.unresolved_fields}
+            )
+        ):
+            # Explicit identifying slots and one compatible bound event are code facts.
+            target, disposition = bound, "attached"
+            diagnostics.append("unique_confirmed_missing_slot")
         elif selected:
             scoped_messages = tuple(
                 m for m in historical if m.question_id in {c.question_id for c in selected}

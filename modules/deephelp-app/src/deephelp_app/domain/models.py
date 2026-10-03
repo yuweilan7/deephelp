@@ -497,6 +497,28 @@ class IntentOverride(DTO):
     evidence_refs: tuple[EvidenceRef, ...] = Field(min_length=1)
 
 
+class FallbackResult(DTO):
+    code: IntentCode | None
+    reason: Literal["supported", "unknown", "multiple"]
+
+    @model_validator(mode="after")
+    def consistent_choice(self) -> FallbackResult:
+        if (self.reason == "supported") != (self.code is not None):
+            raise ValueError("Fallback reason and code disagree")
+        if self.code is not None and not self.code.actionable:
+            raise ValueError("Fallback needs an actionable registry code")
+        return self
+
+
+class CascadeStep(DTO):
+    layer: Literal["rule", "current", "memory", "fallback", "context"]
+    action: Literal["accept", "continue", "clarify", "handoff", "reject"]
+    reason: Identifier
+    retrieval: DenseResult | None = None
+    retrieval_calls: Count = 0
+    model_calls: Count = 0
+
+
 class IntentDecision(DTO):
     decision: Decision
     final_code: IntentCode | None = None
@@ -505,9 +527,10 @@ class IntentDecision(DTO):
     stage_evidence: tuple[EvidenceRef, ...] = ()
     reason_code: Identifier
     registry_version: Literal["complaints-v1"] = REGISTRY_VERSION
-    policy_version: Literal["slot-policy-v1"] = POLICY_VERSION
+    policy_version: Literal["slot-policy-v1", "cascade-policy-v1"] = POLICY_VERSION
     override: IntentOverride | None = None
     retrieval: DenseResult | None = None
+    cascade_steps: tuple[CascadeStep, ...] = Field(default=(), max_length=5)
 
     @model_validator(mode="after")
     def selection_policy(self) -> IntentDecision:
@@ -812,7 +835,16 @@ class StageReport(DTO):
     elapsed_ms: float = Field(default=0, ge=0, allow_inf_nan=False)
     model_calls: Count = 0
     tool_calls: Count = 0
+    intent_calls: Count = 0
+    retrieval_calls: Count = 0
     error_code: ErrorCode | None = None
+
+
+class CallCounts(DTO):
+    intent_calls: Count = 0
+    model_calls: Count = 0
+    retrieval_calls: Count = 0
+    tool_calls: Count = 0
 
 
 class ResponseEnvelope(DTO):
@@ -838,6 +870,7 @@ class ResponseEnvelope(DTO):
     disabled_features: tuple[Identifier, ...] = ()
     replayed: bool = False
     event_cluster: EventClusterResult | None = None
+    call_counts: CallCounts = Field(default_factory=CallCounts)
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
@@ -1106,6 +1139,7 @@ class DenseResult(DTO):
 
 
 # Resolve the incremental evidence reference without a second family of retrieval DTOs.
+CascadeStep.model_rebuild()
 IntentDecision.model_rebuild()
 
 
@@ -1131,6 +1165,7 @@ class EventCandidate(DTO):
     score_kind: Literal["cosine"] | None = None
     entity_matches: tuple[EntityName, ...] = ()
     excluded_reason: str | None = None
+    active_intent: IntentCode | None = None
 
 
 class ClusterCitation(DTO):
