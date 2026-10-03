@@ -26,6 +26,7 @@ from deephelp_app.evaluation import (
     release_gate,
     score,
 )
+from deephelp_app.evaluation_approval import approval_cases, evaluate_approvals
 from deephelp_app.evaluation_runtime import EvaluationAssembly
 from deephelp_app.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.live_probe import local_path
@@ -74,7 +75,9 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
         raise ConfigurationError("Baseline data/code/models/configuration/budget/selection differ")
     checks: dict[str, bool] = {}
     scope: dict[str, Any] = {}
-    for mode in MODES:
+    if set(current["routes"]) != set(baseline["routes"]):
+        raise ConfigurationError("Baseline route scope differs")
+    for mode in current["routes"]:
         old = {r["turn_id"]: r for r in baseline["routes"][mode]["rows"]}
         rows = current["routes"][mode]["rows"]
         # A stateless ablation cannot repeat an accidental inference of a prior turn.
@@ -102,6 +105,14 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
             current["routes"][mode]["metrics"]["case_completion_rate"]["numerator"]
             >= baseline["routes"][mode]["metrics"]["case_completion_rate"]["numerator"]
         )
+    if current.get("approvals") or baseline.get("approvals"):
+        new = current.get("approvals") or {}
+        old_approval = baseline.get("approvals") or {}
+        checks["approval_scope"] = bool(new and old_approval) and (
+            new.get("dataset_digest") == old_approval.get("dataset_digest")
+            and new.get("selected_case_ids") == old_approval.get("selected_case_ids")
+        )
+        checks["approval_safety"] = new.get("release_gate", {}).get("accepted") is True
     return {
         "accepted": all(checks.values()),
         "checks": checks,
@@ -156,6 +167,8 @@ async def run(args: argparse.Namespace) -> int:
         "mode_order": list(MODES),
         "candidate_gates": "M12 dev-frozen hybrid; dense takeover uncalibrated",
     }
+    if getattr(args, "approvals", False):
+        configuration["approval_dataset"] = digest(approval_cases())
     gate = None
     if args.live:
         auth = LocalAuth(Path(args.auth))
@@ -406,6 +419,8 @@ async def run(args: argparse.Namespace) -> int:
                     if assembly.tools and assembly.tools.pid:
                         route["checks"]["mcp_exited"] = not process_alive(assembly.tools.pid)
                     save()
+            if getattr(args, "approvals", False):
+                report["approvals"] = await evaluate_approvals(args, output)
             report["release_gate"] = release_gate(
                 report["routes"],
                 complete=all(
@@ -413,6 +428,11 @@ async def run(args: argparse.Namespace) -> int:
                     for route in report["routes"].values()
                 ),
             )
+            if getattr(args, "approvals", False):
+                report["release_gate"]["checks"]["approval_safety"] = report["approvals"][
+                    "release_gate"
+                ]["accepted"]
+                report["release_gate"]["accepted"] = all(report["release_gate"]["checks"].values())
             if args.baseline:
                 report["baseline_comparison"] = compare_reports(
                     report, await asyncio.to_thread(read_report, Path(args.baseline))
@@ -444,13 +464,90 @@ async def run(args: argparse.Namespace) -> int:
     return 0 if report["status"] == "PASS" else 1
 
 
+async def run_approval(args: argparse.Namespace) -> int:
+    """The same M17 report schema, with the independent M15 scope selected explicitly."""
+    output = local_path(args.output)
+    if output.exists():
+        raise ConfigurationError("Use a new immutable evaluation report path")
+    validate_control_paths(
+        [
+            Path(args.auth),
+            Path(args.pointer),
+            Path(args.providers),
+            Path(args.approval_budget_state),
+            Path(args.rights_key),
+        ],
+        output=output,
+    )
+    frozen = approval_cases()
+    code = provenance()
+    configuration = {
+        "approval_dataset": digest(frozen),
+        "code": code["package_digest"],
+        "providers": file_digest(Path(args.providers)),
+        "pointer": file_digest(Path(args.pointer)),
+        "scope": "approval",
+        "protocol": "m15-durable-approval-v1",
+    }
+    report: dict[str, Any] = {
+        "format": "m17-evaluation-v1",
+        "status": "PENDING",
+        "live": args.live,
+        "stage": args.stage,
+        "routes": {},
+        "provenance": code,
+        "configuration": configuration,
+        "experiment_fingerprint": digest(configuration),
+        "selected_case_ids": [row["case"] for row in frozen["operations"]],
+    }
+    try:
+        async with asyncio.timeout(args.timeout):
+            report["approvals"] = await evaluate_approvals(args, output)
+        report["release_gate"] = report["approvals"]["release_gate"]
+        if args.baseline:
+            report["baseline_comparison"] = compare_reports(
+                report, read_report(Path(args.baseline))
+            )
+        accepted = (
+            report["release_gate"]["accepted"]
+            and report.get("baseline_comparison", {"accepted": True})["accepted"]
+        )
+        report["status"] = "PASS" if accepted else "REJECTED"
+    except BaseException as exc:
+        report["status"] = "FAILED"
+        report["error"] = {"type": type(exc).__name__, "message": str(exc)}
+        raise
+    finally:
+        from deephelp_app.dense import atomic_json
+
+        atomic_json(output, report)
+    print(
+        json.dumps(
+            {
+                "status": report["status"],
+                "output": str(output),
+                "metrics": report["approvals"]["metrics"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    return 0 if accepted else 1
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("audit", "run"))
+    parser.add_argument("command", choices=("audit", "run", "approval"))
     parser.add_argument("--data", default=str(DATA))
     parser.add_argument("--manifest", default=str(MANIFEST))
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--all-cases", action="store_true")
+    parser.add_argument(
+        "--approvals", action="store_true", help="Include the fresh M15 fault/approval scope"
+    )
+    parser.add_argument(
+        "--approval-budget-state", type=local_path, default=Path(".local/m17-approval/budget.json")
+    )
+    parser.add_argument("--rights-key", type=local_path, default=Path(".local/m15/rights.key"))
     parser.add_argument("--stage", choices=("feature", "main"), default="feature")
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument("--pointer", default=".local/m09/active.json")
@@ -465,6 +562,8 @@ def main() -> None:
         print(
             json.dumps(audit(Path(args.data), Path(args.manifest))[1], ensure_ascii=False, indent=2)
         )
+    elif args.command == "approval":
+        raise SystemExit(asyncio.run(run_approval(args)))
     else:
         raise SystemExit(asyncio.run(run(args)))
 

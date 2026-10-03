@@ -393,6 +393,17 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluat
 
 缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。当前规模与真实抽样覆盖见PROJECT_STATE；500+及企业质量仍需后续独立特性。
 
+M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。以下入口每次新跑M15真实MySQL/HTTP/进程矩阵，key保留，feature/main沿用同一审批累计预算，新报告不能覆盖已有证据：
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli approval --live --stage feature --output .local/m17-approval/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli approval --live --stage main --baseline .local/m17-approval/feature-new.json --output .local/m17-approval/main-new.json
+# 四组只读比较和审批检查合并为一次发布判定
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --approvals --output .local/m17/combined-new.json
+```
+
+`--approval-budget-state`默认`.local/m17-approval/budget.json`，`--rights-key`默认原`.local/m15/rights.key`。审批范围不受四组能力差异影响，不重复四次副作用演练。越权发送/效果、重放增加、待审批副作用、UNKNOWN盲目重发和无事实成功任一发生都拒绝发布。17个操作含8个故障/7个关闭/并发/真实模型HTTP，6个越权attempt与9个恢复重放分开计量。
+
 ## M18 审核后的反馈闭环
 
 输入专用合成客诉的真实MySQL run，输出脱敏候选、独立路线审核和可追踪的新语料/FastText/字面规则。重复采集同一run不倍增；高分、成功、澄清或人工转接都只是候选观察。审核标签独立于原系统判断；自动证据方式只接受包内已审查的三条合成来源，其他输入由操作者明确确认。这个入口演示人工触发机制，自动发布加固见[M18规格](../../docs/MODULES/M18_DATA_FLYWHEEL.md)。

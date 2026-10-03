@@ -297,14 +297,31 @@ async def real_http(args: argparse.Namespace, report: dict[str, Any]) -> None:
             op = await service.repo.get(value.approval_operation_id)
             path = "/operations/" + op.plan.operation_id
             checks = report["checks"]
+            initial_counts = await counts(service.repo, op.plan.operation_id)
             unauthorized = await api.post(
                 path + "/approval", json=decision(op).model_dump(mode="json")
+            )
+            report.setdefault("unauthorized", []).append(
+                {
+                    "case": "http_authentication",
+                    "rejected": unauthorized.status_code == 401,
+                    "before": initial_counts,
+                    "after": await counts(service.repo, op.plan.operation_id),
+                }
             )
             checks["approval_authentication"] = unauthorized.status_code == 401
             tampered = decision(op).model_dump(mode="json") | {"parameters_hash": "tampered"}
             checks["http_parameter_binding"] = (
                 await api.post(path + "/approval", json=tampered, headers=headers)
             ).status_code == 409
+            report["unauthorized"].append(
+                {
+                    "case": "http_parameter_binding",
+                    "rejected": checks["http_parameter_binding"],
+                    "before": initial_counts,
+                    "after": await counts(service.repo, op.plan.operation_id),
+                }
+            )
             # A plain new message is accepted normally and cannot resume the old operation.
             ordinary = body | {"message_id": uuid4().hex, "raw_text": "好的"}
             ack = await api.post("/converse", json=ordinary, headers=headers)
@@ -390,13 +407,23 @@ async def real_http(args: argparse.Namespace, report: dict[str, Any]) -> None:
                 view.status_code == 200 and view.json()["data"]["approval"]["status"] == "SUCCEEDED"
             )
             report["real_http"]["final"] = final.model_dump(mode="json")
+            report.setdefault("observations", []).append(
+                {
+                    "case": "real_http",
+                    "operation_id": op.plan.operation_id,
+                    "status": final.status.value,
+                    **await counts(service.repo, op.plan.operation_id),
+                    "replay_unchanged": checks["http_resume_replay"],
+                    "facts_verified": checks["http_effect_and_fact"],
+                }
+            )
             atomic_json(args.output, report)
             assert all(checks.values()), checks
     finally:
         gate.close()
 
 
-async def matrix(args: argparse.Namespace) -> None:
+async def matrix(args: argparse.Namespace) -> dict[str, Any]:
     if not args.live:
         raise ValueError("This probe requires --live; ordinary pytest remains offline")
     if args.output.exists():
@@ -474,6 +501,7 @@ async def matrix(args: argparse.Namespace) -> None:
                 "status": final.status.value,
                 **after_replay,
                 "history": await repo.history(op.plan.operation_id),
+                "replay_unchanged": before_replay == after_replay,
             }
             report["matrix"].append(row)
             atomic_json(args.output, report)
@@ -547,6 +575,15 @@ async def matrix(args: argparse.Namespace) -> None:
                     and stats["effects"] == stats["execute_calls"] == 0
                     and final.plan == op.plan
                 )
+                report.setdefault("observations", []).append(
+                    {
+                        "case": kind,
+                        "operation_id": op.plan.operation_id,
+                        "status": final.status.value,
+                        **stats,
+                        "plan_unchanged": final.plan == op.plan,
+                    }
+                )
             op = await prepare(repo, "m15-concurrent-" + uuid4().hex)
             decisions = await asyncio.gather(
                 *[
@@ -580,6 +617,15 @@ async def matrix(args: argparse.Namespace) -> None:
                 )
                 and (await counts(repo, op.plan.operation_id))["effects"] == 1
             )
+            final = await repo.get(op.plan.operation_id)
+            report["observations"].append(
+                {
+                    "case": "concurrent",
+                    "operation_id": op.plan.operation_id,
+                    "status": final.status.value,
+                    **await counts(repo, op.plan.operation_id),
+                }
+            )
             # All three dimensions are checked against the same persisted operation.
             for field in ("tenant_id", "user_id", "session_id", "run_id"):
                 identity = (
@@ -587,17 +633,30 @@ async def matrix(args: argparse.Namespace) -> None:
                     if field in {"tenant_id", "user_id"}
                     else op.plan.identity
                 )
+                before = await counts(repo, op.plan.operation_id)
+                command = (
+                    decision(op).model_copy(update={field: "foreign"})
+                    if field in {"session_id", "run_id"}
+                    else decision(op)
+                )
                 try:
-                    await repo.scoped(
+                    await service.decide(
                         identity,
-                        "foreign" if field == "session_id" else op.session_id,
-                        "foreign" if field == "run_id" else op.run_id,
                         op.plan.operation_id,
+                        command,
                     )
                 except AppError as exc:
                     report["checks"][field + "_isolation"] = exc.status_code == 404
                 else:
                     report["checks"][field + "_isolation"] = False
+                report.setdefault("unauthorized", []).append(
+                    {
+                        "case": field + "_isolation",
+                        "rejected": report["checks"][field + "_isolation"],
+                        "before": before,
+                        "after": await counts(repo, op.plan.operation_id),
+                    }
+                )
         assert all(report["checks"].values()), report["checks"]
         report["status"] = "PASS"
     except BaseException:
@@ -607,6 +666,7 @@ async def matrix(args: argparse.Namespace) -> None:
         atomic_json(args.output, report)
         await repo.aclose()
         await stop(server)
+    return report
 
 
 def main() -> None:
