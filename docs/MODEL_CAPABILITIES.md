@@ -1,6 +1,6 @@
 # 模型网关能力与签名
 
-实现入口 [gateway.py](../modules/deephelp-app/src/deephelp_app/gateway.py)，配置模板 [providers.example.json](../modules/deephelp-app/providers.example.json)，命令见 [LOCAL_SETUP](LOCAL_SETUP.md)，实际验收见 [M03 交接](../handoffs/M03.md)。本表描述本轮选定接口，不外推全部千问模型。
+实现入口 [gateway.py](../modules/deephelp-app/src/deephelp_app/gateway.py)，配置模板 [providers.example.json](../modules/deephelp-app/providers.example.json)，命令见 [LOCAL_SETUP](LOCAL_SETUP.md)，网关及后续模型切换验收分别见 [M03 交接](../handoffs/M03.md) / [M18 交接](../handoffs/M18.md)。本表描述已验证的接口，不外推全部千问模型。
 
 | 模型 / 路径 | chat | 严格 schema | tool fields | Embedding | 适配 |
 |---|---|---|---|---|---|

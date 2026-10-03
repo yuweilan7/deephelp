@@ -10,6 +10,7 @@ from deephelp_app.dense import atomic_json
 from deephelp_app.domain.models import IntentCode
 from deephelp_app.errors import ConfigurationError
 from deephelp_app.evaluation import DATA, historical_inputs, semantic_label
+from deephelp_app.fasttext_preprocess import DICTIONARY, FastTextPreprocessor
 from deephelp_app.fasttext_training import audit
 from deephelp_app.flywheel import (
     FeedbackCandidate,
@@ -304,3 +305,18 @@ async def test_pooled_repeatable_read_snapshot_cannot_hide_a_withdrawal():
         await store.require_current(snapshot([approved]))
     assert (await store.get(approved.candidate_id)).revision == removed.revision
     assert connection.retained_snapshot is None
+
+
+def test_same_dictionary_is_shared_readonly_and_new_signature_is_isolated(tmp_path, monkeypatch):
+    old = FastTextPreprocessor()
+    other = FastTextPreprocessor()
+    original = old.prepare("订单000031折扣没兑现；券000009无法使用")
+    assert other.tokenizer is old.tokenizer and other.signature == old.signature
+    with pytest.raises(TypeError):
+        other.tokenizer.FREQ["poisoned-token"] = 1000000
+    changed = tmp_path / "dictionary.txt"
+    changed.write_bytes(DICTIONARY.read_bytes() + "\n独立版本词 100000\n".encode())
+    monkeypatch.setattr("deephelp_app.fasttext_preprocess.DICTIONARY", changed)
+    new = FastTextPreprocessor()
+    assert new.signature != old.signature and new.tokenizer is not old.tokenizer
+    assert old.prepare("订单000031折扣没兑现；券000009无法使用") == original

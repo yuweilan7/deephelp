@@ -94,6 +94,25 @@ async def view(api, run_id, name, session="s", **params):
     return await api.get(f"/debug/runs/{run_id}/{name}", params={"session_id": session, **params})
 
 
+def contains_text(value, text):
+    """Check all textual content without mistaking numeric timings for identifiers."""
+    if isinstance(value, str):
+        return text in value
+    if isinstance(value, dict):
+        return any(contains_text(k, text) or contains_text(v, text) for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(contains_text(item, text) for item in value)
+    return False
+
+
+def test_redaction_check_distinguishes_elapsed_numbers_from_nested_identifiers():
+    redacted = {"elapsed_ms": 0.06840000003194291, "views": [{"order_id": "id_redacted"}]}
+    assert "000031" in json.dumps(redacted) and not contains_text(redacted, "000031")
+    redacted["views"][0]["order_id"] = "000031"
+    assert contains_text(redacted, "000031")
+    assert contains_text({"000031": "redacted"}, "000031")
+
+
 async def test_three_views_same_trace_facts_tools_versions_and_replay(tmp_path):
     async with client(tmp_path) as (api, repo, judge, trace, assembly):
         body = message("订单000031未享受优惠")
@@ -105,7 +124,7 @@ async def test_three_views_same_trace_facts_tools_versions_and_replay(tmp_path):
         assert all(v["run_id"] == row["run_id"] and not v["incomplete"] for v in views)
         intent, turns, flow = [v["data"] for v in views]
         assert intent["intent"]["final_code"] == row["intent_decision"]["final_code"]
-        assert intent["text"]["rule_matches"] and "000031" not in json.dumps(views)
+        assert intent["text"]["rule_matches"] and not contains_text(views, "000031")
         assert turns["event"]["persisted"] and turns["question"]["version"] == 2
         assert flow["tools"][0]["call_id"] in row["tool_call_ids"]
         assert (
