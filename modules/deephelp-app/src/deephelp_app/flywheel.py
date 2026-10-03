@@ -48,7 +48,8 @@ def isolation(candidate: FeedbackCandidate) -> None:
 
     if neutral(candidate.text) in {neutral(t) for t in historical_inputs()} | {
         neutral(t["text"])
-        for case in json.loads(DATA.read_text(encoding="utf-8"))
+        for path in (DATA, DATA.with_name("m17_scale_cases.json"))
+        for case in json.loads(path.read_text(encoding="utf-8"))
         for t in case["turns"]
     }:
         raise ConfigurationError("Known index/train/dev/test/regression input cannot be recycled")
@@ -56,7 +57,13 @@ def isolation(candidate: FeedbackCandidate) -> None:
     groups: set[str] = set()
     for row in json.loads((base / "cases.json").read_text(encoding="utf-8"))["cases"]:
         groups.update(str(row[k]) for k in ("source_group", "variant_group"))
-    for name in ("m13_fasttext.json", "m09_dev.json", "m09_test.json", "m17_cases.json"):
+    for name in (
+        "m13_fasttext.json",
+        "m09_dev.json",
+        "m09_test.json",
+        "m17_cases.json",
+        "m17_scale_cases.json",
+    ):
         for row in json.loads((base / name).read_text(encoding="utf-8")):
             groups.update(str(row[k]) for k in ("source_group", "variant_group"))
     for line in (base / "m09_corpus.jsonl").read_text(encoding="utf-8").splitlines():

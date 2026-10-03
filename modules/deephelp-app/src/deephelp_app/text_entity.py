@@ -300,6 +300,36 @@ def demand_type(raw: str, has_confirmed: bool) -> DemandType:
     return DemandType.UNKNOWN
 
 
+def reconcile_conflicts(
+    history: Sequence[EntityConflict],
+    entities: Sequence[Entity],
+    confirmed_names: set[EntityName],
+    unresolved: Sequence[EntityName],
+) -> tuple[EntityConflict, ...]:
+    """Resolve waiting history only with a unique current, grounded confirmation.
+
+    Keep the rejected value and the confirming source; unrelated or still ambiguous
+    fields retain their original conflict. Shared by explicit and event continuations.
+    """
+    confirmed = {
+        e.name: e for e in entities if e.name in confirmed_names and e.name not in unresolved
+    }
+    return tuple(
+        conflict.model_copy(
+            update={
+                "previous": conflict.previous
+                if conflict.previous.value != confirmed[conflict.previous.name].value
+                else conflict.replacement,
+                "replacement": confirmed[conflict.previous.name],
+                "resolution": "explicit_correction",
+            }
+        )
+        if conflict.resolution == "unresolved" and conflict.previous.name in confirmed
+        else conflict
+        for conflict in history
+    )
+
+
 @dataclass(frozen=True)
 class RuleDefinition:
     rule_id: str

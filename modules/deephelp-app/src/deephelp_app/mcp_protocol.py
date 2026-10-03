@@ -167,7 +167,17 @@ def validate_observation(request: ToolRequest, result: ToolResult) -> None:
             raise ValueError
     elif (
         facts["coupon_id"].value != request.parameters.coupon_id
-        or facts["coupon_status"].value not in {"usable", "expired", "threshold_not_met"}
+        or facts["coupon_status"].value
+        not in {
+            "usable",
+            "expired",
+            "threshold_not_met",
+            "already_used",
+            "not_started",
+            "scope_mismatch",
+            "frozen",
+            "revoked",
+        }
         or facts["usable"].value != (facts["coupon_status"].value == "usable")
     ):
         raise ValueError

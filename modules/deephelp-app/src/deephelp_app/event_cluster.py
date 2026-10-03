@@ -47,6 +47,7 @@ from deephelp_app.text_entity import (
     clean_text,
     demand_type,
     merge_entities,
+    reconcile_conflicts,
 )
 
 CORRECTION = re.compile(
@@ -56,7 +57,7 @@ SUPPLEMENT = re.compile(
     r"^(?:补充|刚才|刚刚|说错|更正|改为|券(?:号|是)|订单(?:号|是)|SKU)|^\d{4,32}$"
 )
 NEW_TOPIC = re.compile(r"另外|换个话题|新问题|还有一个|还有一单")
-SPLIT = re.compile(r"[；;。，,]|(?:另外|同时|还有)(?=.{0,40}(?:订单|优惠|券|活动))")
+SPLIT = re.compile(r"[；;。，,]|(?:另外|同时|还有|以及)(?=.{0,40}(?:订单|优惠|券|活动))")
 
 
 @dataclass(frozen=True)
@@ -113,7 +114,7 @@ def node_id(channel: str, message: str, start: int) -> str:
 def function_of(text: str, *, history: bool) -> DemandType:
     if NEW_TOPIC.search(text):
         return DemandType.NEW_TOPIC
-    if CORRECTION.search(text) or re.match(r"补充|刚才|刚刚|说错|更正|改为", text):
+    if CORRECTION.search(text) or re.match(r"(?:仅|只)?补充|刚才|刚刚|说错|更正|改为", text):
         return DemandType.SUPPLEMENT
     if SUPPLEMENT.search(text) and (history or demand_type(text, False) == DemandType.UNKNOWN):
         return DemandType.SUPPLEMENT
@@ -137,14 +138,46 @@ def fragments(request: RequestEnvelope) -> list[tuple[int, int]]:
     complaints = [
         p
         for p in pieces
-        if re.search(r"不能|没|未|查|哪个|什么|为什么|不行", request.raw_text[p[0] : p[1]])
+        if re.search(
+            r"不能|无法|不可|用不了|用不上|不让|没|未|查|哪个|什么|为什么|不行",
+            request.raw_text[p[0] : p[1]],
+        )
         and re.search(r"订单|优惠|券|活动|收银台|满减|促销|免息", request.raw_text[p[0] : p[1]])
         and (
             re.search(r"优惠|券|活动|收银台|满减|促销|免息", request.raw_text[p[0] : p[1]])
             or re.search(r"不能|没有|没|未|不行|不对", request.raw_text[p[0] : p[1]])
         )
     ]
-    return complaints if len(complaints) >= 2 else [(0, len(request.raw_text))]
+    # Repeating a complaint as background is one event; different objects or
+    # different business concerns remain separately stated complaints.
+    groups: list[tuple[frozenset[str], set[str]]] = []
+    for left, right in complaints:
+        piece = request.raw_text[left:right]
+        concerns = frozenset(
+            name
+            for name, pattern in (
+                ("coupon", r"券"),
+                ("discount", r"优惠(?!券)|满减|折扣"),
+                ("activity", r"活动|促销"),
+            )
+            if re.search(pattern, piece)
+        )
+        objects = set(
+            re.findall(r"(?:订单(?:号)?|券(?:号)?)[：:\s]*([A-Za-z0-9_-]*\d[A-Za-z0-9_-]*)", piece)
+        )
+        merged = False
+        for known_concerns, known_objects in groups:
+            if (
+                concerns
+                and concerns == known_concerns
+                and (not objects or not known_objects or objects == known_objects)
+            ):
+                known_objects.update(objects)
+                merged = True
+                break
+        if not merged:
+            groups.append((concerns, objects))
+    return complaints if len(groups) >= 2 else [(0, len(request.raw_text))]
 
 
 class MessageWindowAssembler:
@@ -664,7 +697,14 @@ class EventAggregationService:
                 target.question_id if target else None,
                 ms,
                 tuple(merged_entities),
-                (*target.conflicts, *merged_conflicts) if target else tuple(merged_conflicts),
+                (
+                    *reconcile_conflicts(
+                        target.conflicts, merged_entities, confirmed_names, unresolved
+                    ),
+                    *merged_conflicts,
+                )
+                if target
+                else tuple(merged_conflicts),
                 tuple(unresolved),
             )
             contexts.append(current_context)

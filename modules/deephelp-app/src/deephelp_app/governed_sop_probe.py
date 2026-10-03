@@ -11,6 +11,12 @@ from uuid import uuid4
 
 import httpx
 
+from deephelp_app.business_catalog import (
+    business_cases,
+    business_config,
+    business_registry,
+    validate_catalog,
+)
 from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.conversation import STAGES
 from deephelp_app.domain.models import ModelToolCall, ResponseEnvelope, SOPStatus
@@ -46,8 +52,15 @@ async def content(
             if gate
             else None
         )
-        for case in scenarios().cases:
-            registry = proposal_registry() if case.proposal else bundled_registry()
+        catalog = getattr(args, "business_catalog", False)
+        for case in business_cases() if catalog else scenarios().cases:
+            registry = (
+                business_registry()
+                if catalog
+                else proposal_registry()
+                if case.proposal
+                else bundled_registry()
+            )
             budget = gate.request() if gate else ExecutionBudget.start(60, 20, 0)
             budget.retry_remaining = 0
             question, context = sop_question(
@@ -74,7 +87,7 @@ async def content(
                     for i, tool in enumerate(case.tools)
                 ]
             )
-            gateway = ToolGateway(config=scenario_config(case))
+            gateway = ToolGateway(config=business_config() if catalog else scenario_config(case))
             async with gateway.open():
                 result = await SOPExecutor(selected, gateway, registry=registry).execute(
                     question, budget, context=context, run_id="m14-" + uuid4().hex
@@ -333,6 +346,11 @@ async def run(args: argparse.Namespace) -> int:
         "http": [],
         "checks": {},
     }
+    if getattr(args, "business_catalog", False):
+        report["catalog"] = validate_catalog()
+        report["scope"] = (
+            "all frozen business outcomes: real model/SDK stdio; HTTP evaluated by M17"
+        )
 
     def save() -> None:
         output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -342,7 +360,7 @@ async def run(args: argparse.Namespace) -> int:
     try:
         async with asyncio.timeout(args.timeout):
             await content(args, gate, report, save)
-            if gate:
+            if gate and not getattr(args, "business_catalog", False):
                 await business(args, gate, report, save)
         report["status"] = "PASS"
         return 0
@@ -361,6 +379,9 @@ async def run(args: argparse.Namespace) -> int:
 def main() -> int:
     p = argparse.ArgumentParser(description="M14 SOP content and HTTP acceptance")
     p.add_argument("--live", action="store_true")
+    p.add_argument(
+        "--business-catalog", action="store_true", help="Frozen 22-business outcome scope"
+    )
     p.add_argument("--stage", choices=["feature", "main"], default="feature")
     p.add_argument("--output", required=True)
     p.add_argument("--budget-state", default=".local/m14/session-budget.json")

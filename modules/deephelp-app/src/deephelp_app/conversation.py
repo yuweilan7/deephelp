@@ -63,7 +63,7 @@ from deephelp_app.reply import ReplyComposer
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_config import SOPDefinition, load_sops
 from deephelp_app.sop_governance import GovernedSOP
-from deephelp_app.text_entity import TextEntityProcessor
+from deephelp_app.text_entity import TextEntityProcessor, reconcile_conflicts
 from deephelp_app.trace import TraceEvent, TraceSink, sop_node_observer
 
 STAGES = (
@@ -558,9 +558,7 @@ class Conversation:
                             )
                             text = text.model_copy(
                                 update={
-                                    "unresolved_fields": tuple(
-                                        sorted(unresolved, key=lambda n: n.value)
-                                    )
+                                    "unresolved_fields": sorted(unresolved, key=lambda n: n.value)
                                 }
                             )
                         async with self.stage(STAGES[3], request, receipt, budget, stats):
@@ -573,12 +571,21 @@ class Conversation:
                             )
                         async with self.stage(STAGES[4], request, receipt, budget, stats):
                             previous_question = question
+                            # A uniquely grounded confirmation clears the waiting field and
+                            # its old conflict together. Retain the rejected value and the
+                            # actual confirming message; otherwise SOP would keep blocking.
+                            history = reconcile_conflicts(
+                                question.conflicts,
+                                text.entities,
+                                confirmed_names,
+                                text.unresolved_fields,
+                            )
                             # Explicit membership comes from acceptance; automatic grouping is M11.
                             question = question.model_copy(
                                 update={
                                     "entities": tuple(text.entities),
-                                    "conflicts": (*question.conflicts, *text.conflicts),
-                                    "unresolved_fields": text.unresolved_fields,
+                                    "conflicts": (*history, *text.conflicts),
+                                    "unresolved_fields": tuple(text.unresolved_fields),
                                     "versions": question.versions
                                     if question.active_intent
                                     else self.versions,

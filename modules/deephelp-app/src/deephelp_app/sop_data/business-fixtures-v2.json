@@ -1,0 +1,843 @@
+{
+  "synthetic": true,
+  "version": "business-fixtures-v1",
+  "orders": [
+    {
+      "order_id": "DEMO-D01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "missing",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-1"
+    },
+    {
+      "order_id": "000031",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "10.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "000007"
+    },
+    {
+      "order_id": "DEMO-D04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "not_eligible",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-4"
+    },
+    {
+      "order_id": "DEMO-D05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-5"
+    },
+    {
+      "order_id": "DEMO-C01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-7"
+    },
+    {
+      "order_id": "DEMO-C02",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-8"
+    },
+    {
+      "order_id": "000042",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-9"
+    },
+    {
+      "order_id": "DEMO-C04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-10"
+    },
+    {
+      "order_id": "DEMO-C05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-11"
+    },
+    {
+      "order_id": "DEMO-A01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-13"
+    },
+    {
+      "order_id": "000053",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-15"
+    },
+    {
+      "order_id": "DEMO-A04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [],
+      "sku_id": "SKU-DEMO-16"
+    },
+    {
+      "order_id": "DEMO-A05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-DEMO-17"
+    },
+    {
+      "order_id": "M17-D01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "10.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-D01"
+    },
+    {
+      "order_id": "M17-D02",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "not_eligible",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-D02"
+    },
+    {
+      "order_id": "M17-D03",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "missing",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-D03"
+    },
+    {
+      "order_id": "M17-C01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C01"
+    },
+    {
+      "order_id": "M17-C02",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C02"
+    },
+    {
+      "order_id": "M17-C03",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C03"
+    },
+    {
+      "order_id": "M17-C04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C04"
+    },
+    {
+      "order_id": "M17-C05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C05"
+    },
+    {
+      "order_id": "M17-C06",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C06"
+    },
+    {
+      "order_id": "M17-C07",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C07"
+    },
+    {
+      "order_id": "M17-C08",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.99",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C08"
+    },
+    {
+      "order_id": "M17-C09",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "100.00",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C09"
+    },
+    {
+      "order_id": "M17-C10",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "100.01",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C10"
+    },
+    {
+      "order_id": "M17-C11",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-C11"
+    },
+    {
+      "order_id": "M17-A01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-A01"
+    },
+    {
+      "order_id": "M17-A02",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01",
+        "ACTIVITY-M17-02"
+      ],
+      "sku_id": "SKU-M17-A02"
+    },
+    {
+      "order_id": "M17-A03",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [],
+      "sku_id": "SKU-M17-A03"
+    },
+    {
+      "order_id": "M17-FOREIGN",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "paid": {
+        "amount": "99.90",
+        "currency": "CNY"
+      },
+      "discount": {
+        "amount": "0.00",
+        "currency": "CNY"
+      },
+      "discount_status": "applied",
+      "activity_ids": [
+        "ACTIVITY-DEMO-01"
+      ],
+      "sku_id": "SKU-M17-FOREIGN"
+    }
+  ],
+  "coupons": [
+    {
+      "coupon_id": "COUPON-C01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "DEMO-C01",
+      "status": "threshold_not_met",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "000009",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "000042",
+      "status": "usable",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-C04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "DEMO-C04",
+      "status": "expired",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-C05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "order_id": "DEMO-C05",
+      "status": "expired",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C01",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C01",
+      "status": "usable",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C02",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C02",
+      "status": "expired",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C03",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C03",
+      "status": "already_used",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C04",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C04",
+      "status": "not_started",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C05",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C05",
+      "status": "scope_mismatch",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C06",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C06",
+      "status": "frozen",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C07",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C07",
+      "status": "revoked",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C08",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C08",
+      "status": "threshold_not_met",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C09",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C09",
+      "status": "threshold_not_met",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C10",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C10",
+      "status": "threshold_not_met",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-C11",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-a"
+      },
+      "order_id": "M17-C11",
+      "status": "threshold_not_met",
+      "minimum_spend": {
+        "amount": "0.00",
+        "currency": "CNY"
+      }
+    },
+    {
+      "coupon_id": "COUPON-M17-FOREIGN",
+      "identity": {
+        "tenant_id": "synthetic-tenant",
+        "user_id": "synthetic-user-b"
+      },
+      "order_id": "M17-FOREIGN",
+      "status": "expired",
+      "minimum_spend": {
+        "amount": "100.00",
+        "currency": "CNY"
+      }
+    }
+  ],
+  "activities": [
+    {
+      "activity_id": "ACTIVITY-DEMO-01",
+      "label": "合成满减活动"
+    },
+    {
+      "activity_id": "ACTIVITY-M17-02",
+      "label": "合成会员活动"
+    }
+  ]
+}

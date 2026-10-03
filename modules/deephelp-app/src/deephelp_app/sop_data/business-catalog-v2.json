@@ -1,0 +1,450 @@
+{
+  "version": "m14-business-catalog-v2",
+  "synthetic": true,
+  "cases": [
+    {
+      "case_id": "discount-applied",
+      "intent": "DISCOUNT_MISSING",
+      "order": "M17-D01",
+      "status": "RESOLVED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "支付明细已经出现抵扣项目，可我认为订单 M17-D01 优惠未到账，请核对实际金额。",
+      "expected_facts": {
+        "order_id": "M17-D01",
+        "discount_status": "applied",
+        "paid": {
+          "amount": "99.90",
+          "currency": "CNY"
+        },
+        "discount": {
+          "amount": "10.00",
+          "currency": "CNY"
+        }
+      },
+      "end_node": "applied"
+    },
+    {
+      "case_id": "discount-ineligible",
+      "intent": "DISCOUNT_MISSING",
+      "order": "M17-D02",
+      "status": "RESOLVED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "订单 M17-D02 优惠未到账，我不清楚资格判断与到账记录的区别，请核查。",
+      "expected_facts": {
+        "order_id": "M17-D02",
+        "discount_status": "not_eligible",
+        "paid": {
+          "amount": "99.90",
+          "currency": "CNY"
+        },
+        "discount": {
+          "amount": "0.00",
+          "currency": "CNY"
+        }
+      },
+      "end_node": "ineligible"
+    },
+    {
+      "case_id": "discount-missing-manual",
+      "intent": "DISCOUNT_MISSING",
+      "order": "M17-D03",
+      "status": "HANDED_OFF",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "订单 M17-D03 优惠未到账，需要区分查到缺失和已经补发，先查询事实。",
+      "expected_facts": {
+        "order_id": "M17-D03",
+        "discount_status": "missing",
+        "paid": {
+          "amount": "99.90",
+          "currency": "CNY"
+        },
+        "discount": {
+          "amount": "0.00",
+          "currency": "CNY"
+        }
+      },
+      "end_node": "manual"
+    },
+    {
+      "case_id": "coupon-usable",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C01",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "券详情仍显示可使用，订单 M17-C01 的优惠券 COUPON-M17-C01 用不了，请核查查询状态。",
+      "expected_facts": {
+        "order_id": "M17-C01",
+        "coupon_id": "COUPON-M17-C01",
+        "coupon_status": "usable",
+        "usable": true,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C01",
+      "end_node": "usable"
+    },
+    {
+      "case_id": "coupon-expired",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C02",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "订单 M17-C02 的优惠券 COUPON-M17-C02 无法使用，怀疑已经过期，需要状态证据。",
+      "expected_facts": {
+        "order_id": "M17-C02",
+        "coupon_id": "COUPON-M17-C02",
+        "coupon_status": "expired",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C02",
+      "end_node": "expired"
+    },
+    {
+      "case_id": "coupon-consumed",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C03",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "曾经抵扣过一次，订单 M17-C03 的优惠券 COUPON-M17-C03 现在用不了，请核对是否重复使用。",
+      "expected_facts": {
+        "order_id": "M17-C03",
+        "coupon_id": "COUPON-M17-C03",
+        "coupon_status": "already_used",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C03",
+      "end_node": "consumed"
+    },
+    {
+      "case_id": "coupon-not-started",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C04",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "刚领取还未到生效阶段，订单 M17-C04 的优惠券 COUPON-M17-C04 无法使用，请确认当前状态。",
+      "expected_facts": {
+        "order_id": "M17-C04",
+        "coupon_id": "COUPON-M17-C04",
+        "coupon_status": "not_started",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C04",
+      "end_node": "not_started"
+    },
+    {
+      "case_id": "coupon-scope",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C05",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "换了适用品类后，订单 M17-C05 的优惠券 COUPON-M17-C05 用不了，请核对范围状态。",
+      "expected_facts": {
+        "order_id": "M17-C05",
+        "coupon_id": "COUPON-M17-C05",
+        "coupon_status": "scope_mismatch",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C05",
+      "end_node": "scope"
+    },
+    {
+      "case_id": "coupon-frozen",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C06",
+      "status": "HANDED_OFF",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "账户券详情显示冻结，订单 M17-C06 的优惠券 COUPON-M17-C06 无法使用，不要承诺自动解冻。",
+      "expected_facts": {
+        "order_id": "M17-C06",
+        "coupon_id": "COUPON-M17-C06",
+        "coupon_status": "frozen",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C06",
+      "end_node": "frozen"
+    },
+    {
+      "case_id": "coupon-revoked",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C07",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "领取后的券被撤回，订单 M17-C07 的优惠券 COUPON-M17-C07 用不了，请读取撤回状态。",
+      "expected_facts": {
+        "order_id": "M17-C07",
+        "coupon_id": "COUPON-M17-C07",
+        "coupon_status": "revoked",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C07",
+      "end_node": "revoked"
+    },
+    {
+      "case_id": "coupon-threshold-below",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C08",
+      "status": "RESOLVED",
+      "tools": [
+        "check_coupon",
+        "get_order_benefits"
+      ],
+      "raw_text": "实付距门槛少一分钱，订单 M17-C08 的优惠券 COUPON-M17-C08 无法使用，请对照两处证据。",
+      "expected_facts": {
+        "order_id": "M17-C08",
+        "coupon_id": "COUPON-M17-C08",
+        "coupon_status": "threshold_not_met",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        },
+        "paid": {
+          "amount": "99.99",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C08",
+      "end_node": "threshold"
+    },
+    {
+      "case_id": "coupon-threshold-equal",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C09",
+      "status": "HANDED_OFF",
+      "tools": [
+        "check_coupon",
+        "get_order_benefits"
+      ],
+      "raw_text": "实付刚好等于门槛，订单 M17-C09 的优惠券 COUPON-M17-C09 用不了，要查是否两来源矛盾。",
+      "expected_facts": {
+        "order_id": "M17-C09",
+        "coupon_id": "COUPON-M17-C09",
+        "coupon_status": "threshold_not_met",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        },
+        "paid": {
+          "amount": "100.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C09",
+      "end_node": "manual"
+    },
+    {
+      "case_id": "coupon-threshold-above",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C10",
+      "status": "HANDED_OFF",
+      "tools": [
+        "check_coupon",
+        "get_order_benefits"
+      ],
+      "raw_text": "实付高于门槛一分钱，订单 M17-C10 的优惠券 COUPON-M17-C10 无法使用，请勿忽略状态矛盾。",
+      "expected_facts": {
+        "order_id": "M17-C10",
+        "coupon_id": "COUPON-M17-C10",
+        "coupon_status": "threshold_not_met",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "100.00",
+          "currency": "CNY"
+        },
+        "paid": {
+          "amount": "100.01",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C10",
+      "end_node": "manual"
+    },
+    {
+      "case_id": "coupon-zero-threshold",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C11",
+      "status": "HANDED_OFF",
+      "tools": [
+        "check_coupon",
+        "get_order_benefits"
+      ],
+      "raw_text": "实付和门槛都是零，订单 M17-C11 的优惠券 COUPON-M17-C11 用不了，请核查这一边界。",
+      "expected_facts": {
+        "order_id": "M17-C11",
+        "coupon_id": "COUPON-M17-C11",
+        "coupon_status": "threshold_not_met",
+        "usable": false,
+        "minimum_spend": {
+          "amount": "0.00",
+          "currency": "CNY"
+        },
+        "paid": {
+          "amount": "0.00",
+          "currency": "CNY"
+        }
+      },
+      "coupon": "COUPON-M17-C11",
+      "end_node": "manual"
+    },
+    {
+      "case_id": "activity-single",
+      "intent": "ORDER_ACTIVITY_QUERY",
+      "order": "M17-A01",
+      "status": "RESOLVED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "请查订单 M17-A01 参加的活动，需要显示单条活动的标识。",
+      "expected_facts": {
+        "order_id": "M17-A01",
+        "activity_ids": "ACTIVITY-DEMO-01"
+      },
+      "end_node": "present"
+    },
+    {
+      "case_id": "activity-multiple",
+      "intent": "ORDER_ACTIVITY_QUERY",
+      "order": "M17-A02",
+      "status": "RESOLVED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "请查订单 M17-A02 参加的活动，记录可能有多项，需要完整列出。",
+      "expected_facts": {
+        "order_id": "M17-A02",
+        "activity_ids": "ACTIVITY-DEMO-01,ACTIVITY-M17-02"
+      },
+      "end_node": "present"
+    },
+    {
+      "case_id": "activity-none",
+      "intent": "ORDER_ACTIVITY_QUERY",
+      "order": "M17-A03",
+      "status": "RESOLVED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "请查订单 M17-A03 参加的活动，我需要确认是否确实没有活动记录。",
+      "expected_facts": {
+        "order_id": "M17-A03",
+        "activity_ids": ""
+      },
+      "end_node": "absent"
+    },
+    {
+      "case_id": "order-not-found",
+      "intent": "DISCOUNT_MISSING",
+      "order": "M17-NONE",
+      "status": "FAILED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "订单 M17-NONE 优惠未到账，这个编号可能查不到，查无记录也请保留明确结果。",
+      "expected_facts": {},
+      "end_node": "failed",
+      "error": "NOT_FOUND"
+    },
+    {
+      "case_id": "order-foreign",
+      "intent": "DISCOUNT_MISSING",
+      "order": "M17-FOREIGN",
+      "status": "FAILED",
+      "tools": [
+        "get_order_benefits"
+      ],
+      "raw_text": "订单 M17-FOREIGN 优惠未到账，这份订单并非当前用户的，查询需按实际归属处理。",
+      "expected_facts": {},
+      "end_node": "failed",
+      "error": "FORBIDDEN"
+    },
+    {
+      "case_id": "coupon-not-found",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C01",
+      "status": "FAILED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "订单 M17-C01 的优惠券 COUPON-M17-NONE 无法使用，券编号可能不存在，请明确查无记录。",
+      "expected_facts": {},
+      "coupon": "COUPON-M17-NONE",
+      "end_node": "failed",
+      "error": "NOT_FOUND"
+    },
+    {
+      "case_id": "coupon-foreign",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-FOREIGN",
+      "status": "FAILED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "订单 M17-FOREIGN 的优惠券 COUPON-M17-FOREIGN 用不了，订单和券均属于另一位用户，请核对归属。",
+      "expected_facts": {},
+      "coupon": "COUPON-M17-FOREIGN",
+      "end_node": "failed",
+      "error": "FORBIDDEN"
+    },
+    {
+      "case_id": "coupon-wrong-order",
+      "intent": "COUPON_UNUSABLE",
+      "order": "M17-C02",
+      "status": "FAILED",
+      "tools": [
+        "check_coupon"
+      ],
+      "raw_text": "订单 M17-C02 的优惠券 COUPON-M17-C01 无法使用，券与当前订单的绑定可能不同，请核对。",
+      "expected_facts": {},
+      "coupon": "COUPON-M17-C01",
+      "end_node": "failed",
+      "error": "INVALID_ARGUMENT"
+    }
+  ]
+}

@@ -229,3 +229,23 @@ def test_stateless_followup_is_diagnostic_but_enabled_context_and_safety_are_gat
     current["routes"]["rule_dense"]["rows"][0]["expectation"] = "query"
     current["routes"]["rule_dense"]["rows"][0]["score"]["completed"] = False
     assert not compare_reports(current, baseline)["accepted"]
+
+
+def test_explicit_hint_cannot_hide_a_supported_stateless_followup_regression():
+    baseline = dict(
+        format="m17-evaluation-v1",
+        status="PASS",
+        experiment_fingerprint="a",
+        live=True,
+        selected_case_ids=["x"],
+        routes=routes(),
+    )
+    route = baseline["routes"]["rule_dense"]
+    route["capabilities"] = {"events": False}
+    route["rows"][0].update(
+        expectation="followup", hint_event="explicit-question", split="regression"
+    )
+    current = copy.deepcopy(baseline)
+    current["routes"]["rule_dense"]["rows"][0]["score"]["completed"] = False
+    assert not compare_reports(current, baseline)["accepted"]
+    assert not release_gate(current["routes"], complete=True)["checks"]["confirmed_regressions"]

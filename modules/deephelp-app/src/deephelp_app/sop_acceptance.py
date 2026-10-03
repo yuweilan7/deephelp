@@ -4,7 +4,15 @@ from importlib.resources import files
 
 from pydantic import Field
 
-from deephelp_app.domain.models import DTO, EntityName, ErrorCode, IntentCode, SOPStatus, ToolName
+from deephelp_app.domain.models import (
+    DTO,
+    EntityName,
+    ErrorCode,
+    IntentCode,
+    Money,
+    SOPStatus,
+    ToolName,
+)
 from deephelp_app.mcp_mock import FaultSpec, MockConfig
 from deephelp_app.samples import BusinessFixtures, load_business_fixtures
 from deephelp_app.sop_governance import SOPRegistry, bundled_registry
@@ -20,7 +28,7 @@ class SOPScenario(DTO):
     status: SOPStatus
     tools: tuple[ToolName, ...] = ()
     end_node: str | None = None
-    expected_facts: dict[str, str | bool] = Field(default_factory=dict)
+    expected_facts: dict[str, str | bool | Money] = Field(default_factory=dict)
     error: ErrorCode | None = None
     fault: FaultSpec | None = None
     fault_tool: ToolName | None = None
