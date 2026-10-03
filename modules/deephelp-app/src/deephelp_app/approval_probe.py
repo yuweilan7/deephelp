@@ -494,11 +494,31 @@ async def matrix(args: argparse.Namespace) -> None:
                 RightsClient(client, args.port, args.key.read_bytes()),
                 proposal_registry().snapshot_hash,
             )
-            for kind in ("reject", "revoke", "expired"):
+            changed_registry = proposal_registry().model_copy(
+                update={"registry_version": "sop-registry-m15-after-approval-v2"}
+            )
+            changed_store = RegistryStore(args.output.parent / (args.output.stem + "-changed-sop"))
+            changed_store.publish(changed_registry)
+            changed_service = ApprovalService(
+                repo,
+                RightsClient(client, args.port, args.key.read_bytes()),
+                changed_store.history()[0].snapshot_hash,
+            )
+            for kind in (
+                "reject",
+                "revoke",
+                "expired",
+                "reject_sop_changed",
+                "revoke_sop_changed",
+                "expired_decide_sop_changed",
+                "expired_resume_sop_changed",
+            ):
+                action = kind.split("_", 1)[0]
+                closing_service = changed_service if "sop_changed" in kind else service
                 op = await prepare(repo, "m15-" + kind + "-" + uuid4().hex)
-                if kind == "revoke":
+                if action == "revoke":
                     await service.decide(op.plan.identity, op.plan.operation_id, decision(op))
-                if kind == "expired":
+                if action == "expired":
                     async with repo.locked(op.plan.operation_id) as (cursor, current, q, lease):
                         current = current.model_copy(
                             update={"expires_at": datetime.now(UTC) - timedelta(seconds=1)}
@@ -508,15 +528,24 @@ async def matrix(args: argparse.Namespace) -> None:
                             "UPDATE dh_m15_operations SET expires_at=%s WHERE operation_id=%s",
                             (current.expires_at.replace(tzinfo=None), current.plan.operation_id),
                         )
-                final = await service.decide(
-                    op.plan.identity,
-                    op.plan.operation_id,
-                    decision(op, "approve" if kind == "expired" else kind),
-                )
+                if kind == "expired_resume_sop_changed":
+                    final = await closing_service.resume(
+                        op.plan.identity,
+                        op.plan.operation_id,
+                        resume_command(op),
+                        ExecutionBudget.start(60, 8, 0),
+                    )
+                else:
+                    final = await closing_service.decide(
+                        op.plan.identity,
+                        op.plan.operation_id,
+                        decision(op, "approve" if action == "expired" else action),
+                    )
                 stats = await counts(repo, op.plan.operation_id)
                 report["checks"][kind + "_no_effect"] = (
                     final.status == OperationStatus.CANCELLED
                     and stats["effects"] == stats["execute_calls"] == 0
+                    and final.plan == op.plan
                 )
             op = await prepare(repo, "m15-concurrent-" + uuid4().hex)
             decisions = await asyncio.gather(

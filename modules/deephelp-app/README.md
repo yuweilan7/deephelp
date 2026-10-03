@@ -446,7 +446,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.approval_cli decide --decisio
 py -3.14 -m uv run --locked python -m deephelp_app.approval_cli resume --operation $operationId --run $runId --session $sessionId
 ```
 
-`decide --decision reject/revoke` 可结束未执行的计划。执行已开始时不允许谎称撤销效果；响应未知时保留 UNKNOWN，重新启动应用/下游后用同一 `resume` 查询对账。已提交效果不会再次执行；明确查无效果且当前授权/版本/期限仍有效时最多两次发送。运行 lease 默认120秒，硬杀进程后须等原 lease 到期，活跃执行期间重复 resume 返回409；每轮请求仍受子timeout和共享预算限制。
+`decide --decision reject/revoke` 可结束未执行的计划。SOP切版后，原问题/版本/参数绑定未变时旧计划仍可拒绝、撤销或在过期后结束；新批准与执行必须匹配当前SOP。执行已开始时不允许谎称撤销效果；响应未知时保留 UNKNOWN，重新启动应用/下游后用同一 `resume` 查询对账。已提交效果不会再次执行；明确查无效果且当前授权/版本/期限仍有效时最多两次发送。运行 lease 默认120秒，硬杀进程后须等原 lease 到期，活跃执行期间重复 resume 返回409；每轮请求仍受子timeout和共享预算限制。
 
 ```powershell
 # 最小saver门禁：两个命令必须在不同进程执行，使用新的thread和报告路径

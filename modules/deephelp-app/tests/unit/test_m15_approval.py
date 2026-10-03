@@ -1,6 +1,7 @@
 """Offline authority guards and query-before-write recovery, separate from the live matrix."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -10,8 +11,9 @@ from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
 from deephelp_app.approval import ApprovalService, effect_response
-from deephelp_app.approval_store import validate_binding
+from deephelp_app.approval_store import ApprovalRepository, validate_binding
 from deephelp_app.domain.models import (
+    ApprovalCommand,
     ApprovalStatus,
     Entity,
     EntityName,
@@ -153,6 +155,81 @@ def test_snapshot_and_order_change_require_replan(pair):
     )
     with pytest.raises(AppError):
         validate_binding(op, changed, "snapshot-v1")
+
+
+class DecisionAuthority(ApprovalRepository):
+    """Exercise repository decision guards without substituting their logic."""
+
+    def __init__(self, op, question):
+        self.op, self.question = op, question
+
+    async def get(self, _):
+        return self.op
+
+    @asynccontextmanager
+    async def locked(self, _):
+        yield None, self.op, self.question, (None, None)
+
+    async def cancel(self, cursor, op, question, status):
+        self.op = op.model_copy(
+            update={"approval_status": status, "status": OperationStatus.CANCELLED}
+        )
+        return self.op
+
+
+@pytest.mark.parametrize("kind", ["reject", "revoke", "expired_decide", "expired_resume"])
+async def test_sop_publication_does_not_strand_unexecuted_plan(pair, kind):
+    op, q = pair
+    if kind == "revoke":
+        op = op.model_copy(update={"approval_status": ApprovalStatus.APPROVED})
+    if kind.startswith("expired"):
+        op = op.model_copy(update={"expires_at": datetime.now(UTC) - timedelta(seconds=1)})
+    repo = DecisionAuthority(op, q)
+    if kind == "expired_resume":
+        final, token = await repo.acquire(op.plan.operation_id, "published-snapshot-v2")
+        assert token is None
+    else:
+        final = await repo.decide(
+            op.plan.identity,
+            op.plan.operation_id,
+            ApprovalCommand(
+                session_id=op.session_id,
+                run_id=op.run_id,
+                expected_question_version=op.question_version,
+                parameters_hash=op.plan.parameters_hash,
+                sop_version=op.plan.sop_version,
+                snapshot_hash=op.plan.snapshot_hash,
+                decision="approve" if kind == "expired_decide" else kind,
+            ),
+            "published-snapshot-v2",
+        )
+    assert final.status == OperationStatus.CANCELLED and final.dispatch_attempts == 0
+    assert (
+        final.approval_status
+        == {
+            "reject": ApprovalStatus.REJECTED,
+            "revoke": ApprovalStatus.REVOKED,
+            "expired_decide": ApprovalStatus.EXPIRED,
+            "expired_resume": ApprovalStatus.EXPIRED,
+        }[kind]
+    )
+
+
+async def test_new_sop_cannot_authorize_old_plan(pair):
+    op, q = pair
+    repo = DecisionAuthority(op, q)
+    command = ApprovalCommand(
+        session_id=op.session_id,
+        run_id=op.run_id,
+        expected_question_version=op.question_version,
+        parameters_hash=op.plan.parameters_hash,
+        sop_version=op.plan.sop_version,
+        snapshot_hash=op.plan.snapshot_hash,
+        decision="approve",
+    )
+    with pytest.raises(AppError) as error:
+        await repo.decide(op.plan.identity, op.plan.operation_id, command, "published-snapshot-v2")
+    assert error.value.code == ErrorCode.VERSION_CONFLICT
 
 
 @pytest.mark.parametrize(
