@@ -46,7 +46,16 @@ class SyntheticCoupon(DTO):
     coupon_id: Identifier
     identity: VerifiedIdentity
     order_id: Identifier
-    status: Literal["usable", "expired", "threshold_not_met"]
+    status: Literal[
+        "usable",
+        "expired",
+        "threshold_not_met",
+        "already_used",
+        "not_started",
+        "scope_mismatch",
+        "frozen",
+        "revoked",
+    ]
     minimum_spend: Money
 
 

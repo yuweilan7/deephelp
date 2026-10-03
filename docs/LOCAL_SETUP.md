@@ -2,6 +2,8 @@
 
 这是运行环境入口。M08启动见文末；中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
+用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。下文历史main探针示例保留为可选运行方法，不要求合并后复验；当前规则以AGENTS/ROADMAP为准。
+
 M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度或云库配置。预览、真实协议验收与参数见[应用README](../modules/deephelp-app/README.md#m06真实mcp只读工具)。其--live只启动受控本机进程，不运行P00或开启应用converse业务路径。
 
 M07默认演示使用固定模型回放加本机真实stdio，不消费模型额度；显式--live才调用千问。输入是合成已分类Question和专用业务fixture，入口见[应用README](../modules/deephelp-app/README.md#m07最小sop执行)。

@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from deephelp_app.app import create_app
+from deephelp_app.business_catalog import business_config, business_registry
 from deephelp_app.corpus import digest
 from deephelp_app.domain.models import ErrorCode, ResponseEnvelope
 from deephelp_app.errors import ConfigurationError
@@ -21,6 +22,7 @@ from deephelp_app.evaluation import (
     MANIFEST,
     MODES,
     audit,
+    capability_eligible,
     file_digest,
     metrics,
     release_gate,
@@ -84,15 +86,17 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
         # Keep its raw mistakes in metrics; compare only capabilities it actually enables.
         events = current["routes"][mode].get("capabilities", {}).get("events", True)
         prior_events = baseline["routes"][mode].get("capabilities", {}).get("events", True)
-        eligible = [r for r in rows if events or r.get("expectation") != "followup"]
-        prior = [r for r in old.values() if prior_events or r.get("expectation") != "followup"]
+        eligible = [r for r in rows if capability_eligible(current["routes"][mode], r)]
+        prior = [r for r in old.values() if capability_eligible(baseline["routes"][mode], r)]
         checks[mode + ":capability_scope"] = events == prior_events and {
             r["turn_id"] for r in eligible
         } == {r["turn_id"] for r in prior}
         scope[mode] = {
             "compared_turn_ids": [r["turn_id"] for r in eligible],
             "diagnostic_only_turn_ids": [r["turn_id"] for r in rows if r not in eligible],
-            "reason": "followup requires disabled event context" if not events else "all turns",
+            "reason": "automatic followup/multiple require disabled events"
+            if not events
+            else "all turns",
             "raw_completed": sum(r["score"]["completed"] for r in rows),
             "baseline_raw_completed": sum(r["score"]["completed"] for r in old.values()),
         }
@@ -125,6 +129,11 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
 async def run(args: argparse.Namespace) -> int:
     cases, data_summary = audit(Path(args.data), Path(args.manifest))
     selected = [c for c in cases if c.live_sample] if args.live and not args.all_cases else cases
+    if getattr(args, "split", None):
+        selected = [c for c in selected if c.split == args.split]
+    if not selected:
+        raise ConfigurationError("The selected evaluation scope is empty")
+    business = bool(data_summary.get("business_catalog"))
     output = local_path(args.output)
     if output.exists():
         raise ConfigurationError("Use a new immutable evaluation report path")
@@ -162,7 +171,7 @@ async def run(args: argparse.Namespace) -> int:
         "retries": 2,
         "top_k": 3,
         "prompt": "m12-fallback-v2",
-        "sop": "bundled_registry",
+        "sop": business_registry().snapshot_hash if business else "bundled_registry",
         "reply_polish": False,
         "mode_order": list(MODES),
         "candidate_gates": "M12 dev-frozen hybrid; dense takeover uncalibrated",
@@ -196,8 +205,8 @@ async def run(args: argparse.Namespace) -> int:
 
     def save() -> None:
         encoded = json.dumps(report, ensure_ascii=False, indent=2)
-        if len(encoded.encode()) > 32 * 1024**2:
-            raise ConfigurationError("Evaluation evidence exceeds 32MiB")
+        if len(encoded.encode()) > 256 * 1024**2:
+            raise ConfigurationError("Evaluation evidence exceeds 256MiB")
         temporary = output.with_suffix(output.suffix + ".tmp")
         temporary.write_text(encoded, encoding="utf-8")
         for attempt in range(5):
@@ -210,7 +219,12 @@ async def run(args: argparse.Namespace) -> int:
                 time.sleep(0.02)
 
     nonce = uuid4().hex[:16]
+    journal = None
     try:
+        if business:
+            journal_path = output.with_suffix(".rows.jsonl")
+            journal = journal_path.open("x", encoding="utf-8")
+            report["row_journal"] = str(journal_path)
         if gate:
             gate.open()
         async with asyncio.timeout(args.timeout):
@@ -225,11 +239,15 @@ async def run(args: argparse.Namespace) -> int:
                         fasttext_pointer=Path(args.fasttext_pointer)
                         if mode == "fasttext"
                         else None,
+                        mock=business_config() if business else None,
                     )
                     if args.live
                     else None
                 )
-                assembly = EvaluationAssembly(mode, live=live)
+                if live and business:
+                    registry = business_registry()
+                    live.sop_registry, live.sop_snapshots = registry, (registry,)
+                assembly = EvaluationAssembly(mode, live=live, business=business)
                 trace = MemoryTrace()
                 app = create_app(
                     Settings(
@@ -266,6 +284,7 @@ async def run(args: argparse.Namespace) -> int:
                             for case in selected:
                                 session = "m17-" + nonce + "-" + mode + "-" + case.case_id
                                 source_ids: dict[str, list[str]] = {}
+                                questions: dict[str, Any] = {}
                                 for turn in case.turns:
                                     assembly.retriever.rows.clear()
                                     body = {
@@ -276,6 +295,16 @@ async def run(args: argparse.Namespace) -> int:
                                         "occurred_at": datetime.now(UTC).isoformat(),
                                     }
                                     started = perf_counter()
+                                    if turn.hint_event:
+                                        if turn.hint_event not in questions:
+                                            raise ConfigurationError(
+                                                "Hint has no authorized prior question"
+                                            )
+                                        q = questions[turn.hint_event]
+                                        body.update(
+                                            question_hint=q.question_id,
+                                            expected_question_version=q.version,
+                                        )
                                     source_ids[turn.turn_id] = [body["message_id"]]
                                     reply = await client.post(
                                         "/converse",
@@ -287,12 +316,19 @@ async def run(args: argparse.Namespace) -> int:
                                     question = await assembly.ledger.question(
                                         identity, session, response.question_id
                                     )
+                                    if question:
+                                        questions[turn.event_id] = question
                                     records = [
                                         r.model_dump(mode="json")
                                         for r in await assembly.tools.ledger()
                                         if r.call_id in response.tool_call_ids
                                     ]
                                     observation = {
+                                        "unresolved_fields": [
+                                            f.value for f in question.unresolved_fields
+                                        ]
+                                        if question
+                                        else [],
                                         "entities": {
                                             e.name.value: e.value for e in question.entities
                                         }
@@ -326,6 +362,7 @@ async def run(args: argparse.Namespace) -> int:
                                         "event_id": turn.event_id,
                                         "multi_turn": len(case.turns) > 1,
                                         "expectation": turn.expectation,
+                                        "hint_event": turn.hint_event,
                                         "text": turn.text,
                                         "response": response.model_dump(mode="json"),
                                         "observation": observation,
@@ -334,11 +371,20 @@ async def run(args: argparse.Namespace) -> int:
                                     }
                                     row["score"] = score(turn, row["response"], observation)
                                     route["rows"].append(row)
+                                    if journal:
+                                        journal.write(
+                                            json.dumps({"mode": mode, **row}, ensure_ascii=False)
+                                            + "\n"
+                                        )
+                                        journal.flush()
                                     route["checks"][turn.turn_id + ":persisted"] = bool(
                                         question and question.status == response.question_status
                                     )
                                     last_body, last_response = body, response
-                                    save()
+                                    if not business or (
+                                        turn is case.turns[-1] and selected.index(case) % 20 == 0
+                                    ):
+                                        save()
                                     if response.error and response.error.code in {
                                         ErrorCode.UPSTREAM_UNAVAILABLE,
                                         ErrorCode.UNAUTHENTICATED,
@@ -428,6 +474,15 @@ async def run(args: argparse.Namespace) -> int:
                     for route in report["routes"].values()
                 ),
             )
+            if business:
+                report["release_gate"]["scope"] = {
+                    "frozen_conversations": data_summary["independent_cases"],
+                    "selected_conversations": len(selected),
+                    "selected_messages_per_route": sum(len(c.turns) for c in selected),
+                    "business_geometries": data_summary["business_catalog"]["business_geometries"],
+                    "synthetic_business": True,
+                    "enterprise_quality_validated": False,
+                }
             if getattr(args, "approvals", False):
                 report["release_gate"]["checks"]["approval_safety"] = report["approvals"][
                     "release_gate"
@@ -447,6 +502,8 @@ async def run(args: argparse.Namespace) -> int:
         report["error"] = {"type": type(exc).__name__, "message": str(exc)}
         raise
     finally:
+        if journal:
+            journal.close()
         if gate:
             report["cumulative_usage"] = gate.state
             gate.close()
@@ -541,6 +598,7 @@ def main() -> None:
     parser.add_argument("--manifest", default=str(MANIFEST))
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--all-cases", action="store_true")
+    parser.add_argument("--split", choices=("test", "regression"))
     parser.add_argument(
         "--approvals", action="store_true", help="Include the fresh M15 fault/approval scope"
     )

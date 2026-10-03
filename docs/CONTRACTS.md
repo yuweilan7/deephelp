@@ -250,7 +250,9 @@ EvalCase/EvalTurn只描述公开合成gold、split/来源/模板组和同/异事
 
 m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、MySQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
 
-同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中followup依赖未启用的事件上下文，只作诊断，不参与消息完成基线门禁。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组的followup仍严格比较，独立query不能排除。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。
+同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中自动followup及multi分段依赖未启用的事件上下文，只作诊断，不参与消息完成基线/已知回归门禁。明确hint续接与独立query不能排除。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组全部续接/分段严格比较。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值；审批仅在显式approval范围启用。
+
+扩量`m17-freeze-v2`同时绑定业务目录/fixture/注册表hash；EvalTurn新增默认兼容的business_case、hint_event和conflicts。business_case指向确定性事实及Money、工具顺序、终点、错误预期；hint_event只在评测驱动中转为已有问题的真实question_hint/version，不能让gold决定生产分类。冲突确认须当前原文唯一且已确认，旧冲突保留被拒值与实际替换来源，解除未解析阻塞后才允许SOP执行。coupon.status新增already_used/not_started/scope_mismatch/frozen/revoked，usable必须与status==usable一致，旧数据与工具schema保持兼容。
 
 M17审批扩展沿用`m17-evaluation-v1`，新增`approvals`：冻结数据digest/案例顺序、逐操作rows、越权尝试的before/after真实账本、效果/发送/查询次数和独立release_gate。`approval`独立范围routes为空；组合`run --approvals`时只读范围及审批范围都必须通过。baseline必须同一代码/配置/冻结选择，审批列缺失、范围变化或安全失败不能接受。报告不包含服务key/令牌；实际模型HTTP与固定动作恢复协议分别说明。
 

@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from deephelp_app.business_catalog import business_config, business_registry
 from deephelp_app.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
@@ -112,8 +113,11 @@ class OfflineRetriever:
 
 
 class EvaluationAssembly:
-    def __init__(self, mode: str, *, live: LiveAssembly | None = None) -> None:
+    def __init__(
+        self, mode: str, *, live: LiveAssembly | None = None, business: bool = False
+    ) -> None:
         self.mode, self.live = mode, live
+        self.business = business
         self.retriever: ObservedRetriever | None = None
         self.tools: ToolGateway | None = None
         self.ledger: Any = None
@@ -203,7 +207,8 @@ class EvaluationAssembly:
                         )
                     await milvus.close()
         else:
-            ledger, tools = MemoryCaseRepository(), ToolGateway()
+            ledger = MemoryCaseRepository()
+            tools = ToolGateway(config=business_config()) if self.business else ToolGateway()
             offline_model = OfflineModel()
             counted = CountedModel(offline_model, offline_model)
             self.retriever = ObservedRetriever(OfflineRetriever())
@@ -219,7 +224,11 @@ class EvaluationAssembly:
                         policy=CascadePolicy(),
                         fallback=StructuredFallback(counted),
                     ),
-                    SOPExecutor(counted, TrackedTools(tools), registry=bundled_registry()),
+                    SOPExecutor(
+                        counted,
+                        TrackedTools(tools),
+                        registry=business_registry() if self.business else bundled_registry(),
+                    ),
                     trace,
                     VersionManifest(
                         registry="complaints-v1",

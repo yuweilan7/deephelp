@@ -335,10 +335,20 @@ py -3.14 -m uv run --locked python -m deephelp_app.governed_sop_probe --output .
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m14_sop_governance.py
 # 已有预算沿用；新任务先按M13的mvp_cli init格式创建，参数按本次需要设置
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.governed_sop_probe --live --stage feature --auth .local/m08/auth.json --budget-state .local/m14/session-budget.json --output .local/m14/feature-new.json
-# 合并后改stage=main与新报告，继续同一累计预算
+# 特性分支验收通过后直接合并/推送main，不再main复验
 ```
 
 真实入口验19情境的模型动作/事实/ledger，再经实际HTTP验三流程、双来源、发布后旧问题补槽与新问题计划、MySQL新池回读、零调用重放及回退。整体timeout默认1200秒，各请求共享既有预算；transport重试0，固定故障情境关闭重试，执行器的有限重试另有回归。探针只清理自己创建的派生事件集合，保留MySQL合成事实/outbox、配置与恢复证据；不跑P00 full、云服务重启或企业写接口。
+
+完整业务扩展使用独立v2[目录](src/deephelp_app/sop_data/business-catalog-v2.json)、[合成事实](src/deephelp_app/sop_data/business-fixtures-v2.json)及[注册表](src/deephelp_app/sop_data/business-registry-v2.json)。22个实际业务情境包含17个正常结果和5个记录/归属边界，三类意图复用原执行器；券增加已用/未开始/适用范围/冻结/撤销分支，双来源覆盖门槛低于/等于/高于/零门槛，活动覆盖单/多/无。探针显式加载v2，默认流程及旧19情境兼容：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli validate --source modules/deephelp-app/src/deephelp_app/sop_data/business-registry-v2.json
+py -3.14 -m uv run --locked python -m deephelp_app.governed_sop_probe --business-catalog --output .local/m14/business-offline-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.governed_sop_probe --business-catalog --live --budget-state .local/m17-scale/budget.json --output .local/m14/business-live-new.json
+# 使用者显式发布新业务版本；保留原问题历史快照
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli publish --source modules/deephelp-app/src/deephelp_app/sop_data/business-registry-v2.json --directory .local/m14/business-registry
+```
 
 ## M16 事实回复与三类调试
 
@@ -384,16 +394,29 @@ py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m1
 & infra/client/tunnel.ps1 -Action health
 # 默认只跑数据中固定live_sample，显式--all-cases才跑真实全量
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --stage feature --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --output .local/m17/live-feature-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --live --stage main --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --baseline .local/m17/live-feature-new.json --output .local/m17/live-main-new.json
+# 相同特性上的新实验可用--baseline对照；合并main后不再重复验收
 ```
 
-默认真实入口复用.local/m09/active.json、.local/m13/active.json、.local/m17/auth.json及session-budget.json，可显式指定--pointer/--fasttext-pointer/--auth/--budget-state/--providers。必须先有已验证M09集合和M13模型；没有产物时真实对照停止。恢复/main不重置任务累计上限，报告用新路径。整轮默认1800秒，每请求90秒/40次/2重试；只读业务工具与模型共用原有预算。模型可调用性以内容探针与实际路径为准。
+默认真实入口复用.local/m09/active.json、.local/m13/active.json、.local/m17/auth.json及session-budget.json，可显式指定--pointer/--fasttext-pointer/--auth/--budget-state/--providers。必须先有已验证M09集合和M13模型；没有产物时真实对照停止。恢复不重置任务累计上限，报告用新路径。整轮默认1800秒，每请求90秒/40次/2重试；只读业务工具与模型共用原有预算。模型可调用性以内容探针与实际路径为准。
 
 报告包含代码文件hash和Git状态、数据/模型/索引/Prompt/SOP/词典/策略签名、逐消息结果、实体来源和实际工具ledger；test/regression分别统计。Recall@K只统计实际发生的有标签检索，规则命中不虚构召回；额外memory query分别计入观测。费用是配置单价估算，非最终账单；离线真实调用/token/费用为null。会话完成要求每条业务检查与同/异事件关系都正确，单条正确不抵消错拆分。非关键日志不承担账本。
 
-缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。当前规模与真实抽样覆盖见PROJECT_STATE；500+及企业质量仍需后续独立特性。
+缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。扩量数据/运行入口如下，实际验证结果见PROJECT_STATE。
 
-M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。以下入口每次新跑M15真实MySQL/HTTP/进程矩阵，key保留，feature/main沿用同一审批累计预算，新报告不能覆盖已有证据：
+```powershell
+$scaleData = 'modules/deephelp-app/src/deephelp_app/sample_data/m17_scale_cases.json'
+$scaleManifest = 'modules/deephelp-app/src/deephelp_app/sample_data/m17_scale_manifest.json'
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation_cli audit --data $scaleData --manifest $scaleManifest
+# 先跑已知回归，再跑独立冻结test；完整离线范围为548会话1820消息/组
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation_cli run --data $scaleData --manifest $scaleManifest --split regression --timeout 3600 --output .local/m17-scale/regression-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation_cli run --data $scaleData --manifest $scaleManifest --split test --output .local/m17-scale/test-new.json
+# 同一冻结29会话43消息/组的真实抽样，沿本任务已初始化的累计预算
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli run --data $scaleData --manifest $scaleManifest --live --auth .local/m17/auth.json --budget-state .local/m17-scale/budget.json --timeout 3600 --output .local/m17-scale/live-new.json
+```
+
+v2自动加载上述M14目录/注册表/合成工具数据，548个编号中立后不同会话序列覆盖22种实际业务情境；消息复用、模板组与合成比例分别报告。无事件组的自动续接/multi分段只作诊断，明确hint续接仍严格核验，原始错例与所有安全门禁保留。扩量报告逐行journal保存实际观察，长报告上限256MiB；test/regression分别统计。500+离线编排覆盖及固定真实抽样都不能解释成企业泛化或500+全量真实模型。
+
+M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。以下入口每次新跑M15真实MySQL/HTTP/进程矩阵，key保留，恢复沿用同一审批累计预算，新报告不能覆盖已有证据：
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation_cli approval --live --stage feature --output .local/m17-approval/feature-new.json

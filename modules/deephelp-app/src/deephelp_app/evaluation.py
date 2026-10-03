@@ -12,7 +12,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from deephelp_app.corpus import digest
-from deephelp_app.domain.models import DTO, IntentCode
+from deephelp_app.domain.models import DTO, EntityName, IntentCode
 from deephelp_app.errors import ConfigurationError
 
 DATA = Path(__file__).parent / "sample_data/m17_cases.json"
@@ -30,6 +30,9 @@ class EvalTurn(DTO):
     entities: dict[str, str] = Field(default_factory=dict)
     expectation: Literal["query", "missing", "ownership", "unknown", "multiple", "followup"]
     basis: str
+    business_case: str | None = None
+    hint_event: str | None = None
+    conflicts: tuple[EntityName, ...] = ()
 
 
 class EvalCase(DTO):
@@ -53,7 +56,9 @@ def canonical(text: str) -> str:
 def semantic_label(text: str) -> str:
     """Explicit gold evidence vocabulary, separate from production rule selection."""
     discount = bool(
-        re.search(r"优惠.*(?:未|没|消失)|未享受优惠|应减未减|折扣.*(?:没|未)|该少付.*没少", text)
+        re.search(
+            r"优惠(?!券).*(?:未|没|消失)|未享受优惠|应减未减|折扣.*(?:没|未)|该少付.*没少", text
+        )
     )
     coupon = bool(re.search(r"券.*(?:不能用|无法使用|用不了|不让用|失效|不能抵扣|用不上)", text))
     activity = bool(re.search(r"(?:查|了解|想知道|看看).*(?:活动|促销)|参加.*活动", text))
@@ -84,6 +89,22 @@ def expected(turn: EvalTurn) -> dict[str, Any]:
         }
     if turn.expectation == "missing":
         return {"outcome": "CLARIFY", "tools": [], "facts": {}}
+    if turn.business_case:
+        from deephelp_app.business_catalog import business_case
+
+        case = business_case(turn.business_case)
+        return {
+            "outcome": {"RESOLVED": "ANSWERED", "HANDED_OFF": "HANDOFF", "FAILED": "ERROR"}[
+                case.status.value
+            ],
+            "tools": [t.value for t in case.tools],
+            "facts": {
+                k: v.model_dump(mode="json") if hasattr(v, "model_dump") else v
+                for k, v in case.expected_facts.items()
+            },
+            "end_node": case.end_node,
+            "error": case.error.value if case.error else None,
+        }
     if turn.expectation == "ownership":
         return {"outcome": "ERROR", "tools": ["get_order_benefits"], "facts": {}}
     business = json.loads((DATA.parent / "business.json").read_text(encoding="utf-8"))
@@ -124,17 +145,28 @@ def audit(data: Path = DATA, manifest: Path = MANIFEST) -> tuple[list[EvalCase],
     frozen = json.loads(manifest.read_text(encoding="utf-8"))
     raw = json.loads(data.read_text(encoding="utf-8"))
     cases = [EvalCase.model_validate(row) for row in raw]
+    expanded = frozen.get("format") == "m17-freeze-v2"
     if (
-        frozen.get("format") != "m17-freeze-v1"
+        frozen.get("format") not in {"m17-freeze-v1", "m17-freeze-v2"}
         or frozen.get("data_sha256") != digest(raw)
         or frozen.get("business_sha256") != file_digest(DATA.parent / "business.json")
     ):
         raise ConfigurationError("Frozen evaluation data/manifest mismatch")
+    business_summary = None
+    if expanded:
+        from deephelp_app.business_catalog import CATALOG, FIXTURES, REGISTRY, validate_catalog
+
+        if frozen.get("business_catalog") != {
+            str(p.name): file_digest(p) for p in (CATALOG, FIXTURES, REGISTRY)
+        }:
+            raise ConfigurationError("Frozen business catalog/fixtures/SOP differ")
+        business_summary = validate_catalog()
     ids: set[str] = set()
     groups: dict[str, str] = {}
     texts: dict[str, str] = {}
     historical = {canonical(text) for text in historical_inputs()}
     verified = 0
+    sequences: set[tuple[str, ...]] = set()
     for case in cases:
         if (
             case.case_id in ids
@@ -144,6 +176,10 @@ def audit(data: Path = DATA, manifest: Path = MANIFEST) -> tuple[list[EvalCase],
         ):
             raise ConfigurationError("Duplicate/empty case identity or group")
         ids.add(case.case_id)
+        sequence = tuple(canonical(t.text) for t in case.turns)
+        if expanded and sequence in sequences:
+            raise ConfigurationError("Identifier-only duplicate conversation cannot increase scale")
+        sequences.add(sequence)
         for key in ("source_group", "variant_group"):
             group = key + ":" + getattr(case, key)
             if group in groups and groups[group] != case.split:
@@ -159,13 +195,19 @@ def audit(data: Path = DATA, manifest: Path = MANIFEST) -> tuple[list[EvalCase],
             ):
                 raise ConfigurationError("Gold label and registered intent differ")
             key = canonical(turn.text)
-            if key in texts and (case.split != "regression" or texts[key] != "regression"):
+            if expanded and key in texts and texts[key] != case.split:
+                raise ConfigurationError("Normalized message leaks across splits")
+            if (
+                not expanded
+                and key in texts
+                and (case.split != "regression" or texts[key] != "regression")
+            ):
                 raise ConfigurationError("Duplicate normalized evaluation input")
             if case.split == "test" and key in historical:
                 raise ConfigurationError("Known historical input cannot be an unseen test")
             texts[key] = case.split
-            if turn.expectation == "followup":
-                if prior.get(turn.event_id) != turn.label:
+            if turn.expectation == "followup" or turn.hint_event:
+                if prior.get(turn.hint_event or turn.event_id) != turn.label:
                     raise ConfigurationError("Followup has no same-event confirmed gold")
             elif semantic_label(turn.text) != turn.label:
                 raise ConfigurationError("Gold lacks deterministic semantic evidence")
@@ -187,6 +229,17 @@ def audit(data: Path = DATA, manifest: Path = MANIFEST) -> tuple[list[EvalCase],
             ):
                 raise ConfigurationError("Missing-slot gold already has all required slots")
             expected(turn)
+            if turn.business_case:
+                from deephelp_app.business_catalog import business_case
+
+                business = business_case(turn.business_case)
+                valid_entities = {"order_id": business.order}
+                if business.coupon:
+                    valid_entities["coupon_id"] = business.coupon
+                if turn.intent != business.intent or any(
+                    valid_entities.get(k) != v for k, v in turn.entities.items()
+                ):
+                    raise ConfigurationError("Gold business binding differs from verified fixture")
             verified += 1
     if frozen.get("case_ids") != [c.case_id for c in cases]:
         raise ConfigurationError("Frozen case order differs")
@@ -203,12 +256,20 @@ def audit(data: Path = DATA, manifest: Path = MANIFEST) -> tuple[list[EvalCase],
         "gold_method": "deterministic semantic evidence + versioned business fixture",
         "split_counts": dict(Counter(c.split for c in cases)),
         "scenarios": len({c.scenario for c in cases}),
-        "scenario_scale_complete": False,
+        "scenario_scale_complete": bool(business_summary and business_summary["scenarios"] >= 15),
         "scale_500_complete": verified >= 500,
         "independence_limit": (
             "same-author synthetic; canonical/group audit cannot prove semantic independence"
         ),
     }
+    if expanded:
+        summary["business_catalog"] = business_summary
+        summary["unique_normalized_messages"] = len(texts)
+        summary["repeated_message_occurrences"] = verified - len(texts)
+        summary["scale_500_conversations_complete"] = len(sequences) >= 500
+        summary["scale_unit"] = (
+            "conversation messages; report independent conversation count separately"
+        )
     return cases, summary
 
 
@@ -274,11 +335,24 @@ def score(turn: EvalTurn, response: dict[str, Any], observation: dict[str, Any])
     checks = {
         "intent": label == turn.label,
         "outcome": response["outcome"] == gold["outcome"],
-        "entities": actual_entities == turn.entities if turn.expectation != "multiple" else None,
+        "entities": actual_entities == turn.entities
+        if turn.expectation != "multiple" and not turn.conflicts
+        else None,
         "tool_sequence": tool_names == gold["tools"],
         "tool_parameters": params_ok,
         "facts": facts_ok,
     }
+    if gold.get("end_node"):
+        checks["sop_terminal"] = bool(
+            response.get("sop_node_path") and response["sop_node_path"][-1] == gold["end_node"]
+        )
+    if gold.get("error"):
+        checks["error"] = (response.get("error") or {}).get("code") == gold["error"]
+    if turn.conflicts:
+        actual_unresolved = set(observation.get("unresolved_fields", []))
+        checks["unresolved_fields"] = {f.value for f in turn.conflicts} <= actual_unresolved and (
+            not turn.intent or actual_unresolved <= {f.value for f in turn.intent.required_slots}
+        )
     sources = observation.get("entity_sources")
     if sources is not None:
         checks["entity_provenance"] = (
@@ -492,6 +566,16 @@ def metrics(rows: list[dict[str, Any]], *, live: bool, event_enabled: bool) -> d
     }
 
 
+def capability_eligible(route: dict[str, Any], row: dict[str, Any]) -> bool:
+    # Preserve all raw mistakes. Explicit hints are supported even by stateless
+    # ablations; only automatic attachment and segmentation require events.
+    return route.get("capabilities", {}).get("events", True) or not (
+        row.get("expectation") == "followup"
+        and not row.get("hint_event")
+        or row.get("expectation") == "multiple"
+    )
+
+
 def release_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[str, Any]:
     baseline = routes["rule_dense"]["rows"]
     candidate = routes["fasttext"]["rows"]
@@ -506,15 +590,31 @@ def release_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[s
         if row["score"]["hard_failures"]
     ]
     events = routes["fasttext"]["metrics"]["event_wrong_merge"]
+
+    regression_scope = {
+        mode: {
+            "checked_turns": sum(
+                capability_eligible(route, r)
+                for r in route["rows"]
+                if r.get("split") == "regression"
+            ),
+            "diagnostic_turn_ids": [
+                r["turn_id"]
+                for r in route["rows"]
+                if r.get("split") == "regression" and not capability_eligible(route, r)
+            ],
+        }
+        for mode, route in routes.items()
+    }
     checks = {
         "all_requested_rows_completed": complete,
         "hard_cases": not hard,
         "paired_single_turn_no_regression": final >= base,
         "confirmed_regressions": all(
             r["score"]["completed"]
-            for route in routes.values()
+            for mode, route in routes.items()
             for r in route["rows"]
-            if r.get("split") == "regression"
+            if r.get("split") == "regression" and capability_eligible(route, r)
         ),
         "fasttext_no_regression_from_memory_event": (
             sum(r["score"]["completed"] for r in candidate)
@@ -530,6 +630,7 @@ def release_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[s
         "paired_cases": len(comparable),
         "baseline_completed": base,
         "candidate_completed": final,
+        "regression_scope": regression_scope,
         "scope": "this fixed synthetic subset; not 500+ or enterprise quality",
     }
 
