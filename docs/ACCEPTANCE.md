@@ -1,6 +1,6 @@
 # 跨模块验收基线
 
-本文件保留 M00 已确认的设计走查，以及后续模块必须落地的运行验收。它是长期测试基线，不是某次规划会话的过程报告；未实际执行的项目保持 `NOT_RUN`。
+本文件保留 M00 设计走查与跨模块安全预期；实际实现及验收状态只看[PROJECT_STATE](PROJECT_STATE.md)。表内责任不是每次特性的必跑清单，选择范围见[ROADMAP](ROADMAP.md#按影响选择验收)。
 
 | ID | 层级 | 输入 / 故障 | 期望 | 执行位置 |
 |---|---|---|---|---|
@@ -12,16 +12,16 @@
 | U01 | 契约/业务unit | 清洗截断、前导零、否定、更正 | 事实保真/来源完整 | M02类型/来源/金额/更正与固定样本；M04清洗运行验收 |
 | U02 | 契约/业务unit | 最终code非top1无有效override | 拒收决策；不返回假正常 | M02决策/策略及实体证据校验；M12真实分类级联 |
 | U03 | 契约/业务unit | 幂等键冲突/缺槽位/跨租户 | 错误分类固定、禁止工具/错误case写入 | M02内存消息/状态映射/归属与工具守卫；M08 MySQL事实源验收 |
-| I01 | MySQL/Redis integration | 提交成功缓存失败、清空缓存 | 事实不丢，outbox重建 | M10，当前NOT_RUN |
-| I02 | Milvus integration | stale ACTIVE/同维异模型 | MySQL回查过滤/signature拒绝 | M05/M10，当前NOT_RUN |
-| I03 | 真实MCP协议 | list_tools/call_tool超时/非法参数 | 协议/白名单/错误归一化；不是函数Mock | M06，当前NOT_RUN |
-| L01 | 真实模型live | chat/schema/tool/embed各一次受限探针 | 独立能力证据、成本/失败记录 | M03，当前NOT_RUN |
-| E01 | 真实e2e | 真实模型+Milvus+MCP Mock三类场景 | 完整trace和工具ledger；注明合成业务 | M08，当前NOT_RUN |
-| F01 | 真实进程故障（选做写入加固） | checkpoint落后账本/审批并发 | 恢复不越权不重放效果 | M15，当前NOT_RUN；不阻塞只读核心 |
+| I01 | MySQL/Redis integration | 提交成功缓存失败、清空缓存 | 事实不丢，outbox重建 | M10 |
+| I02 | Milvus integration | stale ACTIVE/同维异模型 | MySQL回查过滤/signature拒绝 | M05/M10 |
+| I03 | 真实MCP协议 | list_tools/call_tool超时/非法参数 | 协议/白名单/错误归一化；不是函数Mock | M06 |
+| L01 | 真实模型live | 按影响选择chat/schema/tool/embed | 所需能力内容证据、用量/失败记录 | M03 |
+| E01 | 真实e2e | 真实模型+Milvus+MCP Mock三类场景 | 完整trace和工具ledger；注明合成业务 | M08 |
+| F01 | 真实进程故障（选做写入加固） | checkpoint落后账本/审批并发 | 恢复不越权不重放效果 | M15；不阻塞只读核心 |
 
 核心复刻、规模扩展和独立加固分期见 ROADMAP。D04涉及旧审批、D06、F01及下文审批fixtures均为M15运行要求；只读核心只验更正/归属/证据/隔离等适用部分。文档样例不能计作运行通过，真实依赖失败按AGENTS暂停。
 
-本矩阵列能力基线，不是每次改动都要运行的清单。普通回归离线，live按[ROADMAP决策表](ROADMAP.md#按影响选择验收)选择；完整四组/故障矩阵按明确目标启动。L01四能力独立检查，已适用的同会话证据可复用。历史设计表中的NOT_RUN是当时设计口径，当前事实只看PROJECT_STATE。
+普通回归离线；完整四组/故障矩阵按明确目标启动。L01各能力独立检查，已适用的同会话证据可复用。
 
 ## 设计接口复核方法
 

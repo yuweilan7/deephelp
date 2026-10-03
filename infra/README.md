@@ -18,11 +18,11 @@
 | `client/tunnel.ps1` / `client/tunnel.sh` | 管理专属隧道；health 实际认证，check 仅测端口 |
 | `client/test-connections.py health` | 只读健康检查；Windows/POSIX 隧道入口保存报告到 `.local/infra-health/` |
 | `client/test-connections.py full` | 重建 p00 探针表内容/集合、写缓存；仅授权的合成验收使用 |
-| `client/test-connections.py post-restart` / `recheck-persistence.py` | 检查已有 P00 持久数据；前者也会确保探针表存在 |
+| `client/test-connections.py post-restart` | 检查已有 P00 持久数据；会确保探针表存在 |
 | `client/rebuild-milvus.py` | 按唯一 schema 与 dataset 新建 p00_ 合成集合，不覆盖已有集合 |
 | `client/security-check.py` / `doctor.py` | 专用安全检查 / 资源诊断；安全检查会尝试拒绝路径，不是纯读健康探针 |
 
-保留的服务器脚本用途见 OPERATIONS。新生成的报告被 Git 忽略，[reports](reports/README.md) 只维护说明；旧报告、安装盘点和上游配置副本移到本机归档/Git 历史，不作为日常实施输入。
+保留的服务器脚本用途见 OPERATIONS。新生成的报告被 Git 忽略，[reports](reports/README.md) 只维护说明；旧报告、安装盘点和上游配置副本从 Git 历史追溯，不作为日常实施输入。
 
 ## Linux / WSL
 

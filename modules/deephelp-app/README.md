@@ -552,3 +552,5 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 ```
 
 探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留MySQL事实、key和恢复配置。MySQL saver是应用自建适配，锁定LangGraph版本的兼容试验不等于官方MySQL支持；未接企业支付、退款、补偿或通用13段RUNNING自动重领。
+
+任务过程输出与收尾见[AGENTS](../../AGENTS.md#临时产物与任务收尾)。M17成功完整报告包含全部逐行证据，保存后自动删除等价rows.jsonl；失败/中断保留行日志。发布绑定报告不可裁剪，累计预算和恢复状态不得重置；旧模块完整命令仅在明确启动该范围时使用。
