@@ -62,7 +62,7 @@ M11独立聚合入口复用M04/M10事实和派生事件集合。窗口、TopK、
 
 M12在同一Conversation中接通300当前实体、400事实窗口、500自动归属、600四层级联及后续SOP/终态。已绑定事件保留主意图，未绑定事件只用当前已授权聚合及确认实体增强查询。配置绑定M09 scope/语料/权重，当前fusion阈值/差距0.85/0.05、记忆fusion0.85/0.3；18条dev及18条派生增强query分别接管5/18、6/18，错误接管0，未用M09 test选参。Dense/BM25未校准禁分数接管，旧M05指针兼容，FastText disabled。
 
-真实HTTP15消息/167项检查全通过，规则、当前Hybrid、记忆增强Hybrid和schema兜底在同一主链实际命中；12次主分类、31模型尝试、5次600检索、8个实际工具调用ID。自动交错补槽/更正、歧义/多诉求/未知、缺槽位工具0、当前高分后下游对象归属拒绝、事实/证据、MySQL新池回读、终态重放零调用、MCP退出及专用事件集合清理通过。原始报告`.local/m12/feature-strengthened.json`。旧MVP十条实际HTTP路径、下游失败/注入/过期券/空活动、MySQL并发唯一接收及新资源回放通过，报告`.local/m12/mvp-feature-strengthened.json`；不是独立企业质量测试。
+真实HTTP15消息/168项检查全通过，规则、当前Hybrid、记忆增强Hybrid和schema兜底在同一主链实际命中；12次主分类、30模型尝试、5次600检索、8个实际工具调用ID。自动交错补槽/更正、歧义/多诉求/未知、缺槽位工具0、当前高分后下游对象归属拒绝、事实/证据、MySQL新池回读、终态重放零调用、MCP退出及专用事件集合清理通过。原始报告`.local/m12/feature-layers-verified.json`。旧MVP十条实际HTTP路径、下游失败/注入/过期券/空活动、MySQL并发唯一接收及新资源回放通过，报告`.local/m12/mvp-feature-strengthened.json`；不是独立企业质量测试。
 
 兜底在main复验出现应减未减的语义改写拒识，已用完整语义定义和现有强模型qwen3.8-max修复，`m12-fallback-v2`、实际兜底模型写入版本。原失败句及改写/退款/金额询问/多诉求等8条真实分类内容全部通过；原失败及诊断保留.local，提取/Embedding/SOP沿原provider配置。
 

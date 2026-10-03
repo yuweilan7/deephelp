@@ -177,7 +177,8 @@ async def run(args: argparse.Namespace) -> int:
                 memory_session = "m12-" + nonce + "-memory"
                 report["sessions"].append(memory_session)
                 seeded = await PersistentEventAggregation(assembly.ledger, service.events).process(
-                    envelope("SKU-C9 订单000053 免息活动名称查询", memory_session), gate.request()
+                    envelope("请查询订单000053参加的促销活动及活动名称", memory_session),
+                    gate.request(),
                 )
                 memory = await ask("memory_cascade", "补充：请继续查询", memory_session)
                 checks["memory_attached"] = memory.question_id == seeded.question_id
@@ -187,6 +188,11 @@ async def run(args: argparse.Namespace) -> int:
                 checks["memory_retrieval_stage"] = bool(
                     memory.intent_decision
                     and any(s.layer == "memory" for s in memory.intent_decision.cascade_steps)
+                )
+                checks["memory_retrieval_takeover"] = bool(
+                    memory.intent_decision
+                    and memory.intent_decision.reason_code == "memory_retrieval_selected"
+                    and memory.intent_decision.cascade_steps[-1].layer == "memory"
                 )
                 checks["memory_main_once"] = sum(s.intent_calls for s in memory.stages) == 1
 
