@@ -14,6 +14,8 @@ M07默认演示使用固定模型回放加本机真实stdio，不消费模型额
 
 下方各模块的完整命令保留为明确启动相应能力/质量评测时的入口，不能串成普通特性门禁；历史PLAN/handoff含main复验的命令已被AGENTS取代，历史记录不改。模型HTTP200、实库连通、固定动作恢复和离线PASS分别证明其范围，不互相冒充。pytest与CI只做离线检查；根conftest在收集前阻止远程DNS/TCP，保留本机HTTP/stdio。pytest --live仍只检查配置，不解除网络隔离。
 
+临时输出与收尾遵循[AGENTS](../AGENTS.md#临时产物与任务收尾)：系统临时目录或`.local/tmp/<任务标识>/`承接过程产物，最终证据/资产与控制文件分开。M17完整报告已含逐行内容；成功并保存最终报告后自动移除等价rows.jsonl，失败/中断保留行日志供定位。既有不可变清单和累计预算保持；必要证据提取后删除本轮脚本、渲染、临时安装与构建目录。
+
 ## 本机配置与新机器接手
 
 同机先读 `.local/DEPENDENCIES.md`：凭据路径、实例、端口、最近检查及恢复入口；机器索引为 `.local/dependency-access.json`。两者被 Git 忽略，不含秘密正文。
@@ -99,7 +101,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 # 恢复当前特性的验收时使用新报告，继续原累计预算；main不复验。
 ```
 
-live使用transport retries=0、子timeout和共享总deadline；预算预留先落盘、独占锁阻止并发穿透。金额为保守配置估算，不是账单。原始探针/报告和临时运行参数仅留.local，不提交客户数据或凭据；此入口不访问云业务库/MCP/P00 full，也不执行SOP。
+live使用transport retries=0、子timeout和共享总deadline；预算预留先落盘、独占锁阻止并发穿透。金额为保守配置估算，不是账单。必要最终报告、有效失败诊断及累计预算仅留.local，过程产物收尾删除，不提交客户数据或凭据；此入口不访问云业务库/MCP/P00 full，也不执行SOP。
 
 ## M05导入与Dense检索
 
@@ -118,7 +120,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_c
 
 新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
 
-输出/预算/manifest/指针应使用不同.local路径；原始内容/诊断/临时上限只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务MySQL/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。
+输出/预算/manifest/指针应使用不同.local路径；必要最终内容证据、有效诊断与累计预算只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务MySQL/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。
 
 ## M07真实模型与SOP验收
 
@@ -134,7 +136,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 # 恢复时使用新报告路径，累计预算保持同一文件。
 ```
 
-明确启动完整SOP内容验收时该入口验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败；小改动优先使用M17选择受影响会话，不叠加本入口。完整范围核对实际事实、证据与ledger并核对资源退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
+明确启动完整SOP内容验收时该入口验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败；小改动优先使用M17选择受影响会话，不叠加本入口。完整范围核对实际事实、证据与ledger并核对资源退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。必要最终结果、有效模型/MCP诊断及累计用量留.local；重复阶段结果按收尾规则删除；无P00 full、企业数据、数据库迁移或业务converse。
 
 
 ## M08闭环启动与验收
@@ -157,7 +159,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 
 仅索引/查询受影响时检查health与所需Embedding内容/分词/服务端稀疏能力；已适用的能力证据可复用，再用现有专用Milvus。默认preview离线；命令、冻结语料与三路对照见[应用README](../modules/deephelp-app/README.md#m09中文bm25与融合对照)。复用既有provider和M05容量/manifest机制，但创建独立M09版本集合，保留旧Dense集合。默认K=3；导入和查询使用同一版本的服务端Jieba配置，分词可直接analyze核对。
 
-本轮先设置足够的`$hybridCalls`、`$hybridTokens`、`$hybridCost`及专用`$hybridBudgetFile`；`hybrid_cli init --budget-state $hybridBudgetFile --max-calls $hybridCalls --max-tokens $hybridTokens --max-cost $hybridCost`只创建本机累计文件，已有文件拒绝重置。其他live命令继续传同一--budget-state；不同命令使用新的--output，不能覆盖证据或控制文件。SDK timeout=None/retry_times=0、15秒外层子时限，整体默认1800秒；原始报告/诊断与本次运行上限只留.local。
+本轮先设置足够的`$hybridCalls`、`$hybridTokens`、`$hybridCost`及专用`$hybridBudgetFile`；`hybrid_cli init --budget-state $hybridBudgetFile --max-calls $hybridCalls --max-tokens $hybridTokens --max-cost $hybridCost`只创建本机累计文件，已有文件拒绝重置。其他live命令继续传同一--budget-state；不同命令使用新的--output，不能覆盖证据或控制文件。SDK timeout=None/retry_times=0、15秒外层子时限，整体默认1800秒；必要最终报告、有效诊断与本次累计预算只留.local。
 
 `tune`只在dev选择0.25/0.5/0.75的Dense权重，按candidate Recall@1→MRR→接近0.5→较小权重选择，冻结index/dev/test摘要及K。`evaluate --classify`只用已冻结策略运行test：按三方案实际返回证据调用同一600分类逻辑，多诉求/无关含确定性守卫；不执行SOP。不得根据test错例改权重后仍宣称未见test。`activate`验证完整内容/向量哈希后发布语料与策略；`rollback`验证并原子恢复上一组合，服务须重建应用资源才读取新指针。
 

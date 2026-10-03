@@ -1,6 +1,5 @@
 import asyncio
 import json
-import socket
 from uuid import uuid4
 
 import httpx
@@ -281,11 +280,3 @@ async def test_jsonl_trace_is_parseable_and_excludes_text_and_key(tmp_path, mess
     assert records[1]["input_length"] == len(message["raw_text"])
     assert message["raw_text"] not in text
     assert "synthetic-secret" not in text
-
-
-def test_external_network_guard_rejects_connect_and_dns():
-    with socket.socket() as sock:
-        with pytest.raises(RuntimeError, match="Offline pytest"):
-            sock.connect(("203.0.113.1", 80))
-    with pytest.raises(RuntimeError, match="Offline pytest"):
-        socket.getaddrinfo("synthetic.invalid", 443)

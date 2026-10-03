@@ -225,15 +225,18 @@ async def run(args: argparse.Namespace) -> int:
         if len(encoded.encode()) > 256 * 1024**2:
             raise ConfigurationError("Evaluation evidence exceeds 256MiB")
         temporary = output.with_suffix(output.suffix + ".tmp")
-        temporary.write_text(encoded, encoding="utf-8")
-        for attempt in range(5):
-            try:
-                temporary.replace(output)
-                break
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.02)
+        try:
+            temporary.write_text(encoded, encoding="utf-8")
+            for attempt in range(5):
+                try:
+                    temporary.replace(output)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.02)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     nonce = uuid4().hex[:16]
     journal = None
@@ -549,7 +552,13 @@ async def run(args: argparse.Namespace) -> int:
         if gate:
             report["cumulative_usage"] = gate.state
             gate.close()
+        if report["status"] == "PASS":
+            report.pop("row_journal", None)
         save()
+        # The complete report contains every row. Keep the journal only when a
+        # failed/interrupted run or failed final save still needs recovery evidence.
+        if journal and report["status"] == "PASS":
+            await asyncio.to_thread(Path(journal.name).unlink)
     print(
         json.dumps(
             {

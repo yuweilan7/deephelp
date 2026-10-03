@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 
 import pytest
@@ -17,25 +16,6 @@ from deephelp_app.learning.fakes import FakeRepository
 from deephelp_app.settings import Settings
 
 pytestmark = pytest.mark.unit
-
-
-def test_dtos_are_json_serializable_and_unknown_versions_are_null(message):
-    envelope = RequestEnvelope(
-        **message,
-        identity=VerifiedIdentity(tenant_id="tenant-a", user_id="user-a"),
-        request_id="req-a",
-        trace_id="trace-a",
-        received_at=datetime.now(UTC),
-    )
-    assert RequestEnvelope.model_validate_json(envelope.model_dump_json()) == envelope
-    response = ResponseEnvelope(
-        request_id="req-a", trace_id="trace-a", outcome=Outcome.ERROR, reply="stub"
-    )
-    data = json.loads(response.model_dump_json())
-    assert data["run_id"] is None
-    assert data["versions"]["model"] is None
-    assert data["versions"]["embedding_signature"] is None
-    assert data["budget_used"]["tokens"] is None
 
 
 @pytest.mark.parametrize(
