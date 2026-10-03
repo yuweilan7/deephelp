@@ -285,7 +285,7 @@ async def test_jsonl_trace_is_parseable_and_excludes_text_and_key(tmp_path, mess
 
 def test_external_network_guard_rejects_connect_and_dns():
     with socket.socket() as sock:
-        with pytest.raises(AssertionError, match="External network"):
+        with pytest.raises(RuntimeError, match="Offline pytest"):
             sock.connect(("203.0.113.1", 80))
-    with pytest.raises(AssertionError, match="External DNS"):
+    with pytest.raises(RuntimeError, match="Offline pytest"):
         socket.getaddrinfo("synthetic.invalid", 443)

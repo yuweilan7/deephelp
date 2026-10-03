@@ -26,6 +26,8 @@
 
 交付 TextCleanResult、ExtractedEntity、RuleMatch 的具体兼容接口、版本化规则、小型黄金样本、故障测试和 trace 事件。禁止把实体提取写成一个没有校验的“请帮我抽取”大 Prompt。
 
+黄金集覆盖上述行为，普通回归离线；仅提取请求/解析/策略受影响时用`text_entity_probe --live --case <ID>`选改变行为/反例/相邻样本，明确全量才用`--all-cases`。`--strong-content`独立选择直接强端口内容，不能因提供配置自动重复调用。运行方法见LOCAL_SETUP，不重验无关Embedding/SOP/审批。
+
 ## 接口与分期边界
 
 清洗/抽取可以生成 RuleMatch 候选与话语功能标签，但不在300阶段确定最终主意图并路由 SOP；规则决策在600统一消费。新结果必须带来源；明确更正与普通冲突区分，低可信结果不能覆盖已确认实体。先用现有 Regex/API 方案，不为补齐层数再接一个未经验证的小模型。

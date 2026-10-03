@@ -2,6 +2,30 @@
 
 Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。
 
+## 按改动选择验收
+
+普通回归默认离线；真实模型验收按变更影响选择；完整真实评测按明确目标单独启动。范围判断见[ROADMAP决策表](../../docs/ROADMAP.md#按影响选择验收)，预算、失败复验和证据复用见[AGENTS](../../AGENTS.md#按改动范围验收)。以下示例展示选择语法，执行前仍需说明本次样本理由、预期调用/token范围、共享上限及不重验依据；不自动启动这些命令。
+
+```powershell
+# 离线查看可选范围，不读凭据或调用模型
+py -3.14 -m uv run --locked python -m deephelp_app.probes.text_entity_probe --list-cases
+py -3.14 -m uv run --locked python -m deephelp_app.evaluation.evaluation_cli audit --list-cases
+# 单能力；$probe*是本次已初始化共享预算/新报告及运行上限
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.live_probe --live --capability schema --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
+# 单字段内容；--case可重复，--strong-content才追加直接强端口验证
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.text_entity_probe --live --case quoted-order --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
+# 同一主链的一组模式与完整会话，保留前序消息；--case/--mode可重复
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli run --live --mode memory_event --case m17-baseline-discount --case m17-baseline-missing --output $evaluationReportFile --budget-state $evaluationBudgetFile
+```
+
+M03不再依据stage自动跑四能力；`--all-capabilities`显式全能力，`--extended`需与它配合，或分别选extended_chat/thinking_schema。M04 live必须选`--case`或明确`--all-cases`；传强端口配置不再自动附加重复直连验证。M17 live必须选择`--mode`与`--case`，或明确`--full-evaluation`；完整四组使用后者，额外`--all-cases`才扩展到所有冻结会话，`--approvals`另显式选择审批矩阵。targeted报告仅证明所选内容/安全/持久回读/零调用重放，不能当四组消融或完整发布通过。离线默认范围保持完整，不影响pytest量。
+
+仅选择实际装配了受影响能力的主链入口；M17默认关闭可选模型润色，不能用其报告替代M16润色Prompt的真实内容。回复或业务策略用一个相关主链入口取得必要真实内容，不再重复历史M08/M12/M14/M16/M18相同路径。能力未变可复用同会话内容证据；修复后只重跑失败和受影响相邻样本。M15固定动作可验证真实协议/数据库/下游，故障矩阵不逐例重新调用大模型；模型生成计划/事实若变化仍需本次真实内容。
+
+M03/M04/M17报告新增按阶段、模型、样本的API观察与调用汇总。API提供的input/output/total/reasoning按原项记录，缺失/超时/诊断尾部缺失标null并保留已观察小计；reasoning可能包含在output中，不再相加。M17逐样本采集避免不同模式的100条诊断尾部代替全量usage；report中的累计预算包含其他尝试，不能冒充模型实际调用数。cost是配置估算，charged/token_upper_bound是预算占用，均非账单。原报告和失败证据留.local，不为多个入口重复生成模型响应。
+
+下方完整探针/多组对照/发布命令均是明确启动相应目标的可选运行入口；普通小改动不串跑。完整发布仍要求精确版本/配置/资产/行为适用的成功证据和清单；单纯hash相同不足以证明行为相同，工具变化也不隐式启动新发布。历史main复验步骤已由当前AGENTS取代，main合并后不跑静态/pytest/构建/live。
+
 ## 业务启动入口
 
 从仓库根使用下列入口。先核对既有隧道health、身份映射、累计预算和已验证资产；已有文件继续使用，不能用init重置预算。新机器初始化/增量迁移按下方M08/M15入口执行。
@@ -16,7 +40,7 @@ py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --
 
 直接 `uvicorn deephelp_app.app:create_app --factory` 是M01离线骨架，`/converse`保持501，用于学习生命周期。它不能作为三类业务启动命令。学习入口 `python -m deephelp_app.learning.experiments`；受控能力验收 `python -m deephelp_app.probes.live_probe --help`；冻结评测 `python -m deephelp_app.evaluation.evaluation_cli --help`。
 
-运行资源和数据口径见[资源职责说明](src/deephelp_app/assets/README.md)。Hybrid启动核对已发布selection内容摘要、scope、语料、Analyzer、K/weight与Embedding签名，保留dev/test hash作为发布出处；开发选参/发布时仍核对冻结集的实际内容。完整发布继续验证全部运行工件、模型/词典、SOP/Prompt、配置及成功评测报告。包指纹采用runtime-v2，评测另记tooling_digest；移动代码或运行资源必须新清单和新内容验收，旧清单不能装配新包。冻结集及学习资源无需参与业务启动。
+运行资源和数据口径见[资源职责说明](src/deephelp_app/assets/README.md)。Hybrid启动核对已发布selection内容摘要、scope、语料、Analyzer、K/weight与Embedding签名，保留dev/test hash作为发布出处；开发选参/发布时仍核对冻结集的实际内容。完整发布继续验证全部运行工件、模型/词典、SOP/Prompt、配置及成功评测报告。包指纹采用runtime-v2，评测另记tooling_digest；运行代码/资源变化仍须新清单且旧清单不能装配新包；需新内容验收的行为按影响选择。只改工具或目录不默认启动发布，若明确发布则继续满足精确指纹/成功报告门禁。冻结集及学习资源无需参与业务启动。
 
 ## API
 
@@ -259,7 +283,7 @@ MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有
 
 归属判断和主意图兜底均使用`event-judge.example.json`配置的强模型（当前qwen3.8-max），按完整语义区分应减未减与一般金额询问/退款；提取、Embedding及SOP沿原provider配置。响应版本记录兜底模型及`m12-fallback-v2`，阶段计数仍分别核算实际调用，不额外重分类。
 
-复用已有凭据/合成身份、M09指针和M10迁移。先health和模型可调用性；新任务设置足够的调用/token/费用累计上限，init只生成新本机文件，恢复不得归零。已存在的`.local/m12/session-budget.json`可继续使用，init不能覆盖它。
+复用已有凭据/合成身份、M09指针和M10迁移。需要中间件时先health，所需能力证据缺失/失效时才补模型检查；新任务设置足够的调用/token/费用累计上限，init只生成新本机文件，恢复不得归零。已存在的`.local/m12/session-budget.json`可继续使用，init不能覆盖它。
 
 ```powershell
 # 新累计文件可用hybrid_cli init创建；参数按当前任务设置，不固定长期额度
@@ -312,7 +336,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.evaluation.fasttext_cli rollb
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --fasttext-pointer .local/m13/active.json --auth .local/m08/auth.json --budget-state .local/m13/session-budget.json
 ```
 
-真实探针先health/模型内容检查；沿现有凭据与专用业务表，新任务通过mvp_cli init设任务累计预算，已有预算继续使用、不得归零。init同时生成专用合成身份文件；预算参数按任务选定，不把历史数值作长期额度规则。
+真实探针按影响选择，需中间件时先health/所需能力证据；沿现有凭据与专用业务表，新任务通过mvp_cli init设任务累计预算，已有预算继续使用、不得归零。init同时生成专用合成身份文件；预算参数按任务选定，不把历史数值作长期额度规则。
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m13/auth-new.json --budget-state .local/m13/session-budget-new.json --max-calls $m13Calls --max-tokens $m13Tokens --max-cost $m13Cost
@@ -387,7 +411,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.debug_cli flow --run-id $runI
 # 离线：固定合成模型回放，正式SDK stdio及实际loopback HTTP；无云调用
 py -3.14 -m uv run --locked python -m deephelp_app.probes.debug_probe --output .local/m16/offline-new.json
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m16_output_debug.py modules/deephelp-app/tests/integration/test_m16_debug_views.py
-# 先health和模型内容探针；真实内容验收在特性分支完成
+# 仅所需能力证据缺失/失效时补内容探针；需要中间件时先health；真实内容验收在特性分支完成
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.debug_probe --live --stage feature --output .local/m16/feature-new.json
 ```
 
@@ -407,7 +431,7 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m17_eval
 py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --max-calls $m17Calls --max-tokens $m17Tokens --max-cost $m17Cost
 & infra/client/tunnel.ps1 -Action health
 # 默认只跑数据中固定live_sample，显式--all-cases才跑真实全量
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli run --live --stage feature --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --output .local/m17/live-feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli run --live --full-evaluation --stage feature --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --output .local/m17/live-feature-new.json
 # 相同特性上的新实验可用--baseline对照；合并main后不再重复验收
 ```
 
@@ -430,13 +454,13 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluat
 
 v2自动加载上述M14目录/注册表/合成工具数据，548个编号中立后不同会话序列覆盖22种实际业务情境；消息复用、模板组与合成比例分别报告。无事件组的自动续接/multi分段只作诊断，明确hint续接仍严格核验，原始错例与所有安全门禁保留。扩量报告逐行journal保存实际观察，长报告上限256MiB；test/regression分别统计。500+离线编排覆盖及固定真实抽样都不能解释成企业泛化或500+全量真实模型。
 
-M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。以下入口每次新跑M15真实MySQL/HTTP/进程矩阵，key保留，恢复沿用同一审批累计预算，新报告不能覆盖已有证据：
+M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。仅明确启动审批协议/完整发布评测时，下方入口新跑M15真实MySQL/HTTP/进程矩阵；普通改动按影响选择离线或固定动作，key保留，恢复沿用同一审批累计预算，新报告不能覆盖已有证据：
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli approval --live --stage feature --output .local/m17-approval/feature-new.json
 # 特性验收通过后按AGENTS合并/推送main，不再重复main验收
 # 四组只读比较和审批检查合并为一次发布判定
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli run --live --approvals --output .local/m17/combined-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluation.evaluation_cli run --live --full-evaluation --approvals --output .local/m17/combined-new.json
 ```
 
 `--approval-budget-state`默认`.local/m17-approval/budget.json`，`--rights-key`默认原`.local/m15/rights.key`。审批范围不受四组能力差异影响，不重复四次副作用演练。越权发送/效果、重放增加、待审批副作用、UNKNOWN盲目重发和无事实成功任一发生都拒绝发布。17个操作含8个故障/7个关闭/并发/真实模型HTTP，6个越权attempt与9个恢复重放分开计量。

@@ -26,7 +26,7 @@ ChatPort 返回结构化结果、usage、finish_reason、provider_request_id；E
 Embedding缓存以规范化文本+signature为键，支持批次和容量上限，不无限保存响应。模型超时、账号无法调用、网络不可达或工具能力不支持时返回可诊断错误；恢复与停止条件遵循AGENTS，不能靠FakeGateway代替真实验证。
 
 ## 验收
-最小 live probe 分别测试普通 chat、JSON/schema、单个工具调用、Embedding 批次顺序和长度；检查 NaN/维度异常、空文本、重复输入。live probe 调用量有明确上限。注入 429/timeout/截断JSON/未知工具名，验证不形成重试风暴，不把错误字符串当向量或正常答案。
+新接入按所需能力分别验普通chat、JSON/schema、单工具及Embedding批次；后续按变更影响选择`--capability`，不默认四能力套餐，明确全能力才用`--all-capabilities`。NaN/维度/空文本/重复输入及故障边界优先离线。live probe 调用量有明确上限。注入 429/timeout/截断JSON/未知工具名，验证不形成重试风暴，不把错误字符串当向量或正常答案。
 
 交付 providers 配置示例（无密钥）、模型能力矩阵、环境/版本签名、网关实现子任务、单测和受控 live 脚本。未完成 live 时写 PENDING_LIVE，不能写“千问兼容所以都支持”。本轮不下载 BGE 或大语言模型，不装训练框架。
 

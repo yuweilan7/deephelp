@@ -1,5 +1,7 @@
 # M05 实施计划
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：`PROBE_FIRST` → `DIRECT`。基线 `73e9930726c253fa790aa036b415662370a5c236`，分支 `feature/m05-dense-ingest`。
 
 1. **这次做成什么**：版本化合成客诉 reference 语料 → 校验预览 → 真实 Embedding/Milvus 幂等导入 → Dense 命中与按意图候选 → 独立 dev Recall@K。提供 JSONL/CSV 和无表头 XLSX 明确列映射；不实现最终意图接管、BM25/Hybrid 或 M06。

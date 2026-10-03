@@ -8,6 +8,12 @@ M06使用本机自建正式SDK stdio服务及M02合成数据，无模型额度�
 
 M07默认演示使用固定模型回放加本机真实stdio，不消费模型额度；显式--live才调用千问。输入是合成已分类Question和专用业务fixture，入口见[应用README](../modules/deephelp-app/README.md#m07最小sop执行)。
 
+## 验收范围与证据复用
+
+普通回归默认离线；真实模型验收按变更影响选择；完整真实评测按明确目标单独启动。先按[决策表](ROADMAP.md#按影响选择验收)说明行为、样本/反例、预期调用与token范围、含修复余量的共享上限及无需重验项；再选下方一个权威入口。同会话所需能力的模型/endpoint/协议/相关配置和目标未变时复用已通过内容证据，不重复chat/schema/tool/embed套餐。运行报告路径或阶段变化不要求重新预检。
+
+下方各模块的完整命令保留为明确启动相应能力/质量评测时的入口，不能串成普通特性门禁；历史PLAN/handoff含main复验的命令已被AGENTS取代，历史记录不改。模型HTTP200、实库连通、固定动作恢复和离线PASS分别证明其范围，不互相冒充。pytest与CI只做离线检查；根conftest在收集前阻止远程DNS/TCP，保留本机HTTP/stdio。pytest --live仍只检查配置，不解除网络隔离。
+
 ## 本机配置与新机器接手
 
 同机先读 `.local/DEPENDENCIES.md`：凭据路径、实例、端口、最近检查及恢复入口；机器索引为 `.local/dependency-access.json`。两者被 Git 忽略，不含秘密正文。
@@ -73,22 +79,22 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app.probes.live_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.live_probe --live --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.live_probe --live --capability schema --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
 ```
 
-追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。特性扩展验收共6次请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
+明确完整能力验收使用`--all-capabilities`替代`--capability schema`；只选所需能力可重复`--capability chat|schema|tool|embed|extended_chat|thinking_schema`。完整能力命令追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。特性扩展验收共6次请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
 
-特性分支分别检查四项能力，main不复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
+特性分支仅检查受影响能力；全部新接入能力仍分别验收，main不复验。共享预算在实际发请求前落盘，单进程文件锁阻止并发穿透；超时/用量未知保留预留占用。live 重试为 0，默认 pytest 仍离线；pytest 的 `--live` 只是配置检查，真实验收使用上述独立入口。模型响应结构诊断只记录 usage、维度、索引、工具名和安全请求 ID，不记录 prompt、正文、参数、凭据或隐藏推理。
 
 ## M04固定内容验收
 
-默认演示离线，入口见[应用README](../modules/deephelp-app/README.md)。真实验收使用版本化合成黄金样本及固定补充边界；特性分支检查完整22例，包括长文/否定/更正/未知、两类API字段和直接/引号混合订单冲突。配置可选strong-providers时另验真实强端口内容；这项与实际层间升级分别记录。报告包含来源、未解析字段、分层命中/调用/耗时及脱敏trace；命中率口径为该层接受至少一个观察的样本数/经过该层的样本数，不是模型准确率。
+默认演示离线，入口见[应用README](../modules/deephelp-app/README.md)。真实验收使用版本化合成黄金样本及固定补充边界；用`--list-cases`离线列出ID，`--case`可重复选择改变行为、反例及相邻样本；明确全量实体验收才用`--all-cases`跑22例，包括长文/否定/更正/未知、两类API字段和直接/引号混合订单冲突。配置可选strong-providers支持层间升级；仅显式`--strong-content`另验直接强端口内容；这项与实际层间升级分别记录。报告包含来源、未解析字段、分层命中/调用/耗时及脱敏trace；命中率口径为该层接受至少一个观察的样本数/经过该层的样本数，不是模型准确率。
 
 先查看帮助，设置本任务的累计文件、报告及调用/token/费用上限。累计文件字段与M03相同，恢复继续沿用，不能归零；--output必须与预算/锁文件不同。可选强端口是独立ProviderConfig文件，只改chat候选及保守单价配置，放.local，核对能力并实测后注入；不用或不可恢复时按AGENTS收口。当前M04已验证qwen3.8-flash/qwen3.8-max，不能外推其他模型。
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app.probes.text_entity_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.text_entity_probe --live --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.text_entity_probe --live --case quoted-order --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
 # 需要强端口时追加：--strong-providers $entityStrongProviders
 # 恢复当前特性的验收时使用新报告，继续原累计预算；main不复验。
 ```
@@ -97,7 +103,7 @@ live使用transport retries=0、子timeout和共享总deadline；预算预留先
 
 ## M05导入与Dense检索
 
-从根运行，默认preview离线；其他命令必须显式`--live`，复用已有Milvus应用账号、SSH只读容量探针和M03 provider配置。先health/可调用性/容量，再写M05专用合成集合。每次运行设置足够的调用/token/费用累计上限，沿用M03字段：max_calls/max_tokens/max_cost_cny、attempts/tokens/charged_tokens/cost_upper_cny/uncertain_attempts；文件在.local，恢复不得归零。M05调用计数包括Milvus应用层操作，token/费用只计模型调用；默认重试0、总timeout300秒，可显式调整。PyMilvus2.6.17在SDK timeout非空时按时间窗口重试而非retry_times；本适配器使用SDK timeout=None/retry_times=0，外层async deadline把每个操作限制在15秒。
+从根运行，默认preview离线；其他命令必须显式`--live`，复用已有Milvus应用账号、SSH只读容量探针和M03 provider配置。先health/所需能力证据/容量，再写M05专用合成集合。每次运行设置足够的调用/token/费用累计上限，沿用M03字段：max_calls/max_tokens/max_cost_cny、attempts/tokens/charged_tokens/cost_upper_cny/uncertain_attempts；文件在.local，恢复不得归零。M05调用计数包括Milvus应用层操作，token/费用只计模型调用；默认重试0、总timeout300秒，可显式调整。PyMilvus2.6.17在SDK timeout非空时按时间窗口重试而非retry_times；本适配器使用SDK timeout=None/retry_times=0，外层async deadline把每个操作限制在15秒。
 
 设置本任务的`$denseBudgetFile`、`$denseManifestFile`、`$densePointerFile`和`$denseReportFile`后执行：
 
@@ -128,7 +134,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 # 恢复时使用新报告路径，累计预算保持同一文件。
 ```
 
-feature验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败，核对实际事实、证据与ledger并核对资源退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
+明确启动完整SOP内容验收时该入口验三类正常查询、过期券、空活动、用户/工具注入及三个下游失败；小改动优先使用M17选择受影响会话，不叠加本入口。完整范围核对实际事实、证据与ledger并核对资源退出。探针重试0、transport retries=0、默认总300秒，支持--timeout；执行器本身的有限重试由离线测试验证。PASS与退出0都满足才验收。原始结果、模型结构诊断、MCP诊断、用量和阶段报告留.local；无P00 full、企业数据、数据库迁移或业务converse。
 
 
 ## M08闭环启动与验收
@@ -145,11 +151,11 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 # 恢复当前特性的验收时沿用累计预算，换新输出文件。
 ```
 
---auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；真实feature验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出。报告PASS和退出0同时满足才验收。
+--auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；以下两条live是不同可选范围，不要求连续执行。明确完整M08验收时验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出。报告PASS和退出0同时满足才验收。
 
 ## M09中文BM25与融合对照
 
-先health与所需Embedding内容/分词/服务端稀疏能力检查，再用现有专用Milvus。默认preview离线；命令、冻结语料与三路对照见[应用README](../modules/deephelp-app/README.md#m09中文bm25与融合对照)。复用既有provider和M05容量/manifest机制，但创建独立M09版本集合，保留旧Dense集合。默认K=3；导入和查询使用同一版本的服务端Jieba配置，分词可直接analyze核对。
+仅索引/查询受影响时检查health与所需Embedding内容/分词/服务端稀疏能力；已适用的能力证据可复用，再用现有专用Milvus。默认preview离线；命令、冻结语料与三路对照见[应用README](../modules/deephelp-app/README.md#m09中文bm25与融合对照)。复用既有provider和M05容量/manifest机制，但创建独立M09版本集合，保留旧Dense集合。默认K=3；导入和查询使用同一版本的服务端Jieba配置，分词可直接analyze核对。
 
 本轮先设置足够的`$hybridCalls`、`$hybridTokens`、`$hybridCost`及专用`$hybridBudgetFile`；`hybrid_cli init --budget-state $hybridBudgetFile --max-calls $hybridCalls --max-tokens $hybridTokens --max-cost $hybridCost`只创建本机累计文件，已有文件拒绝重置。其他live命令继续传同一--budget-state；不同命令使用新的--output，不能覆盖证据或控制文件。SDK timeout=None/retry_times=0、15秒外层子时限，整体默认1800秒；原始报告/诊断与本次运行上限只留.local。
 
