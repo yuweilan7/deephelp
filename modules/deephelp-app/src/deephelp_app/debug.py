@@ -96,8 +96,25 @@ def project(snapshot: DebugSnapshot, view: DebugView, *, dropped: int = 0) -> di
     data = snapshot.data
     keys = {
         "intent": ("input", "text", "intent", "versions"),
-        "turns": ("input", "memory", "memory_activity", "event", "question", "versions"),
-        "flow": ("stages", "tools", "sop", "sop_nodes", "response", "budget", "versions"),
+        "turns": (
+            "input",
+            "memory",
+            "memory_activity",
+            "event",
+            "question",
+            "versions",
+            "approval",
+        ),
+        "flow": (
+            "stages",
+            "tools",
+            "sop",
+            "sop_nodes",
+            "response",
+            "budget",
+            "versions",
+            "approval",
+        ),
     }[view]
     return {
         "schema_version": snapshot.schema_version,
@@ -108,7 +125,7 @@ def project(snapshot: DebugSnapshot, view: DebugView, *, dropped: int = 0) -> di
         "incomplete": list(snapshot.incomplete),
         "dropped_events": dropped,
         "data": {key: data.get(key) for key in keys},
-        "approval_recovery": "unavailable_until_m15",
+        "approval_recovery": "mysql_ledger" if data.get("approval") else "unavailable_until_m15",
         "redaction": "stable_identifiers; span_offsets_reference_original_before_redaction",
     }
 

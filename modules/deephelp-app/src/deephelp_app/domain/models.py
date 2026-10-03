@@ -100,6 +100,23 @@ class RunStatus(StrEnum):
     CANCELLED = "CANCELLED"
 
 
+class OperationStatus(StrEnum):
+    PREPARED = "PREPARED"
+    IN_FLIGHT = "IN_FLIGHT"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    UNKNOWN = "UNKNOWN"
+    CANCELLED = "CANCELLED"
+
+
+class ApprovalStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+
+
 class ErrorCode(StrEnum):
     INVALID_ARGUMENT = "INVALID_ARGUMENT"
     UNAUTHENTICATED = "UNAUTHENTICATED"
@@ -660,6 +677,7 @@ class Question(DTO):
     versions: VersionManifest
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    approval_operation_id: Identifier | None = None
 
     @model_validator(mode="after")
     def provenance_and_versions(self) -> Question:
@@ -696,8 +714,8 @@ class Question(DTO):
                 or self.versions.sop is None
             ):
                 raise ValueError("Active intent needs pinned compatible registry/SOP versions")
-        if self.status == QuestionStatus.WAITING_APPROVAL:
-            raise ValueError("Approval execution is disabled until M15")
+        if self.status == QuestionStatus.WAITING_APPROVAL and not self.approval_operation_id:
+            raise ValueError("Waiting approval requires a bound operation")
         return self
 
 
@@ -1017,20 +1035,21 @@ class ResponseEnvelope(DTO):
     sop_plan: SOPPlan | None = None
     sop_node_path: tuple[Identifier, ...] = ()
     reply_presentation: ReplyPresentation | None = None
+    approval_operation_id: Identifier | None = None
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
         if self.next_action == NextAction.REQUEST_APPROVAL and self.sop_plan is None:
             raise ValueError("Approval request requires a bound proposal")
         if self.sop_plan is not None and (
-            self.outcome != Outcome.HANDOFF
+            self.outcome not in {Outcome.HANDOFF, Outcome.PENDING_APPROVAL}
             or self.next_action != NextAction.REQUEST_APPROVAL
             or self.sop_plan.question_id != self.question_id
             or self.sop_plan.sop_version != self.versions.sop
             or self.sop_plan.snapshot_hash != self.versions.sop_snapshot
             or not set(self.sop_plan.evidence_ids) <= {r.evidence_id for r in self.evidence_refs}
         ):
-            raise ValueError("M14 proposal must be a bound handoff, never an approved operation")
+            raise ValueError("Proposal must be a bound handoff or pending approval")
         validate_facts(self.facts, self.evidence_refs)
         calls = {ref.record_id for ref in self.evidence_refs if ref.source == EvidenceSource.TOOL}
         if len(set(self.tool_call_ids)) != len(self.tool_call_ids) or not calls <= set(
@@ -1042,7 +1061,15 @@ class ResponseEnvelope(DTO):
             or self.question_status == QuestionStatus.WAITING_APPROVAL
             or self.run_status == RunStatus.WAITING_APPROVAL
         ):
-            raise ValueError("Approval execution is disabled until M15")
+            if (
+                self.outcome != Outcome.PENDING_APPROVAL
+                or self.question_status != QuestionStatus.WAITING_APPROVAL
+                or self.run_status != RunStatus.WAITING_APPROVAL
+                or self.sop_plan is None
+                or self.approval_operation_id != self.sop_plan.operation_id
+                or self.next_action != NextAction.REQUEST_APPROVAL
+            ):
+                raise ValueError("Pending approval requires a bound plan/run/operation")
         if self.run_status is not None and self.run_id is None:
             raise ValueError("Run status needs a run id")
         if self.question_status == QuestionStatus.RESOLVED:
@@ -1074,6 +1101,48 @@ class ResponseEnvelope(DTO):
             )
             if self.facts or not (rejected or query_denied):
                 raise ValueError("Forbidden entry/query cannot publish object facts")
+        return self
+
+
+class ApprovalCommand(DTO):
+    session_id: Identifier
+    run_id: Identifier
+    expected_question_version: PositiveCount
+    parameters_hash: Identifier
+    sop_version: Identifier
+    snapshot_hash: Identifier
+    decision: Literal["approve", "reject", "revoke"]
+
+
+class ResumeCommand(DTO):
+    session_id: Identifier
+    run_id: Identifier
+
+
+class OperationRecord(DTO):
+    plan: SOPPlan
+    run_id: Identifier
+    session_id: Identifier
+    question_version: PositiveCount
+    status: OperationStatus = OperationStatus.PREPARED
+    approval_status: ApprovalStatus = ApprovalStatus.PENDING
+    expires_at: AwareDatetime
+    approver: VerifiedIdentity | None = None
+    dispatch_attempts: Count = 0
+    query_attempts: Count = 0
+    last_error: str | None = Field(default=None, max_length=256)
+    pending_response: ResponseEnvelope
+    response: ResponseEnvelope | None = None
+
+    @model_validator(mode="after")
+    def operation_binding(self) -> OperationRecord:
+        if (
+            self.pending_response.run_id != self.run_id
+            or self.pending_response.question_id != self.plan.question_id
+            or self.pending_response.approval_operation_id != self.plan.operation_id
+            or self.question_version != self.plan.question_version + 1
+        ):
+            raise ValueError("Operation must bind the committed plan and run")
         return self
 
 

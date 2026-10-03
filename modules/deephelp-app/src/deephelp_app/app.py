@@ -14,9 +14,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from deephelp_app.approval import ApprovalService
 from deephelp_app.conversation import Conversation
-from deephelp_app.debug import DebugView, export_json, project, scope_hash
+from deephelp_app.debug import DebugView, export_json, project, sanitize, scope_hash
 from deephelp_app.domain.models import (
+    ApprovalCommand,
     BudgetUsed,
     ConverseInput,
     DebugSnapshot,
@@ -25,10 +27,12 @@ from deephelp_app.domain.models import (
     LifecycleCommand,
     MemoryWindow,
     NextAction,
+    OperationRecord,
     Outcome,
     Question,
     RequestEnvelope,
     ResponseEnvelope,
+    ResumeCommand,
     VerifiedIdentity,
 )
 from deephelp_app.errors import AppError, ConfigurationError
@@ -360,6 +364,38 @@ def create_app(
             raise AppError(ErrorCode.NOT_IMPLEMENTED, "Case repository is not configured", 501)
         return await service.cases.transition(identity, question_id, body)
 
+    def approval_service(request: Request) -> ApprovalService:
+        resources: Resources = request.app.state.resources
+        service = resources.conversation
+        if service is None or service.approvals is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Durable approval is not configured", 501)
+        return service.approvals
+
+    @app.get("/operations/{operation_id}", response_model=OperationRecord)
+    async def operation_status(
+        operation_id: str, request: Request, session_id: str, run_id: str
+    ) -> JSONResponse:
+        op = await approval_service(request).repo.scoped(
+            identity_provider(request), session_id, run_id, operation_id
+        )
+        return JSONResponse(op.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+
+    @app.post("/operations/{operation_id}/approval", response_model=OperationRecord)
+    async def approve_operation(
+        operation_id: str, body: ApprovalCommand, request: Request
+    ) -> OperationRecord:
+        return await approval_service(request).decide(
+            identity_provider(request), operation_id, body
+        )
+
+    @app.post("/operations/{operation_id}/resume", response_model=OperationRecord)
+    async def resume_operation(
+        operation_id: str, body: ResumeCommand, request: Request
+    ) -> OperationRecord:
+        return await approval_service(request).resume(
+            identity_provider(request), operation_id, body, request.state.budget
+        )
+
     @app.get("/debug/runs/{run_id}/{view}")
     async def debug_view(
         run_id: str,
@@ -379,6 +415,32 @@ def create_app(
         if snapshot is None:
             # Foreign IDs and expired diagnostics return the same result.
             raise AppError(ErrorCode.INVALID_ARGUMENT, "追踪不可用、已过期或已丢弃。", 404)
+        snapshot = DebugSnapshot.model_validate(snapshot)
+        service = request.app.state.resources.conversation
+        if service is not None and service.approvals is not None:
+            op = await service.approvals.repo.by_run(run_id)
+            if op is not None:
+                await service.approvals.repo.scoped(
+                    identity, session_id, run_id, op.plan.operation_id
+                )
+                approval_view = sanitize(
+                    {
+                        "operation_id": op.plan.operation_id,
+                        "status": op.status.value,
+                        "approval_status": op.approval_status.value,
+                        "expires_at": op.expires_at.isoformat(),
+                        "dispatch_attempts": op.dispatch_attempts,
+                        "query_attempts": op.query_attempts,
+                        "history": await service.approvals.repo.history(op.plan.operation_id),
+                        "response": op.response.model_dump(mode="json") if op.response else None,
+                    },
+                    key,
+                )
+                snapshot = snapshot.model_copy(
+                    update={
+                        "data": {**snapshot.data, "approval": approval_view},
+                    }
+                )
         value = project(
             DebugSnapshot.model_validate(snapshot), view, dropped=getattr(sink, "dropped", 0)
         )

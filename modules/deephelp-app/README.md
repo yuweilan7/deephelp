@@ -424,3 +424,37 @@ validate对M17固定8案例11消息及另3条未见发布输入，检查事实�
 演示指针是本机控制文件，MySQL保存候选/审核/任务/来源事实；短事务领取及令牌确认不等于跨文件/向量/模型原子发布。完整ReleaseManifest、单一事实源active切换和运行中发布并发约束属于后续独立加固特性。
 
 双版本构建、全工程回归和真实验收在本机依次执行，给训练保留可用内存。同路径/签名的FastText分词词典在进程内复用只读词频；词典内容变化生成独立实例，既有实例和预处理签名保持原版本，预测结果不缓存。
+
+## M15 持久审批与恢复
+
+输入 M14 的绑定计划，输出 `PENDING_APPROVAL / WAITING_APPROVAL`。专用批准端点核验原 run、操作、主体、问题版本、参数和 SOP 快照；`resume` 才领取执行权。只对合成权益服务登记调整效果，默认只读装配仍保持原行为。普通“好的”或问题更正不会批准；待审批问题需先拒绝/撤销，再显式重开规划。流程/多轮调试视图附加当前 MySQL 操作、审批决定、领取/查询记录与最终事实。
+
+```powershell
+# 先按 LOCAL_SETUP 检查隧道；这一步只增加项目表，不重建环境
+& infra/client/tunnel.ps1 -Action health
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli migrate
+# 本机演示准备：保留既有32-byte服务key，发布独立审批版SOP
+py -3.14 -m uv run --locked python -m deephelp_app.approval_cli init
+# 在一个终端运行合成下游；它使用现有MySQL保存效果，重启不清零
+py -3.14 -m uv run --locked python -m deephelp_app.synthetic_rights --port 8015 --key .local/m15/rights.key
+# 另一个终端运行原应用；auth与累计预算先用M08 init准备，已有文件不重置
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --sop-directory .local/m15/demo-sop --rights-port 8015 --rights-key .local/m15/rights.key
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli ask --text '订单 DEMO-D01 优惠未到账，请查询'
+# 以下值取自本次返回计划和status结果，不复用其他问题的值
+py -3.14 -m uv run --locked python -m deephelp_app.approval_cli status --operation $operationId --run $runId --session $sessionId
+py -3.14 -m uv run --locked python -m deephelp_app.approval_cli decide --decision approve --operation $operationId --run $runId --session $sessionId --expected-version $questionVersion --parameters-hash $parametersHash --sop-version $sopVersion --snapshot-hash $snapshotHash
+py -3.14 -m uv run --locked python -m deephelp_app.approval_cli resume --operation $operationId --run $runId --session $sessionId
+```
+
+`decide --decision reject/revoke` 可结束未执行的计划。执行已开始时不允许谎称撤销效果；响应未知时保留 UNKNOWN，重新启动应用/下游后用同一 `resume` 查询对账。已提交效果不会再次执行；明确查无效果且当前授权/版本/期限仍有效时最多两次发送。运行 lease 默认120秒，硬杀进程后须等原 lease 到期，活跃执行期间重复 resume 返回409；每轮请求仍受子timeout和共享预算限制。
+
+```powershell
+# 最小saver门禁：两个命令必须在不同进程执行，使用新的thread和报告路径
+py -3.14 -m uv run --locked python -m deephelp_app.checkpoint_probe pause --thread $newThread --output .local/m15/gate-pause-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.checkpoint_probe resume --thread $newThread --output .local/m15/gate-resume-new.json
+# 全矩阵含真实模型HTTP、真实MySQL/Redis/Milvus与自建stdio、实际应用/下游进程退出和恢复
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.approval_probe --live --stage feature --output .local/m15/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.approval_probe --live --stage main --output .local/m15/main-new.json
+```
+
+探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复/main沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留MySQL事实、key和恢复配置。MySQL saver是应用自建适配，锁定LangGraph版本的兼容试验不等于官方MySQL支持；未接企业支付、退款、补偿或通用13段RUNNING自动重领。

@@ -29,8 +29,8 @@ LangGraph interrupt恢复时可能从该节点开头重跑；节点前半部分�
 
 交付经过兼容性门禁的持久checkpointer适配（不能因业务库是MySQL就假定后端已可用）、审批schema/端点、幂等ledger、恢复/对账脚本、权限测试及真实进程重启测试。未能实际模拟重启就标未验收。只操作合成权益系统，不接真实支付/退款。
 
-## 当前仓库补充门禁
-MySQL 业务账本已定，持久 checkpoint saver 未验收。先以锁定版本和真实 MySQL 做最小兼容/崩溃恢复试验；社区 saver 不等于官方支持。不得自动添加 PostgreSQL/SQLite 或新工作流引擎。未通过该门禁只能交付非持久试验，不能标记持久审批完成。
+## 实施兼容门禁
+沿用 MySQL 业务账本，持久 checkpoint saver 必须先以锁定版本和真实 MySQL 做最小兼容/崩溃恢复试验；社区或自建 saver 不等于官方支持。不得自动添加 PostgreSQL/SQLite 或新工作流引擎。未通过该门禁只能交付非持久试验，不能标记持久审批完成；当前验收事实与证据分别记录在 PROJECT_STATE 和 M15 handoff。
 
 ## 接口与分期边界
 

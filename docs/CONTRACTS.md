@@ -25,8 +25,8 @@ M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、
 | 阶段 | 当前要落地 | 只作未来约束 |
 |---|---|---|
 | M02 | 请求/响应、实体来源、最小Question、IntentDecision、工具/证据结果、当前版本/预算摘要、目录与fixture | DB语义可以设计，不能称已验证数据库；审批恢复/outbox领取不实现 |
-| M06–M08 | 工具协议/SOP实际消费字段；MySQL消息/run/question账本、请求幂等 | 核心业务工具只读，Operation/Approval状态不能当可用功能 |
-| M10–M12 | 生命周期、缓存/向量投影、事件上下文与增量版本 | 审批/副作用仍禁用，WAITING_APPROVAL仅预留 |
+| M06–M08 | 工具协议/SOP实际消费字段；MySQL消息/run/question账本、请求幂等 | MCP工具保持只读；合成写操作通过M15专用执行口 |
+| M10–M12 | 生命周期、缓存/向量投影、事件上下文与增量版本 | 只读装配不启用审批；普通消息不恢复WAITING_APPROVAL |
 | M15（另选） | 持久审批、操作领取、checkpoint恢复与对账 | 未验证前所有业务写工具继续拒绝 |
 
 所有阶段沿用同一套类型，不另复制DTO。下面关于审批领取、执行重放的细节是M15要求；它们不阻塞只读核心的M16/M17。
@@ -79,7 +79,7 @@ ExecutionBudget：deadline、remaining_attempts、retry_remaining、tool_steps�
 - Fact 声明 text/money/flag 并引用证据 ID。ToolResult 成功需要 call_id 与同一调用的 tool evidence；SOP/Response 中工具调用 ID 与 tool evidence 必须一致，RESOLVED/ANSWERED 需要有证据的事实。这些是本地结构约束，真实调用 ledger 与合法证据回查由 M06–M08 保证。
 - `response_from_sop` 只做状态映射：WAITING_SLOT → CLARIFY / WAITING_SLOT / run SUCCEEDED / 工具 0；不是 SOP 执行器。缺槽位不能接收成功事实或调用。当前只读工具白名单为 get_order_benefits、check_coupon，参数 hash、当前实体/归属/意图及预算均须检查。
 - `ExecutionBudget.snapshot()` 复用 M01 同一运行时预算，将 deadline 表达为当时剩余秒数；序列化摘要不含单调时钟或运行时对象，不能拿摘要重建/延长原预算。token/cost/tool 上限未知保持 null；真实运行时额度计量属于 M03/M07。
-- WAITING_APPROVAL/PENDING_APPROVAL 枚举仅保留名称，当前 Question/Response 拒收；没有批准/resume 输入或写工具。审批执行与数据库唯一约束没有因此被实现。
+- WAITING_APPROVAL/PENDING_APPROVAL 由 M15 显式装配启用，必须绑定 plan/run/operation；普通消息没有批准/resume 字段。未配置 M15 时仍沿 M14 计划移交，详见下文 M15 契约。
 - 合成目录/样本/指标定义见应用 `sample_data/README.md`，固定回归数据不得冒充 M17 未见评测集。
 
 ## 状态必须区分
@@ -88,6 +88,18 @@ Question：ACTIVE / WAITING_SLOT / WAITING_APPROVAL / RESOLVED / HANDED_OFF / CA
 Run：RUNNING / WAITING_APPROVAL / SUCCEEDED / FAILED / CANCELLED。SUCCEEDED只表示本轮正确完成，完全可以输出CLARIFY，不等于question已解决。
 Operation：PREPARED / IN_FLIGHT / SUCCEEDED / FAILED / UNKNOWN / CANCELLED。UNKNOWN不能被通用重试转为再次写入；先对账。
 Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑定操作参数和版本；恢复执行仍需再次校验授权与状态。
+
+## M15 持久审批契约
+
+唯一 DTO 增量增加 `ApprovalCommand/ResumeCommand/OperationRecord`、操作/审批枚举及 `approval_operation_id`。`Question.WAITING_APPROVAL` 必须绑定操作；pending response 同时绑定原 run、问题、SOPPlan 与等待状态。运行参数、客户端、连接池和锁不进入 DTO。默认 M14 计划仍移交，只有显式 rights-port/key 装配才启用等待。
+
+`GET /operations/{operation_id}?session_id=...&run_id=...` 读取当前主体的事实；`POST .../approval` 接收 session_id/run_id/expected_question_version/parameters_hash/sop_version/snapshot_hash/decision，decision=approve/reject/revoke。审批者取可信身份源，不能从请求正文伪造。`POST .../resume` 仅收 session_id/run_id，不接受新计划、参数、审批值或任意 graph Command。外域 tenant/user/session/run 统一404；未装配返回501，未鉴权401，状态/版本/并发领取冲突409。
+
+`ApprovalRepository.before_finish` 在原终态事务中登记 PREPARED/PENDING、WAITING_APPROVAL run/question 与 M10 outbox；等待不写 finished_at。操作ID主键、run唯一键及 session→question→operation 的短事务锁保证决定/领取串行。dispatch 在同一事务核验主体、问题状态/版本、参数、当前SOP快照、审批/期限、lease并登记IN_FLIGHT；不跨HTTP/人类等待持锁。普通消息不能改待审批问题；拒绝/撤销/过期变为 CANCELLED，问题转人工，后续可重新规划。已发送操作不能撤销为“无效果”。
+
+LangGraph使用独立 `dh_m15_checkpoints/dh_m15_checkpoint_writes`，thread=`m15-approval-v1:{run_id}`；只保存操作引用、游标及必要结果。等待、执行、对账分节点，恢复先核对MySQL审批事实，客户端resume值不会授权。checkpoint缺失可从已提交计划重建；业务已完成但checkpoint滞后时按ledger推进终点。
+
+合成下游只接受服务签名和当前APPROVED/IN_FLIGHT操作，再核对合成订单归属/可调整状态；独立短事务保存网络调用与唯一效果，进程重启不丢。UNKNOWN/IN_FLIGHT先按operation_id查询，未知查询不写；明确ABSENT才允许按当前绑定和最多两次dispatch重试。效果绑定摘要、实际成功call_id形成受校验事实；不依赖Redis/Milvus或checkpoint证明业务效果。M16多轮/流程视图从同一MySQL操作与历史附加审批状态，详细trace轮转不删除账本。
 
 响应outcome：ANSWERED / CLARIFY / PENDING_APPROVAL / HANDOFF / REJECTED / ERROR。问槽位用CLARIFY+WAITING_SLOT，不用HTTP500或审批interrupt；业务拒识/无SOP可以HANDOFF，不等于基础设施故障。
 
@@ -218,7 +230,7 @@ manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和�
 
 `SOPResult.node_path`与`ResponseEnvelope.sop_node_path`记录实际配置节点。失败尝试仍保留tool_call_ids；部分来源失败不发布成功事实，最终结论由代码分支和成功证据产生。没有额外主分类或调度服务。
 
-`SOPStatus.NEEDS_APPROVAL`配`NextAction.REQUEST_APPROVAL`及唯一DTO `SOPPlan`。计划绑定operation_id、模拟动作、主体、问题ID/执行输入版本、只读预检参数及hash、SOP版本/完整快照和证据IDs；当前唯一模拟动作simulate_discount_adjustment没有可调用写工具。`response_from_sop`将其映射为HANDOFF/HANDED_OFF/run SUCCEEDED和`sop_plan`，明确未申请、批准或执行。PENDING_APPROVAL与WAITING_APPROVAL仍被DTO拒绝，M15前没有持久批准恢复。M15必须重新核对当时的最新问题版本、归属/状态/期限/参数与操作领取，不能直接把此计划当授权或复用普通消息批准。
+`SOPStatus.NEEDS_APPROVAL`配`NextAction.REQUEST_APPROVAL`及唯一DTO `SOPPlan`。计划绑定operation_id、模拟动作、主体、问题ID/执行输入版本、只读预检参数及hash、SOP版本/完整快照和证据IDs。`response_from_sop`保持HANDOFF/HANDED_OFF/run SUCCEEDED映射；未装配M15时明确未申请、批准或执行。显式装配M15后由Conversation转换为持久等待，重新核对当前问题版本、归属/状态/期限/参数与唯一领取，不能把计划当授权或复用普通消息批准。
 
 ## M16 事实回复与调试契约
 

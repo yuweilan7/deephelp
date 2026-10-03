@@ -21,11 +21,12 @@
 | M11 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M11.md) | 独立自动归属/更正/澄清、事件图及MySQL/outbox；完整主流程接入留M12 |
 | M12 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M12.md) | 同一13段主链自动归属、四层级联及逐请求计数；校准/业务均为小合成组 |
 | M13 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M13.md) | Windows真实FastText训练/量化及原600可选兜底；80条小合成组，默认关闭 |
-| M14 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M14.md) | 版本注册表/静态校验/固定快照、三流程19合成情境；审批仅计划，实际批准/写入留M15 |
-| M16 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M16.md) | 事实模板/受限语气、同源三视图与脱敏轮转；审批/恢复留M15 |
-| M17 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M17.md) | 冻结评测/四组对照已实现；500+与完整15+规模仍未完成 |
+| M14 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M14.md) | 版本注册表/静态校验/固定快照、三流程19合成情境；批准后模拟变更由M15接通 |
+| M15 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M15.md) | MySQL持久checkpoint、明确审批/唯一领取/UNKNOWN查询对账；8进程/通信故障矩阵及真实模型HTTP合成效果通过，非企业支付/通用RUNNING重领 |
+| M16 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M16.md) | 事实模板/受限语气、同源三视图与脱敏轮转；M15已接审批/恢复历史 |
+| M17 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M17.md) | 冻结评测/四组对照已实现；审批/副作用评测、500+与完整15+规模仍未完成 |
 | M18 | CORE_IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 人工触发合成反馈、三路审核/构建及回归/回退已完成；自动发布加固尚未实现 |
-| M15、M19 | HARDENING_NOT_IMPLEMENTED | 可后移，业务写工具前必须M15 |
+| M19 | HARDENING_NOT_IMPLEMENTED | 部署/容量/备份恢复加固尚未实现 |
 | M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
@@ -99,8 +100,24 @@ M18新增脱敏候选/独立路线审核、MySQL修订历史与CAS/短租约任�
 
 ## 后续真实门禁
 
+M15使用LangGraph1.2.12/Checkpoint4.2.0及既有aiomysql自建MySQL saver。独立进程interrupt→恢复→完成重放兼容门禁通过；M14计划在显式装配下进入原run的持久等待，当前主体、问题版本、参数、SOP快照、审批/期限与唯一dispatch由MySQL短事务保证。普通“好的”不批准，待审批更正拒绝；拒绝/撤销/过期结束未执行计划，已发送操作不能伪称撤销。UNKNOWN/IN_FLIGHT先查询合成下游，明确无效果才允许有界再次发送。独立下游效果/网络调用跨重启持久，checkpoint缺失/滞后按业务账本修复。
+
+特性真实模型HTTP创建计划/批准/恢复/事实/原receipt终态与重复resume通过；删除专用Redis缓存和Milvus投影、实际outbox滞后不影响MySQL审批。8个应用/下游实际进程与通信故障情境均最终效果1；7例execute1，明确无效果重试例execute2；拒绝/撤销/过期、并发批准/恢复、四维隔离全通过。M16流程/多轮视图新增MySQL审批历史、dispatch/query计数与最终事实。原件.local/m15，网络/云服务真实、模型主链单列、多故障固定动作仅证明恢复协议；非企业接口或完整模型质量。默认只读装配仍原行为，只显式合成权益服务可写；未启用任意13段RUNNING重领。
+
+### M02–M18 的 M15 依赖核对
+
+| 范围 | 本次核对结果 |
+|---|---|
+| M02–M13 | 已有核心实现；预留DTO/只读工具/记忆边界已兼容M15，没有新发现的阻塞特性 |
+| M14 | 审批后合成变更由M15接通并真实验证；19情境属于三类意图机制覆盖，不能当19种企业主诉 |
+| M16 | 审批/恢复信息已增量接入原调试视图，重复resume/当前账本状态真实验证 |
+| M17 | 统一evaluation报告尚无越权写入、审批重放/业务效果次数指标和审批冻结用例；M15专项报告不替代M17集成。500+、完整15+业务规模也仍未完成 |
+| M18 | 完整ReleaseManifest/单一事实源active并发发布未做；待审批/待对账run引用工件的保留、运行中版本绑定及并发回退尚未接M15验证 |
+
+本次只完成M15及必要的M14/M16消费接入，M17/M18遗漏分别等待用户启动独立特性。M19–M21不在本轮M02–M18完成范围。
+
 - 模型调用：核对可调用性与任务运行上限，验证实际内容；已验证模型见[能力矩阵](MODEL_CAPABILITIES.md)，不外推全部目录。
 - M05扩量/换模型：重新检查容量与签名、独立dev/test内容；当前两小合成集合不证明大规模或企业效果。
-- M15：MySQL持久saver兼容、审批并发、下游幂等/查询与崩溃恢复。
+- M15后续升级：saver/下游协议或版本变化需重跑兼容与故障矩阵，企业写/补偿接口另需真实门禁。
 
 MySQL保存业务事实，Redis/Milvus是可重建投影，checkpoint不是账本。门禁按当前特性启用，不阻塞纯离线工作。

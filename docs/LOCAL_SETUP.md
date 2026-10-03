@@ -167,3 +167,7 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 ## M18 反馈演示
 
 完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。使用现有专用MySQL的四张增量反馈表、Milvus新版本集合、M13 CPU训练接口及正式SDK合成只读工具；不新增依赖或改根锁。通用Chat按用户授权改为qwen3.8-max，切换先验chat/schema/tool；Embedding仍为原qwen3.7-text-embedding-flash签名。初始化独立累计预算和稳定脱敏key，main/恢复沿用原文件，报告和资产用新目录。构建检查保留双版本的实际容量，所有模型/云资源工件留.local。默认M09指针不换；本机演示active是独立控制文件，完整单事实源发布加固另做。
+
+## M15 持久审批
+
+运行/明确批准/恢复与两个进程saver门禁见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)。先health，再用增量015迁移创建现有MySQL上的独立审批、操作、checkpoint及合成效果表。LangGraph及其saver协议版本由根uv.lock锁定，使用应用自建MySQL适配，无新增数据库或云服务。loopback合成下游与应用需保留同一32-byte服务key；真实模型/HTTP验收继续原模型、M09指针和独立任务累计预算。恢复/main不重置预算，报告用新.local路径。进程恢复只覆盖已登记审批工作流，企业支付/退款/补偿或通用RUNNING自动领取未启用。
