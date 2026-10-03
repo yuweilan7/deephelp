@@ -11,7 +11,7 @@ import httpx
 from fastapi import FastAPI, Request
 
 from deephelp_app.app import create_app
-from deephelp_app.cascade import CascadePolicy
+from deephelp_app.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
 from deephelp_app.dense import DenseRetriever, atomic_json, load_json
@@ -241,7 +241,7 @@ class LiveAssembly:
                 client, self.config.model_copy(update={"chat": endpoint}), AsyncCalls(2, 45)
             )
             self.judge_gateway = judge_gateway
-            judge_model = CountedModel(judge_gateway, gateway)
+            strong_model = CountedModel(judge_gateway, gateway)
             milvus = create_client(self.root)
             stack.push_async_callback(milvus.close)
             # Startup validates the already-published corpus, without repairing or importing it.
@@ -258,7 +258,7 @@ class LiveAssembly:
             await event_index.initialize()
             self.event_index = event_index
             events = EventAggregationService(
-                ledger, StructuredClusterJudge(judge_model), similarity=event_index
+                ledger, StructuredClusterJudge(strong_model), similarity=event_index
             )
             policy_path = (
                 self.cascade_policy_path or Path(__file__).parent / "sample_data/m12_policy.json"
@@ -298,9 +298,9 @@ class LiveAssembly:
                 dataset=self.scope.dataset_version,
                 split="reference",
                 embedding_signature=self.scope.signature.fingerprint,
-                model=self.config.chat.model,
+                model=endpoint.model,
                 provider=self.config.provider,
-                prompt="m12-fallback-v1",
+                prompt="m12-fallback-v2",
                 policy="cascade-policy-v1",
             )
             yield Conversation(
@@ -312,6 +312,7 @@ class LiveAssembly:
                     assembly.scope,
                     top_k=assembly.top_k,
                     policy=policy,
+                    fallback=StructuredFallback(strong_model),
                 ),
                 SOPExecutor(model, TrackedTools(tools)),
                 trace,

@@ -186,6 +186,8 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 
 600唯一进入`IntentService`，其内部规则、当前检索、必要记忆增强检索、FallbackPort顺序执行。已绑定事件保持意图；未绑定事件的增强查询只来自当前已授权聚合及确认实体，不混入其他问题或闭合历史。`FallbackPort.decide(text,retrievals,budget,context=...)`返回`FallbackResult(code,reason)`；supported与非空注册叶子双向一致，unknown/multiple必须code=null。schema不合法或虚构代码安全转人工；真实服务失败停止下探。FastText明确disabled。
 
+正式live的FallbackPort使用已验证的强模型端点，与500归属共用`event-judge.example.json`；VersionManifest.model/prompt记录主分类兜底模型与`m12-fallback-v2`。Embedding/提取/SOP继续使用原provider配置，其调用仍在各自阶段计量。
+
 `IntentDecision.policy_version=cascade-policy-v1`、`cascade_steps=()`为增量字段，步骤保留层次/action/reason及实际检索候选/原始分数、检索与模型尝试。直接接管保存实际有序候选且只选top1；Fallback选择为类别决策，其1不是概率，原召回排名仍在步骤中。当前/增强fusion分别校准，cosine/BM25未校准禁直接接管。配置绑定scope、语料摘要和融合权重；不匹配须重新校准，旧M05指针显式兼容无分数接管。
 
 `StageReport.intent_calls/retrieval_calls`及trace同名字段默认0。`ResponseEnvelope.call_counts`给出本请求的intent/model/retrieval/tool实际计数；正常业务主分类1，归属澄清/预处理故障/重放0。重放的stages仍是原执行证据，本次call_counts与budget_used重新计算，不能把历史阶段计数当新调用。模型计数含Embedding/归属/提取/SOP，检索计数为600检索Port尝试，工具计数为实际dispatch ID；不把这些次数合并为一个“分类次数”。
