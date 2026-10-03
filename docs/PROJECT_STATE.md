@@ -25,7 +25,7 @@
 | M15 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M15.md) | MySQL持久checkpoint、明确审批/唯一领取/UNKNOWN查询对账；8进程/通信故障矩阵及真实模型HTTP合成效果通过，非企业支付/通用RUNNING重领 |
 | M16 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M16.md) | 事实模板/受限语气、同源三视图与脱敏轮转；M15已接审批/恢复历史 |
 | M17 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M17.md) | 四组对照及M15统一审批评测已实现；17操作/6越权/9恢复重放真实通过；500+与完整15+规模仍待扩展 |
-| M18 | CORE_IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 人工触发合成反馈、三路审核/构建及回归/回退已完成；自动发布加固尚未实现 |
+| M18 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 审核回流与完整ReleaseManifest/MySQL单一active已实现；运行绑定、审批资产保留、并发回退及进程中断真实通过；不提供每日自动训练/隐式文件删除 |
 | M19 | HARDENING_NOT_IMPLEMENTED | 部署/容量/备份恢复加固尚未实现 |
 | M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
@@ -112,9 +112,13 @@ M15使用LangGraph1.2.12/Checkpoint4.2.0及既有aiomysql自建MySQL saver。独
 | M14 | 审批后合成变更由M15接通并真实验证；19情境属于三类意图机制覆盖，不能当19种企业主诉 |
 | M16 | 审批/恢复信息已增量接入原调试视图，重复resume/当前账本状态真实验证 |
 | M17 | 统一报告已接17个冻结操作、6个越权尝试及9个恢复重放；效果/发送/查询账本逐例核验，真实通过。500+与完整15+业务规模仍为下一扩量特性 |
-| M18 | 完整ReleaseManifest/单一事实源active并发发布未做；待审批/待对账run引用工件的保留、运行中版本绑定及并发回退尚未接M15验证 |
+| M18 | 完整ReleaseManifest/MySQL单一active已接M15；运行/续接绑定、待审批/UNKNOWN保留、并发回退及实际提交前后进程中断通过 |
 
-用户已启动M02–M18已登记剩余项，顺序交付独立特性；M17审批评测已补齐，M18发布加固及M14/M17覆盖扩量接续实施。M19–M21不在本轮完成范围。
+M18完整发布新增四张增量表，receipt事务同时绑定问题及run引用，短事务CAS维护active/previous/发布事件，并在提交内再核对审核来源。清单绑定完整语料/Embedding/FastText词典/规则/SOP/Prompt/两路模型配置/代码及对应成功评测。保留原本机演示入口；完整发布入口不读本机active作为发布事实源。
+
+真实两套12记录1024维新向量资产及三个完整清单，最终两版各14/14消息、11/11会话，23项发布/审批/资源检查全通过，原件`.local/m18-release/feature-v3`。运行中发布仍输出原完整版本，新请求输出新版，旧问题补槽回到原版；active/previous之外的待审批/UNKNOWN引用也阻止退休。SOP切版禁止旧操作新批准/发送，UNKNOWN按原效果对账并重放：effects/execute/query=1/1/1。并发回退只有一个revision获胜；实际发布子进程提交前/后exit88分别保留完整旧/新版，新MySQL池读取同一active。动态MCP资源关闭跨任务错误已修复，先前失败原件保留，最终全部退出。retire仅标记无引用版本，保守保留全部run审计及共享工件，不自动删除文件。
+
+用户已启动M02–M18已登记剩余项，顺序交付独立特性；M17审批评测及M18发布加固已补齐，M14/M17覆盖扩量接续实施。M19–M21不在本轮完成范围。验收只在特性分支，main合并后不复验。
 
 - 模型调用：核对可调用性与任务运行上限，验证实际内容；已验证模型见[能力矩阵](MODEL_CAPABILITIES.md)，不外推全部目录。
 - M05扩量/换模型：重新检查容量与签名、独立dev/test内容；当前两小合成集合不证明大规模或企业效果。

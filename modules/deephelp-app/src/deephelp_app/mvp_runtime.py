@@ -2,10 +2,10 @@
 
 import hmac
 from collections.abc import AsyncIterator
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 from fastapi import FastAPI, Request
@@ -22,6 +22,7 @@ from deephelp_app.domain.models import (
     DenseScope,
     ErrorCode,
     HybridScope,
+    ReleaseManifest,
     VerifiedIdentity,
     VersionManifest,
 )
@@ -195,11 +196,19 @@ class LiveAssembly:
         reviewed_rules: Path | None = None,
         rights_port: int | None = None,
         rights_key: Path | None = None,
+        release_manifest: ReleaseManifest | None = None,
+        release_channel: str | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
             ProviderConfig.load(providers),
             load_json(pointer),
+        )
+        self.release_manifest, self.release_channel = release_manifest, release_channel
+        self.judge_providers = (
+            Path(release_manifest.judge_providers_path)
+            if release_manifest
+            else root / "modules/deephelp-app/event-judge.example.json"
         )
         active = self.pointer.get("active")
         self.scope = (
@@ -222,6 +231,13 @@ class LiveAssembly:
                 "Publish a SOP registry before explicitly enabling its directory"
             )
         self.sop_registry = self.sop_snapshots[0] if self.sop_snapshots else bundled_registry()
+        if release_manifest:
+            from deephelp_app.release_assets import verify_release
+            from deephelp_app.sop_governance import SOPRegistry
+
+            verify_release(release_manifest)
+            self.sop_registry = SOPRegistry.model_validate(release_manifest.sop_registry)
+            self.sop_snapshots = (self.sop_registry,)
         if isinstance(self.scope, HybridScope):
             from deephelp_app.hybrid_eval import dataset, validate_selection
 
@@ -253,9 +269,15 @@ class LiveAssembly:
         self, client: httpx.AsyncClient, trace: TraceSink
     ) -> AsyncIterator[Conversation]:
         async with AsyncExitStack() as stack:
-            ledger = await (ApprovalRepository if self.rights_port else MySQLCaseRepository).open(
-                self.root
-            )
+            repository = ApprovalRepository if self.rights_port else MySQLCaseRepository
+            if self.release_manifest:
+                from deephelp_app.release_store import ReleaseRepository
+
+                repository = ReleaseRepository
+            ledger = await repository.open(self.root)
+            if self.release_manifest:
+                assert isinstance(ledger, ReleaseRepository)
+                ledger.manifest, ledger.channel = self.release_manifest, self.release_channel
             stack.push_async_callback(ledger.aclose)
             self.ledger = ledger
             cache = RedisMemory.open(self.root)
@@ -265,9 +287,7 @@ class LiveAssembly:
             self.gateway = gateway
             model = CountedModel(gateway, gateway)
             endpoint = EndpointConfig.model_validate_json(
-                (self.root / "modules/deephelp-app/event-judge.example.json").read_text(
-                    encoding="utf-8"
-                )
+                self.judge_providers.read_text(encoding="utf-8")
             )
             judge_gateway = create_gateway(
                 client, self.config.model_copy(update={"chat": endpoint}), AsyncCalls(2, 45)
@@ -336,6 +356,11 @@ class LiveAssembly:
 
                 classifier = FastTextClassifier(pointer_manifest(self.fasttext_pointer))
                 fallback = FastTextFallback(classifier, fallback)
+            release_identity = None
+            if self.release_manifest:
+                from deephelp_app.release_assets import release_hash
+
+                release_identity = release_hash(self.release_manifest)
             versions = VersionManifest(
                 registry="complaints-v1",
                 dataset=self.scope.dataset_version,
@@ -348,6 +373,8 @@ class LiveAssembly:
                 fasttext_model=classifier.manifest.version if classifier else None,
                 fasttext_preprocessing=classifier.preprocessor.signature if classifier else None,
                 fasttext_policy=classifier.manifest.policy_version if classifier else None,
+                release_manifest=release_identity,
+                code_commit=self.release_manifest.code_commit if self.release_manifest else None,
             )
             yield Conversation(
                 ledger,
@@ -382,8 +409,14 @@ class LiveAssembly:
             )
 
 
+class ConversationAssembly(Protocol):
+    def open(
+        self, client: httpx.AsyncClient, trace: TraceSink
+    ) -> AbstractAsyncContextManager[Conversation]: ...
+
+
 def live_app(
-    assembly: LiveAssembly,
+    assembly: ConversationAssembly,
     auth: LocalAuth,
     budget: BudgetSession,
     trace_path: str = ".local/m08/trace.jsonl",

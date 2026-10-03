@@ -262,4 +262,10 @@ MySQL候选revision做短事务CAS，每修订保留历史、撤销旧未完成�
 
 exports只使用获准路线；FastText回流只进train，保留原dev/test；known train/index/dev/test/M17、编号变体及声明来源/近义组不能进入。另三条发布输入与采集组分开固定，程序能检查声明/重叠，不能证明自然语言语义独立。规则为有界字面AND/排除数据，保留原文span与版本，不热执行生成代码/正则。
 
-m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名及providers/data摘要。构建新集合，启动完整向量/hash及模型回读；固定M17抽样+独立发布样本内容/安全全通过、审核快照未变化才显式更新本机演示active/previous。装配时读取固定三路文件，原M09业务指针保持原资产。演示指针不声称跨资源原子发布，MySQL仍是反馈事实源；完整ReleaseManifest与单一事实源发布并发加固另做。
+m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名及providers/data摘要。构建新集合，启动完整向量/hash及模型回读；固定M17抽样+独立发布样本内容/安全全通过、审核快照未变化才显式更新本机演示active/previous。装配时读取固定三路文件，原M09业务指针保持原资产。兼容演示入口保持本机指针语义。
+
+完整发布入口使用唯一DTO `ReleaseManifest(format=m18-release-v1)`，保存所有文件hash、完整FastText预处理/词典签名、SOPRegistry及snapshot、包内Prompt摘要、两路模型配置、代码内容/基线commit、审核来源与成功评测摘要；其JSON摘要为release身份。相同version不能改内容。注册/启用前完整远端向量/hash回读，代码内容不符拒绝装配，不能用更新的二进制执行旧清单。DTO不携带连接或锁。
+
+`ReleasePointer`由MySQL active表给出channel/revision/active/previous；文件不再决定完整发布入口的active。switch以显式expected revision短事务锁定并CAS，来源行在同一事务核验；相同目标与当前revision幂等，旧revision返回409。发布事件与active同事务提交。prepared工件/远端验证不占用发布事务。
+
+`VersionManifest.release_manifest`默认null兼容旧只读入口；完整发布的receipt事务将问题绑定及run引用一起提交。运行及续接只消费其完整版本，新请求选择当时active。跨版本自动归属在原接收事务回滚后一次返回原版本；终态receipt回放零模型/工具。旧审批按原版本查询/恢复，批准和再次dispatch从当前MySQL active读取SOP核验，UNKNOWN先对账不改原计划。retire只标记无引用版本；active/previous和全部run引用都阻止退休，保留终态审计及共享文件，不提供隐式文件删除。

@@ -8,7 +8,7 @@ import hashlib
 import json
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
 from pydantic import (
     AwareDatetime,
@@ -178,6 +178,41 @@ class VersionManifest(DTO):
     sop_snapshot: Identifier | None = None
     sop_prompt: Identifier | None = None
     tool_schema: Identifier | None = None
+    release_manifest: Identifier | None = None
+
+
+class ReleaseManifest(DTO):
+    """Serializable content identity; no clients, connections or runtime locks."""
+
+    format: Literal["m18-release-v1"] = "m18-release-v1"
+    version: Identifier
+    assets_path: str = Field(min_length=1, max_length=1024)
+    assets_digest: Identifier
+    files: dict[str, str] = Field(min_length=1)
+    corpus_digest: Identifier
+    embedding_signature: dict[str, Any]
+    fasttext: dict[str, Any]
+    rules_digest: Identifier
+    sop_registry: dict[str, Any]
+    sop_snapshot: Identifier
+    prompts: dict[str, str] = Field(min_length=1)
+    providers_path: str = Field(min_length=1, max_length=1024)
+    providers_digest: Identifier
+    judge_providers_path: str
+    judge_providers_digest: Identifier
+    code_digest: Identifier
+    code_commit: Identifier
+    code_dirty: bool = False
+    review_snapshot: dict[str, Any]
+    validation_path: str
+    validation_digest: Identifier
+
+
+class ReleasePointer(DTO):
+    channel: Identifier
+    revision: Count
+    active: Identifier | None = None
+    previous: Identifier | None = None
 
 
 class BudgetUsed(DTO):

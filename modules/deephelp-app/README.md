@@ -415,7 +415,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywhee
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m18_flywheel.py
 # 真实服务/合成业务：采集、审核、两版构建、固定评测、启用/回退、更正/撤回
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_probe --live --stage feature --output .local/m18/demo-feature-new
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_probe --live --stage main --baseline .local/m18/demo-feature-new/reviewed-validation.json --output .local/m18/demo-main-new
+# 特性验收通过后按AGENTS合并/推送main，不再重复main验收
 # 自己操作：$runId须来自m18-collect channel和专用synthetic-user-a的已持久运行
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli capture --live --run-id $runId --source-group $newSourceGroup --variant-group $newVariantGroup
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli show --live --candidate-id $candidateId
@@ -432,9 +432,32 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywhee
 
 validate对M17固定8案例11消息及另3条未见发布输入，检查事实、实体来源、工具成功证据、重放和新MySQL池。报告PASS与文件/模型/全文向量hash回读一致、审核快照仍有效才允许切换。显式演示指针`.local/m18/active.json`绑定三路文件，不替换默认M09指针；`flywheel_cli serve --live`加载它。演示完成回退到无新增反馈的完整版本，再更正/撤回一条来源以验证旧版不能重启用；旧工件仍在，可用show定位全部派生路径。未通过的报告不能替换已通过门禁。
 
-演示指针是本机控制文件，MySQL保存候选/审核/任务/来源事实；短事务领取及令牌确认不等于跨文件/向量/模型原子发布。完整ReleaseManifest、单一事实源active切换和运行中发布并发约束属于后续独立加固特性。
+演示指针是本机控制文件，MySQL保存候选/审核/任务/来源事实；完整发布使用下方独立入口，MySQL active是其唯一发布事实源。
 
 双版本构建、全工程回归和真实验收在本机依次执行，给训练保留可用内存。同路径/签名的FastText分词词典在进程内复用只读词频；词典内容变化生成独立实例，既有实例和预处理签名保持原版本，预测结果不缓存。
+
+## M18 完整版本发布
+
+先用反馈入口构建并通过固定回归，再prepare完整清单；绑定三路工件、SOP/Prompt、两路模型配置和代码。register回读远端完整向量，activate/rollback只切换MySQL中的完整版本，必须传入刚观察到的revision。已有运行、补槽、审批/待对账保留原完整版本，新运行读取最新active。
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli migrate --live
+# $assets是已构建的assets.json；$sop是完整注册表JSON，先验证该SOP与当前代码/模型配置
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli validate --live --assets $assets --sop $sop --output .local/m18-release/my-validation-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.release_cli prepare --assets $assets --sop $sop --validation .local/m18-release/my-validation-new.json --version $newVersion --output .local/m18-release/my-release-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli register --live --manifest .local/m18-release/my-release-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli status --live --channel m18-demo
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli activate --live --channel m18-demo --release $releaseHash --expected-revision $observedRevision
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli rollback --live --channel m18-demo --expected-revision $observedRevision
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli references --live --release $releaseHash
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_cli serve --live --channel m18-demo --rights-port 8015 --rights-key .local/m15/rights.key
+# 一次完整真实验收：两套向量资产、运行中切版、M15等待/对账、并发及实际进程中断
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.release_probe --live --output .local/m18-release/feature-new
+```
+
+首次应用环境还需按M08/M15入口准备账本表、鉴权/累计预算和专用权益服务；release_probe自行准备专用运行数据，预算保留累计，不重置。普通pytest离线。所有验收只在特性分支运行，main合并后不复验。
+
+清单不可覆盖，文件/模型/词典/Prompt/代码内容变化需新构建及新版本。运行引用在接收事务落账；retire仅标记无引用版本，active/previous及所有run引用均阻止退休，保守保留终态审计。它不删除文件、共享模型或来源；并发回退失败保留完整指针。完整发布没有每日自动训练或企业权益接口，真实验收使用专用合成业务。
 
 ## M15 持久审批与恢复
 

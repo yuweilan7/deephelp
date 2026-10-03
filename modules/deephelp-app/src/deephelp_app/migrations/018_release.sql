@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS dh_m18_releases (
+ release_hash CHAR(64) PRIMARY KEY,
+ version VARCHAR(128) NOT NULL UNIQUE,
+ state VARCHAR(16) NOT NULL DEFAULT 'READY',
+ body JSON NOT NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE IF NOT EXISTS dh_m18_active (
+ channel VARCHAR(128) PRIMARY KEY,
+ revision BIGINT NOT NULL DEFAULT 0,
+ active_hash CHAR(64) NULL,
+ previous_hash CHAR(64) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE IF NOT EXISTS dh_m18_run_releases (
+ run_id CHAR(32) PRIMARY KEY,
+ release_hash CHAR(64) NOT NULL,
+ KEY ix_m18_release_ref(release_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE IF NOT EXISTS dh_m18_release_events (
+ event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ channel VARCHAR(128) NOT NULL,
+ revision BIGINT NOT NULL,
+ active_hash CHAR(64) NOT NULL,
+ previous_hash CHAR(64) NULL,
+ UNIQUE KEY uq_m18_switch(channel,revision)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

@@ -20,6 +20,7 @@ from deephelp_app.milvus_dense import create_client
 from deephelp_app.mvp_acceptance import api_client
 from deephelp_app.mvp_runtime import BudgetSession, LocalAuth
 from deephelp_app.settings import Settings
+from deephelp_app.sop_governance import SOPRegistry
 from deephelp_app.tool_gateway import process_alive
 from deephelp_app.trace import MemoryTrace
 
@@ -74,6 +75,8 @@ async def validate(
     auth_path: Path,
     *,
     baseline: Path | None = None,
+    registry: SOPRegistry | None = None,
+    persist_assets_validation: bool = True,
 ) -> dict[str, Any]:
     if await asyncio.to_thread(output.exists):
         raise ConfigurationError("Use a new immutable validation report")
@@ -83,6 +86,10 @@ async def validate(
     nonce = uuid4().hex[:16]
     collection = "dh_m10_events_m18_" + nonce
     runtime = assembly(data, providers, collection)
+    if registry:
+        runtime.sop_registry, runtime.sop_snapshots = registry, (registry,)
+    from deephelp_app.evaluation_cli import provenance
+
     auth = LocalAuth(auth_path)
     token, identity = auth.rows[0]
     trace = MemoryTrace()
@@ -101,6 +108,9 @@ async def validate(
         frozen_m17_digest=audit()[1]["data_digest"],
         release_data_digest=file_digest(DEMO_DATA),
         providers_digest=file_digest(providers),
+        judge_providers_digest=file_digest(runtime.judge_providers),
+        sop_snapshot=runtime.sop_registry.snapshot_hash,
+        code_digest=provenance()["package_digest"],
         rows=[],
         checks={},
         synthetic=True,
@@ -259,6 +269,6 @@ async def validate(
                 collection
             )
         atomic_json(output, report)
-    if report["status"] == "PASS":
+    if report["status"] == "PASS" and persist_assets_validation:
         atomic_json(assets.parent / "validation.json", report)
     return report
