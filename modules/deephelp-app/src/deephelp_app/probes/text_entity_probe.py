@@ -24,6 +24,8 @@ from deephelp_app.domain.models import (
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.local_paths import local_path
+from deephelp_app.mvp_runtime import validate_control_paths
+from deephelp_app.probes.usage import api_records, summarize_usage
 from deephelp_app.providers import ProviderConfig, create_gateway
 from deephelp_app.text_entity import TextEntityProcessor
 from deephelp_app.trace import MemoryTrace
@@ -80,15 +82,35 @@ async def evaluate(
     budget: ExecutionBudget,
     cases: list[dict[str, Any]],
     results: list[dict[str, Any]],
+    usage_records: list[dict[str, Any]] | None = None,
 ) -> None:
     for case in cases:
+        ports = [port for port in (processor.primary, processor.strong) if port is not None]
+        previous = [list(getattr(port, "diagnostics", [])) for port in ports]
+        attempts_before = budget.attempts_used
         result = await processor.process(
             sample_request(case), budget, confirmed=sample_confirmed(case)
         )
+        observations = [
+            row
+            for port, before in zip(ports, previous, strict=True)
+            for row in api_records(
+                getattr(port, "diagnostics", []),
+                phase="entity",
+                sample=case["id"],
+                previous=before,
+            )
+        ]
+        if usage_records is not None:
+            usage_records.extend(observations)
         passed = verify_case(case, result)
         results.append(
             {
                 "case_id": case["id"],
+                "api_usage": summarize_usage(
+                    observations,
+                    attempts=budget.attempts_used - attempts_before,
+                ),
                 "status": "PASS" if passed else "FAIL",
                 "result": result.model_dump(mode="json"),
             }
@@ -162,8 +184,31 @@ async def offline_demo() -> int:
     return 0
 
 
+def selected_cases(args: argparse.Namespace) -> list[dict[str, Any]]:
+    cases = load_cases()
+    ids = list(getattr(args, "case", None) or [])
+    if getattr(args, "all_cases", False):
+        if ids:
+            raise ConfigurationError("Choose --case or --all-cases, not both")
+        return cases
+    known = {case["id"] for case in cases}
+    if not ids or len(ids) != len(set(ids)) or not set(ids) <= known:
+        raise ConfigurationError("Select unique known --case IDs or explicit --all-cases")
+    return [case for case in cases if case["id"] in ids]
+
+
 async def live_probe(args: argparse.Namespace) -> int:
+    cases = selected_cases(args)
+    if getattr(args, "strong_content", False) and not args.strong_providers:
+        raise ConfigurationError("--strong-content requires --strong-providers")
     state_path, output = local_path(args.budget_state), local_path(args.output)
+    validate_control_paths(
+        [state_path, Path(args.providers)]
+        + ([Path(args.strong_providers)] if args.strong_providers else []),
+        output=output,
+    )
+    if output.exists():
+        raise ConfigurationError("Use a new immutable entity report path")
     if output in {state_path, state_path.with_suffix(".lock")}:
         raise ConfigurationError("Live output must not overwrite budget state or lock")
     if not state_path.exists():
@@ -175,11 +220,14 @@ async def live_probe(args: argparse.Namespace) -> int:
         raise ConfigurationError("M04 live budget locked; inspect before recovery") from None
     results: list[dict[str, Any]] = []
     trace = MemoryTrace()
+    usage_records: list[dict[str, Any]] = []
     report: dict[str, object] = {
         "status": "PENDING",
         "stage": args.stage,
         "dataset": "m04-golden-v1",
         "results": results,
+        "selected_case_ids": [case["id"] for case in cases]
+        + (["strong-port-content"] if getattr(args, "strong_content", False) else []),
     }
     try:
         original = json.loads(state_path.read_text(encoding="utf-8-sig"))
@@ -232,40 +280,17 @@ async def live_probe(args: argparse.Namespace) -> int:
                 "strong": strong_config.chat.model if strong_config else None,
             }
             processor = TextEntityProcessor(primary, strong, trace=trace)
-            cases = load_cases()
-            if args.stage == "main":
-                cases = [
-                    c
-                    for c in cases
-                    if c["id"]
-                    in {
-                        "tail-order",
-                        "prior-correction",
-                        "not-discount",
-                        "quoted-order",
-                        "quoted-coupon",
-                        "unknown-id",
-                    }
-                ]
-                cases.append(
-                    {
-                        "id": "mixed-order-conflict",
-                        "text": "订单0007；订单标识「0008」",
-                        "entities": {},
-                        "unresolved": ["order_id"],
-                        "rules": [],
-                    }
-                )
             try:
-                await evaluate(processor, budget, cases, results)
+                await evaluate(processor, budget, cases, results, usage_records)
                 # Direct strong-port acceptance uses a real model; this is separate from escalation.
-                if strong is not None:
+                if strong is not None and getattr(args, "strong_content", False):
                     strong_case = next(c for c in load_cases() if c["id"] == "quoted-order")
                     await evaluate(
                         TextEntityProcessor(strong=strong, trace=trace),
                         budget,
                         [{**strong_case, "id": "strong-port-content"}],
                         results,
+                        usage_records,
                     )
                 report["status"] = "PASS"
             except AppError as exc:
@@ -280,6 +305,7 @@ async def live_probe(args: argparse.Namespace) -> int:
             finally:
                 report.update(
                     budget_used=budget.usage().model_dump(mode="json"),
+                    api_usage=summarize_usage(usage_records, attempts=budget.attempts_used),
                     layers=layer_summary(results),
                     trace=[e.model_dump(mode="json") for e in trace.events],
                     diagnostics={
@@ -328,12 +354,25 @@ def main() -> int:
     parser.add_argument("--stage", choices=["feature", "main"], default="feature")
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument("--strong-providers")
+    parser.add_argument(
+        "--strong-content", action="store_true", help="Extra direct strong-port content check"
+    )
+    parser.add_argument(
+        "--case", action="append", help="Select a fixed case ID; repeat to add adjacent cases"
+    )
+    parser.add_argument("--all-cases", action="store_true", help="Explicit full entity corpus")
+    parser.add_argument("--list-cases", action="store_true", help="List fixed cases offline")
     parser.add_argument("--budget-state")
     parser.add_argument("--output")
     parser.add_argument("--max-calls", type=int)
     parser.add_argument("--max-tokens", type=int)
     parser.add_argument("--max-cost", type=Decimal)
     args = parser.parse_args()
+    if args.list_cases:
+        print(json.dumps([c["id"] for c in load_cases()], ensure_ascii=False))
+        return 0
+    if not args.live and (args.case or args.all_cases or args.strong_content):
+        parser.error("Case selection is for --live; offline regression uses pytest")
     if args.live and any(
         getattr(args, name) is None
         for name in ("budget_state", "output", "max_calls", "max_tokens", "max_cost")

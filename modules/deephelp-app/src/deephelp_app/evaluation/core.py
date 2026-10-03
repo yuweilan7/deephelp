@@ -572,6 +572,34 @@ def capability_eligible(route: dict[str, Any], row: dict[str, Any]) -> bool:
     )
 
 
+def targeted_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[str, Any]:
+    """Keep content/safety gates for selected routes without inventing ablation evidence."""
+    checks = {
+        "all_requested_rows_completed": complete and bool(routes),
+        "selected_content": all(
+            row["score"]["completed"]
+            for route in routes.values()
+            for row in route["rows"]
+            if capability_eligible(route, row)
+        ),
+        "hard_cases": all(
+            not row["score"]["hard_failures"] for route in routes.values() for row in route["rows"]
+        ),
+        "no_wrong_event_merge": all(
+            not route["metrics"]["event_wrong_merge"]["numerator"]
+            for route in routes.values()
+            if route.get("capabilities", {}).get("events", True)
+        ),
+        "persistence_and_replay": all(all(route["checks"].values()) for route in routes.values()),
+    }
+    return {
+        "accepted": all(checks.values()),
+        "checks": checks,
+        "scope": "selected fixed cases and modes only; not a full quality/release comparison",
+        "ablation_comparison": None,
+    }
+
+
 def release_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[str, Any]:
     baseline = routes["rule_dense"]["rows"]
     candidate = routes["fasttext"]["rows"]

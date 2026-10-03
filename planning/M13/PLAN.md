@@ -1,5 +1,7 @@
 # M13 FastText 训练、量化与统一兜底
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：PROBE_FIRST → DIRECT。基线 `f77b166`，特性 `feature/m13-fasttext-fallback`。
 
 1. **这次做成什么**：在 Windows/Python3.14.7 真正训练、量化、回读小型 FastText；同一600 FallbackPort可选模型，低把握/未知/多诉求仍进入既有强模型。公开合成组按来源/改写组隔离，训练/dev/test分栏；完成关闭/原版/量化对照及原子指针回退，默认关闭，不宣称小组合成数据泛化质量。

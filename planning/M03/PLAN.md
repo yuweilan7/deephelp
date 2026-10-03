@@ -1,5 +1,7 @@
 # M03 实施计划
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：`PROBE_FIRST`。基线 `96347d4e8d1cbfa382dad8a2ff5aa34a7f0b3b6e`，特性分支 `feature/m03-model-gateway`，一名主写者。
 
 1. **这次做成什么**：交付有界千问 Chat/schema/tool/Embedding 网关，四项能力分别真实验收；修复全零 Embedding index 兼容问题。用户追加统一 Python3.14.7 入口及文档。M06 MCP、M08 业务 converse、云库和训练框架不在本轮范围。

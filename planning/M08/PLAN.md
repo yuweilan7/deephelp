@@ -1,5 +1,7 @@
 # M08 实施计划
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：PROBE_FIRST → DIRECT。基线 `ba5ee03638be525390eb0221fb6281c5fee9c401`，工作区干净，分支 `feature/m08-mvp-integration`。
 
 1. **这次做成什么**：三类只读客诉从 `/converse` 贯通清洗/实体、显式单消息事件、600唯一意图服务、SOP、真实MCP与事实回复；MySQL接收和终结落账，同消息不重复执行。提供本机CLI/调试页。跨消息合并、Hybrid、审批和企业接口不在本次范围。

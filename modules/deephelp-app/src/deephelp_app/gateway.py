@@ -28,6 +28,20 @@ from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.providers import EndpointConfig, ProviderConfig
 
 
+def diagnostic_usage(value: object) -> dict[str, int | None]:
+    """Only API-provided counts; absent or malformed counts stay unknown."""
+    raw = value if isinstance(value, dict) else {}
+    details = raw.get("completion_tokens_details")
+    details = details if isinstance(details, dict) else {}
+    counts = {
+        "input_tokens": raw.get("prompt_tokens"),
+        "output_tokens": raw.get("completion_tokens"),
+        "total_tokens": raw.get("total_tokens"),
+        "reasoning_tokens": details.get("reasoning_tokens"),
+    }
+    return {key: n if type(n) is int and n >= 0 else None for key, n in counts.items()}
+
+
 def safe_identifier(value: object) -> str | None:
     if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", value):
         return value
@@ -166,8 +180,10 @@ class QianwenGateway:
                 self._diagnose(
                     {
                         "path": path,
+                        "model": endpoint.model,
                         "http_status": response.status_code,
                         "provider_request_id": request_id,
+                        "api_usage": diagnostic_usage(data.get("usage")),
                     }
                 )
                 if not 200 <= response.status_code < 300:

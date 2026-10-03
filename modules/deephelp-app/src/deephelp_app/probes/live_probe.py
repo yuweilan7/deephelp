@@ -16,6 +16,8 @@ from deephelp_app.domain.models import ChatMessage, ChatRequest, ErrorCode, Mode
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.local_paths import local_path
+from deephelp_app.mvp_runtime import validate_control_paths
+from deephelp_app.probes.usage import api_records, summarize_usage
 from deephelp_app.providers import ProviderConfig, create_gateway
 
 PROBE_SCHEMA: dict[str, object] = {
@@ -29,8 +31,37 @@ PROBE_SCHEMA: dict[str, object] = {
 }
 
 
+CAPABILITIES = ("chat", "schema", "tool", "embed", "extended_chat", "thinking_schema")
+
+
+def selected_capabilities(args: argparse.Namespace) -> list[str]:
+    selected = list(getattr(args, "capability", None) or [])
+    if getattr(args, "all_capabilities", False):
+        if selected:
+            raise ConfigurationError("Choose --capability or --all-capabilities, not both")
+        selected = list(CAPABILITIES[:4])
+        if args.extended:
+            selected += list(CAPABILITIES[4:])
+    elif args.extended:
+        raise ConfigurationError(
+            "--extended requires --all-capabilities; individual checks use --capability"
+        )
+    if (
+        not selected
+        or len(selected) != len(set(selected))
+        or any(c not in CAPABILITIES for c in selected)
+    ):
+        raise ConfigurationError("Select unique --capability values or explicit --all-capabilities")
+    return selected
+
+
 async def probe(args: argparse.Namespace) -> int:
+    capabilities = selected_capabilities(args)
     state_path = local_path(args.budget_state)
+    output = local_path(args.output)
+    validate_control_paths([state_path, Path(args.providers)], output=output)
+    if output.exists():
+        raise ConfigurationError("Use a new immutable capability report path")
     if not state_path.exists():
         raise ConfigurationError("Initialize an explicitly authorized cumulative budget first")
     lock_path = state_path.with_suffix(".lock")
@@ -43,6 +74,7 @@ async def probe(args: argparse.Namespace) -> int:
         "stage": args.stage,
         "status": "PENDING_LIVE",
         "results": [],
+        "selected_capabilities": capabilities,
         "environment": {
             "python": platform.python_version(),
             "httpx": version("httpx"),
@@ -52,9 +84,7 @@ async def probe(args: argparse.Namespace) -> int:
     output = local_path(args.output)
     try:
         original = json.loads(state_path.read_text(encoding="utf-8-sig"))
-        required_calls = 4 if args.stage == "feature" else 2
-        if args.extended:
-            required_calls += 2
+        required_calls = len(capabilities)
         remaining_calls = original["max_calls"] - original["attempts"]
         remaining_tokens = original["max_tokens"] - original["charged_tokens"]
         initial_cost = Decimal(
@@ -104,38 +134,56 @@ async def probe(args: argparse.Namespace) -> int:
         ) as client:
             gateway = create_gateway(client, config, AsyncCalls(1, 30))
             results: list[dict[str, object]] = []
-            try:
-                chat = await gateway.chat(
-                    ChatRequest(
-                        messages=[
-                            ChatMessage(
-                                role="user",
-                                content=(
-                                    "Synthetic gateway probe. Reply exactly OK. No other output."
-                                ),
-                            )
-                        ]
-                    ),
-                    budget,
-                )
-                report["chat_probe"] = {
-                    "content": chat.content,
-                    "provider_request_id": chat.provider_request_id,
-                }
-                if (chat.content or "").strip() != "OK":
-                    raise AppError(
-                        ErrorCode.MODEL_OUTPUT_INVALID, "Synthetic chat expectation failed"
+            observations = []
+            previous: list[dict[str, object]] = []
+            active: str | None = None
+
+            def observe(capability: str | None) -> None:
+                nonlocal previous, active
+                if active:
+                    observations.extend(
+                        api_records(
+                            gateway.diagnostics, phase=args.stage, sample=active, previous=previous
+                        )
                     )
-                results.append(
-                    {
-                        "capability": "chat",
-                        "model": chat.model,
-                        "usage": chat.usage.model_dump(),
-                        "finish_reason": chat.finish_reason,
+                previous, active = list(gateway.diagnostics), capability
+
+            try:
+                if "chat" in capabilities:
+                    observe("chat")
+                    chat = await gateway.chat(
+                        ChatRequest(
+                            messages=[
+                                ChatMessage(
+                                    role="user",
+                                    content=(
+                                        "Synthetic gateway probe. Reply exactly OK. "
+                                        "No other output."
+                                    ),
+                                )
+                            ]
+                        ),
+                        budget,
+                    )
+                    report["chat_probe"] = {
+                        "content": chat.content,
                         "provider_request_id": chat.provider_request_id,
                     }
-                )
-                if args.stage == "feature":
+                    if (chat.content or "").strip() != "OK":
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Synthetic chat expectation failed"
+                        )
+                    results.append(
+                        {
+                            "capability": "chat",
+                            "model": chat.model,
+                            "usage": chat.usage.model_dump(),
+                            "finish_reason": chat.finish_reason,
+                            "provider_request_id": chat.provider_request_id,
+                        }
+                    )
+                if "schema" in capabilities:
+                    observe("schema")
                     schema = await gateway.chat(
                         ChatRequest(
                             messages=[
@@ -160,6 +208,8 @@ async def probe(args: argparse.Namespace) -> int:
                             "provider_request_id": schema.provider_request_id,
                         }
                     )
+                if "tool" in capabilities:
+                    observe("tool")
                     tool = await gateway.chat(
                         ChatRequest(
                             messages=[
@@ -202,40 +252,44 @@ async def probe(args: argparse.Namespace) -> int:
                             "controlled_result_correlated": bool(controlled_result.tool_call_id),
                         }
                     )
-                embedding = await gateway.embed(
-                    ["synthetic order 0007", "synthetic coupon 0008", "synthetic order 0007"],
-                    budget,
-                )
-                if embedding.vectors[0] != embedding.vectors[2]:
-                    raise AppError(
-                        ErrorCode.MODEL_OUTPUT_INVALID, "Synthetic duplicate input mapping failed"
+                if "embed" in capabilities:
+                    observe("embed")
+                    embedding = await gateway.embed(
+                        ["synthetic order 0007", "synthetic coupon 0008", "synthetic order 0007"],
+                        budget,
                     )
-                before = budget.usage()
-                cached = await gateway.embed(
-                    ["synthetic coupon 0008", "synthetic order 0007"], budget
-                )
-                if budget.usage() != before or cached.vectors != [
-                    embedding.vectors[1],
-                    embedding.vectors[0],
-                ]:
-                    raise AppError(
-                        ErrorCode.MODEL_OUTPUT_INVALID, "Embedding cache acceptance failed"
+                    if embedding.vectors[0] != embedding.vectors[2]:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID,
+                            "Synthetic duplicate input mapping failed",
+                        )
+                    before = budget.usage()
+                    cached = await gateway.embed(
+                        ["synthetic coupon 0008", "synthetic order 0007"], budget
                     )
-                results.append(
-                    {
-                        "capability": "embedding",
-                        "usage": embedding.usage.model_dump(),
-                        "signature": embedding.signature.model_dump(),
-                        "fingerprint": embedding.signature.fingerprint,
-                        "rows": len(embedding.vectors),
-                        "dimension": len(embedding.vectors[0]),
-                        "position_index_fallback": embedding.position_index_fallback,
-                        "provider_request_ids": embedding.provider_request_ids,
-                        "cache_hits": cached.cache_hits,
-                        "cache_extra_calls": 0,
-                    }
-                )
-                if args.extended:
+                    if budget.usage() != before or cached.vectors != [
+                        embedding.vectors[1],
+                        embedding.vectors[0],
+                    ]:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Embedding cache acceptance failed"
+                        )
+                    results.append(
+                        {
+                            "capability": "embedding",
+                            "usage": embedding.usage.model_dump(),
+                            "signature": embedding.signature.model_dump(),
+                            "fingerprint": embedding.signature.fingerprint,
+                            "rows": len(embedding.vectors),
+                            "dimension": len(embedding.vectors[0]),
+                            "position_index_fallback": embedding.position_index_fallback,
+                            "provider_request_ids": embedding.provider_request_ids,
+                            "cache_hits": cached.cache_hits,
+                            "cache_extra_calls": 0,
+                        }
+                    )
+                if "extended_chat" in capabilities:
+                    observe("extended_chat")
                     long_messages = [
                         ChatMessage(role="user", content="Synthetic context. " * 100)
                         for _ in range(40)
@@ -262,6 +316,8 @@ async def probe(args: argparse.Namespace) -> int:
                             "provider_request_id": extended.provider_request_id,
                         }
                     )
+                if "thinking_schema" in capabilities:
+                    observe("thinking_schema")
                     thinking = await gateway.chat(
                         ChatRequest(
                             messages=[
@@ -310,10 +366,15 @@ async def probe(args: argparse.Namespace) -> int:
                     },
                 )
             finally:
+                observe(None)
                 report.update(
                     results=results,
                     budget_used=budget.usage().model_dump(mode="json"),
                     diagnostics=gateway.diagnostics,
+                    api_usage=summarize_usage(
+                        observations,
+                        attempts=budget.attempts_used,
+                    ),
                 )
                 persist()
                 current = json.loads(state_path.read_text(encoding="utf-8"))
@@ -336,6 +397,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--stage", choices=["feature", "main"], required=True)
+    parser.add_argument("--capability", action="append", choices=CAPABILITIES)
+    parser.add_argument(
+        "--all-capabilities", action="store_true", help="Explicit full capability check"
+    )
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument(
         "--extended",

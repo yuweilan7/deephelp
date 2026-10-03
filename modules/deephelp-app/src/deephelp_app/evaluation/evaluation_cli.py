@@ -26,6 +26,7 @@ from deephelp_app.evaluation.core import (
     metrics,
     release_gate,
     score,
+    targeted_gate,
 )
 from deephelp_app.evaluation.evaluation_approval import approval_cases, evaluate_approvals
 from deephelp_app.evaluation.evaluation_runtime import EvaluationAssembly
@@ -33,6 +34,7 @@ from deephelp_app.evaluation.mvp_acceptance import api_client
 from deephelp_app.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import BudgetSession, LiveAssembly, LocalAuth, validate_control_paths
+from deephelp_app.probes.usage import api_records, summarize_usage
 from deephelp_app.settings import Settings
 from deephelp_app.tool_gateway import process_alive
 from deephelp_app.trace import MemoryTrace
@@ -103,13 +105,41 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
     }
 
 
-async def run(args: argparse.Namespace) -> int:
-    cases, data_summary = audit(Path(args.data), Path(args.manifest))
-    selected = [c for c in cases if c.live_sample] if args.live and not args.all_cases else cases
+def select_scope(args: argparse.Namespace, cases: list[Any]) -> tuple[list[Any], list[str]]:
+    full = getattr(args, "full_evaluation", False)
+    ids = list(getattr(args, "case", None) or [])
+    modes = list(getattr(args, "mode", None) or [])
+    if full and (ids or modes):
+        raise ConfigurationError("--full-evaluation cannot be combined with --case/--mode")
+    if (
+        args.live
+        and not full
+        and (not ids or not modes or args.all_cases or getattr(args, "approvals", False))
+    ):
+        raise ConfigurationError(
+            "Targeted live requires --case and --mode; "
+            "full live/approvals require --full-evaluation"
+        )
+    if len(ids) != len(set(ids)) or not set(ids) <= {c.case_id for c in cases}:
+        raise ConfigurationError("Duplicate or unknown evaluation case ID")
+    if len(modes) != len(set(modes)) or not set(modes) <= set(MODES):
+        raise ConfigurationError("Duplicate or unknown evaluation mode")
+    # Whole conversations preserve prior turns; IDs can include non-default samples.
+    selected = (
+        [c for c in cases if c.case_id in ids]
+        if ids
+        else [c for c in cases if not args.live or args.all_cases or c.live_sample]
+    )
     if getattr(args, "split", None):
         selected = [c for c in selected if c.split == args.split]
-    if not selected:
-        raise ConfigurationError("The selected evaluation scope is empty")
+    if not selected or ids and set(ids) != {c.case_id for c in selected}:
+        raise ConfigurationError("Empty scope or selected cases conflict with --split")
+    return selected, modes or list(MODES)
+
+
+async def run(args: argparse.Namespace) -> int:
+    cases, data_summary = audit(Path(args.data), Path(args.manifest))
+    selected, modes = select_scope(args, cases)
     business = bool(data_summary.get("business_catalog"))
     output = local_path(args.output)
     if output.exists():
@@ -131,6 +161,11 @@ async def run(args: argparse.Namespace) -> int:
         "status": "PENDING",
         "live": args.live,
         "stage": args.stage,
+        "acceptance_scope": "full_evaluation"
+        if getattr(args, "full_evaluation", False)
+        else "targeted"
+        if getattr(args, "mode", None) or getattr(args, "case", None)
+        else "offline_full",
         "dataset": data_summary,
         "selected_case_ids": [c.case_id for c in selected],
         "routes": {},
@@ -151,7 +186,7 @@ async def run(args: argparse.Namespace) -> int:
         "prompt": "m12-fallback-v2",
         "sop": business_registry().snapshot_hash if business else "bundled_registry",
         "reply_polish": False,
-        "mode_order": list(MODES),
+        "mode_order": modes,
         "candidate_gates": "M12 dev-frozen hybrid; dense takeover uncalibrated",
     }
     if getattr(args, "approvals", False):
@@ -168,7 +203,9 @@ async def run(args: argparse.Namespace) -> int:
             ),
             fasttext=FastTextClassifier(
                 pointer_manifest(Path(args.fasttext_pointer))
-            ).manifest.model_dump(mode="json"),
+            ).manifest.model_dump(mode="json")
+            if "fasttext" in modes
+            else None,
         )
         token, identity = auth.rows[0]
         from deephelp_app.learning.event_replay import envelope
@@ -208,7 +245,7 @@ async def run(args: argparse.Namespace) -> int:
         if gate:
             gate.open()
         async with asyncio.timeout(args.timeout):
-            for mode in MODES:
+            for mode in modes:
                 collection = "dh_m10_events_m17_" + nonce + "_" + mode
                 live = (
                     LiveAssembly(
@@ -244,6 +281,7 @@ async def run(args: argparse.Namespace) -> int:
                 )
                 route: dict[str, Any] = {
                     "rows": [],
+                    "api_observations": [],
                     "checks": {},
                     "capabilities": {
                         "retrieval": "dense" if mode == "rule_dense" else "hybrid",
@@ -275,6 +313,8 @@ async def run(args: argparse.Namespace) -> int:
                                         "occurred_at": datetime.now(UTC).isoformat(),
                                     }
                                     started = perf_counter()
+                                    gateways = [live.gateway, live.judge_gateway] if live else []
+                                    previous = [list(g.diagnostics) for g in gateways]
                                     if turn.hint_event:
                                         if turn.hint_event not in questions:
                                             raise ConfigurationError(
@@ -293,6 +333,17 @@ async def run(args: argparse.Namespace) -> int:
                                     )
                                     response = ResponseEnvelope.model_validate(reply.json())
                                     elapsed = (perf_counter() - started) * 1000
+                                    observations = [
+                                        record
+                                        for g, before in zip(gateways, previous, strict=True)
+                                        for record in api_records(
+                                            g.diagnostics,
+                                            phase=mode,
+                                            sample=turn.turn_id,
+                                            previous=before,
+                                        )
+                                    ]
+                                    route["api_observations"].extend(observations)
                                     question = await assembly.ledger.question(
                                         identity, session, response.question_id
                                     )
@@ -348,6 +399,11 @@ async def run(args: argparse.Namespace) -> int:
                                         "observation": observation,
                                         "elapsed_ms": elapsed,
                                         "http_status": reply.status_code,
+                                        "api_usage": summarize_usage(
+                                            observations, attempts=response.call_counts.model_calls
+                                        )
+                                        if args.live
+                                        else None,
                                     }
                                     row["score"] = score(turn, row["response"], observation)
                                     route["rows"].append(row)
@@ -422,6 +478,10 @@ async def run(args: argparse.Namespace) -> int:
                             for split in ("test", "regression")
                         }
                         if live:
+                            route["api_usage"] = summarize_usage(
+                                route.pop("api_observations"),
+                                attempts=route["metrics"]["real_model_attempts"],
+                            )
                             route["diagnostics"] = {
                                 "primary": live.gateway.diagnostics,
                                 "strong": live.judge_gateway.diagnostics,
@@ -447,7 +507,9 @@ async def run(args: argparse.Namespace) -> int:
                     save()
             if getattr(args, "approvals", False):
                 report["approvals"] = await evaluate_approvals(args, output)
-            report["release_gate"] = release_gate(
+            report["release_gate"] = (
+                targeted_gate if report["acceptance_scope"] == "targeted" else release_gate
+            )(
                 report["routes"],
                 complete=all(
                     len(route["rows"]) == sum(len(c.turns) for c in selected)
@@ -577,7 +639,19 @@ def main() -> None:
     parser.add_argument("--data", default=str(DATA))
     parser.add_argument("--manifest", default=str(MANIFEST))
     parser.add_argument("--live", action="store_true")
-    parser.add_argument("--all-cases", action="store_true")
+    parser.add_argument(
+        "--all-cases",
+        action="store_true",
+        help="Include non-default live samples; requires --full-evaluation",
+    )
+    parser.add_argument(
+        "--full-evaluation", action="store_true", help="Explicit four-mode quality evaluation"
+    )
+    parser.add_argument("--mode", action="append", choices=MODES)
+    parser.add_argument("--case", action="append", help="Select a whole frozen conversation by ID")
+    parser.add_argument(
+        "--list-cases", action="store_true", help="Include selectable IDs in offline audit"
+    )
     parser.add_argument("--split", choices=("test", "regression"))
     parser.add_argument(
         "--approvals", action="store_true", help="Include the fresh M15 fault/approval scope"
@@ -596,10 +670,33 @@ def main() -> None:
     parser.add_argument("--baseline")
     parser.add_argument("--timeout", type=float, default=1800)
     args = parser.parse_args()
-    if args.command == "audit":
-        print(
-            json.dumps(audit(Path(args.data), Path(args.manifest))[1], ensure_ascii=False, indent=2)
+    if args.list_cases and args.command != "audit":
+        parser.error("--list-cases requires audit")
+    if args.command == "approval" and (
+        args.case
+        or args.mode
+        or args.all_cases
+        or args.split
+        or args.full_evaluation
+        or args.approvals
+    ):
+        parser.error(
+            "approval selects its independent complete scope; case/mode filters apply to run"
         )
+    if args.command == "audit":
+        cases, summary = audit(Path(args.data), Path(args.manifest))
+        if args.list_cases:
+            summary["cases"] = [
+                {
+                    "case_id": c.case_id,
+                    "scenario": c.scenario,
+                    "split": c.split,
+                    "messages": len(c.turns),
+                    "live_sample": c.live_sample,
+                }
+                for c in cases
+            ]
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "approval":
         raise SystemExit(asyncio.run(run_approval(args)))
     else:

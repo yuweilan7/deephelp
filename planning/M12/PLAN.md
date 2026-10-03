@@ -1,5 +1,7 @@
 # M12 完整聚合与意图级联
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：PROBE_FIRST → DIRECT。基线 `82c934e`，特性 `feature/m12-cascade-pipeline`。
 
 1. **这次做成什么**：在现有 Conversation 中接通自动事件归属和规则→当前 Hybrid→已确认事件记忆增强→统一 FallbackPort；交错的优惠/券问题补槽后查询正确对象，歧义澄清、未知转人工、缺槽位工具零调用。FastText disabled；不启动 M13、不加审批/业务写。

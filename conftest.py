@@ -1,11 +1,57 @@
 """Workspace-level live options must be registered before pytest parses command-line flags."""
 
+import socket
 from decimal import Decimal, InvalidOperation
+from ipaddress import ip_address
 
 import pytest
 
 from deephelp_app.errors import ConfigurationError
 from deephelp_app.settings import Settings
+
+
+def _allow_local_host(host):
+    if host is None or host in {"localhost", b"localhost"}:
+        return
+    try:
+        address = ip_address(host.decode() if isinstance(host, bytes) else host)
+    except ValueError:
+        address = None
+    if address is None or not address.is_loopback:
+        raise RuntimeError("Offline pytest blocks remote network; use an explicit live probe")
+
+
+def _install_offline_network_guard(config):
+    # Install before collection, including when --live only checks configuration.
+    patch = pytest.MonkeyPatch()
+    original_resolve = socket.getaddrinfo
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+
+    def resolve(host, *args, **kwargs):
+        _allow_local_host(host)
+        return original_resolve(host, *args, **kwargs)
+
+    def connect(sock, address):
+        if sock.family in {socket.AF_INET, socket.AF_INET6}:
+            _allow_local_host(address[0])
+        return original_connect(sock, address)
+
+    def connect_ex(sock, address):
+        if sock.family in {socket.AF_INET, socket.AF_INET6}:
+            _allow_local_host(address[0])
+        return original_connect_ex(sock, address)
+
+    patch.setattr(socket, "getaddrinfo", resolve)
+    patch.setattr(socket.socket, "connect", connect)
+    patch.setattr(socket.socket, "connect_ex", connect_ex)
+    config._deephelp_network_patch = patch
+
+
+def pytest_unconfigure(config):
+    patch = getattr(config, "_deephelp_network_patch", None)
+    if patch:
+        patch.undo()
 
 
 def pytest_addoption(parser):
@@ -17,6 +63,7 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    _install_offline_network_guard(config)
     if not config.getoption("--live"):
         return
     try:

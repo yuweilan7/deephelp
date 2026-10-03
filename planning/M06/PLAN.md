@@ -1,5 +1,7 @@
 # M06 实施计划
 
+> 现行验收以[AGENTS](../../AGENTS.md#按改动范围验收)和[ROADMAP](../../docs/ROADMAP.md#按影响选择验收)为准。下文旧计划/记录中的全套live、四能力、四组或main复验不是当前默认门禁；历史证据保留。
+
 判断：`PROBE_FIRST` → `DIRECT`。正式 SDK 2.2.0 在 Python3.14.7 下的独立 stdio 进程已通过真实 list_tools/call_tool 最小探针。
 
 1. **这次做成什么**：一个可验收特性：M02 合成订单/优惠券的两个只读 MCP 工具、可信上下文、ToolGateway、故障配置及调用 ledger。正常输入返回关联调用/证据的 ToolResult；越权、非法参数、超时与坏结果明确拒绝。范围不含模型、云业务库、SOP、写工具或 M07。
