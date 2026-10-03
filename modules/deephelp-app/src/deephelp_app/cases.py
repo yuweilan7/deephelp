@@ -31,7 +31,11 @@ def summary(question: Question) -> CaseSummary:
         question_id=question.question_id,
         version=question.version,
         status=question.status,
-        text=f"{question.active_intent or 'UNCLASSIFIED'}; {question.status}; {slots}"[:2000],
+        text=(
+            f"{question.status}; {question.event_summary}; {slots}"
+            if question.event_summary
+            else f"{question.active_intent or 'UNCLASSIFIED'}; {question.status}; {slots}"
+        )[:2000],
         message_ids=question.member_message_ids,
     )
 

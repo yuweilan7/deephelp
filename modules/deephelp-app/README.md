@@ -212,3 +212,28 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.memory_
 ```
 
 probe使用随机session、专用缓存前缀与独立事件集合，实际验HTTP补充/更正/事实、MySQL并发、Redis断连与缓存删除恢复、真实向量陈旧命中回查、lease/乱序/重试、新进程回读和长历史裁剪。合成事实/outbox留MySQL供回放，验证完成清理本次派生集合/键。main复验使用`--stage main`及新的output，预算不清零。默认pytest保持离线。
+## M11 自动事件归属
+
+独立入口只聚合和保存事件上下文，不调用主意图分类器或SOP。`converse`仍使用M10显式hint；M12再把聚合接入同一主流程。输入主体为本机CLI固定合成身份，未新增网络端点或企业登录。
+
+归属裁决使用独立`event-judge.example.json`的qwen3.8-max；清洗/Embedding沿用原provider及1024维签名。`--judge-provider`可显式选择其他已验证端点，切换后重新验黄金序列；不自动降级。所有调用共用本次累计预算。
+
+```powershell
+# 无持久化、仅当前消息的离线预览
+py -3.14 -m uv run --locked python -m deephelp_app.event_cli preview --text "订单000007优惠没到账；订单000008参加的哪个活动"
+
+# 按本次范围设置eventCalls/eventTokens/eventCost，再准备新的累计文件；已有文件不可归零
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m11/auth.json --budget-state .local/m11/session-budget.json --max-calls $eventCalls --max-tokens $eventTokens --max-cost $eventCost
+
+# 真实归属/存储：依次发送后，第三条应回到券事件
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.event_cli aggregate --live --budget-state .local/m11/session-budget.json --session m11-demo --text "我的优惠券不能用"
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.event_cli aggregate --live --budget-state .local/m11/session-budget.json --session m11-demo --text "另外订单000008参加的哪个活动"
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.event_cli aggregate --live --budget-state .local/m11/session-budget.json --session m11-demo --text "刚才那个券是C001，订单000007"
+
+# 固定序列验收；main沿用同一预算，换stage和新报告路径
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.event_probe --live --stage feature --budget-state .local/m11/session-budget.json --output .local/m11/feature.json
+```
+
+输出含`event_cluster`的当前事件、分组列表、原始消息引用、候选cosine/实体依据、排除原因、结构化裁决及图文本。自动判断不确定时，消息保存为独立待澄清问题且不作为后续自动候选；用其问题编号显式补充可解除待澄清。多个独立主诉先分成虚拟上下文并要求分条发送，不伪称一条消息已绑定多个持久问题。`--question-hint/--expected-version`可显式指定归属；重复消息须同时复用`--message-id`及`--occurred-at`，正文/session/hint变化仍拒绝。
+
+MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有`memory_cli project`异步投影；读取不依赖Redis，索引失败不编造相似边。集合沿用M10签名隔离，M11 probe单独创建集合、只领取自己的终态outbox，删除/重建核验后清理该集合。普通有状态请求数据库失败即停止；只有显式preview可使用当前消息。黄金样本见`sample_data/event_sequences.json`，其小合成效果不代表企业效果或完整自然语言覆盖。

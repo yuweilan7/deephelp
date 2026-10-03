@@ -13,6 +13,7 @@ from deephelp_app.domain.models import (
     CaseSummary,
     EmbeddingSignature,
     ErrorCode,
+    EventCandidate,
     Question,
     VerifiedIdentity,
 )
@@ -160,3 +161,41 @@ class MilvusEventIndex:
             )
             for h in hits[0]
         ]
+
+    async def candidates(
+        self,
+        identity: VerifiedIdentity,
+        session: str,
+        query: str,
+        budget: ExecutionBudget,
+        *,
+        top_k: int,
+    ) -> tuple[EventCandidate, ...]:
+        if not 1 <= top_k <= 12:
+            raise ValueError("Event TopK must be 1..12")
+        result = await self.embedding.embed([query], budget)
+        if result.signature != self.signature:
+            raise ConfigurationError("Event query embedding signature differs")
+        hits = await self.rpc(
+            lambda: self.client.search(
+                self.collection,
+                data=[result.vectors[0]],
+                filter=f'scope == "{scope_key(identity, session)}"',
+                limit=top_k,
+                output_fields=["question_id", "version", "summary", "message_ids"],
+                consistency_level="Strong",
+                timeout=None,
+                retry_times=0,
+            )
+        )
+        return tuple(
+            EventCandidate(
+                question_id=h["entity"]["question_id"],
+                version=h["entity"]["version"],
+                message_ids=tuple(h["entity"]["message_ids"]),
+                text=h["entity"]["summary"],
+                raw_score=float(h["distance"]),
+                score_kind="cosine",
+            )
+            for h in hits[0]
+        )

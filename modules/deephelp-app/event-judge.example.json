@@ -1,0 +1,7 @@
+{
+  "model": "qwen3.8-max",
+  "base_url_env": "DEEPHELP_MODEL_BASE_URL",
+  "api_key_env": "DEEPHELP_MODEL_API_KEY",
+  "input_cny_per_million": "8",
+  "output_cny_per_million": "8"
+}

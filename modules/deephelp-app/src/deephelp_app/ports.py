@@ -4,9 +4,12 @@ from typing import Protocol
 from deephelp_app.domain.models import (
     ChatRequest,
     ChatResult,
+    ClusterJudgement,
     DenseResult,
     DenseScope,
     EmbeddingResult,
+    EventCandidate,
+    EventMessage,
     LifecycleCommand,
     MemoryWindow,
     Question,
@@ -30,6 +33,16 @@ class ChatPort(Protocol):
 
 class EmbeddingPort(Protocol):
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult: ...
+
+
+class ClusterJudgePort(Protocol):
+    async def judge(
+        self,
+        current: EventMessage,
+        candidates: tuple[EventCandidate, ...],
+        messages: tuple[EventMessage, ...],
+        budget: ExecutionBudget,
+    ) -> ClusterJudgement: ...
 
 
 class CaseRepository(Protocol):
