@@ -7,7 +7,7 @@ import httpx
 
 from deephelp_app.debug import export_json
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import LocalAuth, validate_control_paths
 
 

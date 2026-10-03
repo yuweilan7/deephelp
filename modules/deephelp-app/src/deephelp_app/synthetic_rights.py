@@ -5,11 +5,9 @@ synthetic adjustment. The downstream effect commits separately from the agent le
 """
 
 import argparse
-import asyncio
 import hashlib
 import hmac
 import json
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -21,6 +19,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 
 from deephelp_app.approval_store import ApprovalRepository
+from deephelp_app.demo.scenarios import fixtures
 from deephelp_app.domain.models import (
     DTO,
     ApprovalStatus,
@@ -31,7 +30,6 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.sop_acceptance import fixtures
 
 
 def binding_hash(op: OperationRecord) -> str:
@@ -148,15 +146,11 @@ def create_rights_app(root: Path, key: bytes, fault_path: Path | None = None) ->
                     or order.discount_status != "missing"
                 ):
                     raise HTTPException(403, "Synthetic order precondition denied")
-                fault = (
-                    json.loads(await asyncio.to_thread(fault_path.read_text, encoding="utf-8")).get(
-                        body.operation_id
-                    )
-                    if fault_path
-                    else None
-                )
-                if fault == "before_effect":
-                    raise HTTPException(503, "Injected before effect")
+                fault = None
+                if fault_path:
+                    from deephelp_app.learning.rights_faults import before_effect
+
+                    fault = await before_effect(fault_path, body.operation_id)
                 effect = SyntheticEffect(
                     operation_id=body.operation_id,
                     binding_hash=body.binding_hash,
@@ -177,10 +171,10 @@ def create_rights_app(root: Path, key: bytes, fault_path: Path | None = None) ->
                 if stored.binding_hash != body.binding_hash:
                     raise HTTPException(409, "Idempotency payload differs")
                 await conn.commit()
-                if fault == "crash_after_effect":
-                    os._exit(86)  # owned acceptance service only, after the durable effect commit
-                if fault == "lost_response":
-                    raise HTTPException(503, "Injected response loss after effect")
+                if fault:
+                    from deephelp_app.learning.rights_faults import after_effect
+
+                    after_effect(fault)
                 return RightsObservation(status="SUCCEEDED", effect=stored)
             except BaseException:
                 await conn.rollback()

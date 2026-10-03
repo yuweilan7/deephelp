@@ -11,7 +11,7 @@ from typing import Any
 
 from deephelp_app.text_entity import width_normalize
 
-DICTIONARY = Path(__file__).parent / "sample_data/m13_dictionary.txt"
+DICTIONARY = Path(__file__).parent / "assets/runtime/m13_dictionary.txt"
 PREPROCESS_VERSION = "m13-width-space-jieba-hmm-off-v1"
 
 

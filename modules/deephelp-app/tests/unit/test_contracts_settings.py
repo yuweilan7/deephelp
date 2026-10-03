@@ -13,7 +13,7 @@ from deephelp_app.domain.models import (
     VerifiedIdentity,
 )
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.fakes import FakeRepository
+from deephelp_app.learning.fakes import FakeRepository
 from deephelp_app.settings import Settings
 
 pytestmark = pytest.mark.unit

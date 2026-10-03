@@ -7,22 +7,21 @@ from typing import Any, cast
 
 import httpx
 
+from deephelp_app.asset_integrity import file_digest
+from deephelp_app.assets import asset_path
 from deephelp_app.corpus import digest, read_corpus, validate_records
 from deephelp_app.dense import DenseImporter, atomic_json, load_json, verify_manifest_rows
 from deephelp_app.domain.models import DenseScope
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import file_digest
 from deephelp_app.execution import AsyncCalls
-from deephelp_app.fasttext_cli import bounded_train
 from deephelp_app.fasttext_runtime import LABELS, FastTextClassifier, pointer_manifest
-from deephelp_app.fasttext_training import DATA as TRAIN_DATA
 from deephelp_app.flywheel import FeedbackCandidate, neutral, snapshot
 from deephelp_app.flywheel_store import FeedbackStore
 from deephelp_app.milvus_dense import MilvusDenseStore, SSHCapacity, create_client
 from deephelp_app.mvp_runtime import BudgetSession, LiveAssembly
 from deephelp_app.providers import ProviderConfig, create_gateway
 
-DEMO_DATA = Path(__file__).parent / "sample_data/m18_demo.json"
+DEMO_DATA = Path(__file__).parent / "assets/evaluation/m18_demo.json"
 
 
 def read_data(path: Path) -> dict[str, Any]:
@@ -36,10 +35,9 @@ def asset_hashes(output: Path) -> dict[str, str]:
 def exports(rows: list[FeedbackCandidate]) -> dict[str, Any]:
     source = snapshot(rows)
     corpus = [
-        r.model_dump(mode="json")
-        for r in read_corpus(DEMO_DATA.with_name("m09_corpus.jsonl")).index_records
+        r.model_dump(mode="json") for r in read_corpus(asset_path("m09_corpus.jsonl")).index_records
     ]
-    training = json.loads(TRAIN_DATA.read_text(encoding="utf-8"))
+    training = json.loads(asset_path("m13_fasttext.json").read_text(encoding="utf-8"))
     rules = []
     forbidden = {neutral(r["text"]) for r in read_data(DEMO_DATA)["release"]}
     seen: set[str] = set()
@@ -162,6 +160,8 @@ async def build(
         if any(
             r.reviews.get("fasttext") and r.reviews["fasttext"].state == "approved" for r in rows
         ):
+            from deephelp_app.evaluation.fasttext_cli import bounded_train
+
             task = asyncio.create_task(
                 asyncio.to_thread(bounded_train, output / "fasttext", training_path)
             )
@@ -243,11 +243,11 @@ async def build(
         raise
 
 
-def verify_files(path: Path) -> dict[str, Any]:
+def verify_files(path: Path, *, validation_inputs: bool = True) -> dict[str, Any]:
     data = read_data(path)
     if data.get("format") != "m18-demo-assets-v1" or data.get("status") != "PREPARED":
         raise ConfigurationError("Only complete prepared demo assets can be used")
-    if data.get("demo_data_digest") != file_digest(DEMO_DATA):
+    if validation_inputs and data.get("demo_data_digest") != file_digest(DEMO_DATA):
         raise ConfigurationError("Release validation data changed")
     if data["source"]["digest"] != digest(data["source"]["candidates"]):
         raise ConfigurationError("Feedback review snapshot changed")

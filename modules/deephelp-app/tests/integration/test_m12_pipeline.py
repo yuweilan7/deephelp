@@ -5,12 +5,12 @@ import httpx
 import pytest
 
 from deephelp_app.cascade import CascadePolicy
-from deephelp_app.cases_fake import MemoryCaseRepository
 from deephelp_app.conversation import STAGES
 from deephelp_app.domain.models import IntentCode, Outcome, QuestionStatus
-from deephelp_app.event_replay import ReplayJudge, envelope
 from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mvp_replay import ReplayAssembly
+from deephelp_app.learning.cases_fake import MemoryCaseRepository
+from deephelp_app.learning.event_replay import ReplayJudge, envelope
+from deephelp_app.learning.mvp_replay import ReplayAssembly
 from deephelp_app.trace import MemoryTrace
 
 pytestmark = pytest.mark.integration

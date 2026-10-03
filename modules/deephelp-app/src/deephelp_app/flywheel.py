@@ -5,11 +5,12 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from deephelp_app.assets import asset_path
 from deephelp_app.corpus import digest
 from deephelp_app.debug import sanitize
 from deephelp_app.domain.models import DTO, IntentCode
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import DATA, canonical, historical_inputs, semantic_label
+from deephelp_app.text_fingerprint import canonical
 
 Route = Literal["corpus", "fasttext", "rule"]
 ROUTES: tuple[Route, ...] = ("corpus", "fasttext", "rule")
@@ -46,6 +47,8 @@ def isolation(candidate: FeedbackCandidate) -> None:
     """Identifier-neutral collisions and declared paraphrase groups are both audited."""
     import json
 
+    from deephelp_app.evaluation.core import DATA, historical_inputs
+
     if neutral(candidate.text) in {neutral(t) for t in historical_inputs()} | {
         neutral(t["text"])
         for path in (DATA, DATA.with_name("m17_scale_cases.json"))
@@ -53,9 +56,8 @@ def isolation(candidate: FeedbackCandidate) -> None:
         for t in case["turns"]
     }:
         raise ConfigurationError("Known index/train/dev/test/regression input cannot be recycled")
-    base = DATA.parent
     groups: set[str] = set()
-    for row in json.loads((base / "cases.json").read_text(encoding="utf-8"))["cases"]:
+    for row in json.loads(asset_path("cases.json").read_text(encoding="utf-8"))["cases"]:
         groups.update(str(row[k]) for k in ("source_group", "variant_group"))
     for name in (
         "m13_fasttext.json",
@@ -64,9 +66,9 @@ def isolation(candidate: FeedbackCandidate) -> None:
         "m17_cases.json",
         "m17_scale_cases.json",
     ):
-        for row in json.loads((base / name).read_text(encoding="utf-8")):
+        for row in json.loads(asset_path(name).read_text(encoding="utf-8")):
             groups.update(str(row[k]) for k in ("source_group", "variant_group"))
-    for line in (base / "m09_corpus.jsonl").read_text(encoding="utf-8").splitlines():
+    for line in asset_path("m09_corpus.jsonl").read_text(encoding="utf-8").splitlines():
         row = json.loads(line)
         groups.update(row[k] for k in ("source_group", "variant_group"))
     demo = json.loads(DATA.with_name("m18_demo.json").read_text(encoding="utf-8"))
@@ -135,15 +137,15 @@ def reviewed(candidate: FeedbackCandidate, route: Route, review: RouteReview) ->
             )
         if review.method == "deterministic_evidence" and (
             review.reviewer != "synthetic-semantic-evidence-v1"
-            or semantic_label(candidate.text) != review.label.value
+            or __semantic_label(candidate.text) != review.label.value
         ):
             raise ConfigurationError("Registered deterministic evidence does not prove this label")
         if review.method == "deterministic_evidence":
             import json
 
-            sources = json.loads(DATA.with_name("m18_demo.json").read_text(encoding="utf-8"))[
-                "collect"
-            ]
+            from deephelp_app.assets import asset_path
+
+            sources = json.loads(asset_path("m18_demo.json").read_text(encoding="utf-8"))["collect"]
             if not any(
                 row["id"] == candidate.source_group == candidate.variant_group
                 and neutral(row["text"]) == neutral(candidate.text)
@@ -238,3 +240,9 @@ def rule_matches(data: dict[str, Any], request: Any) -> list[Any]:
             )
         )
     return result
+
+
+def __semantic_label(text: str) -> str:
+    from deephelp_app.evaluation.core import semantic_label
+
+    return semantic_label(text)

@@ -10,8 +10,8 @@ import pytest
 from deephelp_app.corpus import digest
 from deephelp_app.domain.models import ReleaseManifest, ResponseEnvelope, VersionManifest
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import file_digest
-from deephelp_app.event_replay import envelope
+from deephelp_app.evaluation.core import file_digest
+from deephelp_app.learning.event_replay import envelope
 from deephelp_app.ledger import new_receipt
 from deephelp_app.release_assets import prepare_manifest, release_hash, verify_release
 from deephelp_app.release_store import ReleaseMismatch, ReleaseRepository
@@ -53,13 +53,18 @@ def release(tmp_path, monkeypatch):
                 assets_digest=digest(data),
                 sop_snapshot=bundled_registry().snapshot_hash,
                 code_digest="fixed-code",
+                code_integrity_scope="runtime-v2",
+                tooling_digest="fixed-tooling",
                 judge_providers_digest=file_digest(tmp_path / "event-judge.example.json"),
                 providers_digest=file_digest(paths["providers"]),
             )
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(module, "verify_files", lambda path: copy.deepcopy(data))
+    monkeypatch.setattr(module, "verify_files", lambda path, **kwargs: copy.deepcopy(data))
+    monkeypatch.setattr(
+        module, "evaluation_provenance", lambda: dict(tooling_digest="fixed-tooling")
+    )
     monkeypatch.setattr(module, "pointer_manifest", lambda path: path)
     monkeypatch.setattr(
         module,

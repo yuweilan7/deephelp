@@ -63,6 +63,8 @@
 
 Windows从根使用本机已验证的py -3.14 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。以下检查和适用的真实验收只在特性分支执行：
 
+业务启动用 `python -m deephelp_app serve`，参数见[业务入口](../modules/deephelp-app/README.md#业务启动入口)。学习实验/fake在learning，显式探针在probes，冻结评测/训练选参在evaluation；`evaluation.evaluation_cli audit/run`使用冻结数据。包内运行策略、SOP/模板、合成业务事实、冻结集和学习数据分别按[资源职责](../modules/deephelp-app/src/deephelp_app/assets/README.md)读取。默认业务启动不依赖探针、学习工具或dev/test数据；完整发布准备时仍需要精确内容评测，不能用移目录绕过hash门禁。
+
 ```powershell
 py -3.14 -m uv run --locked ruff check conftest.py modules/deephelp-app
 py -3.14 -m uv run --locked ruff format --check conftest.py modules/deephelp-app

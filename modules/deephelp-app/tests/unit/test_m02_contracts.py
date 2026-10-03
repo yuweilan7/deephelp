@@ -44,7 +44,7 @@ from deephelp_app.domain.models import (
 from deephelp_app.domain.registry import IntentRegistry, complaint_registry
 from deephelp_app.errors import HTTP_STATUS, AppError
 from deephelp_app.execution import ExecutionBudget
-from deephelp_app.fakes import FakeRepository
+from deephelp_app.learning.fakes import FakeRepository
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 10, 2, tzinfo=UTC)
@@ -126,7 +126,7 @@ def tool_request(identity, **changes):
 
 def test_m02_json_examples_and_unconfigured_versions():
     examples = json.loads(
-        files("deephelp_app").joinpath("sample_data/examples.json").read_text(encoding="utf-8")
+        files("deephelp_app").joinpath("assets/learning/examples.json").read_text(encoding="utf-8")
     )
     for model, data in (
         (RequestEnvelope, examples["request"]),

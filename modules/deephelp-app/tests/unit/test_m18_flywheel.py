@@ -6,12 +6,14 @@ from unittest.mock import AsyncMock
 import pytest
 
 from deephelp_app.corpus import digest
+from deephelp_app.demo.fixtures import load_business_fixtures
 from deephelp_app.dense import atomic_json
 from deephelp_app.domain.models import IntentCode
 from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation import DATA, historical_inputs, semantic_label
+from deephelp_app.evaluation.core import DATA, historical_inputs, semantic_label
+from deephelp_app.evaluation.fasttext_training import audit
+from deephelp_app.evaluation.flywheel_validation import validation_cases
 from deephelp_app.fasttext_preprocess import DICTIONARY, FastTextPreprocessor
-from deephelp_app.fasttext_training import audit
 from deephelp_app.flywheel import (
     FeedbackCandidate,
     RouteReview,
@@ -24,8 +26,6 @@ from deephelp_app.flywheel import (
 )
 from deephelp_app.flywheel_assets import DEMO_DATA, activate, exports
 from deephelp_app.flywheel_store import FeedbackStore
-from deephelp_app.flywheel_validation import validation_cases
-from deephelp_app.samples import load_business_fixtures
 
 pytestmark = pytest.mark.unit
 

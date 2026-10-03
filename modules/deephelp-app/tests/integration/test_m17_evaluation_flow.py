@@ -3,17 +3,21 @@ import json
 
 import pytest
 
-from deephelp_app.evaluation import DATA, MANIFEST, MODES
-from deephelp_app.evaluation_cli import run
+from deephelp_app.evaluation.core import DATA, MANIFEST, MODES
+from deephelp_app.evaluation.evaluation_cli import run
 
 pytestmark = pytest.mark.integration
 
 
 async def test_full_offline_http_stdio_evaluation_and_baseline(tmp_path, monkeypatch):
-    import deephelp_app.evaluation_cli as cli
+    import deephelp_app.evaluation.evaluation_cli as cli
 
     monkeypatch.setattr(cli, "local_path", lambda value: tmp_path / value)
-    monkeypatch.setattr(cli, "provenance", lambda: {"package_digest": "fixed-offline-test"})
+    monkeypatch.setattr(
+        cli,
+        "provenance",
+        lambda: {"package_digest": "fixed-offline-test", "tooling_digest": "fixed-offline-tools"},
+    )
     args = argparse.Namespace(
         data=str(DATA),
         manifest=str(MANIFEST),

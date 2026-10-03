@@ -12,7 +12,7 @@ from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.domain.models import VerifiedIdentity
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.execution import AsyncCalls
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.memory import MemoryService, ProjectionWorker, RedisMemory
 from deephelp_app.milvus_dense import create_client
 from deephelp_app.milvus_memory import MilvusEventIndex

@@ -17,6 +17,7 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult, TextContent, TextResourceContents, Tool
 from pydantic import ValidationError
 
+from deephelp_app.demo.tool_config import MockConfig
 from deephelp_app.domain.checks import (
     require_owner,
     validate_question_access,
@@ -36,7 +37,6 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.mcp_mock import MockConfig
 from deephelp_app.mcp_protocol import (
     HEALTH_URI,
     LEDGER_URI,
@@ -94,7 +94,7 @@ class ToolGateway:
         if self.ledger_path is not None:
             env["DEEPHELP_MCP_LEDGER"] = str(self.ledger_path.resolve())
         params = StdioServerParameters(
-            command=sys.executable, args=["-m", "deephelp_app.mcp_mock"], env=env
+            command=sys.executable, args=["-m", "deephelp_app.demo.mcp_server"], env=env
         )
         # The SDK owns process cleanup. Enter/exit in the same task for AnyIO scope ordering.
         from mcp.client.stdio import stdio_client

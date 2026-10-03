@@ -15,8 +15,7 @@ from deephelp_app.flywheel import ROUTES, RouteReview
 from deephelp_app.flywheel_assets import activate, assembly, build, verify_files, verify_remote
 from deephelp_app.flywheel_assets import read_data as load_json
 from deephelp_app.flywheel_store import FeedbackStore
-from deephelp_app.flywheel_validation import validate
-from deephelp_app.live_probe import local_path
+from deephelp_app.local_paths import local_path
 from deephelp_app.mvp_runtime import BudgetSession, LocalAuth, live_app, validate_control_paths
 
 
@@ -104,6 +103,8 @@ async def run(args: argparse.Namespace) -> int:
                     local_path(args.fasttext_pointer),
                 )
             elif args.command == "validate":
+                from deephelp_app.evaluation.flywheel_validation import validate
+
                 result = await validate(
                     store,
                     assets,
@@ -127,7 +128,7 @@ async def run(args: argparse.Namespace) -> int:
                 await activate(store, assets, pointer, gate)
                 result = load_json(pointer)
             else:
-                data = verify_files(Path(load_json(pointer)["active"]))
+                data = verify_files(Path(load_json(pointer)["active"]), validation_inputs=False)
                 await store.require_current(data["source"])
                 app = live_app(
                     assembly(data, Path(args.providers), "dh_m10_events_m18_demo"),
