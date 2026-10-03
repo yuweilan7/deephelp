@@ -201,3 +201,31 @@ def test_baseline_comparison_requires_exact_experiment_and_coverage():
     current = copy.deepcopy(baseline)
     current["routes"]["hybrid"]["rows"] = []
     assert not compare_reports(current, baseline)["accepted"]
+
+
+def test_stateless_followup_is_diagnostic_but_enabled_context_and_safety_are_gated():
+    baseline = dict(
+        format="m17-evaluation-v1",
+        status="PASS",
+        experiment_fingerprint="a",
+        live=True,
+        selected_case_ids=["x"],
+        routes=routes(),
+    )
+    for mode, route in baseline["routes"].items():
+        route["capabilities"] = {"events": mode in {"memory_event", "fasttext"}}
+        route["rows"][0]["expectation"] = "followup"
+    current = copy.deepcopy(baseline)
+    current["routes"]["rule_dense"]["rows"][0]["score"]["completed"] = False
+    result = compare_reports(current, baseline)
+    assert result["accepted"]
+    assert result["comparison_scope"]["rule_dense"]["diagnostic_only_turn_ids"] == ["x"]
+    current["routes"]["memory_event"]["rows"][0]["score"]["completed"] = False
+    assert not compare_reports(current, baseline)["accepted"]
+    current = copy.deepcopy(baseline)
+    current["routes"]["rule_dense"]["rows"][0]["score"]["hard_failures"] = ["unsafe"]
+    assert not compare_reports(current, baseline)["accepted"]
+    current = copy.deepcopy(baseline)
+    current["routes"]["rule_dense"]["rows"][0]["expectation"] = "query"
+    current["routes"]["rule_dense"]["rows"][0]["score"]["completed"] = False
+    assert not compare_reports(current, baseline)["accepted"]

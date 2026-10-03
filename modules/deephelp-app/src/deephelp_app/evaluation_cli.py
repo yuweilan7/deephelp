@@ -73,13 +73,30 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
     ):
         raise ConfigurationError("Baseline data/code/models/configuration/budget/selection differ")
     checks: dict[str, bool] = {}
+    scope: dict[str, Any] = {}
     for mode in MODES:
         old = {r["turn_id"]: r for r in baseline["routes"][mode]["rows"]}
         rows = current["routes"][mode]["rows"]
+        # A stateless ablation cannot repeat an accidental inference of a prior turn.
+        # Keep its raw mistakes in metrics; compare only capabilities it actually enables.
+        events = current["routes"][mode].get("capabilities", {}).get("events", True)
+        prior_events = baseline["routes"][mode].get("capabilities", {}).get("events", True)
+        eligible = [r for r in rows if events or r.get("expectation") != "followup"]
+        prior = [r for r in old.values() if prior_events or r.get("expectation") != "followup"]
+        checks[mode + ":capability_scope"] = events == prior_events and {
+            r["turn_id"] for r in eligible
+        } == {r["turn_id"] for r in prior}
+        scope[mode] = {
+            "compared_turn_ids": [r["turn_id"] for r in eligible],
+            "diagnostic_only_turn_ids": [r["turn_id"] for r in rows if r not in eligible],
+            "reason": "followup requires disabled event context" if not events else "all turns",
+            "raw_completed": sum(r["score"]["completed"] for r in rows),
+            "baseline_raw_completed": sum(r["score"]["completed"] for r in old.values()),
+        }
         checks[mode + ":coverage"] = set(old) == {r["turn_id"] for r in rows}
         checks[mode + ":completed_no_regression"] = sum(
-            r["score"]["completed"] for r in rows
-        ) >= sum(r["score"]["completed"] for r in old.values())
+            r["score"]["completed"] for r in eligible
+        ) >= sum(r["score"]["completed"] for r in prior)
         checks[mode + ":no_new_hard_failures"] = all(not r["score"]["hard_failures"] for r in rows)
         checks[mode + ":case_no_regression"] = (
             current["routes"][mode]["metrics"]["case_completion_rate"]["numerator"]
@@ -88,6 +105,7 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> dict[s
     return {
         "accepted": all(checks.values()),
         "checks": checks,
+        "comparison_scope": scope,
         "baseline_digest": digest(baseline),
         "note": "nondeterministic live responses; same frozen experiment",
     }
@@ -294,6 +312,7 @@ async def run(args: argparse.Namespace) -> int:
                                         "split": case.split,
                                         "event_id": turn.event_id,
                                         "multi_turn": len(case.turns) > 1,
+                                        "expectation": turn.expectation,
                                         "text": turn.text,
                                         "response": response.model_dump(mode="json"),
                                         "observation": observation,
