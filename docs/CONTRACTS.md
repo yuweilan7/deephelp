@@ -95,7 +95,7 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 
 `GET /operations/{operation_id}?session_id=...&run_id=...` 读取当前主体的事实；`POST .../approval` 接收 session_id/run_id/expected_question_version/parameters_hash/sop_version/snapshot_hash/decision，decision=approve/reject/revoke。审批者取可信身份源，不能从请求正文伪造。`POST .../resume` 仅收 session_id/run_id，不接受新计划、参数、审批值或任意 graph Command。外域 tenant/user/session/run 统一404；未装配返回501，未鉴权401，状态/版本/并发领取冲突409。
 
-`ApprovalRepository.before_finish` 在原终态事务中登记 PREPARED/PENDING、WAITING_APPROVAL run/question 与 M10 outbox；等待不写 finished_at。操作ID主键、run唯一键及 session→question→operation 的短事务锁保证决定/领取串行。dispatch 在同一事务核验主体、问题状态/版本、参数、当前SOP快照、审批/期限、lease并登记IN_FLIGHT；不跨HTTP/人类等待持锁。普通消息不能改待审批问题；拒绝/撤销/过期变为 CANCELLED，问题转人工，后续可重新规划。已发送操作不能撤销为“无效果”。
+`ApprovalRepository.before_finish` 在原终态事务中登记 PREPARED/PENDING、WAITING_APPROVAL run/question 与 M10 outbox；等待不写 finished_at。操作ID主键、run唯一键及 session→question→operation 的短事务锁保证决定/领取串行。dispatch 在同一事务核验主体、问题状态/版本、参数、当前SOP快照、审批/期限、lease并登记IN_FLIGHT；不跨HTTP/人类等待持锁。普通消息不能改待审批问题；拒绝/撤销/过期变为 CANCELLED，问题转人工，后续可重新规划。SOP切版后可在原主体/问题/版本/参数绑定下关闭旧计划，但新批准与dispatch仍须匹配当前SOP；关闭不改写已批准计划。已发送操作不能撤销为“无效果”。
 
 LangGraph使用独立 `dh_m15_checkpoints/dh_m15_checkpoint_writes`，thread=`m15-approval-v1:{run_id}`；只保存操作引用、游标及必要结果。等待、执行、对账分节点，恢复先核对MySQL审批事实，客户端resume值不会授权。checkpoint缺失可从已提交计划重建；业务已完成但checkpoint滞后时按ledger推进终点。
 

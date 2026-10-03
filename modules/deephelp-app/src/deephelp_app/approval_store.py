@@ -313,9 +313,13 @@ class ApprovalRepository(MySQLCaseRepository):
                 )
             if lease[0] and lease[1] > datetime.now(UTC).replace(tzinfo=None):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Operation is being resumed", 409)
-            validate_binding(op, q, snapshot)
+            # Closing the old plan needs its unchanged case binding, not the newly
+            # published SOP. A stale plan still cannot gain execution approval.
+            validate_binding(op, q, op.plan.snapshot_hash)
             if op.expires_at <= datetime.now(UTC):
                 return await self.cancel(cursor, op, q, ApprovalStatus.EXPIRED)
+            if desired == ApprovalStatus.APPROVED:
+                validate_binding(op, q, snapshot)
             op = op.model_copy(update={"approver": identity})
             if desired != ApprovalStatus.APPROVED:
                 return await self.cancel(cursor, op, q, desired)
@@ -330,9 +334,10 @@ class ApprovalRepository(MySQLCaseRepository):
             if lease[0] and lease[1] > datetime.now(UTC).replace(tzinfo=None):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Operation resume already owned", 409)
             if op.status == OperationStatus.PREPARED:
-                validate_binding(op, q, snapshot)
+                validate_binding(op, q, op.plan.snapshot_hash)
                 if op.expires_at <= datetime.now(UTC):
                     return await self.cancel(cursor, op, q, ApprovalStatus.EXPIRED), None
+                validate_binding(op, q, snapshot)
                 if op.approval_status != ApprovalStatus.APPROVED or op.approver != op.plan.identity:
                     raise AppError(ErrorCode.FORBIDDEN, "Explicit approval required", 403)
             # Already dispatched operations must be reconciled even after expiry or SOP change.
