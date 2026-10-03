@@ -31,3 +31,13 @@ M12 的 FallbackPort 只增加一个适配器，不另建一套识别服务。�
 ## 接口与分期边界
 
 先验证当前 Windows/Python 的 FastText binding；不支持时以已授权 Linux/WSL 小探针为先，不偷偷改主workspace环境。只设置实际绑定支持的随机种子/参数，记录线程数与模型hash，不虚构多线程训练逐字节可复现。训练—推理共用预处理，数据不足只能验流程，不能称泛化质量通过；默认关闭的模型也应保留可验证的独立训练/推理结果。
+
+## 当前实施机制
+
+Python3.14.7本机采用社区维护绑定[fasttext-community0.11.8](https://pypi.org/project/fasttext-community/0.11.8/)，不是Meta官方支持；根锁固定发行物hash。官方0.9.3无当前Windows wheel且本机缺MSVC。社区绑定单线程探针出现NaN，源码的初始化按十块分配；当前只资格验证10线程、dim20及seed42，训练后全矩阵有限性检查。实际多线程不保证每次模型hash/结果相同，manifest记录本次真实hash。
+
+80条人工合成标注样本为40 train、20 dev、20 test，五类各8/4/4。source_group/variant_group与规范化文本都审计；同作者的小语料只证明流程，不能靠不同ID宣称企业泛化。Jieba/HMM/词典/规范化签名贯穿训练、校准、推理；编号不丢前导零，无停用否定词。
+
+仅探索两个epoch配置，thread10/dim20/bucket4096/wordNgrams2/minn2/maxn4/seed42/lr0.5/softmax；估算矩阵32MiB及外层训练超时。dev选择配置与零错误接管网格，再冻结并读取test指标。量化使用dsub2/cutoff512/qnorm=false/retrain=false，同一训练产物重新加载后独立dev门限，不借test修正。未引入PyTorch/CUDA、本地大模型或新向量空间。
+
+启用方式、三个对照入口、回退见[应用运行入口](../../modules/deephelp-app/README.md#m13-fasttext训练量化与可选兜底)。默认关闭，显式指针接入既有600，不在500/SOP重复分类。unknown/multiple/OOV/低分继续强模型；已选意图但缺槽位只澄清。拒识、安全接管覆盖、实际错误、成本和墙钟时延分别报告；可安全下探不等于模型已分类正确。完整契约见[CONTRACTS](../CONTRACTS.md#m13-fasttext-可选兜底契约)。

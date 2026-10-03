@@ -4,7 +4,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import ValidationError
 
@@ -84,7 +84,7 @@ class CascadePolicy:
 
 
 class StructuredFallback:
-    """One task-sized schema call. FastText remains disabled until M13."""
+    """One task-sized schema call; optional FastText wraps this same port."""
 
     def __init__(self, model: ChatPort) -> None:
         self.model = model
@@ -407,11 +407,33 @@ class Cascade:
                 action=fallback_action,
                 reason=chosen.reason,
                 model_calls=budget.attempts_used - before,
+                fasttext=chosen.fasttext,
             )
         )
-        return finish(
+        decision = finish(
             chosen.code,
-            "fallback_" + chosen.reason,
+            "fasttext_selected" if chosen.source == "fasttext" else "fallback_" + chosen.reason,
             decision=Decision.CLARIFY if chosen.reason == "multiple" else None,
-            kind=ScoreKind.MODEL_CHOICE,
+            kind=ScoreKind.CLASSIFIER_PROBABILITY
+            if chosen.source == "fasttext"
+            else ScoreKind.MODEL_CHOICE,
         )
+        if chosen.source == "fasttext" and chosen.fasttext:
+            decision = IntentDecision.model_validate(
+                decision.model_copy(
+                    update={
+                        "candidates": tuple(
+                            IntentCandidate(
+                                code=cast(IntentCode, c.code),
+                                rank=i,
+                                score=min(1.0, c.raw_probability),
+                                score_kind=ScoreKind.CLASSIFIER_PROBABILITY,
+                            )
+                            for i, c in enumerate(
+                                (c for c in chosen.fasttext.top_k if c.code is not None), 1
+                            )
+                        )
+                    }
+                ).model_dump()
+            )
+        return decision

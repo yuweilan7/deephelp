@@ -240,7 +240,7 @@ MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有
 
 ## M12 完整聚合与意图级联
 
-正式live的同一`/converse`现已自动归属，无需给每条补充手工附问题编号。只有600调用统一主意图服务，内部顺序为规则→当前Hybrid→必要的已确认事件增强Hybrid→有限schema兜底。`--pointer .local/m09/active.json`启用已校准Hybrid；旧默认M05指针仍兼容，但不直接按Dense分数接管。已绑定问题保持原意图，FastText仍disabled。机制/短路表见[M12规格](../../docs/MODULES/M12_CASCADE_PIPELINE.md)。
+正式live的同一`/converse`现已自动归属，无需给每条补充手工附问题编号。只有600调用统一主意图服务，内部顺序为规则→当前Hybrid→必要的已确认事件增强Hybrid→有限schema兜底。`--pointer .local/m09/active.json`启用已校准Hybrid；旧默认M05指针仍兼容，但不直接按Dense分数接管。已绑定问题保持原意图，FastText默认disabled，可按M13入口显式启用。机制/短路表见[M12规格](../../docs/MODULES/M12_CASCADE_PIPELINE.md)。
 
 归属判断和主意图兜底均使用`event-judge.example.json`配置的强模型（当前qwen3.8-max），按完整语义区分应减未减与一般金额询问/退款；提取、Embedding及SOP沿原provider配置。响应版本记录兜底模型及`m12-fallback-v2`，阶段计数仍分别核算实际调用，不额外重分类。
 
@@ -274,3 +274,36 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m12_casc
 ```
 
 probe使用专用session/事件集合，只删除自己的派生集合；MySQL合成事实和outbox保留，Redis缓存按TTL失效。当前原意图集合与语料、凭据、来源原件不修改，不运行P00 full。真实MCP协议与真实云服务使用合成业务；小样本不代表企业效果，审批/写操作仍需M15。
+
+## M13 FastText训练量化与可选兜底
+
+默认关闭；显式`--fasttext-pointer`在原600兜底中加入本机CPU推理，安全top1接管，其余继续既有强模型。输入客诉原句，输出五类topK/原始概率、拒识理由和三个版本；缺订单/券号仍澄清、工具0。全半角、空白、Jieba/HMM与两份词典的签名必须与训练一致。真实小组对照及限制见[M13交接](../../handoffs/M13.md)，实现约束见[M13规格](../../docs/MODULES/M13_FASTTEXT.md)。
+
+Windows沿根workspace/单锁及Python3.14.7，绑定固定fasttext-community0.11.8。无需GPU。训练仅两组有界配置，实际seed42/10线程；多线程不承诺逐字节复现。每次训练使用新目录，报告区分train/dev/test，test不选参数。Jieba依赖的旧正则SyntaxWarning不影响已验证结果。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli audit
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli train --output .local/m13/experiment-new --timeout 180
+
+# 按report.json的selected_raw选择真实候选；selected_quantized指向量化版本
+$experimentReport = Get-Content .local/m13/experiment-new/report.json -Raw | ConvertFrom-Json
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli activate --manifest $experimentReport.selected_raw --pointer .local/m13/active.json
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli predict --pointer .local/m13/active.json --text "账单没扣掉承诺的优惠部分"
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli evaluate --pointer .local/m13/active.json --output .local/m13/evaluation-new.json
+
+# 原子切换并验证上一版本回退；服务已加载的模型在重新装配时才变更
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli activate --manifest $experimentReport.selected_quantized --pointer .local/m13/active.json
+py -3.14 -m uv run --locked python -m deephelp_app.fasttext_cli rollback --pointer .local/m13/active.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --fasttext-pointer .local/m13/active.json --auth .local/m08/auth.json --budget-state .local/m13/session-budget.json
+```
+
+真实探针先health/模型内容检查；沿现有凭据与专用业务表，新任务通过mvp_cli init设任务累计预算，已有预算继续使用、不得归零。init同时生成专用合成身份文件；预算参数按任务选定，不把历史数值作长期额度规则。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli init --auth .local/m13/auth-new.json --budget-state .local/m13/session-budget-new.json --max-calls $m13Calls --max-tokens $m13Tokens --max-cost $m13Cost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.fasttext_probe --live --stage feature --experiment .local/m13/experiment-new --auth .local/m13/auth-new.json --budget-state .local/m13/session-budget-new.json --output .local/m13/feature-new.json
+# 合并后同参数改stage=main与新报告，沿用同一预算
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m13_fasttext.py
+```
+
+探针对同20条冻结test运行关闭/原模型/量化模型，分别报告最终意图与unknown/multiple原因、FastText覆盖/错误接管、真实API调用/token/成本及墙钟时间；仅测试FallbackPort，不冒充全业务时延。另在同一真实HTTP主链对比三模式的合成事实、缺槽位/未知、实际接管、MySQL终态/重放及MCP退出，清理各自事件集合。API调用由原累计预算计量；本地FastText毫秒不算模型API次数，原始概率保留softmax的1e-5偏移。模型/manifest及原始报告只留.local，无云端上传或新库迁移；更换数据/预处理必须新版本，任何失败保留旧指针。
