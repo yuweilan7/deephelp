@@ -56,6 +56,9 @@ class ApprovalRepository(MySQLCaseRepository):
     approval_ttl_seconds = 900
     lease_seconds = 120
 
+    async def current_snapshot(self, cursor: Any, op: OperationRecord, snapshot: str) -> str:
+        return snapshot
+
     async def migrate(self) -> None:
         await super().migrate()
         await migrate_m15(self.pool)
@@ -319,7 +322,7 @@ class ApprovalRepository(MySQLCaseRepository):
             if op.expires_at <= datetime.now(UTC):
                 return await self.cancel(cursor, op, q, ApprovalStatus.EXPIRED)
             if desired == ApprovalStatus.APPROVED:
-                validate_binding(op, q, snapshot)
+                validate_binding(op, q, await self.current_snapshot(cursor, op, snapshot))
             op = op.model_copy(update={"approver": identity})
             if desired != ApprovalStatus.APPROVED:
                 return await self.cancel(cursor, op, q, desired)
@@ -337,7 +340,7 @@ class ApprovalRepository(MySQLCaseRepository):
                 validate_binding(op, q, op.plan.snapshot_hash)
                 if op.expires_at <= datetime.now(UTC):
                     return await self.cancel(cursor, op, q, ApprovalStatus.EXPIRED), None
-                validate_binding(op, q, snapshot)
+                validate_binding(op, q, await self.current_snapshot(cursor, op, snapshot))
                 if op.approval_status != ApprovalStatus.APPROVED or op.approver != op.plan.identity:
                     raise AppError(ErrorCode.FORBIDDEN, "Explicit approval required", 403)
             # Already dispatched operations must be reconciled even after expiry or SOP change.
@@ -362,7 +365,7 @@ class ApprovalRepository(MySQLCaseRepository):
     async def dispatch(self, operation_id: str, token: str, snapshot: str) -> OperationRecord:
         async with self.locked(operation_id) as (cursor, op, q, lease):
             self.own(lease, token)
-            validate_binding(op, q, snapshot)
+            validate_binding(op, q, await self.current_snapshot(cursor, op, snapshot))
             if op.approval_status != ApprovalStatus.APPROVED or op.expires_at <= datetime.now(UTC):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Approval no longer executable", 409)
             if op.dispatch_attempts >= 2:
