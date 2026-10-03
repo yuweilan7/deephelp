@@ -55,13 +55,23 @@ def audit(path: Path = DATA) -> dict[str, list[dict[str, Any]]]:
             not isinstance(row, dict)
             or row.get("synthetic") is not True
             or row.get("reviewed") is not True
-            or row.get("source") != "manual-synthetic-m13-v1"
+            or row.get("source") not in {"manual-synthetic-m13-v1", "reviewed-flywheel-m18-v1"}
             or row.get("split") not in splits
             or row.get("label") not in LABELS
             or not isinstance(row.get("text"), str)
             or not 1 <= len(row["text"]) <= 2000
         ):
             raise ConfigurationError("Unreviewed, unregistered or oversized FastText data")
+        if row.get("source") == "reviewed-flywheel-m18-v1" and (
+            row.get("split") != "train"
+            or not isinstance(row.get("feedback_review"), dict)
+            or not row["feedback_review"].get("candidate_id")
+            or not row["feedback_review"].get("reviewer")
+            or row["feedback_review"].get("state") != "approved"
+        ):
+            raise ConfigurationError(
+                "Feedback is train-only and needs an approved review reference"
+            )
         split = row["split"]
         if not row.get("sample_id") or row["sample_id"] in ids:
             raise ConfigurationError("Duplicate or empty FastText sample identity")

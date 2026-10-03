@@ -24,10 +24,10 @@
 | M14 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M14.md) | 版本注册表/静态校验/固定快照、三流程19合成情境；审批仅计划，实际批准/写入留M15 |
 | M16 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M16.md) | 事实模板/受限语气、同源三视图与脱敏轮转；审批/恢复留M15 |
 | M17 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M17.md) | 冻结评测/四组对照已实现；500+与完整15+规模仍未完成 |
-| M18 | NOT_IMPLEMENTED | 规格存在；按用户启动的特性顺序实施 |
+| M18 | CORE_IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 人工触发合成反馈、三路审核/构建及回归/回退已完成；自动发布加固尚未实现 |
 | M15、M19 | HARDENING_NOT_IMPLEMENTED | 可后移，业务写工具前必须M15 |
 | M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
-| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 选定两模型四能力及M08内容通过；真实服务/合成业务，非企业接口 |
+| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
 M01已有客户端生命周期、deadline/预算/取消、错误/trace、fake Ports和三个异步实验。M02已原位扩展唯一类型，增加实体来源/更正、意图候选/策略、事实/工具证据、归属/参数/预算守卫和状态映射；目录有三类 actionable 意图，合成样本 reference/dev/regression=6/12/18，业务 fixture 有13订单、4券、1活动。缺订单演示为 CLARIFY/WAITING_SLOT/run SUCCEEDED/工具0。M03增加ChatPort/EmbeddingPort、严格schema/原生工具字段、调用/token/费用预留、错误分类、有界LRU和结构诊断；全零Embedding index按选定模型显式适配，normalization=l2、revision=null。未安装LangGraph；默认M01离线入口保持501，M08显式组装真实模型与MySQL三表。
 
@@ -91,7 +91,11 @@ M17新增冻结评测器、manifest和评测专用装配，原13段/唯一DTO/M0
 
 离线四组全量使用固定语义/SOP适配器及真实本机HTTP/SDK stdio，仅验证编排/指标/门禁；保留continuation错拆分，不冒充模型质量或全场景完成。真实固定8案例11消息×4组通过，意图各11/11、已出现类macro-F1=1、实体值11/11/非空来源6/6，各工具6次；三类金额/券/活动事实、成功ledger证据、缺槽位/跨用户对象、新MySQL池/终态重放/集合清理/退出均通过。Dense/Hybrid整会话7/8，Memory/EventCluster/FastText 8/8，启用事件组误并0/4对、误拆0/2对；25/23/15/15真实模型调用与45/57/41/41共享预算尝试分别报告。FastText两次CPU预测未接管，此抽样没有额外调用收益；其他输入不能外推。
 
-M17报告同配置/数据/代码/模型指纹，分split混淆矩阵/错例、Recall@K、实体来源、成对事件、澄清/接管、工具行为、消息/会话完成、P50/P95与估算费用；空分母null，代码/模型随机性与小样本限制保留。当前真实抽样不含multi类，未运行全部20消息真实模型或完整500+；16情境名不算15+业务规模验收。专项21项通过，特性全工程777 passed/1 skipped、Ruff/格式/mypy/diff退出0；wheel五新增资产逐字节核对/单锁保持，main复验记录见M17交接和交付回复。原始报告.local/m17，未启动M18、P00 full、云重启、M15写/恢复或企业接口。
+M17报告同配置/数据/代码/模型指纹，分split混淆矩阵/错例、Recall@K、实体来源、成对事件、澄清/接管、工具行为、消息/会话完成、P50/P95与估算费用；空分母null。main曾因无事件组续接的随机拒识不通过基线，现按冻结expectation/启用能力修复比较，原错例及全部硬门禁保留。修复特性/main真实四组均PASS，main原始完成10/11、10/11、11/11、11/11，实际比较9/9/11/11条；两个启用事件组续接严格通过。778 passed/1 skipped、Ruff/格式/mypy/diff退出0，修复已合并并同步远端。当前真实抽样不含multi类，未运行全部20消息真实模型、500+或完整15+业务规模；main证据见M17交接，原件.local/m17。
+
+M18新增脱敏候选/独立路线审核、MySQL修订历史与CAS/短租约任务、三路构建与派生文件来源。高分/成功不自动晋级；固定审核证据只接受登记的合成来源，拒绝/争议/撤回保留。已知训练/索引/dev/test/M17、编号变体和来源/近义组不能回流；FastText只扩train，规则为有限字面数据。只读查询结束池连接快照，来源更正/撤回读取最新事实。去掉M05全项目固定4集合数量限制，仍按实际容量/预算/超时停止。
+
+真实专用采集4条，三条获准、一条物流拒绝；9个构建任务各一次DONE。原12语料/80训练输入更新为15/83及3规则，真实1024维Embedding/Milvus全量hash回读、FastText训练/量化。基线和审核版分别固定M17的11条消息及另3条发布输入，均14/14、11/11会话，事实/实体来源/工具证据/重放/新池及事件关系通过。显式启用/幂等/回退后更正撤回一条来源，14份派生文件可查，旧审核版不能重启用；演示指针最终回到完整基线，默认M09指针保持原资产。24项离线边界测试通过，特性原件.local/m18/feature-verified；main按同一数据/模型复验，结果见交接及交付回复。真实服务与合成业务，未证明质量增益或企业泛化；完整ReleaseManifest/单一事实源并发发布、M15写业务、500+规模仍未做。
 
 ## 后续真实门禁
 

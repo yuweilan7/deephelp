@@ -189,6 +189,7 @@ class LiveAssembly:
         fasttext_pointer: Path | None = None,
         sop_directory: Path | None = None,
         reply_polish: bool = False,
+        reviewed_rules: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -206,6 +207,7 @@ class LiveAssembly:
         self.event_collection = event_collection
         self.fasttext_pointer = fasttext_pointer
         self.reply_polish = reply_polish
+        self.reviewed_rules = reviewed_rules
         self.sop_snapshots = RegistryStore(sop_directory).history() if sop_directory else ()
         if sop_directory and not self.sop_snapshots:
             raise ConfigurationError(
@@ -339,7 +341,7 @@ class LiveAssembly:
             )
             yield Conversation(
                 ledger,
-                TextEntityProcessor(model, trace=trace),
+                TextEntityProcessor(model, trace=trace, reviewed_rules=self.reviewed_rules),
                 IntentService(
                     model,
                     CountedRetriever(RequestDense()),

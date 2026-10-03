@@ -239,3 +239,13 @@ EvalCase/EvalTurn只描述公开合成gold、split/来源/模板组和同/异事
 m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、MySQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
 
 同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中followup依赖未启用的事件上下文，只作诊断，不参与消息完成基线门禁。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组的followup仍严格比较，独立query不能排除。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。
+
+## M18 反馈契约
+
+FeedbackCandidate复用DTO/IntentCode，只接收专用合成身份与m18-collect的MySQL已完成run；run_id唯一采集，candidate_id稳定，文本/实体/出处先脱敏。observation记录原决策、结果、工具证据和trace，不能证明标签。RouteReview按corpus/fasttext/rule独立记录审核者、理由、方法、标签及拒绝/争议/撤回；独立于heldout的确认必需。确定性晋级只接受已登记的合成来源、组/编号中立文本/语义标签一致，不接受置信分或SOP成功作为证据。
+
+MySQL候选revision做短事务CAS，每修订保留历史、撤销旧未完成任务，为仍获准路线生成candidate/revision/route唯一任务。领取有限尝试/租约，完成需持有未过期令牌；外部导入/CPU训练在事务外。派生路径与实际文件hash逐路线保留，包括语料、向量manifest、训练输入、原/量化模型与规则；更正或撤回使旧审核快照失效，不盲目删除引用工件。
+
+exports只使用获准路线；FastText回流只进train，保留原dev/test；known train/index/dev/test/M17、编号变体及声明来源/近义组不能进入。另三条发布输入与采集组分开固定，程序能检查声明/重叠，不能证明自然语言语义独立。规则为有界字面AND/排除数据，保留原文span与版本，不热执行生成代码/正则。
+
+m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名及providers/data摘要。构建新集合，启动完整向量/hash及模型回读；固定M17抽样+独立发布样本内容/安全全通过、审核快照未变化才显式更新本机演示active/previous。装配时读取固定三路文件，原M09业务指针保持原资产。演示指针不声称跨资源原子发布，MySQL仍是反馈事实源；完整ReleaseManifest与单一事实源发布并发加固另做。

@@ -5,12 +5,14 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from time import perf_counter
 from typing import Literal
 
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from deephelp_app.dense import load_json
 from deephelp_app.domain.models import (
     ChatMessage,
     ChatRequest,
@@ -30,6 +32,7 @@ from deephelp_app.domain.models import (
 )
 from deephelp_app.errors import AppError
 from deephelp_app.execution import ExecutionBudget
+from deephelp_app.flywheel import rule_matches
 from deephelp_app.ports import ChatPort
 from deephelp_app.trace import TraceEvent, TraceSink
 
@@ -452,10 +455,13 @@ class TextEntityProcessor:
         *,
         policy: TextPolicy | None = None,
         trace: TraceSink | None = None,
+        reviewed_rules: Path | None = None,
     ) -> None:
         self.primary, self.strong = primary, strong
         self.policy = policy or TextPolicy()
         self.trace = trace
+        self.reviewed_rules = reviewed_rules
+        self.reviewed_rule_data = load_json(reviewed_rules) if reviewed_rules else None
 
     async def _emit(self, request: RequestEnvelope, event: str, **values: object) -> None:
         if self.trace:
@@ -639,7 +645,12 @@ class TextEntityProcessor:
                 conflicts=conflicts,
                 unresolved_fields=unresolved,
                 demand_type=demand_type(request.raw_text, bool(confirmed)),
-                rule_matches=match_rules(request),
+                rule_matches=match_rules(request)
+                + (
+                    rule_matches(self.reviewed_rule_data, request)
+                    if self.reviewed_rule_data
+                    else []
+                ),
                 layers=layers,
                 model_coverage_complete=(not coverage_missing if len(layers) > 1 else None),
             )

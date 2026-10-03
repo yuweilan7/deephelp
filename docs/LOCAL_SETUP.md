@@ -163,3 +163,7 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 ## M14 SOP治理
 
 离线校验/发布/回退、固定合成情境及真实验收参数见[应用运行入口](../modules/deephelp-app/README.md#m14-sop治理与场景验收)。复用现有模型、M08/M10专用业务表、M09指针及本机正式SDK stdio，默认应用使用包内治理注册表；自建发布目录用`mvp_cli serve --sop-directory`，在新装配时生效。先核对模型候选与health，新任务设置独立累计预算，恢复与main复验沿用同一文件/新报告。只验真实服务与合成业务；审批计划是人工移交数据，M15之前不执行变更，不运行P00 full。
+
+## M18 反馈演示
+
+完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。使用现有专用MySQL的四张增量反馈表、Milvus新版本集合、M13 CPU训练接口及正式SDK合成只读工具；不新增依赖或改根锁。通用Chat按用户授权改为qwen3.8-max，切换先验chat/schema/tool；Embedding仍为原qwen3.7-text-embedding-flash签名。初始化独立累计预算和稳定脱敏key，main/恢复沿用原文件，报告和资产用新目录。构建检查保留双版本的实际容量，所有模型/云资源工件留.local。默认M09指针不换；本机演示active是独立控制文件，完整单事实源发布加固另做。
