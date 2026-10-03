@@ -159,3 +159,7 @@ M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid
 ## M10 多问题记忆
 
 M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行增量`mvp_cli migrate`，serve/ask接入显式问题续接，Redis窗口会在读取时恢复。Milvus事件投影用独立`memory_cli project`运行，`memory_cli show --query`检索后回查MySQL；完整命令见[应用README](../modules/deephelp-app/README.md#m10多问题记忆)。不要把原意图集合用作用户历史，也不要重置累计预算。
+
+## M14 SOP治理
+
+离线校验/发布/回退、固定合成情境及真实验收参数见[应用运行入口](../modules/deephelp-app/README.md#m14-sop治理与场景验收)。复用现有模型、M08/M10专用业务表、M09指针及本机正式SDK stdio，默认应用使用包内治理注册表；自建发布目录用`mvp_cli serve --sop-directory`，在新装配时生效。先核对模型候选与health，新任务设置独立累计预算，恢复与main复验沿用同一文件/新报告。只验真实服务与合成业务；审批计划是人工移交数据，M15之前不执行变更，不运行P00 full。

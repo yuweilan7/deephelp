@@ -307,3 +307,35 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m13_fast
 ```
 
 探针对同20条冻结test运行关闭/原模型/量化模型，分别报告最终意图与unknown/multiple原因、FastText覆盖/错误接管、真实API调用/token/成本及墙钟时间；仅测试FallbackPort，不冒充全业务时延。另在同一真实HTTP主链对比三模式的合成事实、缺槽位/未知、实际接管、MySQL终态/重放及MCP退出，清理各自事件集合。API调用由原累计预算计量；本地FastText毫秒不算模型API次数，原始概率保留softmax的1e-5偏移。模型/manifest及原始报告只留.local，无云端上传或新库迁移；更换数据/预处理必须新版本，任何失败保留旧指针。
+
+## M14 SOP治理与场景验收
+
+正式应用默认装配包内三份治理流程，仍在原13段主链的1000执行，不重新分类。输入如“订单DEMO-C01的券COUPON-C01不能用”；券标记未达门槛时先查券、再查订单，代码按合成口径比较金额；缺资料工具0、来源失败停止、矛盾转人工。`versions`显示注册表/SOP/快照/Prompt/工具签名，`sop_node_path`显示实际节点。原三份M07配置及旧问题版本继续可读。
+
+配置只有lookup、branch、end和有限条件，没有任意表达式或代码；当前只接受有向无环图。校验工具/代码授权、槽位、事实类型/依赖顺序、重复ID、不可达节点、终点和步数/工具预算。`validate`、`publish`、`show`、`rollback`均离线；发布必须新注册表版本，改变的SOP也必须新版本，同一Prompt版本不能改内容。包内[注册表](src/deephelp_app/sop_data/registry-v1.json)可作为编辑模板，[schema](src/deephelp_app/sop_data/governance-schema.json)用于结构检查。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli validate
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli publish --directory .local/m14/registry
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli show --directory .local/m14/registry
+# 编辑新注册表后先校验，再发布；下面的文件由使用者创建
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli validate --source .local/m14/registry-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli publish --source .local/m14/registry-new.json --directory .local/m14/registry
+py -3.14 -m uv run --locked python -m deephelp_app.sop_cli rollback --directory .local/m14/registry
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.mvp_cli serve --pointer .local/m09/active.json --sop-directory .local/m14/registry --auth .local/m08/auth.json --budget-state .local/m14/session-budget.json
+```
+
+发布先回读完整内容再原子替换active/previous，重复发布保留previous。已有进程保留原快照，新装配才读取新active；历史快照保留供旧问题补槽，不应删除。显式目录不存在/损坏或所需旧快照缺失会阻断执行。发布/回退用同一写锁；崩溃残留锁须先核实原进程已退出再处理。这是本机发布机制。
+
+19条固定合成情境覆盖8条正常业务分支、两种缺资料、查无记录/跨用户、两种注入、第一/第二来源失败、坏事实、两来源矛盾和审批前计划。它们不是19类主意图或企业场景。审批计划返回SOP `NEEDS_APPROVAL`，HTTP映射 `HANDOFF/HANDED_OFF`、`request_approval`及`sop_plan`；绑定主体/问题输入版本/参数hash/SOP快照/证据，不创建持久审批、申请或执行任何变更。M15须重新预检当前问题版本、绑定期限并实现批准/唯一领取，普通消息不能批准旧计划。默认未到账分支仍转人工；探针另发布只形成计划的版本验边界。
+
+```powershell
+# 无外部模型/云库，真实本机stdio+合成动作回放
+py -3.14 -m uv run --locked python -m deephelp_app.governed_sop_probe --output .local/m14/offline-new.json
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m14_sop_governance.py
+# 已有预算沿用；新任务先按M13的mvp_cli init格式创建，参数按本次需要设置
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.governed_sop_probe --live --stage feature --auth .local/m08/auth.json --budget-state .local/m14/session-budget.json --output .local/m14/feature-new.json
+# 合并后改stage=main与新报告，继续同一累计预算
+```
+
+真实入口验19情境的模型动作/事实/ledger，再经实际HTTP验三流程、双来源、发布后旧问题补槽与新问题计划、MySQL新池回读、零调用重放及回退。整体timeout默认1200秒，各请求共享既有预算；transport重试0，固定故障情境关闭重试，执行器的有限重试另有回归。探针只清理自己创建的派生事件集合，保留MySQL合成事实/outbox、配置与恢复证据；不跑P00 full、云服务重启或企业写接口。

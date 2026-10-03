@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "EntityName": {
+      "enum": [
+        "order_id",
+        "coupon_id",
+        "sku_id",
+        "activity_id"
+      ],
+      "title": "EntityName",
+      "type": "string"
+    },
+    "FlowCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Fact",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "empty",
+            "nonempty",
+            "fact_eq",
+            "money_lt",
+            "money_gte"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "other_fact": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Other Fact"
+        }
+      },
+      "required": [
+        "fact",
+        "op"
+      ],
+      "title": "FlowCondition",
+      "type": "object"
+    },
+    "FlowNode": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "lookup",
+            "branch",
+            "end"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "success": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Success"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure"
+        },
+        "routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FlowRoute"
+          },
+          "maxItems": 8,
+          "title": "Routes",
+          "type": "array"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "RESOLVED",
+                "HANDED_OFF",
+                "FAILED",
+                "NEEDS_APPROVAL"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "conclusion": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conclusion"
+        },
+        "proposal": {
+          "anyOf": [
+            {
+              "const": "simulate_discount_adjustment",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proposal"
+        }
+      },
+      "required": [
+        "node_id",
+        "kind"
+      ],
+      "title": "FlowNode",
+      "type": "object"
+    },
+    "FlowRoute": {
+      "additionalProperties": false,
+      "properties": {
+        "condition": {
+          "$ref": "#/$defs/FlowCondition"
+        },
+        "target": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "condition",
+        "target"
+      ],
+      "title": "FlowRoute",
+      "type": "object"
+    },
+    "GovernedSOP": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "m14-flow-v1",
+          "default": "m14-flow-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sop_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Sop Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Version",
+          "type": "string"
+        },
+        "intent_code": {
+          "$ref": "#/$defs/IntentCode"
+        },
+        "required_slots": {
+          "items": {
+            "$ref": "#/$defs/EntityName"
+          },
+          "title": "Required Slots",
+          "type": "array"
+        },
+        "allowed_tools": {
+          "items": {
+            "$ref": "#/$defs/ToolName"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Allowed Tools",
+          "type": "array"
+        },
+        "tool_version": {
+          "const": "m06-readonly-v1",
+          "default": "m06-readonly-v1",
+          "title": "Tool Version",
+          "type": "string"
+        },
+        "evidence_version": {
+          "const": "business-fixtures-v1",
+          "default": "business-fixtures-v1",
+          "title": "Evidence Version",
+          "type": "string"
+        },
+        "prompt_version": {
+          "const": "sop-governed-v1",
+          "default": "sop-governed-v1",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "entry": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Entry",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/FlowNode"
+          },
+          "maxItems": 32,
+          "minItems": 2,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "limits": {
+          "$ref": "#/$defs/SOPLimits"
+        }
+      },
+      "required": [
+        "sop_id",
+        "version",
+        "intent_code",
+        "required_slots",
+        "allowed_tools",
+        "entry",
+        "nodes"
+      ],
+      "title": "GovernedSOP",
+      "type": "object"
+    },
+    "IntentCode": {
+      "enum": [
+        "SERVICE",
+        "BENEFIT_ISSUE",
+        "ORDER_QUERY",
+        "DISCOUNT_MISSING",
+        "COUPON_UNUSABLE",
+        "ORDER_ACTIVITY_QUERY"
+      ],
+      "title": "IntentCode",
+      "type": "string"
+    },
+    "SOPLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_steps": {
+          "default": 4,
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "default": 2,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Max Tool Calls",
+          "type": "integer"
+        },
+        "total_seconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "maximum": 120,
+          "title": "Total Seconds",
+          "type": "number"
+        },
+        "model_seconds": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "maximum": 60,
+          "title": "Model Seconds",
+          "type": "number"
+        },
+        "tool_seconds": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "title": "Tool Seconds",
+          "type": "number"
+        },
+        "retries_per_call": {
+          "default": 1,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Retries Per Call",
+          "type": "integer"
+        },
+        "total_retries": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Total Retries",
+          "type": "integer"
+        }
+      },
+      "title": "SOPLimits",
+      "type": "object"
+    },
+    "ToolName": {
+      "enum": [
+        "get_order_benefits",
+        "check_coupon"
+      ],
+      "title": "ToolName",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "m14-registry-v1",
+      "default": "m14-registry-v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "registry_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Registry Version",
+      "type": "string"
+    },
+    "tool_schema_hash": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Tool Schema Hash",
+      "type": "string"
+    },
+    "prompt_version": {
+      "const": "sop-governed-v1",
+      "default": "sop-governed-v1",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "prompt": {
+      "maxLength": 16000,
+      "minLength": 1,
+      "title": "Prompt",
+      "type": "string"
+    },
+    "definitions": {
+      "items": {
+        "$ref": "#/$defs/GovernedSOP"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "title": "Definitions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "registry_version",
+    "tool_schema_hash",
+    "prompt",
+    "definitions"
+  ],
+  "title": "SOPRegistry",
+  "type": "object"
+}

@@ -36,6 +36,7 @@ from deephelp_app.milvus_memory import MilvusEventIndex
 from deephelp_app.providers import EndpointConfig, ProviderConfig, create_gateway
 from deephelp_app.settings import Settings
 from deephelp_app.sop import SOPExecutor
+from deephelp_app.sop_governance import RegistryStore, bundled_registry
 from deephelp_app.text_entity import TextEntityProcessor
 from deephelp_app.tool_gateway import ToolGateway
 from deephelp_app.trace import TraceSink
@@ -178,6 +179,7 @@ class LiveAssembly:
         cascade_policy: Path | None = None,
         event_collection: str | None = None,
         fasttext_pointer: Path | None = None,
+        sop_directory: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -194,6 +196,12 @@ class LiveAssembly:
         self.cascade_policy_path = cascade_policy
         self.event_collection = event_collection
         self.fasttext_pointer = fasttext_pointer
+        self.sop_snapshots = RegistryStore(sop_directory).history() if sop_directory else ()
+        if sop_directory and not self.sop_snapshots:
+            raise ConfigurationError(
+                "Publish a SOP registry before explicitly enabling its directory"
+            )
+        self.sop_registry = self.sop_snapshots[0] if self.sop_snapshots else bundled_registry()
         if isinstance(self.scope, HybridScope):
             from deephelp_app.hybrid_eval import dataset, validate_selection
 
@@ -330,7 +338,12 @@ class LiveAssembly:
                     policy=policy,
                     fallback=fallback,
                 ),
-                SOPExecutor(model, TrackedTools(tools)),
+                SOPExecutor(
+                    model,
+                    TrackedTools(tools),
+                    registry=self.sop_registry,
+                    history=self.sop_snapshots,
+                ),
                 trace,
                 versions,
                 memory=memory,

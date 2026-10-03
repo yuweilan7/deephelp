@@ -56,7 +56,9 @@ from deephelp_app.ports import (
     SOPExecutorPort,
     ToolPort,
 )
+from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_config import SOPDefinition, load_sops
+from deephelp_app.sop_governance import GovernedSOP
 from deephelp_app.text_entity import TextEntityProcessor
 from deephelp_app.trace import TraceEvent, TraceSink
 
@@ -231,7 +233,7 @@ class Conversation:
         sop: SOPExecutorPort,
         trace: TraceSink,
         versions: VersionManifest,
-        definitions: dict[IntentCode, SOPDefinition] | None = None,
+        definitions: dict[IntentCode, SOPDefinition | GovernedSOP] | None = None,
         memory: MemoryPort | None = None,
         cases: CaseRepository | None = None,
         events: EventAggregationService | None = None,
@@ -253,7 +255,11 @@ class Conversation:
         )
         if not intent.cascade or not getattr(intent.cascade.fallback, "enabled", False):
             self.disabled += ("fasttext",)
-        self.definitions = load_sops() if definitions is None else definitions
+        self.definitions: dict[IntentCode, SOPDefinition | GovernedSOP] = (
+            (dict(sop.definitions) if isinstance(sop, SOPExecutor) else dict(load_sops()))
+            if definitions is None
+            else definitions
+        )
 
     @asynccontextmanager
     async def stage(
@@ -573,7 +579,7 @@ class Conversation:
                             decision = await self.intent.recognize(
                                 text, budget, memory_query=memory_query
                             )
-                    definition: SOPDefinition | None = None
+                    definition: SOPDefinition | GovernedSOP | None = None
                     async with self.stage(STAGES[6], request, receipt, budget, stats):
                         if decision.decision == Decision.CLARIFY and (
                             decision.final_code is None
@@ -591,7 +597,11 @@ class Conversation:
                                 handoff=True,
                             )
                         if decision.final_code:
-                            definition = self.definitions.get(decision.final_code)
+                            definition = (
+                                self.sop.definition_for(question)
+                                if isinstance(self.sop, SOPExecutor) and question.active_intent
+                                else self.definitions.get(decision.final_code)
+                            )
                         if response is None and (decision.final_code is None or definition is None):
                             response = self.error(
                                 request,
@@ -623,6 +633,17 @@ class Conversation:
                                 ).model_copy(update={"sop": definition.version}),
                             }
                         )
+                        if isinstance(self.sop, SOPExecutor) and isinstance(
+                            definition, GovernedSOP
+                        ):
+                            if question.versions.sop_snapshot is None:
+                                question = question.model_copy(
+                                    update={
+                                        "versions": self.sop.pin_versions(
+                                            question.versions, decision.final_code
+                                        )
+                                    }
+                                )
                         async with self.stage(STAGES[7], request, receipt, budget, stats):
                             missing = tuple(
                                 s

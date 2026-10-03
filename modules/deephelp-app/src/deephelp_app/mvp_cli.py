@@ -109,6 +109,9 @@ def main() -> int:
     p.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     p.add_argument("--pointer", default=".local/m05/active.json")
     p.add_argument("--fasttext-pointer", help="Explicitly enable a dev-calibrated M13 artifact")
+    p.add_argument(
+        "--sop-directory", help="Published M14 registries; omitted uses bundled registry"
+    )
     p.add_argument("--auth", default=".local/m08/auth.json")
     p.add_argument("--budget-state", default=".local/m08/session-budget.json")
     p.add_argument("--max-calls", type=int, default=300)
@@ -146,6 +149,7 @@ def main() -> int:
                     fasttext_pointer=local_path(args.fasttext_pointer)
                     if args.fasttext_pointer
                     else None,
+                    sop_directory=local_path(args.sop_directory) if args.sop_directory else None,
                 )
                 app = live_app(assembly, LocalAuth(local_path(args.auth)), gate)
                 uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
