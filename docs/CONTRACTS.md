@@ -238,4 +238,4 @@ EvalCase/EvalTurn只描述公开合成gold、split/来源/模板组和同/异事
 
 m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、MySQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
 
-同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。
+同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中followup依赖未启用的事件上下文，只作诊断，不参与消息完成基线门禁。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组的followup仍严格比较，独立query不能排除。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。

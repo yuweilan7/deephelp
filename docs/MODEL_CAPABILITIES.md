@@ -33,3 +33,20 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 | Embedding只做NFC/两端strip、相同文本+signature缓存和批次去重 | 没有摘要压缩或语义近似复用；原位置恢复、结果复制和缓存隔离已有测试 |
 
 当前协议验收不证明模型、输入/输出限制或推理模式适合全部业务任务；业务质量仍须用目标样本验证。
+
+## 可选模型目录
+
+用户2026-10-03提供的当前可用候选如下。这里登记用途候选，不把账号开启/剩余额度视作接口实测；本机额度及到期日期保存在被Git忽略的`.local/model-pool-summary.md`和`.local/model-pool.json`。普通搜索若跳过忽略文件，会漏掉该目录。
+
+| 用途 | 候选代码 |
+|---|---|
+| 当前通用模型 | qwen3.8-flash；按用户要求本轮继续使用 |
+| 通用备选 | qwen3.7-flash、qwen3.7-flash-2026-07-15、qwen3.8-27b、kimi-k3、deepseek-v4-flash-0731、deepseek-v4.1-flash、glm-5.3 |
+| 质量候选 | qwen3.8-max、qwen3.8-max-0902、deepseek-v4-pro-0813、qwen3.8-2.4t-a95b |
+| Embedding | qwen3.7-text-embedding-flash、qwen3.7-text-embedding |
+| Rerank | qwen3.7-text-rerank；已登记本机候选池，真实三候选排序内容通过，当前主链未接入 |
+| 多模态/翻译候选 | qwen-mt-uni、qwen3.8-omni-flash、qwen3.8-omni-flash-realtime；本轮不调用 |
+
+可用候选、应用已接入、目标能力实测分别记录。更换Chat模型前验证任务所需schema/tool能力；更换Embedding按签名新集合/reindex。Rerank是检索排序候选，不能直接作为Embedding或Chat端口使用；接入需单独实现与验证。本轮候选更新不启用自动切换。
+
+2026-10-03按用户要求补验原Embedding及Rerank：两条Embedding均为1024维有限向量；`qwen3.7-text-rerank`真实接口对三条固定合成候选返回完整index/有限relevance_score，券无法抵扣查询首位是券有效期/使用条件候选。只证明该排序路径可调用与内容相符，不代表主链已启用、最终分类更准或企业效果。原始报告留`.local/model-interface-check/report.json`。请求结构参考[官方Rerank API](https://help.aliyun.com/zh/model-studio/text-rerank-api)的该模型专用input/parameters格式，不能与qwen3-rerank的扁平格式混用。
