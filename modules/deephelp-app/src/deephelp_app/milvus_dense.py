@@ -206,13 +206,8 @@ class MilvusDenseStore(DenseStore):
             lambda: self.client.has_collection(scope.collection_name, timeout=None, retry_times=0)
         )
         if not exists:
-            collections = await self._rpc(
-                lambda: self.client.list_collections(timeout=None, retry_times=0)
-            )
-            if sum(c.startswith("m05_intent_") for c in collections) >= 4:
-                raise AppError(
-                    ErrorCode.BUDGET_EXHAUSTED, "M05 collection limit; maintenance required"
-                )
+            # Importer checks actual free capacity before allocating a new version.
+            # A global count cap would block unrelated features and rollback retention.
             schema = MilvusClient.create_schema(
                 auto_id=False,
                 enable_dynamic_field=False,

@@ -1,0 +1,14 @@
+{
+  "format": "m18-synthetic-feedback-v1",
+  "collect": [
+    {"id": "m18-source-discount", "text": "订单000031：结算折扣未兑现，请核查优惠差额", "label": "DISCOUNT_MISSING", "phrases": ["结算折扣未兑现"]},
+    {"id": "m18-source-coupon", "text": "订单000042使用券000009无法使用，请检查有效期和适用条件", "label": "COUPON_UNUSABLE", "phrases": ["使用券", "无法使用", "检查有效期"]},
+    {"id": "m18-source-activity", "text": "查询订单000053参加的活动，核实报名的促销信息", "label": "ORDER_ACTIVITY_QUERY", "phrases": ["查询订单", "参加的活动", "核实报名"]},
+    {"id": "m18-source-reject", "text": "订单000031的快递停在哪个中转站，请查配送轨迹", "label": null, "phrases": []}
+  ],
+  "release": [
+    {"id": "m18-release-discount", "text": "订单000031该少付的金额却没少付，希望核实付款优惠", "label": "DISCOUNT_MISSING", "entities": {"order_id": "000031"}},
+    {"id": "m18-release-coupon", "text": "券000009在订单000042用不上，麻烦核对抵扣限制", "label": "COUPON_UNUSABLE", "entities": {"order_id": "000042", "coupon_id": "000009"}},
+    {"id": "m18-release-activity", "text": "想知道订单000053有哪些促销活动记录，烦请列出", "label": "ORDER_ACTIVITY_QUERY", "entities": {"order_id": "000053"}}
+  ]
+}

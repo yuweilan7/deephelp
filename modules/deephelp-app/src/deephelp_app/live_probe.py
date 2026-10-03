@@ -117,12 +117,18 @@ async def probe(args: argparse.Namespace) -> int:
                         messages=[
                             ChatMessage(
                                 role="user",
-                                content="Synthetic gateway probe. Reply exactly OK.",
+                                content=(
+                                    "Synthetic gateway probe. Reply exactly OK. No other output."
+                                ),
                             )
                         ]
                     ),
                     budget,
                 )
+                report["chat_probe"] = {
+                    "content": chat.content,
+                    "provider_request_id": chat.provider_request_id,
+                }
                 if (chat.content or "").strip() != "OK":
                     raise AppError(
                         ErrorCode.MODEL_OUTPUT_INVALID, "Synthetic chat expectation failed"

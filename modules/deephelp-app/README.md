@@ -88,7 +88,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.dense_cli --help
 
 `DenseImporter(embeddings, store, capacity).import_corpus(preview, scope, budget, manifest)`复用同一预算与EmbeddingPort，默认8条串行批次。先容量检查再建立/校验集合；稳定doc_id upsert，逐批回读正文、标签、版本、metadata和FP32向量。manifest原子保存pending/completed及每条完整FP32向量的SHA256；未知写入结果按相同主键续跑，已完成批次仍须回读并核对哈希。已验证且本次无写入的重导不重复flush，避免服务器0.1/s限流。manifest锁阻止同文件并发；异常/取消释放锁，进程崩溃遗留锁须核对后处理。
 
-DenseScope绑定namespace/dataset_version/完整EmbeddingSignature/registry版本；集合名从整个scope派生，description绑定scope及索引digest。FloatVector FP32、FLAT/COSINE；同维度不同模型不共用集合。每批检查P00容量门禁，最多保留4个M05集合；到上限安排维护，不能无限建集合绕过容量。
+DenseScope绑定namespace/dataset_version/完整EmbeddingSignature/registry版本；集合名从整个scope派生，description绑定scope及索引digest。FloatVector FP32、FLAT/COSINE；同维度不同模型不共用集合。每批检查实际容量门禁，不以全项目固定集合数量阻止正常版本保留。容量不足停止导入，已有回退/引用资产不得为新版本盲目删除。
 
 `DenseRetriever.retrieve(text, scope, budget, top_k=3)`实现DenseRetrieverPort，返回原始命中和`per_intent_max_v1`候选：每意图独立取最佳一条，再按cosine排序，同分按code/doc_id稳定排序；不求和样本分数。保留doc_id、code、raw_score、score_kind、metadata与版本；不产生最终IntentDecision或接管阈值。namespace是语料范围，不能替代用户鉴权。
 
@@ -392,3 +392,33 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.evaluat
 报告包含代码文件hash和Git状态、数据/模型/索引/Prompt/SOP/词典/策略签名、逐消息结果、实体来源和实际工具ledger；test/regression分别统计。Recall@K只统计实际发生的有标签检索，规则命中不虚构召回；额外memory query分别计入观测。费用是配置单价估算，非最终账单；离线真实调用/token/费用为null。会话完成要求每条业务检查与同/异事件关系都正确，单条正确不抵消错拆分。非关键日志不承担账本。
 
 缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。当前规模与真实抽样覆盖见PROJECT_STATE；500+及企业质量仍需后续独立特性。
+
+## M18 审核后的反馈闭环
+
+输入专用合成客诉的真实MySQL run，输出脱敏候选、独立路线审核和可追踪的新语料/FastText/字面规则。重复采集同一run不倍增；高分、成功、澄清或人工转接都只是候选观察。审核标签独立于原系统判断；自动证据方式只接受包内已审查的三条合成来源，其他输入由操作者明确确认。这个入口演示人工触发机制，自动发布加固见[M18规格](../../docs/MODULES/M18_DATA_FLYWHEEL.md)。
+
+```powershell
+# 新任务先给足上限；已有累计预算和稳定脱敏key不能重置
+py -3.14 -m uv run --locked python -m deephelp_app.flywheel_cli init --max-calls $m18Calls --max-tokens $m18Tokens --max-cost $m18Cost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli migrate --live
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m18_flywheel.py
+# 真实服务/合成业务：采集、审核、两版构建、固定评测、启用/回退、更正/撤回
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_probe --live --stage feature --output .local/m18/demo-feature-new
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_probe --live --stage main --baseline .local/m18/demo-feature-new/reviewed-validation.json --output .local/m18/demo-main-new
+# 自己操作：$runId须来自m18-collect channel和专用synthetic-user-a的已持久运行
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli capture --live --run-id $runId --source-group $newSourceGroup --variant-group $newVariantGroup
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli show --live --candidate-id $candidateId
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli review --live --candidate-id $candidateId --revision $observedRevision --route corpus --decision approved --label DISCOUNT_MISSING --reviewer $reviewer --reason $reason --independent-from-heldout
+# fasttext/rule分别审核；rule传--phrase，多个短语为全部命中，--exclude为字面排除
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli build --live --build-candidate $candidateId --version $newVersion --output .local/m18/my-assets-new
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli validate --live --assets .local/m18/my-assets-new/assets.json --baseline $previousValidation --output .local/m18/my-validation-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli activate --live --assets .local/m18/my-assets-new/assets.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli rollback --live
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.flywheel_cli withdraw --live --candidate-id $candidateId --revision $observedRevision --reviewer $reviewer --reason $reason
+```
+
+首次演示需要原M09真实集合、M13模型及M17本机鉴权；可覆盖--dense-pointer/--fasttext-pointer/--auth/--providers/--budget-state/--redaction-key。采集用原资产；构建用原1024维Embedding签名的新集合，并按实际双版本容量检查。FastText只扩展train，原dev/test不参与回流；数据按编号中立文本及来源/变体组隔离。规则仅2–80字字面短语，有限个数，不执行生成代码或正则。
+
+validate对M17固定8案例11消息及另3条未见发布输入，检查事实、实体来源、工具成功证据、重放和新MySQL池。报告PASS与文件/模型/全文向量hash回读一致、审核快照仍有效才允许切换。显式演示指针`.local/m18/active.json`绑定三路文件，不替换默认M09指针；`flywheel_cli serve --live`加载它。演示完成回退到无新增反馈的完整版本，再更正/撤回一条来源以验证旧版不能重启用；旧工件仍在，可用show定位全部派生路径。未通过的报告不能替换已通过门禁。
+
+演示指针是本机控制文件，MySQL保存候选/审核/任务/来源事实；短事务领取及令牌确认不等于跨文件/向量/模型原子发布。完整ReleaseManifest、单一事实源active切换和运行中发布并发约束属于后续独立加固特性。

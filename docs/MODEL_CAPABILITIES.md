@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|
 | qwen3.8-flash / chat/completions | 支持 | json_schema + 本地 Draft202012 校验；思考模式亦实测 | 原生 function 字段 | 不使用 | 推理可按配置/请求开启；工具字段完整时兼容 finish_reason=stop |
 | qwen3.7-text-embedding-flash / embeddings | 不使用 | 不使用 | 不使用 | 1024 维有序列表 | 对此模型显式允许全零 index 时按返回位置映射；正常完整索引则排序；其他坏索引拒绝 |
-| qwen3.8-max / chat/completions（M04可选强端口） | M04真实调用通过 | M04实体schema及0007保真实测 | 未验 | 未验 | enable_thinking=false；只确认M04合成提取范围，见[M04交接](../handoffs/M04.md) |
+| qwen3.8-max / chat/completions | M04及M18切换前实测通过 | M18严格schema/0007保真实测 | M18指定工具及参数实测通过 | 未验 | 通用对话与事件判断；enable_thinking=false，业务结果见M18交接 |
 
 官方能力说明：[结构化输出](https://help.aliyun.com/zh/model-studio/qwen-structured-output)、[Embedding 兼容接口](https://help.aliyun.com/zh/model-studio/embedding-interfaces-compatible-with-openai)、[模型信息](https://help.aliyun.com/zh/model-studio/qwen3-7-text-embedding-flash)。文档宣称支持不代替交接中的真实检查。
 
@@ -29,7 +29,7 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 | ChatRequest默认输出2048 token，无本地4096上限；业务可显式覆盖 | 实际接受8192输出参数；最终长度受模型服务能力和任务预算影响。finish_reason=length仍拒收，不把截断当完整答案 |
 | 移除Chat消息32条、工具声明16条的固定上限；请求/响应默认1MiB/16MiB，配置无固定上限 | 41条消息、76034字节正文实测；这不是模型最大上下文证明。可按任务调整字节限制，超限显式报错，未增加静默摘要/裁剪 |
 | ProviderConfig和ChatRequest支持enable_thinking及thinking_budget | 请求覆盖配置；默认保留非思考模式兼容。已实测qwen3.8-flash思考+严格schema及用量；发送前将思考额度纳入原累计预算，只记录推理长度，不保存推理正文 |
-| 选定qwen3.8-flash与qwen3.7-text-embedding-flash | 已通过chat/schema/tool/embed接口验收；未比较业务判断、中文回答或语义检索效果，不能认定最优，也不能仅凭Flash名称认定质量不足 |
+| 通用对话切换为qwen3.8-max；Embedding保持qwen3.7-text-embedding-flash | 用户因Flash额度不足授权切换；切换前chat/schema/tool/embed真实接口通过，Embedding签名保持兼容；业务回归见M18交接，不声称最优 |
 | Embedding只做NFC/两端strip、相同文本+signature缓存和批次去重 | 没有摘要压缩或语义近似复用；原位置恢复、结果复制和缓存隔离已有测试 |
 
 当前协议验收不证明模型、输入/输出限制或推理模式适合全部业务任务；业务质量仍须用目标样本验证。
@@ -40,8 +40,8 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 
 | 用途 | 候选代码 |
 |---|---|
-| 当前通用模型 | qwen3.8-flash；按用户要求本轮继续使用 |
-| 通用备选 | qwen3.7-flash、qwen3.7-flash-2026-07-15、qwen3.8-27b、kimi-k3、deepseek-v4-flash-0731、deepseek-v4.1-flash、glm-5.3 |
+| 当前通用模型 | qwen3.8-max；用户后续授权切换，已通过chat/schema/tool内容检查 |
+| 通用备选 | qwen3.8-flash、qwen3.7-flash、qwen3.7-flash-2026-07-15、qwen3.8-27b、kimi-k3、deepseek-v4-flash-0731、deepseek-v4.1-flash、glm-5.3 |
 | 质量候选 | qwen3.8-max、qwen3.8-max-0902、deepseek-v4-pro-0813、qwen3.8-2.4t-a95b |
 | Embedding | qwen3.7-text-embedding-flash、qwen3.7-text-embedding |
 | Rerank | qwen3.7-text-rerank；已登记本机候选池，真实三候选排序内容通过，当前主链未接入 |
