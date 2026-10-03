@@ -230,4 +230,12 @@ manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和�
 
 `GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`按与converse相同身份源鉴权，再匹配tenant/user/session。三个视图投影同一快照；重放run指向原执行trace，新请求计数仍0。跨主体/session与过期/丢弃/不存在均404且不泄露存在性；返回no-store。`export=true`生成JSON附件，危险公式字符串加单引号；CLI仅调用鉴权loopback API，不直接打开追踪文件。
 
-订单/券/消息及主体/session编号用同一本地key生成稳定替代ID，标准凭据键、Bearer/sk及隐藏推理字段遮盖；证据引用保持可关联。span偏移指向脱敏前原文，不能按替代ID长度重新解释。保留`.jsonl.key`以跨资源维持同scope与替代ID；其与auth/budget/pointer/provider不得重合。默认JsonlTrace单写者、128项非阻塞队列、2MiB×4文件和7天期限；超限/磁盘故障只丢非关键诊断，读取返回dropped_events/incomplete或404。MySQL消息/问题/终态及工具审计独立保留，不能随trace轮转删除。MemoryTrace仅供离线测试。
+订单/券/消息及主体/session编号用同一本地key生成稳定替代ID，标准凭据键、Bearer/sk及隐藏推理字段遮盖；证据引用保持可关联。span偏移指向脱敏前原文，不能按替代ID长度重新解释。保留`.jsonl.key`以跨资源维持同scope与替代ID；其与auth/budget/pointer/provider不得重合。默认JsonlTrace单写者、128项非阻塞队列、2MiB×4文件和7天期限；超限/磁盘故障只丢非关键诊断，读取返回dropped_events/incomplete或404。MySQL消息/问题/终态及工具审计独立保留，不能随trace轮转删除。MemoryTrace供测试及隔离评测进程使用，不作为服务持久trace。
+
+## M17 评测契约
+
+EvalCase/EvalTurn只描述公开合成gold、split/来源/模板组和同/异事件关系，复用IntentCode/Outcome及DTO；运行仍返回原ResponseEnvelope，不增加业务HTTP字段或修改默认装配。gold标签需确定性语义支持，槽位需同事件原文/前置消息依据，事实需business.json固定hash；训练/索引/开发输入不能伪装新test，regression中的编号变体不算新增独立case。
+
+m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、MySQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
+
+同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值，不启用审批或写工具。

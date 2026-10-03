@@ -1,0 +1,30 @@
+{
+  "format": "m17-freeze-v1",
+  "version": "m17-synthetic-v1",
+  "frozen_at": "2026-10-03",
+  "business_sha256": "bba592ff1b12c1b7cae6f108f35c365a574ac2c5d6cc3826025080bf725c2b5e",
+  "data_sha256": "308d527adbbc50027f27c7651153ae32ffe275f3f08116cb140fa51127ca6f8c",
+  "case_ids": [
+    "m17-discount-report",
+    "m17-discount-paraphrase",
+    "m17-coupon-usable",
+    "m17-coupon-expired",
+    "m17-activity-query",
+    "m17-missing-discount",
+    "m17-missing-coupon",
+    "m17-shipping-unknown",
+    "m17-refund-unknown",
+    "m17-two-demands",
+    "m17-interleaved",
+    "m17-continuation",
+    "m17-baseline-discount",
+    "m17-baseline-missing",
+    "m17-baseline-ownership",
+    "m17-baseline-unknown"
+  ],
+  "model_generated": false,
+  "gold_method": "deterministic semantic checks + business.json facts",
+  "test_use": "Frozen before first execution; no parameter or production-code tuning on test",
+  "regression_use": "Previously debugged/confirmed examples, never unseen",
+  "independence": "New wording and separate source/conversation groups; same-author synthetic, no enterprise/generalization claim"
+}

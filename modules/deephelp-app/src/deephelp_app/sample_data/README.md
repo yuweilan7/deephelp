@@ -57,3 +57,11 @@ dev含14条单类+4条无关/多诉求；test含18条单类（各6条）+6条无
 `m13_fasttext.json`共80条人工构造并逐条核对的合成句：40 train、20 dev、20 test；优惠未享受、券不可用、订单活动查询、unknown、multiple五类各8/4/4。来源均manual-synthetic-m13-v1，不是PDF完整语料或企业数据。sample_id/source_group/variant_group/split/label/text/synthetic/reviewed必需；同来源/改写组不能跨split，规范化重复句不能重复出现，未知label与缺类split拒收。
 
 语义组由本轮标注者声明，程序能检查组及文本重叠，不能自动证明所有自然语言近义句独立。全部句子同一作者、数量很小，heldout只指未用于本轮训练/选参；不声称真实未见分布或可信泛化。M02/M09文件不修改，本组不进入Milvus。`m13_dictionary.txt`只提供固定业务分词，训练/推理共用，其hash与Jieba基础词典hash写manifest；改变预处理必须新训练/评测版本。
+
+## M17 冻结评测数据
+
+m17_cases.json与m17_manifest.json在首轮运行前固定。case_id/source_group/variant_group/synthetic/split/scenario/live_sample/turns必需；每消息有turn_id、text、intent/label、逻辑event_id、确认实体、expectation和核验依据。expectation区分正常查询、缺槽位、无权对象、未知、多诉求及同事件补充。标签由显式语义证据核验，金额/券状态/活动等预期从business.json读取，模型输出不参与gold。
+
+test未进入原M02/M09索引、M13训练或dev选参，按组/会话及规范化文本审计；编号替换后也检查与既有公开样本重复。regression保留已排错的固定输入，永不称未见。组由同一作者声明，审计不能证明全部近义模板独立或供应商预训练未见。scenario只是命名输入情境，不能据名称数量宣称完成15+业务流程/500+规模。
+
+M17另报五类总体accuracy/macro-F1、三支持类指标和分类计数；空类/空分母返回null及原因。实体值与来源分别核验，歧义多诉求不伪设一个确认槽位。工具参数同时报告实际调用准确率与gold允许场景的行为准确率，漏调用计后者失败。消息完成率与整会话完成率分开；Recall@K只含实际检索。离线语义适配器复用核验词汇，因此只证明编排/指标/硬门禁，不是独立模型质量。首轮test运行不等于调参；若以后依test改生产代码/参数，应登记污染并另留新的冻结组。

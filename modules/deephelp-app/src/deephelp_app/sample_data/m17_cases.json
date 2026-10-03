@@ -1,0 +1,404 @@
+[
+  {
+    "case_id": "m17-discount-report",
+    "source_group": "m17-discount-report",
+    "variant_group": "m17-discount-report",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "discount-report",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "对账时发现订单000031的优惠没到账，麻烦核对已支付记录",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-discount-report-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-discount-paraphrase",
+    "source_group": "m17-discount-paraphrase",
+    "variant_group": "m17-discount-paraphrase",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "discount-paraphrase",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "折扣承诺写在页面上，可订单000031的折扣没有兑现",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-discount-paraphrase-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-coupon-usable",
+    "source_group": "m17-coupon-usable",
+    "variant_group": "m17-coupon-usable",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "coupon-usable",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "下单页提示券000009不能抵扣，关联订单000042，请核对当前券状态",
+        "intent": "COUPON_UNUSABLE",
+        "label": "COUPON_UNUSABLE",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000042",
+          "coupon_id": "000009"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-coupon-usable-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-coupon-expired",
+    "source_group": "m17-coupon-expired",
+    "variant_group": "m17-coupon-expired",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "coupon-expired",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "券COUPON-C04已经失效，用在订单DEMO-C04时用不上了",
+        "intent": "COUPON_UNUSABLE",
+        "label": "COUPON_UNUSABLE",
+        "event_id": "a",
+        "entities": {
+          "order_id": "DEMO-C04",
+          "coupon_id": "COUPON-C04"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-coupon-expired-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-activity-query",
+    "source_group": "m17-activity-query",
+    "variant_group": "m17-activity-query",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "activity-query",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "想知道订单000053参加过的活动，列一下活动信息",
+        "intent": "ORDER_ACTIVITY_QUERY",
+        "label": "ORDER_ACTIVITY_QUERY",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000053"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-activity-query-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-missing-discount",
+    "source_group": "m17-missing-discount",
+    "variant_group": "m17-missing-discount",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "missing-discount",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "支付完回来看，原先的优惠没到账，需要核查",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-missing-discount-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-missing-coupon",
+    "source_group": "m17-missing-coupon",
+    "variant_group": "m17-missing-coupon",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "missing-coupon",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "付款界面的券不让用，帮我查一下",
+        "intent": "COUPON_UNUSABLE",
+        "label": "COUPON_UNUSABLE",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-missing-coupon-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-shipping-unknown",
+    "source_group": "m17-shipping-unknown",
+    "variant_group": "m17-shipping-unknown",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "shipping-unknown",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "包裹已经三天没更新位置，能告诉我到哪一站了吗",
+        "intent": null,
+        "label": "unknown",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "unknown",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-shipping-unknown-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-refund-unknown",
+    "source_group": "m17-refund-unknown",
+    "variant_group": "m17-refund-unknown",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "refund-unknown",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "商品收到后想退货退款，请说明退货地址",
+        "intent": null,
+        "label": "unknown",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "unknown",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-refund-unknown-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-two-demands",
+    "source_group": "m17-two-demands",
+    "variant_group": "m17-two-demands",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "two-demands",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "订单000031优惠没到账，同时订单000042的券000009不能用，请分别处理",
+        "intent": null,
+        "label": "multiple",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031",
+          "coupon_id": "000009"
+        },
+        "expectation": "multiple",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-two-demands-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-interleaved",
+    "source_group": "m17-interleaved",
+    "variant_group": "m17-interleaved",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "interleaved",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "我先问一个支付问题，优惠未到账，编号稍后补",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-interleaved-1"
+      },
+      {
+        "text": "另外还有一个问题，券不能抵扣，两个编号待会给",
+        "intent": "COUPON_UNUSABLE",
+        "label": "COUPON_UNUSABLE",
+        "event_id": "b",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-interleaved-2"
+      },
+      {
+        "text": "补充刚才的券问题：订单000042，券000009",
+        "intent": "COUPON_UNUSABLE",
+        "label": "COUPON_UNUSABLE",
+        "event_id": "b",
+        "entities": {
+          "order_id": "000042",
+          "coupon_id": "000009"
+        },
+        "expectation": "followup",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-interleaved-3"
+      },
+      {
+        "text": "补充优惠那单的编号：订单000031",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031"
+        },
+        "expectation": "followup",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-interleaved-4"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-continuation",
+    "source_group": "m17-continuation",
+    "variant_group": "m17-continuation",
+    "synthetic": true,
+    "split": "test",
+    "scenario": "continuation",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "页面说优惠应有，可实际优惠没到账，稍后发订单编号",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-continuation-1"
+      },
+      {
+        "text": "补上前面优惠问题的订单编号000031",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031"
+        },
+        "expectation": "followup",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-continuation-2"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-baseline-discount",
+    "source_group": "m17-baseline-discount",
+    "variant_group": "m17-baseline-discount",
+    "synthetic": true,
+    "split": "regression",
+    "scenario": "baseline-discount",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "订单000031未享受优惠",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "000031"
+        },
+        "expectation": "query",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-baseline-discount-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-baseline-missing",
+    "source_group": "m17-baseline-missing",
+    "variant_group": "m17-baseline-missing",
+    "synthetic": true,
+    "split": "regression",
+    "scenario": "baseline-missing",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "订单未享受优惠",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "missing",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-baseline-missing-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-baseline-ownership",
+    "source_group": "m17-baseline-ownership",
+    "variant_group": "m17-baseline-ownership",
+    "synthetic": true,
+    "split": "regression",
+    "scenario": "baseline-ownership",
+    "live_sample": true,
+    "turns": [
+      {
+        "text": "订单DEMO-D05未享受优惠",
+        "intent": "DISCOUNT_MISSING",
+        "label": "DISCOUNT_MISSING",
+        "event_id": "a",
+        "entities": {
+          "order_id": "DEMO-D05"
+        },
+        "expectation": "ownership",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-baseline-ownership-1"
+      }
+    ]
+  },
+  {
+    "case_id": "m17-baseline-unknown",
+    "source_group": "m17-baseline-unknown",
+    "variant_group": "m17-baseline-unknown",
+    "synthetic": true,
+    "split": "regression",
+    "scenario": "baseline-unknown",
+    "live_sample": false,
+    "turns": [
+      {
+        "text": "今天天气怎么样",
+        "intent": null,
+        "label": "unknown",
+        "event_id": "a",
+        "entities": {},
+        "expectation": "unknown",
+        "basis": "Explicit synthetic utterance semantics; business.json authoritative object facts; same-event prior turns for followup",
+        "turn_id": "m17-baseline-unknown-1"
+      }
+    ]
+  }
+]
