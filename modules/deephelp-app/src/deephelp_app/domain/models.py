@@ -157,6 +157,10 @@ class VersionManifest(DTO):
     fasttext_model: Identifier | None = None
     fasttext_preprocessing: Identifier | None = None
     fasttext_policy: Identifier | None = None
+    sop_registry: Identifier | None = None
+    sop_snapshot: Identifier | None = None
+    sop_prompt: Identifier | None = None
+    tool_schema: Identifier | None = None
 
 
 class BudgetUsed(DTO):
@@ -856,6 +860,7 @@ class SOPStatus(StrEnum):
     WAITING_SLOT = "WAITING_SLOT"
     HANDED_OFF = "HANDED_OFF"
     FAILED = "FAILED"
+    NEEDS_APPROVAL = "NEEDS_APPROVAL"
 
 
 class NextAction(StrEnum):
@@ -865,6 +870,31 @@ class NextAction(StrEnum):
     CONTACT_SUPPORT = "contact_support"
     RETRY_LATER = "retry_later"
     FIX_REQUEST = "fix_request"
+    REQUEST_APPROVAL = "request_approval"
+
+
+class SOPPlan(DTO):
+    """A bound proposal only; no approval record, execution token or business effect."""
+
+    operation_id: Identifier
+    action: Literal["simulate_discount_adjustment"]
+    identity: VerifiedIdentity
+    question_id: Identifier
+    question_version: PositiveCount
+    parameters: ToolParameters
+    parameters_hash: Identifier
+    sop_version: Identifier
+    snapshot_hash: Identifier
+    evidence_ids: tuple[Identifier, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def binding(self) -> SOPPlan:
+        if (
+            self.parameters_hash != tool_parameters_hash(self.parameters)
+            or self.parameters.coupon_id is not None
+        ):
+            raise ValueError("Plan parameters hash mismatch")
+        return self
 
 
 class SOPResult(DTO):
@@ -878,9 +908,13 @@ class SOPResult(DTO):
     next_action: NextAction
     reason: RawText | None = None
     error: ErrorDetail | None = None
+    plan: SOPPlan | None = None
+    node_path: tuple[Identifier, ...] = ()
 
     @model_validator(mode="after")
     def sop_closeout(self) -> SOPResult:
+        if self.next_action == NextAction.REQUEST_APPROVAL and self.plan is None:
+            raise ValueError("Approval request requires a bound proposal")
         validate_facts(self.facts, self.evidence_refs)
         calls = {ref.record_id for ref in self.evidence_refs if ref.source == EvidenceSource.TOOL}
         if len(set(self.tool_call_ids)) != len(self.tool_call_ids) or not calls <= set(
@@ -901,6 +935,19 @@ class SOPResult(DTO):
             raise ValueError("Failed SOP requires an error")
         if self.status == SOPStatus.HANDED_OFF and not self.reason:
             raise ValueError("Handoff requires a reason")
+        if self.status == SOPStatus.NEEDS_APPROVAL:
+            if (
+                self.plan is None
+                or self.next_action != NextAction.REQUEST_APPROVAL
+                or not self.facts
+                or self.error
+                or self.missing_slots
+                or self.plan.sop_version != self.sop_version
+                or not set(self.plan.evidence_ids) <= {r.evidence_id for r in self.evidence_refs}
+            ):
+                raise ValueError("Approval proposal requires a bound, evidenced plan")
+        elif self.plan is not None:
+            raise ValueError("Only an approval proposal may carry a plan")
         return self
 
 
@@ -946,9 +993,22 @@ class ResponseEnvelope(DTO):
     replayed: bool = False
     event_cluster: EventClusterResult | None = None
     call_counts: CallCounts = Field(default_factory=CallCounts)
+    sop_plan: SOPPlan | None = None
+    sop_node_path: tuple[Identifier, ...] = ()
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
+        if self.next_action == NextAction.REQUEST_APPROVAL and self.sop_plan is None:
+            raise ValueError("Approval request requires a bound proposal")
+        if self.sop_plan is not None and (
+            self.outcome != Outcome.HANDOFF
+            or self.next_action != NextAction.REQUEST_APPROVAL
+            or self.sop_plan.question_id != self.question_id
+            or self.sop_plan.sop_version != self.versions.sop
+            or self.sop_plan.snapshot_hash != self.versions.sop_snapshot
+            or not set(self.sop_plan.evidence_ids) <= {r.evidence_id for r in self.evidence_refs}
+        ):
+            raise ValueError("M14 proposal must be a bound handoff, never an approved operation")
         validate_facts(self.facts, self.evidence_refs)
         calls = {ref.record_id for ref in self.evidence_refs if ref.source == EvidenceSource.TOOL}
         if len(set(self.tool_call_ids)) != len(self.tool_call_ids) or not calls <= set(

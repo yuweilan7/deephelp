@@ -1,0 +1,81 @@
+"""Frozen synthetic SOP mechanisms; shared offline/live cases, never enterprise data."""
+
+from importlib.resources import files
+
+from pydantic import Field
+
+from deephelp_app.domain.models import DTO, EntityName, ErrorCode, IntentCode, SOPStatus, ToolName
+from deephelp_app.mcp_mock import FaultSpec, MockConfig
+from deephelp_app.samples import BusinessFixtures, load_business_fixtures
+from deephelp_app.sop_governance import SOPRegistry, bundled_registry
+
+
+class SOPScenario(DTO):
+    case_id: str
+    intent: IntentCode
+    order: str
+    coupon: str | None = None
+    missing_slots: tuple[EntityName, ...] = ()
+    raw_text: str = "查询合成业务，按已确认编号处理。"
+    status: SOPStatus
+    tools: tuple[ToolName, ...] = ()
+    end_node: str | None = None
+    expected_facts: dict[str, str | bool] = Field(default_factory=dict)
+    error: ErrorCode | None = None
+    fault: FaultSpec | None = None
+    fault_tool: ToolName | None = None
+    proposal: bool = False
+
+
+class SOPScenarioSet(DTO):
+    version: str
+    synthetic: bool
+    cases: tuple[SOPScenario, ...]
+
+
+def scenarios() -> SOPScenarioSet:
+    result = SOPScenarioSet.model_validate_json(
+        files("deephelp_app").joinpath("sop_data/scenarios-v1.json").read_text(encoding="utf-8")
+    )
+    if not result.synthetic or result.version != "m14-scenarios-v1":
+        raise ValueError("Only frozen M14 synthetic scenarios are supported")
+    return result
+
+
+def fixtures() -> BusinessFixtures:
+    """The extra object deliberately contradicts the coupon threshold flag."""
+    base = load_business_fixtures().model_dump(mode="json")
+    order = next(o for o in base["orders"] if o["order_id"] == "DEMO-C01").copy()
+    order.update(order_id="M14-CONFLICT", paid={"amount": "120.00", "currency": "CNY"})
+    coupon = next(c for c in base["coupons"] if c["coupon_id"] == "COUPON-C01").copy()
+    coupon.update(coupon_id="M14-COUPON", order_id="M14-CONFLICT")
+    base["orders"].append(order)
+    base["coupons"].append(coupon)
+    return BusinessFixtures.model_validate(base)
+
+
+def scenario_config(case: SOPScenario) -> MockConfig:
+    faults = {}
+    tool_faults = {}
+    if case.fault:
+        if case.fault_tool:
+            tool_faults[case.fault_tool.value + ":" + case.order] = case.fault
+        else:
+            faults[case.order] = case.fault
+    return MockConfig(fixtures=fixtures(), faults=faults, tool_faults=tool_faults)
+
+
+def proposal_registry() -> SOPRegistry:
+    data = bundled_registry().model_dump(mode="json")
+    data["registry_version"] = "sop-registry-m14-proposal-v1"
+    for definition in data["definitions"]:
+        if definition["intent_code"] == "DISCOUNT_MISSING":
+            definition["version"] = "discount-missing-m14-proposal-v1"
+            for node in definition["nodes"]:
+                if node["node_id"] == "manual":
+                    node.update(
+                        status="NEEDS_APPROVAL",
+                        proposal="simulate_discount_adjustment",
+                        conclusion="已查询未到账事实。变更仅形成绑定计划，需要审批；尚未申请、批准或执行。",
+                    )
+    return SOPRegistry.model_validate(data)

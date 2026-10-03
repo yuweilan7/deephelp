@@ -65,7 +65,12 @@ def validate_tool_context(request: ToolRequest, question: Question) -> None:
         if question.active_intent == IntentCode.COUPON_UNUSABLE
         else ToolName.GET_ORDER_BENEFITS
     )
-    if request.tool_name != expected_tool:
+    governed_comparison = (
+        question.active_intent == IntentCode.COUPON_UNUSABLE
+        and question.versions.sop_registry is not None
+        and request.tool_name == ToolName.GET_ORDER_BENEFITS
+    )
+    if request.tool_name != expected_tool and not governed_comparison:
         raise AppError(ErrorCode.INVALID_ARGUMENT, "Tool does not match active intent")
     if (
         request.budget.stop_reason is not None
@@ -108,6 +113,7 @@ def response_from_sop(
         SOPStatus.WAITING_SLOT: (Outcome.CLARIFY, QuestionStatus.WAITING_SLOT),
         SOPStatus.HANDED_OFF: (Outcome.HANDOFF, QuestionStatus.HANDED_OFF),
         SOPStatus.FAILED: (Outcome.ERROR, QuestionStatus.ACTIVE),
+        SOPStatus.NEEDS_APPROVAL: (Outcome.HANDOFF, QuestionStatus.HANDED_OFF),
     }[result.status]
     return ResponseEnvelope(
         request_id=request.request_id,
@@ -126,4 +132,6 @@ def response_from_sop(
         error=result.error,
         versions=versions.model_copy(update={"sop": result.sop_version}),
         budget_used=budget_used,
+        sop_plan=result.plan,
+        sop_node_path=result.node_path,
     )

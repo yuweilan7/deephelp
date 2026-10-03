@@ -68,6 +68,8 @@ class FaultSpec(DTO):
 class MockConfig(DTO):
     faults: dict[str, FaultSpec] = Field(default_factory=dict, max_length=32)
     max_invocations: int = Field(default=256, ge=1, le=4096)
+    tool_faults: dict[str, FaultSpec] = Field(default_factory=dict, max_length=32)
+    fixtures: BusinessFixtures | None = None
 
 
 class MockBackend:
@@ -80,7 +82,7 @@ class MockBackend:
     ) -> None:
         self.secret = secret
         self.config = config
-        self.fixtures = fixtures or load_business_fixtures()
+        self.fixtures = fixtures or config.fixtures or load_business_fixtures()
         self.records: dict[str, ToolInvocationRecord] = {}
         self.nonces: set[str] = set()
         self.ledger_path = ledger_path
@@ -173,7 +175,7 @@ class MockBackend:
             self.update(
                 envelope, "succeeded", evidence=tuple(r.evidence_id for r in result.evidence_refs)
             )
-            fault = self.config.faults.get(parameters.order_id, FaultSpec())
+            fault = self.fault(req.tool_name, parameters.order_id)
             data = result.model_dump(mode="json")
             if fault.kind == "missing_field":
                 del data["tool_version"]
@@ -225,7 +227,7 @@ class MockBackend:
             require_owner(req.identity, coupon.identity)
             if coupon.order_id != order.order_id:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "Coupon does not belong to order")
-        fault = self.config.faults.get(order.order_id, FaultSpec())
+        fault = self.fault(req.tool_name, order.order_id)
         await asyncio.sleep(fault.delay_seconds)
         if fault.kind in {"upstream_500", "rate_limit"}:
             code = (
@@ -299,6 +301,11 @@ class MockBackend:
                     summary=summary,
                 ),
             ),
+        )
+
+    def fault(self, tool: ToolName, order_id: str) -> FaultSpec:
+        return self.config.tool_faults.get(
+            tool.value + ":" + order_id, self.config.faults.get(order_id, FaultSpec())
         )
 
 

@@ -20,6 +20,7 @@ from deephelp_app.domain.models import (
     Question,
     QuestionStatus,
     RequestEnvelope,
+    SOPPlan,
     SOPResult,
     SOPStatus,
     ToolName,
@@ -27,6 +28,7 @@ from deephelp_app.domain.models import (
     ToolRequest,
     ToolResult,
     ToolStatus,
+    VersionManifest,
     tool_parameters_hash,
 )
 from deephelp_app.errors import AppError
@@ -34,6 +36,7 @@ from deephelp_app.execution import ExecutionBudget
 from deephelp_app.mcp_protocol import tool_schema, validate_arguments, validate_observation
 from deephelp_app.ports import ChatPort, ToolPort
 from deephelp_app.sop_config import SOPBranch, SOPDefinition, load_prompt, load_sops
+from deephelp_app.sop_governance import GovernedSOP, SOPRegistry
 
 CONTROL_SCHEMA: dict[str, object] = {
     "type": "object",
@@ -49,10 +52,18 @@ class SOPExecutor:
         tools: ToolPort,
         *,
         definitions: dict[IntentCode, SOPDefinition] | None = None,
+        registry: SOPRegistry | None = None,
+        history: tuple[SOPRegistry, ...] = (),
     ) -> None:
         self.model = model
         self.tools = tools
-        self.definitions = (
+        registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
+        history = tuple(SOPRegistry.model_validate(s.model_dump()) for s in history)
+        self.registry = registry
+        self.history = tuple(
+            {s.snapshot_hash: s for s in ((registry,) if registry else ()) + history}.values()
+        )
+        self.definitions: dict[IntentCode, SOPDefinition | GovernedSOP] = dict(
             load_sops()
             if definitions is None
             else {
@@ -60,9 +71,41 @@ class SOPExecutor:
                 for code, d in definitions.items()
             }
         )
+        if registry:
+            if definitions is not None:
+                raise ValueError("Choose legacy definitions or a governed registry")
+            self.definitions = {d.intent_code: d for d in registry.definitions}
         if any(code != d.intent_code for code, d in self.definitions.items()):
             raise ValueError("SOP index does not match configured intent")
         self.prompt = load_prompt()
+
+    def definition_for(self, question: Question) -> SOPDefinition | GovernedSOP | None:
+        if question.active_intent is None:
+            return None
+        if self.registry is None:
+            return self.definitions.get(question.active_intent)
+        if question.versions.sop_snapshot:
+            for snapshot in self.history:
+                if snapshot.snapshot_hash == question.versions.sop_snapshot:
+                    d = snapshot.definition(question.active_intent)
+                    if snapshot.pin(question.versions, question.active_intent) != question.versions:
+                        raise AppError(
+                            ErrorCode.VERSION_CONFLICT, "Pinned SOP snapshot fields differ"
+                        )
+                    return d
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Pinned SOP snapshot is unavailable")
+        if question.versions.sop:
+            old = load_sops().get(question.active_intent)
+            if old and old.version == question.versions.sop:
+                return old
+        return self.definitions.get(question.active_intent)
+
+    def pin_versions(self, versions: VersionManifest, code: IntentCode) -> VersionManifest:
+        return (
+            self.registry.pin(versions, code)
+            if self.registry
+            else versions.model_copy(update={"sop": self.definitions[code].version})
+        )
 
     async def execute(
         self,
@@ -74,13 +117,13 @@ class SOPExecutor:
     ) -> SOPResult:
         # Authorize before missing-slot reporting or model I/O. The entry point owns login auth.
         validate_question_access(context, question)
-        definition = (
-            self.definitions.get(question.active_intent) if question.active_intent else None
-        )
+        definition = self.definition_for(question)
         if definition is None:
             raise AppError(ErrorCode.NO_SOP, "No configured SOP for the selected intent")
         if question.versions.sop != definition.version:
             raise AppError(ErrorCode.VERSION_CONFLICT, "SOP version differs from pinned question")
+        if isinstance(definition, GovernedSOP) and not question.versions.sop_snapshot:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Governed SOP requires a pinned registry")
         if question.status not in {QuestionStatus.ACTIVE, QuestionStatus.WAITING_SLOT}:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Question cannot enter SOP execution")
         values = {e.name.value: e.value for e in question.entities}
@@ -106,6 +149,8 @@ class SOPExecutor:
             async with asyncio.timeout(
                 min(definition.limits.total_seconds, budget.remaining_seconds())
             ):
+                if isinstance(definition, GovernedSOP):
+                    return await self._flow(definition, question, context, run_id, budget, calls)
                 return await self._loop(definition, question, context, run_id, budget, calls)
         except TimeoutError:
             return self._failed(
@@ -115,7 +160,9 @@ class SOPExecutor:
             return self._failed(definition, calls, exc.code, exc.safe_message)
 
     @staticmethod
-    def _failed(d: SOPDefinition, calls: list[str], code: ErrorCode, message: str) -> SOPResult:
+    def _failed(
+        d: SOPDefinition | GovernedSOP, calls: list[str], code: ErrorCode, message: str
+    ) -> SOPResult:
         return SOPResult(
             status=SOPStatus.FAILED,
             sop_id=d.sop_id,
@@ -128,13 +175,14 @@ class SOPExecutor:
 
     async def _loop(
         self,
-        d: SOPDefinition,
+        d: SOPDefinition | GovernedSOP,
         question: Question,
         context: RequestEnvelope,
         run_id: str,
         budget: ExecutionBudget,
         calls: list[str],
     ) -> SOPResult:
+        assert isinstance(d, SOPDefinition)
         values = {e.name.value: e.value for e in question.entities}
         expected = {slot.value: values[slot.value] for slot in d.required_slots}
         tools = [ModelTool(name=t.value, parameters=tool_schema(t)) for t in d.allowed_tools]
@@ -235,7 +283,7 @@ class SOPExecutor:
 
     async def _lookup(
         self,
-        d: SOPDefinition,
+        d: SOPDefinition | GovernedSOP,
         question: Question,
         context: RequestEnvelope,
         run_id: str,
@@ -244,11 +292,15 @@ class SOPExecutor:
         parameters: ToolParameters,
         calls: list[str],
     ) -> ToolResult:
+        retries_at_start = budget.retries_used
         for retry in range(d.limits.retries_per_call + 1):
             if len(calls) >= d.limits.max_tool_calls:
                 raise AppError(ErrorCode.BUDGET_EXHAUSTED, "SOP max_tool_calls exhausted")
             if retry:
-                if retry > d.limits.total_retries or budget.retry_remaining <= 0:
+                if (
+                    budget.retries_used - retries_at_start >= d.limits.total_retries
+                    or budget.retry_remaining <= 0
+                ):
                     break
                 # ToolPort owns call reservation; consume only the shared retry allowance here.
                 budget.remaining_seconds()
@@ -308,6 +360,203 @@ class SOPExecutor:
             if result.error.code not in {ErrorCode.RATE_LIMITED, ErrorCode.UPSTREAM_UNAVAILABLE}:
                 return result
         return result
+
+    async def _flow(
+        self,
+        d: GovernedSOP,
+        question: Question,
+        context: RequestEnvelope,
+        run_id: str,
+        budget: ExecutionBudget,
+        calls: list[str],
+    ) -> SOPResult:
+        snapshot = next(
+            s for s in self.history if s.snapshot_hash == question.versions.sop_snapshot
+        )
+        index = {n.node_id: n for n in d.nodes}
+        values = {e.name.value: e.value for e in question.entities}
+        messages = [
+            ChatMessage(
+                role="system", content=snapshot.prompt + "\nTRUSTED FLOW:\n" + d.model_dump_json()
+            ),
+            ChatMessage(
+                role="user",
+                content=json.dumps({"untrusted_user_text": context.raw_text}, ensure_ascii=False),
+            ),
+        ]
+        observed: dict[str, ToolResult] = {}
+        path: list[str] = []
+        current = d.entry
+        failure: ToolResult | None = None
+        seen: set[str] = set()
+        retries_at_start = budget.retries_used
+        for _ in range(d.limits.max_steps):
+            budget.remaining_seconds()
+            node = index[current]
+            path.append(current)
+            if node.kind == "lookup":
+                assert node.tool and node.success and node.failure
+                expected = {slot: values[slot] for slot in tool_schema(node.tool)["required"]}
+                request = ChatRequest(
+                    messages=[
+                        *messages,
+                        ChatMessage(
+                            role="system",
+                            content=json.dumps(
+                                {
+                                    "ready_node": current,
+                                    "required_action": node.tool.value,
+                                    "verified_parameters": expected,
+                                },
+                                ensure_ascii=False,
+                            ),
+                        ),
+                    ],
+                    tools=[ModelTool(name=node.tool.value, parameters=tool_schema(node.tool))],
+                    tool_choice=node.tool.value,
+                    max_output_tokens=4096,
+                )
+                try:
+                    async with asyncio.timeout(
+                        min(d.limits.model_seconds, budget.remaining_seconds())
+                    ):
+                        selected = await self.model.chat(request, budget)
+                except TimeoutError:
+                    raise AppError(ErrorCode.TIMEOUT, "SOP model selection timed out") from None
+                if selected.finish_reason == "length" or len(selected.tool_calls) != 1:
+                    raise AppError(
+                        ErrorCode.MODEL_OUTPUT_INVALID, "Flow requires one complete ready action"
+                    )
+                action = selected.tool_calls[0]
+                if action.name != node.tool.value or action.arguments != expected:
+                    raise AppError(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "Action differs from ready node or verified slots",
+                    )
+                fingerprint = action.name + ":" + json.dumps(expected, sort_keys=True)
+                if fingerprint in seen:
+                    raise AppError(ErrorCode.INVALID_ARGUMENT, "Repeated flow lookup blocked")
+                seen.add(fingerprint)
+                # All lookups share the SOP retry allowance, not one allowance per source.
+                remaining_retries = max(
+                    0, d.limits.total_retries - (budget.retries_used - retries_at_start)
+                )
+                bounded = d.model_copy(
+                    update={
+                        "limits": d.limits.model_copy(update={"total_retries": remaining_retries})
+                    }
+                )
+                result = await self._lookup(
+                    bounded,
+                    question,
+                    context,
+                    run_id,
+                    budget,
+                    node.tool,
+                    validate_arguments(action.name, expected),
+                    calls,
+                )
+                if result.status != ToolStatus.SUCCEEDED:
+                    failure = result
+                    current = node.failure
+                    continue
+                observed[current] = result
+                messages.extend(
+                    [
+                        ChatMessage(role="assistant", tool_calls=[action]),
+                        ChatMessage(
+                            role="tool",
+                            tool_call_id=action.call_id,
+                            content=result.model_dump_json(),
+                        ),
+                    ]
+                )
+                current = node.success
+            elif node.kind == "branch":
+                facts = {
+                    key + "." + f.name: f.value
+                    for key, result in observed.items()
+                    for f in result.facts
+                }
+                assert node.default
+                try:
+                    current = next(
+                        (r.target for r in node.routes if r.condition.matches(facts)), node.default
+                    )
+                except KeyError, ValueError:
+                    raise AppError(
+                        ErrorCode.MODEL_OUTPUT_INVALID, "Flow condition lacks compatible facts"
+                    ) from None
+            else:
+                assert node.status and node.conclusion
+                if node.status == SOPStatus.FAILED:
+                    error = (
+                        failure.error
+                        if failure and failure.error
+                        else ErrorDetail(
+                            code=ErrorCode.MODEL_OUTPUT_INVALID,
+                            message="Flow stopped before a verified conclusion",
+                        )
+                    )
+                    return self._failed(d, calls, error.code, error.message).model_copy(
+                        update={"node_path": tuple(path)}
+                    )
+                evidence = tuple(
+                    ref for result in observed.values() for ref in result.evidence_refs
+                )
+                merged: dict[str, Fact] = {}
+                for result in observed.values():
+                    for fact in result.facts:
+                        old = merged.get(fact.name)
+                        if old:
+                            if old.kind != fact.kind or old.value != fact.value:
+                                raise AppError(
+                                    ErrorCode.MODEL_OUTPUT_INVALID, "Conflicting source facts"
+                                )
+                            fact = fact.model_copy(
+                                update={"evidence_ids": (*old.evidence_ids, *fact.evidence_ids)}
+                            )
+                        merged[fact.name] = fact
+                if evidence:
+                    merged["sop_conclusion"] = Fact(
+                        name="sop_conclusion",
+                        kind=FactKind.TEXT,
+                        value=node.conclusion,
+                        evidence_ids=tuple(r.evidence_id for r in evidence),
+                    )
+                plan = None
+                if node.status == SOPStatus.NEEDS_APPROVAL:
+                    assert node.proposal and question.versions.sop_snapshot
+                    parameters = ToolParameters(order_id=values["order_id"])
+                    plan = SOPPlan(
+                        operation_id="proposal-" + uuid4().hex,
+                        action=node.proposal,
+                        identity=context.identity,
+                        question_id=question.question_id,
+                        question_version=question.version,
+                        parameters=parameters,
+                        parameters_hash=tool_parameters_hash(parameters),
+                        sop_version=d.version,
+                        snapshot_hash=question.versions.sop_snapshot,
+                        evidence_ids=tuple(r.evidence_id for r in evidence),
+                    )
+                return SOPResult(
+                    status=node.status,
+                    sop_id=d.sop_id,
+                    sop_version=d.version,
+                    facts=tuple(merged.values()),
+                    evidence_refs=evidence,
+                    tool_call_ids=tuple(calls),
+                    next_action=NextAction.NONE
+                    if node.status == SOPStatus.RESOLVED
+                    else NextAction.REQUEST_APPROVAL
+                    if plan
+                    else NextAction.CONTACT_SUPPORT,
+                    reason=node.conclusion,
+                    plan=plan,
+                    node_path=tuple(path),
+                )
+        raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Flow max_steps exhausted")
 
     @staticmethod
     def _branch(d: SOPDefinition, observation: ToolResult) -> SOPBranch | None:

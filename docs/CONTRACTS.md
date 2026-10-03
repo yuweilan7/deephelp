@@ -207,3 +207,15 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 本地CPU推理单独保存elapsed_ms，不伪增模型API次数/token/费用；有界并发2、输入≤2000字符并共享deadline，取消等待该短CPU任务退出后传播。模型API保留原累计预算与有限重试。VersionManifest新增三个默认null字段fasttext_model/fasttext_preprocessing/fasttext_policy，已接收问题/重放保留原版本事实；指针变更在新装配时生效，不能改写旧run。
 
 manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和预处理签名。原版/量化分别只用dev校准，test不选参。activate先hash/标签/预处理/内容回读再原子替换active/previous，重复发布同版本不覆盖previous；失败保持旧指针，rollback同样先验证。该指针只选FastText，不替换M09语料或Embedding签名。
+
+## M14 SOP治理契约
+
+`SOPExecutorPort`签名保持。`SOPRegistry`固定三个已注册叶子的映射、独立SOP版本、Prompt版本/全文和工具schema签名；canonical内容摘要为不可变快照ID。`GovernedSOP`使用lookup/branch/end有向无环图，条件仅eq/empty/nonempty/fact_eq/money_lt/money_gte；引用为`lookup节点.事实名`，按所有前置路径检查可用性及类型。当前拒绝循环，不执行任意配置代码。每lookup的失败边只能到FAILED/HANDED_OFF终点，RESOLVED/NEEDS_APPROVAL必须有成功预检证据。
+
+授权上限由代码固定：优惠/活动仅get_order_benefits；券问题可check_coupon及get_order_benefits。配置只能缩小范围，不能增加主意图或工具。模型只看当前就绪工具，动作/参数再次核对已确认槽位；主体/session/对象归属、schema/版本/hash、尝试ID、预算/共享有限重试及终止仍由原Gateway与执行器核验。券未达门槛分支按合成fixture口径比较实付与门槛，不推断企业结算计算规则；可用券只确认查询状态。
+
+`VersionManifest`新增默认null的`sop_registry/sop_snapshot/sop_prompt/tool_schema`，旧DTO/保存结果兼容。主链绑定新问题时固定这些字段；补槽按已有快照查历史版本，缺失/冲突失败关闭，不换成active重执行。应用装配时加载active及保留历史，发布不改变运行中的对象；本机写锁与原子指针只证明单机发布，保留最多64快照，达到上限明确停止，不自动淘汰旧问题版本。原M07旧问题仍按包内旧定义执行。
+
+`SOPResult.node_path`与`ResponseEnvelope.sop_node_path`记录实际配置节点。失败尝试仍保留tool_call_ids；部分来源失败不发布成功事实，最终结论由代码分支和成功证据产生。没有额外主分类或调度服务。
+
+`SOPStatus.NEEDS_APPROVAL`配`NextAction.REQUEST_APPROVAL`及唯一DTO `SOPPlan`。计划绑定operation_id、模拟动作、主体、问题ID/执行输入版本、只读预检参数及hash、SOP版本/完整快照和证据IDs；当前唯一模拟动作simulate_discount_adjustment没有可调用写工具。`response_from_sop`将其映射为HANDOFF/HANDED_OFF/run SUCCEEDED和`sop_plan`，明确未申请、批准或执行。PENDING_APPROVAL与WAITING_APPROVAL仍被DTO拒绝，M15前没有持久批准恢复。M15必须重新核对当时的最新问题版本、归属/状态/期限/参数与操作领取，不能直接把此计划当授权或复用普通消息批准。
