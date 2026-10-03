@@ -11,6 +11,8 @@ import httpx
 from fastapi import FastAPI, Request
 
 from deephelp_app.app import create_app
+from deephelp_app.approval import ApprovalService
+from deephelp_app.approval_store import ApprovalRepository
 from deephelp_app.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.cases import MySQLCaseRepository
 from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
@@ -38,6 +40,7 @@ from deephelp_app.reply import ReplyComposer
 from deephelp_app.settings import Settings
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.sop_governance import RegistryStore, bundled_registry
+from deephelp_app.synthetic_rights import RightsClient
 from deephelp_app.text_entity import TextEntityProcessor
 from deephelp_app.tool_gateway import ToolGateway
 from deephelp_app.trace import TraceSink
@@ -190,6 +193,8 @@ class LiveAssembly:
         sop_directory: Path | None = None,
         reply_polish: bool = False,
         reviewed_rules: Path | None = None,
+        rights_port: int | None = None,
+        rights_key: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -208,6 +213,9 @@ class LiveAssembly:
         self.fasttext_pointer = fasttext_pointer
         self.reply_polish = reply_polish
         self.reviewed_rules = reviewed_rules
+        if (rights_port is None) != (rights_key is None):
+            raise ConfigurationError("M15 needs both a synthetic rights port and key")
+        self.rights_port, self.rights_key = rights_port, rights_key
         self.sop_snapshots = RegistryStore(sop_directory).history() if sop_directory else ()
         if sop_directory and not self.sop_snapshots:
             raise ConfigurationError(
@@ -245,7 +253,9 @@ class LiveAssembly:
         self, client: httpx.AsyncClient, trace: TraceSink
     ) -> AsyncIterator[Conversation]:
         async with AsyncExitStack() as stack:
-            ledger = await MySQLCaseRepository.open(self.root)
+            ledger = await (ApprovalRepository if self.rights_port else MySQLCaseRepository).open(
+                self.root
+            )
             stack.push_async_callback(ledger.aclose)
             self.ledger = ledger
             cache = RedisMemory.open(self.root)
@@ -362,6 +372,13 @@ class LiveAssembly:
                 cases=ledger,
                 events=events,
                 reply_composer=ReplyComposer(model if self.reply_polish else None),
+                approvals=ApprovalService(
+                    ledger,
+                    RightsClient(client, self.rights_port, self.rights_key.read_bytes()),
+                    self.sop_registry.snapshot_hash,
+                )
+                if isinstance(ledger, ApprovalRepository) and self.rights_port and self.rights_key
+                else None,
             )
 
 

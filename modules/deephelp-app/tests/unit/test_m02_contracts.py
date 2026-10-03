@@ -503,7 +503,7 @@ def test_registry_explicit_hierarchy_and_unique_codes():
         IntentRegistry.model_validate(data)
 
 
-def test_error_mapping_and_future_approval_are_disabled():
+def test_error_mapping_and_unbound_approval_are_rejected():
     assert set(HTTP_STATUS) == set(ErrorCode)
     assert (
         HTTP_STATUS[ErrorCode.IDEMPOTENCY_CONFLICT]
@@ -512,7 +512,7 @@ def test_error_mapping_and_future_approval_are_disabled():
     )
     with pytest.raises(ValidationError):
         ErrorDetail(code="OPERATION_UNKNOWN", message="Reconcile", retryable=True)
-    with pytest.raises(ValidationError, match="disabled"):
+    with pytest.raises(ValidationError, match="bound"):
         ResponseEnvelope(
             request_id="r",
             trace_id="t",

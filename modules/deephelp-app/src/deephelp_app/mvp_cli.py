@@ -12,7 +12,7 @@ from uuid import uuid4
 import httpx
 import uvicorn
 
-from deephelp_app.cases import MySQLCaseRepository
+from deephelp_app.approval_store import ApprovalRepository
 from deephelp_app.domain.models import ConverseInput
 from deephelp_app.errors import AppError, ConfigurationError
 from deephelp_app.live_probe import local_path
@@ -71,13 +71,13 @@ def initialize(args: argparse.Namespace) -> None:
 
 
 async def migrate() -> None:
-    ledger = await MySQLCaseRepository.open(Path.cwd())
+    ledger = await ApprovalRepository.open(Path.cwd())
     try:
         async with asyncio.timeout(30):
             await ledger.migrate()
     finally:
         await ledger.aclose()
-    print("M08/M10 MySQL project tables ready")
+    print("M08/M10/M15 MySQL project tables ready")
 
 
 async def ask(args: argparse.Namespace) -> None:
@@ -114,6 +114,8 @@ def main() -> int:
         "--reply-polish", action="store_true", help="Optional closed-vocabulary M16 wording"
     )
     p.add_argument("--trace-path", default=".local/m08/trace.jsonl")
+    p.add_argument("--rights-port", type=int, help="Explicit M15 synthetic rights loopback service")
+    p.add_argument("--rights-key", help="32-byte local service signing key")
     p.add_argument(
         "--sop-directory", help="Published M14 registries; omitted uses bundled registry"
     )
@@ -157,6 +159,8 @@ def main() -> int:
                     else None,
                     sop_directory=local_path(args.sop_directory) if args.sop_directory else None,
                     reply_polish=args.reply_polish,
+                    rights_port=args.rights_port,
+                    rights_key=local_path(args.rights_key) if args.rights_key else None,
                 )
                 app = live_app(
                     assembly,

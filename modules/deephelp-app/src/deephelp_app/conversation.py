@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import cast
 
+from deephelp_app.approval import ApprovalService
 from deephelp_app.cascade import enhanced_query
 from deephelp_app.debug import sanitize, scope_hash
 from deephelp_app.domain.checks import response_from_sop
@@ -243,6 +244,7 @@ class Conversation:
         cases: CaseRepository | None = None,
         events: EventAggregationService | None = None,
         reply_composer: ReplyComposer | None = None,
+        approvals: ApprovalService | None = None,
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
@@ -250,6 +252,7 @@ class Conversation:
         self.cases = cases
         self.events = events
         self.reply_composer = reply_composer or ReplyComposer()
+        self.approvals = approvals
         self.event_ledger = cast(EventLedger, ledger)
         if events and not getattr(ledger, "supports_continuation", False):
             raise ValueError("Automatic events require a continuation-capable ledger")
@@ -260,6 +263,7 @@ class Conversation:
             and (f not in {"memory", "redis_projection", "cross_message_slots"} or memory is None)
             and (f != "event_merge" or events is None)
             and (f != "llm_reply_polish" or self.reply_composer.model is None)
+            and (f not in {"approval", "langgraph"} or approvals is None)
         )
         if not intent.cascade or not getattr(intent.cascade.fallback, "enabled", False):
             self.disabled += ("fasttext",)
@@ -408,6 +412,15 @@ class Conversation:
             )
             if old is None:
                 raise AppError(ErrorCode.FORBIDDEN, "Object access denied")
+            if (
+                old.status == QuestionStatus.WAITING_APPROVAL
+                and request.message_id not in old.member_message_ids
+            ):
+                raise AppError(
+                    ErrorCode.VERSION_CONFLICT,
+                    "Pending approval must be rejected or revoked before a correction",
+                    409,
+                )
             if not getattr(self.ledger, "supports_continuation", False):
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT, "M08 requires a new complete question without hint"
@@ -702,6 +715,19 @@ class Conversation:
                             response = response.model_copy(
                                 update={"reply_presentation": presentation}
                             )
+                            if self.approvals is not None and result.plan is not None:
+                                response = ResponseEnvelope.model_validate(
+                                    response.model_copy(
+                                        update={
+                                            "outcome": Outcome.PENDING_APPROVAL,
+                                            "question_status": QuestionStatus.WAITING_APPROVAL,
+                                            "run_status": RunStatus.WAITING_APPROVAL,
+                                            "approval_operation_id": result.plan.operation_id,
+                                            "reply": "预检已完成，变更等待审批，尚未执行。",
+                                            "reply_presentation": None,
+                                        }
+                                    ).model_dump()
+                                )
             except EventClarification:
                 question = question.model_copy(update={"aggregation_pending": True})
                 response = ResponseEnvelope(
@@ -749,6 +775,7 @@ class Conversation:
                             "status": response.question_status,
                             "version": receipt.question.version + 1,
                             "updated_at": datetime.now(UTC),
+                            "approval_operation_id": response.approval_operation_id,
                         }
                     ).model_dump()
                 )
@@ -807,6 +834,12 @@ class Conversation:
                 stats,
                 input_question_version=receipt.question.version,
             )
+            if self.approvals is not None and response.approval_operation_id:
+                # The receipt/approval transaction is already authoritative if this fails.
+                try:
+                    await self.approvals.pause(response.approval_operation_id, budget)
+                except Exception:
+                    pass  # explicit resume reconstructs the graph from the committed ledger
             if cancelled:
                 raise asyncio.CancelledError
             return response

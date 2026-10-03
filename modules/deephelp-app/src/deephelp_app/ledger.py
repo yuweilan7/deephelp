@@ -153,7 +153,13 @@ def validate_terminal(receipt: Receipt, question: Question, response: ResponseEn
         or question.session_id != receipt.question.session_id
         or question.version != receipt.question.version + 1
         or response.question_status != question.status
-        or response.run_status not in {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELLED}
+        or response.run_status
+        not in {
+            RunStatus.SUCCEEDED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.WAITING_APPROVAL,
+        }
     ):
         raise AppError(ErrorCode.VERSION_CONFLICT, "Terminal ledger binding differs")
 
@@ -317,11 +323,12 @@ class MySQLLedger:
                         await self.before_finish(cursor, receipt, question, response)
                         await cursor.execute(
                             "UPDATE dh_m08_runs SET status=%s,response=%s,"
-                            "finished_at=CURRENT_TIMESTAMP(6) "
+                            "finished_at=IF(%s='WAITING_APPROVAL',NULL,CURRENT_TIMESTAMP(6)) "
                             "WHERE run_id=%s AND question_id=%s AND status='RUNNING'",
                             (
                                 response.run_status,
                                 response.model_dump_json(),
+                                response.run_status,
                                 receipt.run_id,
                                 question.question_id,
                             ),
