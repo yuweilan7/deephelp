@@ -1,0 +1,19 @@
+{
+  "format": "m12-cascade-v1",
+  "dev_digest": "55f81fbd239d1be35bdfe233d471b45aae9913f605c8be3048451536482f0a92",
+  "scope_fingerprint": "587cb7bc606b18abc795c253e96eadc5e0625300fa455ea2eeebc76b4a7ab394",
+  "dense_weight": 0.5,
+  "gates": {
+    "cosine": null,
+    "fusion": {
+      "threshold": 0.85,
+      "margin": 0.05
+    },
+    "memory_cosine": null,
+    "memory_fusion": {
+      "threshold": 0.85,
+      "margin": 0.3
+    }
+  },
+  "corpus_digest": "e2a52724228f514a170f6f5d4f00d8417ae2bac977f16ca1d481d262a23e47c3"
+}

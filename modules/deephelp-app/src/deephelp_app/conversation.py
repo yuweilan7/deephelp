@@ -1,4 +1,4 @@
-"""Shared conversation pipeline with explicit case context; event attribution belongs to M11."""
+"""One sequential 13-stage pipeline; 500 owns membership, 600 owns main intent."""
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
@@ -7,17 +7,25 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from time import perf_counter
+from typing import cast
 
+from deephelp_app.cascade import enhanced_query
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.models import (
     BudgetUsed,
+    CallCounts,
     ChatRequest,
     ChatResult,
+    Decision,
+    DenseResult,
+    DenseScope,
     EmbeddingResult,
     ErrorCode,
     ErrorDetail,
+    EventClusterResult,
     IntentCode,
     IntentDecision,
+    MemoryWindow,
     Money,
     NextAction,
     Outcome,
@@ -29,17 +37,20 @@ from deephelp_app.domain.models import (
     SOPResult,
     SOPStatus,
     StageReport,
+    TextEntityResult,
     ToolRequest,
     ToolResult,
     VersionManifest,
 )
 from deephelp_app.errors import AppError
+from deephelp_app.event_cluster import EventAggregationService, EventLedger
 from deephelp_app.execution import ExecutionBudget
 from deephelp_app.intent import IntentService
-from deephelp_app.ledger import MessageLedger, Receipt
+from deephelp_app.ledger import MessageLedger, Receipt, new_receipt
 from deephelp_app.ports import (
     CaseRepository,
     ChatPort,
+    DenseRetrieverPort,
     EmbeddingPort,
     MemoryPort,
     SOPExecutorPort,
@@ -83,6 +94,47 @@ class RunTrace:
     stages: list[StageReport] = field(default_factory=list)
     tool_call_ids: list[str] = field(default_factory=list)
     stage_error: ErrorCode | None = None
+    intent_calls: int = 0
+    retrieval_calls: int = 0
+    deferred: bool = False
+
+    def counts(self) -> CallCounts:
+        return CallCounts(
+            intent_calls=self.intent_calls,
+            model_calls=self.model_calls,
+            retrieval_calls=self.retrieval_calls,
+            tool_calls=len(self.tool_call_ids),
+        )
+
+
+@dataclass
+class PreparedState:
+    receipt: Receipt
+    text: TextEntityResult | None = None
+    window: MemoryWindow | None = None
+    event: EventClusterResult | None = None
+    error: AppError | None = None
+
+
+class EventClarification(Exception):
+    """Short circuit business nodes, while retaining terminal session/envelope nodes."""
+
+
+class CountedRetriever:
+    def __init__(self, retrieval: DenseRetrieverPort) -> None:
+        self.retrieval = retrieval
+
+    async def retrieve(
+        self,
+        text: str,
+        scope: DenseScope,
+        budget: ExecutionBudget,
+        *,
+        top_k: int = 3,
+    ) -> DenseResult:
+        if stats := current_run.get():
+            stats.retrieval_calls += 1
+        return await self.retrieval.retrieve(text, scope, budget, top_k=top_k)
 
 
 current_run: ContextVar[RunTrace | None] = ContextVar("m08_run", default=None)
@@ -182,17 +234,24 @@ class Conversation:
         definitions: dict[IntentCode, SOPDefinition] | None = None,
         memory: MemoryPort | None = None,
         cases: CaseRepository | None = None,
+        events: EventAggregationService | None = None,
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
         self.memory = memory
         self.cases = cases
+        self.events = events
+        self.event_ledger = cast(EventLedger, ledger)
+        if events and not getattr(ledger, "supports_continuation", False):
+            raise ValueError("Automatic events require a continuation-capable ledger")
         self.disabled = tuple(
             f
             for f in DISABLED
             if (f != "hybrid" or not hasattr(intent.scope, "analyzer_version"))
             and (f not in {"memory", "redis_projection", "cross_message_slots"} or memory is None)
+            and (f != "event_merge" or events is None)
         )
+        self.disabled += ("fasttext",)
         self.definitions = load_sops() if definitions is None else definitions
 
     @asynccontextmanager
@@ -205,10 +264,13 @@ class Conversation:
         stats: RunTrace,
     ) -> AsyncIterator[None]:
         start, models, tools = perf_counter(), stats.model_calls, budget.tool_steps_used
+        intents, retrievals = stats.intent_calls, stats.retrieval_calls
         stats.stage_error = None
         error: ErrorCode | None = None
         try:
             yield
+        except EventClarification:
+            raise
         except AppError as exc:
             error = exc.code
             raise
@@ -227,9 +289,12 @@ class Conversation:
                 model_calls=stats.model_calls - models,
                 tool_calls=budget.tool_steps_used - tools,
                 error_code=error,
+                intent_calls=stats.intent_calls - intents,
+                retrieval_calls=stats.retrieval_calls - retrievals,
             )
             stats.stages.append(report)
-            await self.emit(request, receipt, report)
+            if not stats.deferred:
+                await self.emit(request, receipt, report)
 
     async def emit(self, request: RequestEnvelope, receipt: Receipt, report: StageReport) -> None:
         await self.trace.emit(
@@ -245,8 +310,76 @@ class Conversation:
                 tool_calls=report.tool_calls,
                 stage_status=report.status,
                 error_code=report.error_code,
+                intent_calls=report.intent_calls,
+                retrieval_calls=report.retrieval_calls,
             )
         )
+
+    async def prepare(
+        self,
+        request: RequestEnvelope,
+        budget: ExecutionBudget,
+        stats: RunTrace,
+    ) -> PreparedState:
+        """Select attribution before the atomic claim; emitted IDs are bound after acceptance."""
+        assert self.events is not None
+        previous = await self.event_ledger.lookup(request)
+        if previous:
+            return PreparedState(previous)
+        state = PreparedState(new_receipt(request))
+        stats.deferred = True
+        token = current_run.set(stats)
+        try:
+            try:
+                async with asyncio.timeout_at(budget.deadline):
+                    for name in STAGES[:2]:
+                        async with self.stage(name, request, state.receipt, budget, stats):
+                            budget.remaining_seconds()
+                    async with self.stage(STAGES[2], request, state.receipt, budget, stats):
+                        state.text = await self.text.process(request, budget, fields=())
+                    async with self.stage(STAGES[3], request, state.receipt, budget, stats):
+                        state.window = (
+                            await self.memory.load(request.identity, request.session_id, budget)
+                            if self.memory
+                            else await self.events.assembler.load(request)
+                        )
+                    async with self.stage(STAGES[4], request, state.receipt, budget, stats):
+                        state.event = await self.events.aggregate(
+                            request,
+                            budget,
+                            extracted=state.text,
+                            window=state.window,
+                            allow_unclassified=True,
+                        )
+            except TimeoutError:
+                state.error = AppError(ErrorCode.BUDGET_EXHAUSTED, "Preparation deadline exhausted")
+            except AppError as exc:
+                if exc.code in {
+                    ErrorCode.FORBIDDEN,
+                    ErrorCode.INVALID_ARGUMENT,
+                    ErrorCode.VERSION_CONFLICT,
+                    ErrorCode.IDEMPOTENCY_CONFLICT,
+                }:
+                    raise
+                state.error = exc
+            except Exception:
+                state.error = AppError(ErrorCode.INTERNAL_ERROR, "Event preparation failed")
+            attribution = (
+                (state.event.target_question_id, state.event.expected_version)
+                if state.event
+                and state.event.target_question_id
+                and state.event.expected_version
+                and not state.error
+                else None
+            )
+            state.receipt = await self.event_ledger.accept(request, attribution=attribution)
+            if state.receipt.acquired:
+                for report in stats.stages:
+                    await self.emit(request, state.receipt, report)
+            return state
+        finally:
+            stats.deferred = False
+            current_run.reset(token)
 
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         initial = budget.usage()
@@ -261,7 +394,9 @@ class Conversation:
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT, "M08 requires a new complete question without hint"
                 )
-        receipt = await self.ledger.accept(request)
+        stats = RunTrace()
+        prepared = await self.prepare(request, budget, stats) if self.events else None
+        receipt = prepared.receipt if prepared else await self.ledger.accept(request)
         if not receipt.acquired:
             await self.trace.emit(
                 TraceEvent(
@@ -279,6 +414,7 @@ class Conversation:
                         "trace_id": request.trace_id,
                         "replayed": True,
                         "budget_used": usage_delta(budget, initial),
+                        "call_counts": stats.counts(),
                     }
                 )
             return ResponseEnvelope(
@@ -293,72 +429,129 @@ class Conversation:
                 replayed=True,
                 reply="该消息已有处理中或中断的执行记录；本次未重新调用工具。请联系人工核对。",
                 disabled_features=self.disabled,
+                call_counts=stats.counts(),
+                budget_used=usage_delta(budget, initial),
             )
-        stats = RunTrace()
         token = current_run.set(stats)
         question = receipt.question
         decision: IntentDecision | None = None
         response: ResponseEnvelope | None = None
         cancelled = False
+        event = prepared.event if prepared else None
+        if event and event.current_event_context:
+            bound_context = event.current_event_context.model_copy(
+                update={"question_id": question.question_id}
+            )
+            event = event.model_copy(
+                update={
+                    "current_event_context": bound_context,
+                    "events": tuple(
+                        bound_context if e.event_id == bound_context.event_id else e
+                        for e in event.events
+                    ),
+                }
+            )
         try:
             try:
                 async with asyncio.timeout_at(budget.deadline):
-                    for name in STAGES[:2]:
+                    if prepared and prepared.error:
+                        raise prepared.error
+                    for name in () if prepared else STAGES[:2]:
                         async with self.stage(name, request, receipt, budget, stats):
                             budget.remaining_seconds()
-                    async with self.stage(STAGES[2], request, receipt, budget, stats):
-                        text = await self.text.process(
-                            request,
-                            budget,
-                            confirmed=question.entities,
-                            fields=question.active_intent.required_slots
-                            if question.active_intent
-                            else None,
-                        )
-                        confirmed_names = {
-                            e.name
-                            for e in text.observations
-                            if e.disposition != "negated"
-                            and (
-                                e.disposition == "correction"
-                                or any(
-                                    e.name == old.name and e.value == old.value
-                                    for old in question.entities
-                                )
-                                or e.name not in {old.name for old in question.entities}
-                            )
-                        }
-                        unresolved = set(text.unresolved_fields) | (
-                            set(question.unresolved_fields) - confirmed_names
-                        )
-                        text = text.model_copy(
-                            update={
-                                "unresolved_fields": tuple(
-                                    sorted(unresolved, key=lambda n: n.value)
-                                )
-                            }
-                        )
-                    async with self.stage(STAGES[3], request, receipt, budget, stats):
-                        if self.memory:
-                            await self.memory.load(request.identity, request.session_id, budget)
-                        entities = tuple(
-                            e for e in text.entities if e.name not in text.unresolved_fields
-                        )
-                    async with self.stage(STAGES[4], request, receipt, budget, stats):
+                    if prepared:
+                        assert prepared.text is not None
+                        text = prepared.text
                         previous_question = question
-                        # Explicit membership comes from acceptance; automatic grouping is M11.
+                        context = event.current_event_context if event else None
                         question = question.model_copy(
                             update={
-                                "entities": tuple(text.entities),
-                                "conflicts": (*question.conflicts, *text.conflicts),
-                                "unresolved_fields": text.unresolved_fields,
+                                "entities": context.entities if context else (),
+                                "conflicts": context.conflicts if context else (),
+                                "unresolved_fields": context.unresolved_fields if context else (),
+                                "event_summary": context.summary
+                                if context
+                                else request.raw_text[:2000],
+                                "aggregation_pending": bool(
+                                    event and event.disposition == "clarify"
+                                ),
                                 "versions": question.versions
                                 if question.active_intent
                                 else self.versions,
                             }
                         )
+                        text = text.model_copy(
+                            update={
+                                "entities": list(question.entities),
+                                "conflicts": list(question.conflicts),
+                                "unresolved_fields": list(question.unresolved_fields),
+                                "demand_type": event.window[-1].demand_type
+                                if event and event.window
+                                else text.demand_type,
+                            }
+                        )
+                        entities = tuple(
+                            e for e in question.entities if e.name not in question.unresolved_fields
+                        )
+                        if event and event.disposition == "clarify":
+                            raise EventClarification
+                    else:
+                        async with self.stage(STAGES[2], request, receipt, budget, stats):
+                            text = await self.text.process(
+                                request,
+                                budget,
+                                confirmed=question.entities,
+                                fields=question.active_intent.required_slots
+                                if question.active_intent
+                                else None,
+                            )
+                            confirmed_names = {
+                                e.name
+                                for e in text.observations
+                                if e.disposition != "negated"
+                                and (
+                                    e.disposition == "correction"
+                                    or any(
+                                        e.name == old.name and e.value == old.value
+                                        for old in question.entities
+                                    )
+                                    or e.name not in {old.name for old in question.entities}
+                                )
+                            }
+                            unresolved = set(text.unresolved_fields) | (
+                                set(question.unresolved_fields) - confirmed_names
+                            )
+                            text = text.model_copy(
+                                update={
+                                    "unresolved_fields": tuple(
+                                        sorted(unresolved, key=lambda n: n.value)
+                                    )
+                                }
+                            )
+                        async with self.stage(STAGES[3], request, receipt, budget, stats):
+                            if self.memory:
+                                await self.memory.load(request.identity, request.session_id, budget)
+                            entities = tuple(
+                                e for e in text.entities if e.name not in text.unresolved_fields
+                            )
+                        async with self.stage(STAGES[4], request, receipt, budget, stats):
+                            previous_question = question
+                            # Explicit membership comes from acceptance; automatic grouping is M11.
+                            question = question.model_copy(
+                                update={
+                                    "entities": tuple(text.entities),
+                                    "conflicts": (*question.conflicts, *text.conflicts),
+                                    "unresolved_fields": text.unresolved_fields,
+                                    "versions": question.versions
+                                    if question.active_intent
+                                    else self.versions,
+                                }
+                            )
                     async with self.stage(STAGES[5], request, receipt, budget, stats):
-                        if request.question_hint and question.active_intent:
+                        stats.intent_calls += 1
+                        if (
+                            request.question_hint or (event and event.disposition == "attached")
+                        ) and question.active_intent:
                             try:
                                 decision = await self.intent.recognize(
                                     text, budget, context_intent=question.active_intent
@@ -367,12 +560,38 @@ class Conversation:
                                 question = previous_question
                                 raise
                         else:
-                            decision = await self.intent.recognize(text, budget)
+                            memory_query = None
+                            if (
+                                event
+                                and event.disposition == "attached"
+                                and not question.active_intent
+                            ):
+                                memory_query = enhanced_query(
+                                    question.event_summary, question.entities
+                                )
+                            decision = await self.intent.recognize(
+                                text, budget, memory_query=memory_query
+                            )
                     definition: SOPDefinition | None = None
                     async with self.stage(STAGES[6], request, receipt, budget, stats):
+                        if decision.decision == Decision.CLARIFY and (
+                            decision.final_code is None
+                            or set(decision.final_code.required_slots) <= {e.name for e in entities}
+                        ):
+                            raise EventClarification
+                        if decision.decision == Decision.REJECT:
+                            raise AppError(ErrorCode.FORBIDDEN, "意图请求被拒绝。")
+                        if decision.decision == Decision.HANDOFF:
+                            response = self.error(
+                                request,
+                                receipt,
+                                ErrorCode.UNKNOWN_INTENT,
+                                "当前需要人工进一步核实。",
+                                handoff=True,
+                            )
                         if decision.final_code:
                             definition = self.definitions.get(decision.final_code)
-                        if decision.final_code is None or definition is None:
+                        if response is None and (decision.final_code is None or definition is None):
                             response = self.error(
                                 request,
                                 receipt,
@@ -385,7 +604,7 @@ class Conversation:
                     if response is None:
                         assert definition is not None and decision.final_code is not None
                         if (
-                            request.question_hint
+                            (request.question_hint or (event and event.disposition == "attached"))
                             and question.active_intent
                             and question.versions.sop != definition.version
                         ):
@@ -394,7 +613,12 @@ class Conversation:
                             update={
                                 "active_intent": decision.final_code,
                                 "versions": (
-                                    question.versions if request.question_hint else self.versions
+                                    question.versions
+                                    if (
+                                        request.question_hint
+                                        or (event and event.disposition == "attached")
+                                    )
+                                    else self.versions
                                 ).model_copy(update={"sop": definition.version}),
                             }
                         )
@@ -441,6 +665,22 @@ class Conversation:
                                         + "。请带本问题编号补充或更正；也可以发送完整的新问题。"
                                     }
                                 )
+            except EventClarification:
+                question = question.model_copy(update={"aggregation_pending": True})
+                response = ResponseEnvelope(
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    run_id=receipt.run_id,
+                    question_id=question.question_id,
+                    run_status=RunStatus.SUCCEEDED,
+                    question_status=QuestionStatus.WAITING_SLOT
+                    if question.unresolved_fields
+                    else QuestionStatus.ACTIVE,
+                    outcome=Outcome.CLARIFY,
+                    next_action=NextAction.PROVIDE_SLOTS,
+                    missing_slots=question.unresolved_fields,
+                    reply="无法确定归属或存在多个诉求，请明确问题编号或分条发送独立问题。",
+                )
             except asyncio.CancelledError:
                 cancelled = True
                 response = self.error(request, receipt, ErrorCode.TIMEOUT, "执行已取消。")
@@ -489,7 +729,11 @@ class Conversation:
                     "intent_decision": decision,
                     "disabled_features": self.disabled,
                     "versions": question.versions,
+                    "call_counts": stats.counts(),
                     "budget_used": usage_delta(budget, initial),
+                    "event_cluster": event.model_copy(update={"persisted": True})
+                    if event
+                    else None,
                 }
             )
 

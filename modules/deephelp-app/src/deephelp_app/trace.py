@@ -39,6 +39,8 @@ class TraceEvent(DTO):
     layer: Literal["regex", "api", "strong"] | None = None
     elapsed_ms: float | None = Field(default=None, ge=0)
     model_calls: int | None = Field(default=None, ge=0)
+    intent_calls: int | None = Field(default=None, ge=0)
+    retrieval_calls: int | None = Field(default=None, ge=0)
     entity_count: int | None = Field(default=None, ge=0)
     run_id: Identifier | None = None
     question_id: Identifier | None = None

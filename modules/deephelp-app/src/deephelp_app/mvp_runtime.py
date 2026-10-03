@@ -11,8 +11,9 @@ import httpx
 from fastapi import FastAPI, Request
 
 from deephelp_app.app import create_app
+from deephelp_app.cascade import CascadePolicy
 from deephelp_app.cases import MySQLCaseRepository
-from deephelp_app.conversation import Conversation, CountedModel, TrackedTools
+from deephelp_app.conversation import Conversation, CountedModel, CountedRetriever, TrackedTools
 from deephelp_app.dense import DenseRetriever, atomic_json, load_json
 from deephelp_app.domain.models import (
     DenseResult,
@@ -23,6 +24,7 @@ from deephelp_app.domain.models import (
     VersionManifest,
 )
 from deephelp_app.errors import AppError, ConfigurationError
+from deephelp_app.event_cluster import EventAggregationService, StructuredClusterJudge
 from deephelp_app.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.hybrid import HybridRetriever
 from deephelp_app.intent import IntentService
@@ -30,7 +32,8 @@ from deephelp_app.mcp_mock import MockConfig
 from deephelp_app.memory import MemoryService, RedisMemory
 from deephelp_app.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.milvus_hybrid import MilvusHybridStore
-from deephelp_app.providers import ProviderConfig, create_gateway
+from deephelp_app.milvus_memory import MilvusEventIndex
+from deephelp_app.providers import EndpointConfig, ProviderConfig, create_gateway
 from deephelp_app.settings import Settings
 from deephelp_app.sop import SOPExecutor
 from deephelp_app.text_entity import TextEntityProcessor
@@ -166,7 +169,14 @@ def validate_control_paths(paths: list[Path], *, output: Path | None = None) -> 
 
 class LiveAssembly:
     def __init__(
-        self, root: Path, providers: Path, pointer: Path, *, mock: MockConfig | None = None
+        self,
+        root: Path,
+        providers: Path,
+        pointer: Path,
+        *,
+        mock: MockConfig | None = None,
+        cascade_policy: Path | None = None,
+        event_collection: str | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -180,6 +190,8 @@ class LiveAssembly:
             else DenseScope.model_validate(active)
         )
         self.top_k = 3
+        self.cascade_policy_path = cascade_policy
+        self.event_collection = event_collection
         if isinstance(self.scope, HybridScope):
             from deephelp_app.hybrid_eval import dataset, validate_selection
 
@@ -201,6 +213,8 @@ class LiveAssembly:
             raise ConfigurationError("Active collection embedding signature differs")
         self.mock = mock
         self.gateway: Any = None
+        self.judge_gateway: Any = None
+        self.event_index: MilvusEventIndex | None = None
         self.tools: ToolGateway | None = None
         self.ledger: MySQLCaseRepository | None = None
 
@@ -218,6 +232,16 @@ class LiveAssembly:
             gateway = create_gateway(client, self.config, AsyncCalls(2, 30))
             self.gateway = gateway
             model = CountedModel(gateway, gateway)
+            endpoint = EndpointConfig.model_validate_json(
+                (self.root / "modules/deephelp-app/event-judge.example.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            judge_gateway = create_gateway(
+                client, self.config.model_copy(update={"chat": endpoint}), AsyncCalls(2, 45)
+            )
+            self.judge_gateway = judge_gateway
+            judge_model = CountedModel(judge_gateway, gateway)
             milvus = create_client(self.root)
             stack.push_async_callback(milvus.close)
             # Startup validates the already-published corpus, without repairing or importing it.
@@ -228,6 +252,28 @@ class LiveAssembly:
             await store_type(milvus, startup).validate(
                 self.scope, str(self.pointer["corpus_digest"])
             )
+            event_index = MilvusEventIndex(
+                milvus, model, self.config.signature(), self.event_collection
+            )
+            await event_index.initialize()
+            self.event_index = event_index
+            events = EventAggregationService(
+                ledger, StructuredClusterJudge(judge_model), similarity=event_index
+            )
+            policy_path = (
+                self.cascade_policy_path or Path(__file__).parent / "sample_data/m12_policy.json"
+            )
+            policy = (
+                CascadePolicy.load(policy_path)
+                if isinstance(self.scope, HybridScope)
+                else CascadePolicy()
+            )
+            if policy.dense_weight is not None and policy.dense_weight != self.pointer.get(
+                "dense_weight"
+            ):
+                raise ConfigurationError("Cascade calibration retrieval weight differs")
+            if policy.corpus_digest and policy.corpus_digest != self.pointer.get("corpus_digest"):
+                raise ConfigurationError("Cascade calibration corpus differs")
             tools = ToolGateway(config=self.mock)
             self.tools = tools
             await stack.enter_async_context(tools.open())
@@ -254,23 +300,25 @@ class LiveAssembly:
                 embedding_signature=self.scope.signature.fingerprint,
                 model=self.config.chat.model,
                 provider=self.config.provider,
-                prompt="mvp-intent-v1",
-                policy="slot-policy-v1",
+                prompt="m12-fallback-v1",
+                policy="cascade-policy-v1",
             )
             yield Conversation(
                 ledger,
                 TextEntityProcessor(model, trace=trace),
                 IntentService(
                     model,
-                    RequestDense(),
+                    CountedRetriever(RequestDense()),
                     assembly.scope,
                     top_k=assembly.top_k,
+                    policy=policy,
                 ),
                 SOPExecutor(model, TrackedTools(tools)),
                 trace,
                 versions,
                 memory=memory,
                 cases=ledger,
+                events=events,
             )
 
 

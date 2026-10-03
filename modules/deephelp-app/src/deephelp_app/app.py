@@ -272,10 +272,19 @@ def create_app(
     async def health() -> dict[str, str]:
         resources: Resources = app.state.resources
         cases = resources.conversation is not None and resources.conversation.cases is not None
+        events = resources.conversation is not None and resources.conversation.events is not None
         return {
             "status": "ok",
-            "module": "M10" if cases else "M08" if conversation_factory else "M01",
-            "capability": "READ_ONLY_MULTI_QUESTION"
+            "module": "M12"
+            if events
+            else "M10"
+            if cases
+            else "M08"
+            if conversation_factory
+            else "M01",
+            "capability": "READ_ONLY_EVENT_CASCADE"
+            if events
+            else "READ_ONLY_MULTI_QUESTION"
             if cases
             else "READ_ONLY_SINGLE_MESSAGE"
             if conversation_factory

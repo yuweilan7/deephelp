@@ -10,12 +10,14 @@ from deephelp_app.domain.models import (
     EmbeddingResult,
     EventCandidate,
     EventMessage,
+    FallbackResult,
     LifecycleCommand,
     MemoryWindow,
     Question,
     RequestEnvelope,
     ResponseEnvelope,
     SOPResult,
+    TextEntityResult,
     ToolRequest,
     ToolResult,
     VerifiedIdentity,
@@ -43,6 +45,17 @@ class ClusterJudgePort(Protocol):
         messages: tuple[EventMessage, ...],
         budget: ExecutionBudget,
     ) -> ClusterJudgement: ...
+
+
+class FallbackPort(Protocol):
+    async def decide(
+        self,
+        text: TextEntityResult,
+        retrievals: tuple[DenseResult, ...],
+        budget: ExecutionBudget,
+        *,
+        context: str | None = None,
+    ) -> FallbackResult: ...
 
 
 class CaseRepository(Protocol):
