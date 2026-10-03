@@ -99,7 +99,20 @@ class MemoryLedger:
         self.rows: dict[tuple[str, str, str, str], tuple[str, Receipt]] = {}
         self.questions: dict[str, Question] = {}
 
-    async def accept(self, request: RequestEnvelope) -> Receipt:
+    async def lookup(self, request: RequestEnvelope) -> Receipt | None:
+        row = self.rows.get(message_key(request))
+        if row is None:
+            return None
+        digest, receipt = row
+        if digest != payload_hash(request):
+            raise AppError(ErrorCode.IDEMPOTENCY_CONFLICT, "Message payload conflicts")
+        return Receipt(False, receipt.run_id, receipt.question, receipt.response)
+
+    async def accept(
+        self, request: RequestEnvelope, *, attribution: tuple[str, int] | None = None
+    ) -> Receipt:
+        if attribution:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Base ledger cannot attach events")
         key, digest = message_key(request), payload_hash(request)
         if key in self.rows:
             original_hash, receipt = self.rows[key]
@@ -192,8 +205,43 @@ class MySQLLedger:
                     await cursor.execute(statement)
             await conn.commit()
 
-    async def accept(self, request: RequestEnvelope) -> Receipt:
+    async def lookup(self, request: RequestEnvelope) -> Receipt | None:
+        try:
+            async with self.pool.acquire() as conn, conn.cursor() as cursor:
+                await cursor.execute(
+                    "SELECT m.payload_hash,r.run_id,q.body,r.response FROM dh_m08_messages m "
+                    "JOIN dh_m08_runs r ON r.run_id=m.run_id "
+                    "JOIN dh_m08_questions q ON q.question_id=r.question_id "
+                    "WHERE m.tenant_id=%s AND m.user_id=%s AND m.channel=%s AND m.message_id=%s",
+                    message_key(request),
+                )
+                row = await cursor.fetchone()
+                await conn.rollback()
+            if not row:
+                return None
+            if row[0] != payload_hash(request):
+                raise AppError(ErrorCode.IDEMPOTENCY_CONFLICT, "Message payload conflicts")
+            return Receipt(
+                False,
+                row[1],
+                Question.model_validate_json(row[2]),
+                ResponseEnvelope.model_validate_json(row[3]) if row[3] else None,
+            )
+        except MySQLError, OSError:
+            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL lookup unavailable") from None
+
+    async def accept(
+        self, request: RequestEnvelope, *, attribution: tuple[str, int] | None = None
+    ) -> Receipt:
         fresh = new_receipt(request)
+        if attribution and not self.supports_continuation:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Base ledger cannot attach events")
+        if attribution and request.question_hint not in {None, attribution[0]}:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Explicit hint conflicts with attribution")
+        if attribution and request.expected_question_version not in {None, attribution[1]}:
+            raise AppError(
+                ErrorCode.VERSION_CONFLICT, "Explicit version conflicts with attribution"
+            )
         key, digest = message_key(request), payload_hash(request)
         try:
             async with self.pool.acquire() as conn:
@@ -205,7 +253,15 @@ class MySQLLedger:
                             "VALUES (%s,%s,%s,%s,%s,%s,%s)",
                             (*key, digest, fresh.run_id, request.model_dump_json()),
                         )
-                        fresh = await self.prepare_question(cursor, request, fresh)
+                        routing = request
+                        if attribution:
+                            routing = request.model_copy(
+                                update={
+                                    "question_hint": attribution[0],
+                                    "expected_question_version": attribution[1],
+                                }
+                            )
+                        fresh = await self.prepare_question(cursor, routing, fresh)
                         await cursor.execute(
                             "INSERT INTO dh_m08_runs (run_id,question_id,status) "
                             "VALUES (%s,%s,'RUNNING')",

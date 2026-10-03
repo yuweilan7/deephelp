@@ -37,23 +37,30 @@ class MemoryCaseRepository(MemoryLedger):
             for _, receipt in self.rows.values()
         )
 
-    async def accept(self, request: RequestEnvelope) -> Receipt:
+    async def accept(
+        self, request: RequestEnvelope, *, attribution: tuple[str, int] | None = None
+    ) -> Receipt:
         key = message_key(request)
         if key in self.rows:
             return await super().accept(request)
         fresh = new_receipt(request)
-        if request.question_hint:
-            q = await self.question(request.identity, request.session_id, request.question_hint)
+        if attribution and request.question_hint not in {None, attribution[0]}:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Explicit hint conflicts with attribution")
+        if attribution and request.expected_question_version not in {None, attribution[1]}:
+            raise AppError(
+                ErrorCode.VERSION_CONFLICT, "Explicit version conflicts with attribution"
+            )
+        hint = attribution[0] if attribution else request.question_hint
+        expected = attribution[1] if attribution else request.expected_question_version
+        if hint:
+            q = await self.question(request.identity, request.session_id, hint)
             if q is None:
                 raise AppError(ErrorCode.FORBIDDEN, "Object access denied", 403)
             if q.status not in OPEN:
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT, "Closed question requires explicit reopen", 409
                 )
-            if (
-                request.expected_question_version is not None
-                and request.expected_question_version != q.version
-            ) or self.busy(q.question_id):
+            if (expected is not None and expected != q.version) or self.busy(q.question_id):
                 raise AppError(
                     ErrorCode.VERSION_CONFLICT, "Question changed or has unfinished run", 409
                 )

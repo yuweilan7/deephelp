@@ -1,0 +1,37 @@
+[
+  {"id":"interleaved","turns":[
+    {"text":"我的优惠券不能用","event":"coupon","disposition":"new","events":1,"waiting":true},
+    {"text":"另外订单000008参加的哪个活动","event":"activity","disposition":"new","events":2},
+    {"text":"刚才那个券是C001，订单000007","event":"coupon","disposition":"attached","events":2,"entities":{"order_id":"000007","coupon_id":"C001"}}
+  ]},
+  {"id":"correction","turns":[
+    {"text":"订单000007没享受优惠","event":"discount","disposition":"new","events":1},
+    {"text":"说错了，是订单000008","event":"discount","disposition":"attached","events":1,"entities":{"order_id":"000008"},"correction":true}
+  ]},
+  {"id":"same_order_two_complaints","turns":[
+    {"text":"订单000007没享受优惠","event":"discount","disposition":"new","events":1},
+    {"text":"订单000007参加的哪个活动","event":"activity","disposition":"new","events":2},
+    {"text":"补充优惠问题，订单000007","event":"discount","disposition":"attached","events":2}
+  ]},
+  {"id":"similar_orders","turns":[
+    {"text":"订单000007优惠没到账","event":"first","disposition":"new","events":1},
+    {"text":"订单000008优惠没到账","event":"second","disposition":"new","events":2},
+    {"text":"补充订单000007优惠没到账的问题","event":"first","disposition":"attached","events":2}
+  ]},
+  {"id":"vague","turns":[
+    {"text":"订单000007优惠没到账","event":"first","disposition":"new","events":1},
+    {"text":"另外订单000008优惠没到账","event":"second","disposition":"new","events":2},
+    {"text":"还是不行","event":"pending","disposition":"clarify","events":3}
+  ]},
+  {"id":"multi_complaint","turns":[
+    {"text":"订单000007优惠没到账；订单000008参加的哪个活动","event":"pending","disposition":"clarify","events":2}
+  ]},
+  {"id":"closed_and_new","turns":[
+    {"text":"订单000007优惠没到账","event":"old","disposition":"new","events":1,"close":true},
+    {"text":"订单000007优惠没到账","event":"new","disposition":"new","events":1}
+  ]},
+  {"id":"entity_conflict","turns":[
+    {"text":"订单000007优惠没到账","event":"first","disposition":"new","events":1},
+    {"text":"补充订单000008","event":"pending","disposition":"clarify","events":2}
+  ]}
+]

@@ -166,3 +166,12 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 `CaseRepository`读取有界snapshot、归属内question和CAS transition；`MemoryPort.load`返回`MemoryWindow`，包括有channel/message/question引用的历史、开放Question和已结`CaseSummary`。MySQL始终核验事实；向量候选必须同时匹配主体/session、当前status和version，过期ACTIVE不能恢复问题，摘要不写回实体。
 
 `GET /memory?session_id=...`读取当前身份的窗口。`POST /questions/{question_id}/state`接收`LifecycleCommand(session_id,expected_version,target,reason,evidence_source,evidence_ref)`；同主体/session校验、版本冲突409，禁止修改RUNNING问题。RESOLVED要求user_confirmation/process_result，CANCELLED要求operator_cancel，HANDED_OFF要求operator_handoff，开放状态切换要求slot_check；关闭后只允许explicit_reopen→ACTIVE。WAITING_APPROVAL仍禁用至M15。这些是问题状态操作，未接入业务写工具。
+## M11 事件归属契约
+
+复用唯一领域DTO，新增`EventMessage/EventCandidate/ClusterJudgement/EventContext/ClusterEdge/EventClusterResult`和`ClusterJudgePort`。`EventAggregationService.aggregate(request,budget)`返回聚合结果，不拥有主意图或SOP。窗口来自同主体/session MySQL事实；开放问题含WAITING_SLOT，已结及待澄清事件不参与自动归属；WAITING_APPROVAL仍由既有M15禁用校验拒绝，不恢复审批。
+
+`ClusterJudgePort.judge(current,candidates,messages,budget)`至多调用一次，返回attach/new/uncertain、候选ID、把握等级、关系和原文引用。只有候选中的目标、高把握及当前/目标两侧精确引用可attach；代码检查scope/status/version、实体冲突、簇级订单和独立问题约束。cosine是候选证据，不是概率；低相似门禁只作保守排除，不据小样本宣称校准接管阈值。明确实体更正是成员更新，图中不作订单等价union。
+
+`PersistentEventAggregation.process`通过M10接受消息、CAS终结和事务outbox保存归属。账本新增`lookup(request)`及可选可信`attribution=(question_id,expected_version)`；存储/幂等hash仍取原始请求，不能把内部选择的hint写成用户payload。scope/开放状态/版本/乱序/未完成run在事务内再验。重复终态原样回放事件图、模型/工具0；未知RUNNING拒绝重领。`ResponseEnvelope.event_cluster`和`Question.event_summary/aggregation_pending`均为默认兼容字段，无新表或依赖。
+
+摘要为有出处的原文摘录，保留实体冲突和更正来源，不能成为新业务事实。多个主诉结果的`current_event_context=null`且要求分条，数据库只保存待澄清消息，不宣称已建多个事实问题。待澄清问题可用明确hint补充；未归属补充不能污染既有问题。独立CLI与显式无持久化preview见应用README，完整500→600接入由M12完成。

@@ -18,7 +18,8 @@
 | M08 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M08.md) | 三类单消息闭环、MySQL唯一接收/终态、真实模型/Milvus/MCP、13段trace；业务数据合成 |
 | M09 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M09.md) | 原生中文BM25/Dense/融合对照、600接入；12条索引、18 dev、24 test合成样本，融合未全面胜出 |
 | M10 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M10.md) | 显式多问题续接、生命周期、MySQL事实/outbox、Redis/Milvus可重建；自动归属留M11 |
-| M11–M14、M16–M18 | NOT_IMPLEMENTED | 规格存在；按用户启动的特性顺序实施 |
+| M11 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M11.md) | 独立自动归属/更正/澄清、事件图及MySQL/outbox；完整主流程接入留M12 |
+| M12–M14、M16–M18 | NOT_IMPLEMENTED | 规格存在；按用户启动的特性顺序实施 |
 | M15、M19 | HARDENING_NOT_IMPLEMENTED | 可后移，业务写工具前必须M15 |
 | M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 选定两模型四能力及M08内容通过；真实服务/合成业务，非企业接口 |
@@ -37,7 +38,7 @@ M08新增单条完整问题Conversation及唯一600 IntentService、MySQL消息/
 
 M08真实HTTP十条内容路径通过（21模型尝试、9工具调用），12条原始固定样本真实验证意图/参数12/12，旧outcome11/12；M02-001无依据确认未到账原因而转人工。完整36条离线回放只是串联验证：标签36/36、参数24/36、旧outcome20/36，8 ANSWERED/18 CLARIFY/7 HANDOFF/3 ERROR；16差异保留，12个字段语义不足澄清、3个下游归属拒绝、1个M07保守转人工，不是全样本模型质量/业务成功率。原始报告在.local/m08。M08验收当时跨消息补槽/事件合并、Redis投影/记忆、完整级联、LangGraph、回复模型润色、审批/写工具和企业下游未启用；RUNNING硬中断不自动恢复。未跑P00 full或云服务/主机重启，资源重建不冒充这些验证。
 
-最近全工程无外部网络回归：Ruff检查/格式、mypy退出0；Python3.14.7下 **549 passed、1 skipped**，3043条pytest-asyncio policy API弃用警告；M08新增63项、M09新增34项用例，网关参数扩展新增4项、M10新增26项，原M01–M07消费者保持通过。integration包含合成ASGI/loopback HTTP及正式SDK本机stdio子进程，e2e验证组装/退出，默认pytest不代表云端业务e2e，M08显式probe另验真实云服务/合成业务。M02–M07无业务库迁移；M08增加专用三表且实际验证唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
+最近全工程无外部网络回归：Ruff检查/格式、mypy退出0；Python3.14.7下 **585 passed、1 skipped**，3286条pytest-asyncio policy API弃用警告；M08新增63项、M09新增34项用例，网关参数扩展新增4项、M10新增26项、M11新增36项，原M01–M07消费者保持通过。integration包含合成ASGI/loopback HTTP及正式SDK本机stdio子进程，e2e验证组装/退出，默认pytest不代表云端业务e2e，M08显式probe另验真实云服务/合成业务。M02–M07无业务库迁移；M08增加专用三表且实际验证唯一约束；审批等待类型/写工具禁用。CI配置存在，本机结果不冒充远端CI执行证据。
 
 LOCAL_SETUP指向本机凭据、模型摘要和连接结果；调用前实时核对可调用性。Windows入口统一py -3.14 -m uv，解释器3.14.7、uv0.12.13；根workspace和单一锁保留。模型选用遵循[AGENTS](../AGENTS.md)的学习效果优先原则，允许使用候选池和账号余额；当前网关仍为固定模型配置，自动切换未实现，默认不开启live。请求大小与输出按任务配置，推理支持按配置/请求开启；详情见[模型矩阵](MODEL_CAPABILITIES.md)，业务质量对照未执行。
 
@@ -52,7 +53,11 @@ M09固定12条reference入库、18条dev选择三档权重，选中Dense/BM25=0.
 
 M10新增CaseRepository/MemoryPort、兼容DTO、MySQL增量成员/session/outbox三表和redis6.4.0依赖。显式hint可补槽、冲突保留确认值并禁止工具、更正链保留来源，关闭后新消息新建；有证据的状态操作和显式重开使用CAS。只有600绑定/保持主意图，不自动归属交错消息。Redis窗口/关键词按generation写TTL缓存，事实读取始终来自MySQL；Milvus事件按question/version保存真实向量，命中再核验当前归属/状态/version。worker短事务领取、外部投影后token确认，失败有限重试；远程调用不持业务锁，集合删除后可按最新MySQL问题重建。
 
-特性分支真实HTTP补充/冲突/更正/查询事实、8并发唯一接收、6并发CAS、乱序拒绝、Redis断连后重试、重复/逆序outbox、实际stale ACTIVE命中回查、关闭/重开、35条历史裁剪、专用缓存删除/恢复、新进程回读、lease过期与并发事实修改通过；原始报告`.local/m10/feature-final.json`。独立CLI按同scope重建并查询已结摘要内容通过。MCP协议真实，业务合成；M11自动归属、审批、业务写和RUNNING重领未实施。未运行P00 full或M10云服务重启；前置权限修正的Redis重启单独记录。
+特性分支真实HTTP补充/冲突/更正/查询事实、8并发唯一接收、6并发CAS、乱序拒绝、Redis断连后重试、重复/逆序outbox、实际stale ACTIVE命中回查、关闭/重开、35条历史裁剪、专用缓存删除/恢复、新进程回读、lease过期与并发事实修改通过；原始报告`.local/m10/feature-final.json`。独立CLI按同scope重建并查询已结摘要内容通过。MCP协议真实，业务合成；该M10验收不含自动归属、审批、业务写和RUNNING重领。未运行P00 full或M10云服务重启；前置权限修正的Redis重启单独记录。
+
+M11独立聚合入口复用M04/M10事实和派生事件集合。窗口、TopK、一次结构化裁决、摘要及共享deadline/预算有界；实体/状态/version/scope由代码复查，高把握与两侧精确引用才关联。整簇订单/问题锚点守卫防传递误并，明确A改B保留旧/新来源而非等价union。qwen3.8-max负责归属，Embedding沿用原1024维签名；未调用主意图分类器或SOP/业务工具。MySQL保存成员、可回放图及outbox，摘要保留最近当前消息；待澄清消息独立保存、排除自动候选，明确hint可补充。多个明确主诉为虚拟上下文并要求分条，不伪称已建多个持久问题。
+
+特性最终真实8序列/19消息归属19/19、错误合并0、错误事件数0、澄清3；143项内容检查全通过，包含WAITING_SLOT自动归属、实际陈旧向量回查排除、独立集合删除/从MySQL重建、新连接池事件图回读、attribution CAS回滚、三维事务隔离及6并发重复唯一接收。原始结果`.local/m11/feature-verified.json`；此前flash矛盾更正输出安全澄清，收紧字段一致性后选强模型复验。效果只代表小合成组，未证明企业效果或完整多诉求切分。主converse仍为M10显式hint，完整500→600接入留M12；未跑P00 full、云重启、审批/写工具或RUNNING崩溃重领。
 
 ## 后续真实门禁
 
