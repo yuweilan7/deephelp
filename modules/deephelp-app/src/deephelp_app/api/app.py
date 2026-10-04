@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from deephelp_app.adapters.telemetry import ObservabilityMiddleware, annotate, environment
 from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, TraceSink, request_context
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.conversation import Conversation
@@ -113,6 +114,7 @@ class RequestMiddleware:
         state = scope.setdefault("state", {})
         state["request_id"] = request_id
         state["trace_id"] = trace_id
+        annotate(**{"deephelp.legacy_trace_id": trace_id, "deephelp.request_id": request_id})
         budget = ExecutionBudget.start(
             self.settings.request_timeout, self.settings.max_attempts, self.settings.retry_limit
         )
@@ -220,6 +222,7 @@ def create_app(
         if config.mode == "mvp" and identity_provider is local_test_identity:
             raise ConfigurationError("MVP requires an explicit authenticated identity mapping")
         async with AsyncExitStack() as stack:
+            stack.enter_context(environment("deephelp-app"))
             sink = JsonlTrace(Path(config.trace_path)) if trace is None else trace
             stack.push_async_callback(sink.aclose)
             client = await stack.enter_async_context(
@@ -253,6 +256,7 @@ def create_app(
 
     app = FastAPI(title="DeepHelp", version="0.1.0", lifespan=lifespan)
     app.add_middleware(RequestMiddleware, settings=config)
+    app.add_middleware(ObservabilityMiddleware)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_input(request: Request, exc: RequestValidationError) -> JSONResponse:

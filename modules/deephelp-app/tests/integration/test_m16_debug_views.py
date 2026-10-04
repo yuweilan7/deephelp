@@ -94,6 +94,58 @@ async def view(api, run_id, name, session="s", **params):
     return await api.get(f"/debug/runs/{run_id}/{name}", params={"session_id": session, **params})
 
 
+async def test_otel_real_stage_context_history_scope_and_zero_new_replay(tmp_path):
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from deephelp_app.adapters.telemetry import Telemetry, using
+
+    exporter = InMemorySpanExporter()
+    runtime = Telemetry("deephelp-app", exporter)
+    try:
+        with using(runtime):
+            async with client(tmp_path) as (api, repo, judge, sink, assembly):
+                body = message("订单 000031 优惠未到账，请查一下", "m21")
+                first = await api.post(
+                    "/converse",
+                    json=body,
+                    headers={"traceparent": "00-" + "1" * 32 + "-" + "2" * 16 + "-01"},
+                )
+                assert first.status_code == 200
+                identifier = first.headers["x-otel-trace-id"]
+                assert identifier != "1" * 32
+                result = first.json()
+                assert runtime.provider.force_flush(2000)
+                spans = exporter.get_finished_spans()
+                executed = {s.name for s in spans if s.name.startswith("stage.")}
+                expected = {
+                    "stage." + s["stage"]
+                    for s in result["stages"]
+                    if s["status"] in {"completed", "failed"}
+                }
+                assert executed == expected
+                assert all(format(s.context.trace_id, "032x") == identifier for s in spans)
+                before = len([s for s in spans if s.name.startswith("stage.")])
+                second = await api.post("/converse", json=body)
+                assert (
+                    second.json()["replayed"] and second.json()["call_counts"]["model_calls"] == 0
+                )
+                assert runtime.provider.force_flush(2000)
+                assert (
+                    len([s for s in exporter.get_finished_spans() if s.name.startswith("stage.")])
+                    == before
+                )
+                history = await view(api, result["run_id"], "flow", session="m21")
+                assert history.json()["otel_trace_id"] == identifier
+                denied = await api.get(
+                    f"/debug/runs/{result['run_id']}/flow",
+                    params={"session_id": "m21"},
+                    headers={"Authorization": "Bearer " + "b" * 32},
+                )
+                assert denied.status_code == 404
+    finally:
+        runtime.shutdown()
+
+
 def contains_text(value, text):
     """Check all textual content without mistaking numeric timings for identifiers."""
     if isinstance(value, str):

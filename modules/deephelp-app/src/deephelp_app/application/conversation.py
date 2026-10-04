@@ -11,6 +11,8 @@ from time import perf_counter
 from typing import cast
 
 from deephelp_app.adapters.ledger import MessageLedger, Receipt, new_receipt
+from deephelp_app.adapters.telemetry import annotate, observation, observed, stage_event
+from deephelp_app.adapters.telemetry import trace_id as otel_trace_id
 from deephelp_app.adapters.trace import TraceEvent, TraceSink, sop_node_observer
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.cascade import enhanced_query
@@ -288,38 +290,47 @@ class Conversation:
         intents, retrievals = stats.intent_calls, stats.retrieval_calls
         stats.stage_error = None
         error: ErrorCode | None = None
-        try:
-            yield
-        except EventClarification:
-            raise
-        except AppError as exc:
-            error = exc.code
-            raise
-        except TimeoutError, asyncio.CancelledError:
-            error = ErrorCode.TIMEOUT
-            raise
-        except Exception:
-            error = ErrorCode.INTERNAL_ERROR
-            raise
-        finally:
-            error = error or stats.stage_error
-            report = StageReport(
-                stage=name,
-                status="failed" if error else "completed",
-                elapsed_ms=(perf_counter() - start) * 1000,
-                model_calls=stats.model_calls - models,
-                tool_calls=budget.tool_steps_used - tools,
-                error_code=error,
-                intent_calls=stats.intent_calls - intents,
-                retrieval_calls=stats.retrieval_calls - retrievals,
-                started_at=started_at,
-                finished_at=datetime.now(UTC),
-            )
-            stats.stages.append(report)
-            if not stats.deferred:
-                await self.emit(request, receipt, report)
+        with observation(
+            "stage." + name,
+            attributes={
+                "deephelp.stage": name,
+                "deephelp.run_id": receipt.run_id,
+                "deephelp.question_id": receipt.question.question_id,
+            },
+        ):
+            try:
+                yield
+            except EventClarification:
+                raise
+            except AppError as exc:
+                error = exc.code
+                raise
+            except TimeoutError, asyncio.CancelledError:
+                error = ErrorCode.TIMEOUT
+                raise
+            except Exception:
+                error = ErrorCode.INTERNAL_ERROR
+                raise
+            finally:
+                error = error or stats.stage_error
+                report = StageReport(
+                    stage=name,
+                    status="failed" if error else "completed",
+                    elapsed_ms=(perf_counter() - start) * 1000,
+                    model_calls=stats.model_calls - models,
+                    tool_calls=budget.tool_steps_used - tools,
+                    error_code=error,
+                    intent_calls=stats.intent_calls - intents,
+                    retrieval_calls=stats.retrieval_calls - retrievals,
+                    started_at=started_at,
+                    finished_at=datetime.now(UTC),
+                )
+                stats.stages.append(report)
+                if not stats.deferred:
+                    await self.emit(request, receipt, report)
 
     async def emit(self, request: RequestEnvelope, receipt: Receipt, report: StageReport) -> None:
+        stage_event(report.stage, report.status)
         await self.trace.emit(
             TraceEvent(
                 event="stage_finished",
@@ -404,6 +415,7 @@ class Conversation:
             stats.deferred = False
             current_run.reset(token)
 
+    @observed("conversation.run")
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         from deephelp_app.domain.execution import request_execution
 
@@ -415,6 +427,15 @@ class Conversation:
 
     async def _run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         initial = budget.usage()
+        annotate(
+            **{
+                "deephelp.registry_version": self.versions.registry,
+                "deephelp.sop_version": self.versions.sop or "none",
+                "deephelp.policy_version": self.versions.policy or "none",
+                "deephelp.embedding_signature": self.versions.embedding_signature or "none",
+                "deephelp.release_manifest": self.versions.release_manifest or "none",
+            }
+        )
         # Authorize hints before receipt lookup; a hint never resumes an old run.
         if request.question_hint:
             old = await self.ledger.question(
@@ -438,7 +459,14 @@ class Conversation:
         stats = RunTrace()
         prepared = await self.prepare(request, budget, stats) if self.events else None
         receipt = prepared.receipt if prepared else await self.ledger.accept(request)
+        annotate(
+            **{
+                "deephelp.run_id": receipt.run_id,
+                "deephelp.question_id": receipt.question.question_id,
+            }
+        )
         if not receipt.acquired:
+            annotate(**{"deephelp.replayed": True})
             await self.trace.emit(
                 TraceEvent(
                     event="message_replayed",
@@ -950,6 +978,7 @@ class Conversation:
                     run_id=response.run_id,
                     question_id=question.question_id,
                     debug=DebugSnapshot(
+                        otel_trace_id=otel_trace_id(),
                         scope_hash=scope_hash(key, request.identity, request.session_id),
                         run_id=response.run_id,
                         question_id=question.question_id,

@@ -1,0 +1,17 @@
+name: deephelp-observability
+services:
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.128.0
+    command: ["--config=/etc/otel/config.yaml"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:14318:4318"
+      - "127.0.0.1:18888:8888"
+    volumes:
+      - ./collector.yaml:/etc/otel/config.yaml:ro
+      - ./data/collector:/data
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}

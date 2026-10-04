@@ -34,6 +34,7 @@ from deephelp_app.adapters.mcp_protocol import (
     validate_arguments,
     verify_metadata,
 )
+from deephelp_app.adapters.telemetry import environment, server_call
 from deephelp_app.domain.checks import require_owner
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
@@ -290,6 +291,7 @@ def make_server(backend: MockBackend) -> Server[dict[str, Any]]:
     ) -> ListToolsResult:
         return ListToolsResult(tools=registered_tools())
 
+    @server_call("mcp.stdio.call")
     async def calling(
         ctx: ServerRequestContext[dict[str, Any]], params: CallToolRequestParams
     ) -> CallToolResult:
@@ -337,8 +339,9 @@ async def main() -> None:
     path = os.environ.get("DEEPHELP_MCP_LEDGER")
     backend = MockBackend(secret, config, ledger_path=Path(path) if path else None)
     server = make_server(backend)
-    async with stdio_server() as streams:
-        await server.run(streams[0], streams[1], server.create_initialization_options())
+    with environment("deephelp-demo-mcp"):
+        async with stdio_server() as streams:
+            await server.run(streams[0], streams[1], server.create_initialization_options())
 
 
 if __name__ == "__main__":

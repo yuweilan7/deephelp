@@ -12,6 +12,7 @@ from typing import Literal
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.adapters.trace import TraceEvent, TraceSink
 from deephelp_app.application.dense import load_json
 from deephelp_app.application.reviewed_rules import rule_matches
@@ -507,12 +508,14 @@ class TextEntityProcessor:
                 )
             )
 
+    @observed("entities.clean")
     async def _clean(self, request: RequestEnvelope) -> TextCleanResult:
         await asyncio.sleep(0)
         result = clean_text(request.raw_text, self.policy)
         await self._emit(request, "text_cleaned", input_length=len(result.cleaned_text))
         return result
 
+    @observed("entities.extract")
     async def _extract(
         self,
         request: RequestEnvelope,

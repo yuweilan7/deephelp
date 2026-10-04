@@ -10,6 +10,7 @@ from langgraph.types import Command, interrupt
 from deephelp_app.adapters.approval_store import TERMINAL, ApprovalRepository
 from deephelp_app.adapters.checkpoints import MySQLSaver
 from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect, binding_hash
+from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
@@ -106,9 +107,17 @@ class ApprovalService:
             self.fault(stage)
 
     def graph(self, budget: ExecutionBudget, token: str | None = None) -> Any:
+        @observed("graph.approval_wait")
         async def wait(state: ApprovalState) -> ApprovalState:
             op = await self.repo.get(state["operation_id"])
             if op.approval_status == ApprovalStatus.PENDING:
+                annotate(
+                    **{
+                        "deephelp.status": "interrupted",
+                        "deephelp.operation_id": op.plan.operation_id,
+                        "deephelp.synthetic": True,
+                    }
+                )
                 interrupt(
                     {
                         "operation_id": op.plan.operation_id,
@@ -119,6 +128,7 @@ class ApprovalService:
                 )
             return {"status": op.status.value}
 
+        @observed("graph.execute_operation")
         async def execute(state: ApprovalState) -> ApprovalState:
             op = await self.repo.get(state["operation_id"])
             if op.status in TERMINAL:
@@ -153,6 +163,7 @@ class ApprovalService:
                 await self.repo.unknown(op.plan.operation_id, token, safe_error)
                 return {"effect": None, "status": OperationStatus.UNKNOWN.value}
 
+        @observed("graph.reconcile_effect")
         async def reconcile(state: ApprovalState) -> ApprovalState:
             if state.get("effect"):
                 assert token is not None
@@ -174,15 +185,18 @@ class ApprovalService:
     def config(op: OperationRecord) -> Any:
         return {"configurable": {"thread_id": "m15-approval-v1:" + op.run_id}}
 
+    @observed("approval.pause")
     async def pause(self, operation_id: str, budget: ExecutionBudget) -> None:
         self.inject("before_checkpoint")
         op = await self.repo.get(operation_id)
+        await operation_link(self.repo.pool, operation_id, save=True)
         graph = self.graph(budget)
         config = self.config(op)
         state = await graph.aget_state(config)
         if not state.values:
             await graph.ainvoke({"operation_id": operation_id}, config, durability="sync")
 
+    @observed("approval.decision")
     async def decide(
         self,
         identity: VerifiedIdentity,
@@ -201,35 +215,41 @@ class ApprovalService:
         budget: ExecutionBudget,
     ) -> OperationRecord:
         await self.repo.scoped(identity, command.session_id, command.run_id, operation_id)
-        op, token = await self.repo.acquire(operation_id, self.snapshot)
-        if token is None:
-            graph = self.graph(budget)
-            config = self.config(op)
-            state = await graph.aget_state(config)
-            if state.next or not state.values:
-                await graph.aupdate_state(
-                    config,
-                    {
-                        "operation_id": operation_id,
-                        "status": op.status.value,
-                        "effect": None,
-                    },
-                    as_node="reconcile_effect",
-                )
-            return op
-        try:
-            async with asyncio.timeout(min(60, budget.remaining_seconds())):
-                graph = self.graph(budget, token)
+        links = await operation_link(self.repo.pool, operation_id)
+        with observation(
+            "approval.resume",
+            links=links,
+            attributes={"deephelp.operation_id": operation_id, "deephelp.synthetic": True},
+        ):
+            op, token = await self.repo.acquire(operation_id, self.snapshot)
+            if token is None:
+                graph = self.graph(budget)
                 config = self.config(op)
                 state = await graph.aget_state(config)
-                # Missing checkpoint is a recoverable ledger/checkpoint gap.
-                if not state.values or not state.next:
-                    value: Any = {"operation_id": operation_id, "effect": None}
-                elif any(t.interrupts for t in state.tasks):
-                    value = Command(resume="ledger_decision")
-                else:
-                    value = None
-                await graph.ainvoke(value, config, durability="sync")
-            return await self.repo.get(operation_id)
-        finally:
-            await self.repo.release(operation_id, token)
+                if state.next or not state.values:
+                    await graph.aupdate_state(
+                        config,
+                        {
+                            "operation_id": operation_id,
+                            "status": op.status.value,
+                            "effect": None,
+                        },
+                        as_node="reconcile_effect",
+                    )
+                return op
+            try:
+                async with asyncio.timeout(min(60, budget.remaining_seconds())):
+                    graph = self.graph(budget, token)
+                    config = self.config(op)
+                    state = await graph.aget_state(config)
+                    # Missing checkpoint is a recoverable ledger/checkpoint gap.
+                    if not state.values or not state.next:
+                        value: Any = {"operation_id": operation_id, "effect": None}
+                    elif any(t.interrupts for t in state.tasks):
+                        value = Command(resume="ledger_decision")
+                    else:
+                        value = None
+                    await graph.ainvoke(value, config, durability="sync")
+                return await self.repo.get(operation_id)
+            finally:
+                await self.repo.release(operation_id, token)

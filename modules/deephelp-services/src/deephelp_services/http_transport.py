@@ -16,6 +16,7 @@ from starlette.routing import Route
 from starlette.types import Receive, Scope, Send
 
 from deephelp_app.adapters.network_mcp import ServiceCredentials
+from deephelp_app.adapters.telemetry import ObservabilityMiddleware
 
 
 def initialize_credentials(path: Path) -> None:
@@ -67,4 +68,5 @@ def protect_and_mount(app: FastAPI, credentials: ServiceCredentials) -> None:
         async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
             await app.state.mcp_manager.handle_request(scope, receive, send)
 
+    app.add_middleware(ObservabilityMiddleware, accept_parent=True)
     app.router.routes.append(Route("/mcp", endpoint=Endpoint(), methods=["GET", "POST", "DELETE"]))

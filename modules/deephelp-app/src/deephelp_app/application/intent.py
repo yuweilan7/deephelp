@@ -3,6 +3,7 @@
 import json
 import re
 
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.application.cascade import Cascade, CascadePolicy, StructuredFallback
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
@@ -56,6 +57,7 @@ class IntentService:
             else None
         )
 
+    @observed("intent.cascade")
     async def recognize(
         self,
         text: TextEntityResult,

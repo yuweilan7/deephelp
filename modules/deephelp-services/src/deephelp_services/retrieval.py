@@ -40,6 +40,7 @@ from deephelp_app.adapters.retrieval_protocol import (
     registered_tools,
     validate_results,
 )
+from deephelp_app.adapters.telemetry import environment, observation, server_call
 from deephelp_app.application.dense import DenseRetriever
 from deephelp_app.application.hybrid import HybridRetriever
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
@@ -99,17 +100,18 @@ class ObservedMilvus:
         self.client, self.actions = client, actions
 
     async def invoke(self, action: Any, operation: Callable[[], Awaitable[Any]]) -> Any:
-        started = time.perf_counter()
-        try:
-            return await operation()
-        finally:
-            self.actions.append(
-                RetrievalAction(
-                    action=action,
-                    elapsed_ms=(time.perf_counter() - started) * 1000,
-                    attempts=1,
+        with observation("retrieval." + action):
+            started = time.perf_counter()
+            try:
+                return await operation()
+            finally:
+                self.actions.append(
+                    RetrievalAction(
+                        action=action,
+                        elapsed_ms=(time.perf_counter() - started) * 1000,
+                        attempts=1,
+                    )
                 )
-            )
 
     async def describe_collection(self, *args: Any, **kwargs: Any) -> Any:
         return await self.invoke(
@@ -192,6 +194,7 @@ def make_server(backend: Any, credentials: ServiceCredentials) -> Server[dict[st
     ) -> ListToolsResult:
         return ListToolsResult(tools=registered_tools())
 
+    @server_call("mcp.retrieval.call")
     async def calling(
         ctx: ServerRequestContext[dict[str, Any]], params: CallToolRequestParams
     ) -> CallToolResult:
@@ -335,6 +338,7 @@ def create_retrieval_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with AsyncExitStack() as stack:
+            stack.enter_context(environment("deephelp-retrieval-mcp"))
             owned = backend or await stack.enter_async_context(
                 RetrievalBackend.open(root, providers, pointer, corpus, auth)
             )

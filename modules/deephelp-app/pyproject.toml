@@ -17,6 +17,8 @@ dependencies = [
     "fasttext-community==0.11.8",
     "jieba==0.42.1",
     "langgraph==1.2.12",
+    "opentelemetry-sdk==1.45.0",
+    "opentelemetry-exporter-otlp-proto-http==1.45.0",
 ]
 
 [build-system]

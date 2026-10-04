@@ -9,6 +9,7 @@ from jsonschema import Draft202012Validator
 from mcp.types import RequestParamsMeta, Tool, ToolAnnotations
 from pydantic import ValidationError
 
+from deephelp_app.adapters.telemetry import carrier, checked
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
     DTO,
@@ -66,6 +67,7 @@ def registered_tools() -> list[Tool]:
     ]
 
 
+@checked("mcp.input_schema")
 def validate_arguments(name: str, arguments: object) -> ToolParameters:
     try:
         tool = ToolName(name)
@@ -86,12 +88,13 @@ def sign_metadata(secret: str, payload: dict[str, Any]) -> RequestParamsMeta:
     return cast(
         RequestParamsMeta,
         {
+            "deephelp/observation": carrier(),
             "deephelp/internal": {
                 "payload": payload,
                 "signature": hmac.new(
                     secret.encode(), canonical(payload), hashlib.sha256
                 ).hexdigest(),
-            }
+            },
         },
     )
 
@@ -114,6 +117,7 @@ def verify_metadata(secret: str, meta: RequestParamsMeta | None) -> dict[str, An
         raise AppError(ErrorCode.FORBIDDEN, "Trusted execution context required") from None
 
 
+@checked("mcp.result_validation")
 def validate_observation(
     request: ToolRequest, result: ToolResult, *, evidence_version: str = "business-fixtures-v1"
 ) -> None:

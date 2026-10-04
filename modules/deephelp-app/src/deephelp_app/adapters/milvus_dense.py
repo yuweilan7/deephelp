@@ -14,6 +14,7 @@ from pymilvus import (  # type: ignore[import-untyped]
     MilvusException,
 )
 
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.application.dense import (
     Capacity,
     DenseStore,
@@ -159,6 +160,7 @@ class MilvusDenseStore(DenseStore):
             sort_keys=True,
         )
 
+    @observed("milvus.validate")
     async def validate(self, scope: DenseScope, corpus_digest: str | None = None) -> str:
         details = await self._rpc(
             lambda: self.client.describe_collection(
@@ -308,6 +310,7 @@ class MilvusDenseStore(DenseStore):
             lambda: self.client.load_collection(scope.collection_name, timeout=None, retry_times=0)
         )
 
+    @observed("retrieval.dense")
     async def search(
         self, scope: DenseScope, vector: list[float], limit: int, code: IntentCode | None = None
     ) -> list[DenseHit]:

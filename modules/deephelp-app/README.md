@@ -554,3 +554,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留MySQL事实、key和恢复配置。MySQL saver是应用自建适配，锁定LangGraph版本的兼容试验不等于官方MySQL支持；未接企业支付、退款、补偿或通用13段RUNNING自动重领。
 
 任务过程输出与收尾见[AGENTS](../../AGENTS.md#临时产物与任务收尾)。M17成功完整报告包含全部逐行证据，保存后自动删除等价rows.jsonl；失败/中断保留行日志。发布绑定报告不可裁剪，累计预算和恢复状态不得重置；旧模块完整命令仅在明确启动该范围时使用。
+
+## M21标准观测
+
+显式配置DEEPHELP_OTLP_ENDPOINT后，原业务入口与两个MCP导出标准OTel链路和指标；三视图保留身份/session守卫并增加otel_trace_id。运行、计数/时钟/脱敏、固定动作和Collector边界见[观测入口](../../infra/observability/README.md)。审批/Saver已接实际Span Link；完整观测平台尚未交付，不能以当前JSONL/Collector称平台通过。

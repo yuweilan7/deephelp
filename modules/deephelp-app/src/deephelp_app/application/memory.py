@@ -8,6 +8,7 @@ from redis.exceptions import RedisError
 from deephelp_app.adapters.cases import MySQLCaseRepository
 from deephelp_app.adapters.redis_memory import RedisMemory as RedisMemory
 from deephelp_app.adapters.redis_memory import scope_key as scope_key
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.domain.cases import CLOSED, summary
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import CaseSummary, MemoryWindow, Question, VerifiedIdentity
@@ -31,6 +32,7 @@ class MemoryService:
         self.repository, self.cache, self.index = repository, cache, index
         self.last_cache_error: str | None = None
 
+    @observed("memory.load")
     async def load(
         self,
         identity: VerifiedIdentity,

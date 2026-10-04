@@ -6,7 +6,7 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -17,6 +17,7 @@ from mcp.types import RequestParamsMeta
 from pydantic import Field, SecretStr
 
 from deephelp_app.adapters.mcp_protocol import sign_metadata, verify_metadata
+from deephelp_app.adapters.telemetry import META_KEY, carrier, checked, observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models import DTO, ErrorCode
 
@@ -71,6 +72,7 @@ class DelegationVerifier:
         self.credentials, self.audience = credentials, audience
         self.nonces: dict[str, float] = {}
 
+    @checked("mcp.authentication")
     def verify(self, meta: RequestParamsMeta | None) -> dict[str, Any]:
         payload = verify_metadata(self.credentials.delegation_key.get_secret_value(), meta)
         expires, nonce = payload.get("expires_at"), payload.get("nonce")
@@ -120,33 +122,53 @@ class NetworkMCPClient:
 
     @asynccontextmanager
     async def session(self) -> AsyncIterator[Client]:
-        async with (
-            httpx2.AsyncClient(
-                headers={"Authorization": "Bearer " + self.credentials.bearer.get_secret_value()},
-                timeout=30,
-                trust_env=False,
-                follow_redirects=False,
-            ) as http,
-            Client(
-                streamable_http_client(self.config.url, http_client=http),
-                cache=None,
-                mode="legacy",
-            ) as client,
-        ):
-            if (
-                client.session.initialize_result is None
-                or client.session.protocol_version != "2025-11-25"
+        try:
+            async with (
+                httpx2.AsyncClient(
+                    headers={
+                        "Authorization": "Bearer " + self.credentials.bearer.get_secret_value()
+                    },
+                    timeout=30,
+                    trust_env=False,
+                    follow_redirects=False,
+                ) as http,
+                Client(
+                    streamable_http_client(self.config.url, http_client=http),
+                    cache=None,
+                    mode="legacy",
+                ) as client,
             ):
-                raise AppError(
-                    ErrorCode.MODEL_CAPABILITY_UNAVAILABLE,
-                    "MCP initialize version differs",
+                if (
+                    client.session.initialize_result is None
+                    or client.session.protocol_version != "2025-11-25"
+                ):
+                    raise AppError(
+                        ErrorCode.MODEL_CAPABILITY_UNAVAILABLE,
+                        "MCP initialize version differs",
+                    )
+                self.handshakes.append(
+                    {"initialized": True, "protocol_version": client.session.protocol_version}
                 )
-            self.handshakes.append(
-                {"initialized": True, "protocol_version": client.session.protocol_version}
-            )
-            del self.handshakes[:-64]
-            yield client
+                del self.handshakes[:-64]
+                yield client
+        except ExceptionGroup as exc:
 
+            def transport_only(group: BaseException) -> bool:
+                if isinstance(group, BaseExceptionGroup):
+                    return all(transport_only(leaf) for leaf in group.exceptions)
+                return isinstance(group, (httpx2.TransportError, OSError))
+
+            if not transport_only(exc):
+                raise
+            raise AppError(
+                ErrorCode.UPSTREAM_UNAVAILABLE, "MCP connection unavailable", retryable=True
+            ) from None
+        except httpx2.TransportError:
+            raise AppError(
+                ErrorCode.UPSTREAM_UNAVAILABLE, "MCP connection unavailable", retryable=True
+            ) from None
+
+    @observed("mcp.discover")
     async def list_tools(self) -> Any:
         async with self.session() as client:
             return await client.list_tools()
@@ -155,11 +177,13 @@ class NetworkMCPClient:
         async with self.session() as client:
             return await client.read_resource(uri, meta=meta, cache_mode="bypass")
 
+    @observed("mcp.client.call")
     async def call_tool(
         self, name: str, arguments: dict[str, Any], *, meta: RequestParamsMeta
     ) -> Any:
         async with self.session() as client:
-            return await client.call_tool(name, arguments, meta=meta)
+            propagated: dict[str, Any] = {**meta, META_KEY: carrier()}
+            return await client.call_tool(name, arguments, meta=cast(RequestParamsMeta, propagated))
 
 
 def delegation_nonce() -> str:

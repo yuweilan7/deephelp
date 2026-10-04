@@ -15,6 +15,7 @@ from jsonschema.exceptions import SchemaError
 from pydantic import ValidationError
 
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig
+from deephelp_app.adapters.telemetry import annotate, current, observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.domain.models import (
@@ -151,7 +152,20 @@ class QianwenGateway:
             ),
         )
 
+        previous_retries = budget.retries_used
+
+        @observed("model.attempt")
         async def operation() -> tuple[dict[str, object], ModelUsage, str | None]:
+            nonlocal previous_retries
+            annotate(
+                **{
+                    "deephelp.model": endpoint.model,
+                    "deephelp.usage_known": False,
+                    "deephelp.attempt": budget.attempts_used,
+                    "deephelp.retry": budget.retries_used > previous_retries,
+                }
+            )
+            previous_retries = budget.retries_used
             base, key = credentials
             async with self.client.stream(
                 "POST",
@@ -233,6 +247,21 @@ class QianwenGateway:
                 )
                 if data.get("model") != endpoint.model:
                     raise invalid_output(request_id)
+                annotate(
+                    **{
+                        "deephelp.usage_known": True,
+                        "deephelp.input_tokens": usage.input_tokens,
+                        "deephelp.output_tokens": usage.output_tokens,
+                        "deephelp.provider_request_id": request_id or "unknown",
+                    }
+                )
+                if runtime := current():
+                    runtime.tokens.add(
+                        usage.input_tokens, {"direction": "input", "model": endpoint.model}
+                    )
+                    runtime.tokens.add(
+                        usage.output_tokens, {"direction": "output", "model": endpoint.model}
+                    )
                 return data, usage, request_id
 
         return await self.calls.call(
@@ -382,6 +411,7 @@ class QianwenGateway:
         except ValueError, TypeError, KeyError, ValidationError:
             raise invalid_output(request_id) from None
 
+    @observed("model.chat")
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
         validator = (
             validate_schema(request.output_schema) if request.output_schema is not None else None
@@ -423,6 +453,7 @@ class QianwenGateway:
     def _cache_key(self, text: str) -> str:
         return hashlib.sha256((self.signature.fingerprint + "\0" + text).encode()).hexdigest()
 
+    @observed("model.embedding")
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult:
         budget.remaining_seconds()
         if not texts or len(texts) > self.config.max_texts:
@@ -448,6 +479,7 @@ class QianwenGateway:
             else:
                 pending.append(text)
         cache_hits = len(normalized) - len(pending)
+        annotate(**{"deephelp.cached": not pending})
         input_tokens = 0
         request_ids: list[str] = []
         for start in range(0, len(pending), self.config.batch_size):
