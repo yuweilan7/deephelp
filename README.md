@@ -10,6 +10,7 @@
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
+| 个人学习工作台的下一步 | [M19短计划](planning/M19/PLAN.md)；M19结构→M20业务→M21观测→M22前端→M23云运行，均待实施 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

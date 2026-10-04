@@ -26,15 +26,22 @@
 | M16 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M16.md) | 事实模板/受限语气、同源三视图与脱敏轮转；M15已接审批/恢复历史 |
 | M17 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M17.md#完整业务规模扩量) | 548不同会话/1820消息、22实际业务情境离线全量；真实29会话43消息×4组及17审批/6越权/9重放组合通过；全部同作者合成 |
 | M18 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 审核回流与完整ReleaseManifest/MySQL单一active已实现；运行绑定、审批资产保留、并发回退及进程中断真实通过；不提供每日自动训练/隐式文件删除 |
-| M19 | HARDENING_NOT_IMPLEMENTED | 部署/容量/备份恢复加固尚未实现 |
-| M20、M21 | OPTIONAL_NOT_IMPLEMENTED | 不阻塞客诉核心路线 |
+| M19 | PLANNED_NOT_IMPLEMENTED | 工程分层/工具独立安装/离线学习导航；[短计划](../planning/M19/PLAN.md) |
+| M20 | NOT_IMPLEMENTED | 持久业务/维护与独立Business MCP，再独立Retrieval MCP；当前业务工具仍查询demo JSON |
+| M21 | NOT_IMPLEMENTED | OTel/跨MCP/图与Saver观测，以及Collector/Tempo/Prometheus/Grafana；现有13段/三视图不代表新目标完成 |
+| M22 | NOT_IMPLEMENTED | 四个顺序前端特性，含MCP/schema与LangGraph/checkpoint教程；现有debug.html不是完整工作台 |
+| M23 | NOT_IMPLEMENTED | 个人云应用部署、浏览器闭环、隔离恢复/回滚；现有云中间件不是应用已部署 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
 ## 当前运行与验收边界
 
 正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁、infra及MySQL事实源保持；Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；企业支付/下游、任意RUNNING重领、M19–M21未实现。
+完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，企业支付/下游、任意RUNNING重领、M19–M23未实现。
+
+2026-10-04按用户要求替换未实施的旧M19–M21，并新增M22/M23规格；当前只完成路线规划。业务运行与工具已分目录，但learning/probes/evaluation/demo仍位于应用包，平铺源码的进一步职责分层尚未实施。模型执行方式、业务数据源、部署位置将独立配置；不另建一套学习/正式引擎。本轮没有运行模型、云检查、全量pytest或部署，不产生新的业务/质量/容量验收结论。
+
+同日追加只读源码核对：ToolGateway使用正式MCP SDK/stdio子进程，input/output schema与双端守卫已有；合成的是demo业务来源，独立HTTP服务未实现。approval.py确有LangGraph StateGraph/interrupt/resume，checkpoints.py确有自建MySQLSaver及pending writes，非官方MySQL插件；并不代表整条13段主链都是LangGraph。新计划按此复用，不重建已有能力。用户提供4核8GB/低负载截图，仅是截图时点，不作本轮服务器容量/峰值测量。选定观测框架和服务拆分仍为规划，未安装或调用云端。
 
 代表性历史证据：M17冻结548会话/1820消息、22业务情境；真实抽样29会话43消息×4组及17审批/6越权/9重放。运行边界特性真实HTTP 15/15，完整发布两版各14/14消息、11/11会话与23项守卫通过。数据同作者合成，不证明企业泛化或质量增益。必要明细在[M14](../handoffs/M14.md)、[M15](../handoffs/M15.md)、[M17](../handoffs/M17.md)、[M18](../handoffs/M18.md)，此处不复制逐轮过程。
 

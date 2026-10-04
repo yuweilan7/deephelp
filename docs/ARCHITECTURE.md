@@ -6,34 +6,17 @@
 
 [源] 复刻意图识别、多轮事件归属、分层记忆、配置化SOP/MCP、调试与评测的核心机制。[设计] 加上可验证的权限、幂等、预算、持久审批和数据发布边界。不是把PDF做RAG问答，也不是复刻内部后台/登录/组织架构。
 
-M08先交付优惠未享受、券不可用、订单活动查询等3–5个合成场景；M14扩展配置/场景，M17做冻结评测，M18做最小审核回流。M15/M19是独立加固，M20/M21是可选扩展。15+情境和500+样本分批扩展，规模未完成单列状态，不能把小样本结果说成完整规模验收。真实支付/发券/退款、公司数据、漂亮UI、云端模型训练均不在默认范围。
+M08先交付优惠未享受、券不可用、订单活动查询等3–5个合成场景；M14扩展配置/场景，M17做冻结评测，M18做最小审核回流。2026-10-04用户将后续目标改为个人学习工作台：M19工程分层、M20持久业务、M21观测、M22教程/操作前端、M23云运行。该扩展复用核心引擎，旧物流迁移/框架对照撤下；真实支付/发券/退款与企业数据接入仍不在默认范围。15+情境和500+样本的历史证据与未完成项见STATE，不能用小样本外推质量。
 
 ## 2. 物理目录与依赖方向
 
-[仓库] 根目录已是uv workspace、一个Git仓库与一个根uv.lock。保留现有infra；M01已创建业务包；后续增量复用，不按模块重建。下图是随实现演进的布局，不创建空目录；当前实际文件见应用 README。
-
-```text
-modules/deephelp-app/                 # M01创建首个业务workspace成员
-  pyproject.toml
-  src/deephelp_app/
-    domain/                          # 实体、值对象、错误、少量Port；不导入SDK
-    application/                     # intake、13段图、状态转移、SOP用例、outbox编排
-    adapters/                        # 模型、MySQL、Redis、Milvus、MCP、HTTP入口
-    app.py                           # M01现有组合根/客户端生命周期；按需提取
-sops/                                # M07起的版本化SOP；不是任意Python脚本
-evals/                               # 合成数据、split、指标、冻结manifest
-modules/deephelp-app/tests/          # 现有unit/integration/live/e2e；测试随实现交付
-configs/                             # 可公开模板，不含凭据
-scripts/                             # 小型运维/导入/评测命令，不建新平台
-planning/Mxx/                       # 每M一份短PLAN；未规划时可不存在
-handoffs/                            # 已做什么、未做什么和直接下游契约
-docs/                                # 架构、语义约束、真实状态
-.local/                              # 原PDF、私有配置/上下文输出；永不提交
-```
+[仓库] 根目录已是uv workspace、一个Git仓库与一个根uv.lock。保留现有infra；M01已创建业务包；后续增量复用，不按模块重建。当前实际文件见应用README。用户2026-10-04选定的新结构以[M19目录规格](MODULES/M19_STRUCTURE_LEARNING.md#目标与结构)为唯一目标：运行源码按职责分层，学习/探针/评测独立工具包，冻结集在datasets、演示在demo，不新增sops/evals/configs/scripts等重复入口。该迁移尚未实施；本章不复制第二套目标树。
 
 依赖为 `application → domain`，`adapters → domain`，组合根装配两者；HTTP入口可调用application。领域不反向导入FastAPI、LangGraph或数据库SDK。初期单应用进程+一个本地MCP Mock即可，不按规划阶段拆22个部署单元。
 
 只在真实变化点定义Port：ModelGateway（chat/embed可拆窄方法）、IntentRetriever、SOPExecutor、ToolGateway、Case/Message/Operation Repository。简单字段校验和规则函数不套接口工厂。事件裁决的模型适配可复用ModelGateway，不再建第二套模型基础设施。
+
+用户追加的远端学习目标采用同仓库独立Business/Retrieval MCP进程，各复用领域/检索能力并通过原Port的HTTP客户端适配器接入。服务拆分不等于把MySQL账本/outbox/checkpoint事务搬成任意远程工具；内部事务保持当前权威边界。观测选OTel SDK/Collector→Tempo单体与Prometheus→Grafana，具体来源/双端校验和实际图/Saver范围见[M20](MODULES/M20_BUSINESS_SOURCE.md)、[M21](MODULES/M21_OBSERVABILITY.md)。这些是待实施目标，当前正式stdio及LangGraph审批/checkpoint的实现事实见STATE。
 
 ## 3. 主流程：13段，不等于13次模型调用
 
