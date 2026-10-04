@@ -4,11 +4,11 @@ import os
 from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlsplit
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.domain.errors import ConfigurationError
@@ -28,11 +28,24 @@ class EndpointConfig(BaseModel):
     output_cny_per_million: DecimalValue = Decimal("0")
 
 
+class RerankEndpointConfig(EndpointConfig):
+    model: Literal["qwen3.7-text-rerank"] = "qwen3.7-text-rerank"
+    # This env field contains the complete native endpoint, never a Chat base URL.
+    base_url_env: str = "DEEPHELP_RERANK_URL"
+
+    @model_validator(mode="after")
+    def input_only_price(self) -> RerankEndpointConfig:
+        if self.output_cny_per_million != 0:
+            raise ValueError("Text rerank is metered as input only")
+        return self
+
+
 class ProviderConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     provider: str = "qianwen"
     chat: EndpointConfig
     embedding: EndpointConfig
+    rerank: RerankEndpointConfig | None = None
     embedding_revision: str | None = None
     dimension: int = Field(default=1024, ge=1, le=4096)
     normalization: str = "l2"
@@ -106,4 +119,9 @@ def create_gateway(
     source = os.environ if env is None else env
     chat = endpoint_credentials(config.chat, source)
     embedding = endpoint_credentials(config.embedding, source)
-    return QianwenGateway(client, calls, config, chat, embedding)
+    rerank = endpoint_credentials(config.rerank, source) if config.rerank else None
+    if rerank and not urlsplit(rerank[0]).path.endswith(
+        "/api/v1/services/rerank/text-rerank/text-rerank"
+    ):
+        raise ConfigurationError("Rerank requires an explicit native text sorting endpoint")
+    return QianwenGateway(client, calls, config, chat, embedding, rerank)

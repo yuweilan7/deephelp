@@ -44,11 +44,11 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 | 通用备选 | qwen3.8-flash、qwen3.7-flash、qwen3.7-flash-2026-07-15、qwen3.8-27b、kimi-k3、deepseek-v4-flash-0731、deepseek-v4.1-flash、glm-5.3 |
 | 质量候选 | qwen3.8-max、qwen3.8-max-0902、deepseek-v4-pro-0813、qwen3.8-2.4t-a95b |
 | Embedding | qwen3.7-text-embedding-flash、qwen3.7-text-embedding |
-| Rerank | qwen3.7-text-rerank；已登记本机候选池，真实三候选排序内容通过，当前主链未接入 |
+| Rerank | qwen3.7-text-rerank；M31专用RerankPort/httpx网关及三条query×12 reference真实内容通过；主链未接入 |
 | 多模态/翻译候选 | qwen-mt-uni、qwen3.8-omni-flash、qwen3.8-omni-flash-realtime；本轮不调用 |
 
-可用候选、应用已接入、目标能力实测分别记录。更换Chat模型前验证任务所需schema/tool能力；更换Embedding按签名新集合/reindex。Rerank是检索排序候选，不能直接作为Embedding或Chat端口使用；接入需单独实现与验证。本轮候选更新不启用自动切换。
+可用候选、端口已接入、目标能力实测和正式主链分别记录。更换Chat模型前验证任务所需schema/tool能力；更换Embedding按签名新集合/reindex。Rerank不能作为Embedding或Chat端口使用；新增可选ProviderConfig.rerank显式配置完整原生endpoint，使用同一AsyncCalls/ExecutionBudget和OTel观测。当前未启用自动切换。
 
-2026-10-04用户明确要求补齐Rerank，已新增[M31规格](MODULES/M31_RERANK_INTEGRATION.md)和[首特性PLAN](../planning/M31/PLAN.md)：专用端口/协议→召回后重排及同条件内容对照→会话/Retrieval MCP/学习页与正式发布。仅完成规划；上表“主链未接入”状态保持，历史接口小样本不当新验收。
+2026-10-04 M31首特性端口/协议试验已交付，证据见[M31](../handoffs/M31.md)，运行参数见[应用入口](../modules/deephelp-app/README.md#m31-专用重排端口)。三条固定合成query使用同一12条reference文本，券不可用/优惠未兑现/含否定的活动查询首位均符合预期；无Chat或Embedding调用。该小样本证明接口、index映射与实际usage，不证明Hybrid收益、主链已启用或企业泛化。后续机制见[M31规格](MODULES/M31_RERANK_INTEGRATION.md)，未完范围见[PLAN](../planning/M31/PLAN.md)。
 
 2026-10-03按用户要求补验原Embedding及Rerank：两条Embedding均为1024维有限向量；`qwen3.7-text-rerank`真实接口对三条固定合成候选返回完整index/有限relevance_score，券无法抵扣查询首位是券有效期/使用条件候选。只证明该排序路径可调用与内容相符，不代表主链已启用、最终分类更准或企业效果。原始报告留`.local/model-interface-check/report.json`。请求结构参考[官方Rerank API](https://help.aliyun.com/zh/model-studio/text-rerank-api)的该模型专用input/parameters格式，不能与qwen3-rerank的扁平格式混用。

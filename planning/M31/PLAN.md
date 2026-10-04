@@ -1,9 +1,8 @@
-# M31 实施计划
+# M31 后续实施计划
 
-判断：`PROBE_FIRST`。就绪：`READY`（仅首特性；已有M03/M09/M12/M17/M18/M20/M22，独立于数据库/观测迁移）。规格见[M31](../../docs/MODULES/M31_RERANK_INTEGRATION.md)。
+首特性专用端口/协议与真实内容证据归[M31交接](../../handoffs/M31.md)，不作为待执行步骤。以下两项均未启动，依次由用户另启；规格见[M31](../../docs/MODULES/M31_RERANK_INTEGRATION.md)。
 
-1. **这次做成什么：** 首特性给qwen3.7-text-rerank增加专用Rerank端口/DTO与httpx适配，证明请求/响应映射、内容、usage和预算/取消。后续按序为召回后重排/同条件质量对照，再接Retrieval MCP/学习页/正式发布；不把三候选接口测试当主链交付。
-2. **从哪里改：** domain models/ports、gateway/AsyncCalls预算及相邻适配测试；只查本机该候选。先读M03/M09/M20直接handoff及现有hybrid/retrieval_protocol代码，`feature/m31-rerank-protocol`从同步main建立。后续需核对本地/远端检索、签名profile/allowance/validator、600、M17/M18和M22消费者，按实际接口变化更新CONTRACTS。
-3. **怎样证明：** 首试验离线覆盖错index/重复/缺项/NaN、重试/usage、超时/取消；真实选2–4条query及reference候选读回内容，实施前按真实文档长度列调用/token范围与含修复余量的共享上限。后续固定同候选/同向量对照、独立dev/test和代表会话+远端MCP证明模型实际调用；不开全量历史live，不混淆召回扩大与重排收益。
-4. **什么时候停：** 鉴权/服务不可恢复、内容映射或必要效果验收失败即停；不自动换模型、默认开启或改active。索引/分数/签名错误拒收，普通不可用fallback须版本绑定/可见。首特性不做PG迁移/Langfuse部署，重排也不改变唯一600/审批账本边界。
-5. **怎样交付：** 首特性handoff/STATE仅列端口和实际小样本证据，仍标主链未接入。按AGENTS中文提交/推送/合并main并同步后停止；依次更新此PLAN启动后续接入/质量与正式发布特性。M28前后用现有/新观测接缝，不新增第二套引擎。
+1. **下一项：同链接入与受控对照。** 复用RerankPort，在有界文档召回后、按意图最佳证据归并前重排；分别定义candidate_budget/top_n/top_k，保留三路原分数及独立rerank分数。固定同候选、同次Embedding向量，dev选择语义相似度instruct/必要默认基线、候选预算及显式失败策略，冻结后独立test只验收。选择否定、券/订单相近词、变体、多同意图文档及原正确排序反例；报告Recall@N/Hit@K/MRR、延迟与实际usage，不将扩大召回混作重排收益。校准接纳机制，不把rerank分数塞入原fusion阈值。保留active，交付后停止。
+2. **再下一项：远端、学习页与正式发布。** 前项证据出来后核对RemoteRetriever/服务端同一策略、profile/delegation/allowance/receipt/validator、唯一600、M17/M18和M22消费者。权威服务只重排一次；真实代表会话、四路学习页、历史零调用及同条件评测说明有效/退化范围。离线验证签名/预算/关闭/故障/取消/幂等，实库固定动作单独验证持久协议；正式启用需新的完整ReleaseManifest及适用内容门禁。默认开启由对照决定；完成后停止。
+
+每项从同步main另建feature，一个主写者；真实验收前列目标、样本、调用/token范围与含修复余量的共享上限。不可恢复的鉴权/网络/能力、必要内容失败或预算不足按AGENTS停；旧接口样本不当主链/企业效果证据，不默认换模型、迁库或部署Langfuse。

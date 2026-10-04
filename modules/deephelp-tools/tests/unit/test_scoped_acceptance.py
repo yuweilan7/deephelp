@@ -1,6 +1,7 @@
 """Acceptance selection, remote isolation and usage reporting, without real models."""
 
 import argparse
+import asyncio
 import importlib
 import json
 import socket
@@ -15,7 +16,7 @@ from deephelp_app.adapters.gateway import QianwenGateway, diagnostic_usage
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_tools.evaluation.core import MODES, audit, targeted_gate
 from deephelp_tools.evaluation.evaluation_cli import select_scope
-from deephelp_tools.probes.live_probe import probe, selected_capabilities
+from deephelp_tools.probes.live_probe import probe, selected_capabilities, selected_rerank_samples
 from deephelp_tools.probes.text_entity_probe import selected_cases
 from deephelp_tools.probes.usage import api_records, summarize_usage
 
@@ -255,6 +256,113 @@ def test_capabilities_require_selection_without_stage_based_expansion():
         )
     ) == ["schema"]
     assert len(selected_capabilities(argparse.Namespace(all_capabilities=True, extended=True))) == 6
+    assert selected_capabilities(argparse.Namespace(capability=["rerank"], extended=False)) == [
+        "rerank"
+    ]
+
+
+def test_rerank_samples_require_explicit_capability():
+    assert selected_rerank_samples(argparse.Namespace(rerank_sample=["coupon"]), ["rerank"]) == [
+        "coupon"
+    ]
+    with pytest.raises(ConfigurationError):
+        selected_rerank_samples(argparse.Namespace(rerank_sample=["coupon"]), ["chat"])
+
+
+@pytest.mark.parametrize("outcome", ["pass", "wrong_intent", "insufficient_calls"])
+async def test_selected_rerank_probe_uses_only_reference_and_shared_budget(
+    monkeypatch, tmp_path, outcome
+):
+    from deephelp_app.adapters.providers import ProviderConfig
+    from deephelp_tools.probes import live_probe as cli
+
+    state = tmp_path / "budget.json"
+    state.write_text(
+        json.dumps(
+            dict(
+                max_calls=10,
+                max_tokens=50000,
+                max_cost_cny="1",
+                attempts=0,
+                tokens=0,
+                charged_tokens=0,
+                cost_upper_cny="0",
+                uncertain_attempts=0,
+            )
+        ),
+        encoding="utf-8",
+    )
+    providers = tmp_path / "providers.json"
+    template = Path("modules/deephelp-app/providers.example.json")
+    config = json.loads(await asyncio.to_thread(template.read_text))
+    config["rerank"] = {"input_cny_per_million": "8"}
+    providers.write_text(json.dumps(config), encoding="utf-8")
+    assert ProviderConfig.load(providers).rerank is not None
+    monkeypatch.setattr(cli, "local_path", lambda path: Path(path))
+    monkeypatch.setenv("DEEPHELP_MODEL_BASE_URL", "https://chat.invalid")
+    monkeypatch.setenv("DEEPHELP_MODEL_API_KEY", "PRIVATE_KEY")
+    monkeypatch.setenv(
+        "DEEPHELP_RERANK_URL",
+        "https://native.invalid/api/v1/services/rerank/text-rerank/text-rerank",
+    )
+    requests = []
+
+    def handler(req):
+        body = json.loads(req.content)
+        requests.append(body)
+        assert body["model"] == "qwen3.7-text-rerank" and "messages" not in body
+        assert "expected_intent" not in req.content.decode()
+        assert len(body["input"]["documents"]) == 12
+        first = 0 if outcome == "wrong_intent" else [4, 0, 8][len(requests) - 1]
+        indices = [first] + [i for i in range(12) if i != first]
+        return httpx.Response(
+            200,
+            json={
+                "output": {
+                    "results": [
+                        {"index": i, "relevance_score": 1 - rank / 12}
+                        for rank, i in enumerate(indices)
+                    ]
+                },
+                "request_id": "native-test",
+                "usage": {"prompt_tokens": 100, "total_tokens": 100},
+            },
+        )
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        cli.httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(transport=httpx.MockTransport(handler)),
+    )
+    output = tmp_path / "report.json"
+    args = argparse.Namespace(
+        capability=["rerank"],
+        extended=False,
+        all_capabilities=False,
+        stage="feature",
+        budget_state=state,
+        output=output,
+        providers=providers,
+        max_calls=2 if outcome == "insufficient_calls" else 3,
+        max_tokens=50000,
+        max_cost=Decimal("1"),
+    )
+    if outcome == "insufficient_calls":
+        with pytest.raises(ConfigurationError, match="Insufficient"):
+            await probe(args)
+        assert not requests and not state.with_suffix(".lock").exists()
+        return
+    assert await probe(args) == (0 if outcome == "pass" else 1)
+    report = json.loads(output.read_text())
+    assert len(requests) == (3 if outcome == "pass" else 1)
+    assert report["api_usage"]["total_tokens"] == len(requests) * 100
+    assert report["api_usage"]["output_tokens"] is None
+    assert report["budget_used"]["attempts"] == len(requests)
+    assert report["budget_used"]["tokens"] == len(requests) * 100
+    assert json.loads(state.read_text())["attempts"] == len(requests)
+    assert not state.with_suffix(".lock").exists()
+    assert report["results"][0]["hits"][0]["document"]["source"]
 
 
 def test_usage_unknowns_reservations_and_diagnostic_rollover():

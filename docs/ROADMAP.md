@@ -78,13 +78,13 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP、官方图与pause/resume可查关联 | M26/M27；随后业务覆盖和原工作台查询替换 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | 现有报告/冻结集的Dataset/Experiment/Score映射 | M28；可选，随后Prompt版本/审核映射，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标与新部署/隔离恢复演练 | M25–M28；另启动最后快照/单写切换/旧服务退役，M29可跳过 |
-| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [计划](../planning/M31/PLAN.md) | qwen3.7-text-rerank专用端口/协议及真实内容试验；可独立启动 | 已交付M03/M09/M12/M17/M18/M20/M22；随后同链质量对照、Retrieval MCP/学习页/正式发布，不依赖迁库完成 |
+| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 首项已交付；[端口/内容交接](../handoffs/M31.md) | 同链质量对照待启动；随后Retrieval MCP/学习页/正式发布，不依赖迁库完成 |
 
-每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25后续迁移特性和独立M31首特性可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
+每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25后续迁移特性和独立M31同链接入/受控对照可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
 
 实施Prompt可直接使用：“实施M25全持久迁移特性。按docs/MODULES/M25_POSTGRES_FACTS.md、planning/M25/PLAN.md和handoffs/M25.md完成全持久适配、只读快照导入/续跑与隔离PG实际备份恢复；旧路线保留在bak/mysql-otel，按AGENTS从main建特性分支并合入main。一个主写者，验证/中文提交/推送/同步后停止，不切现网、不卸载、不购买资源，不启动M26。”后续选择对应首特性，并核对实际前置。
 
-补检索能力可先使用：“实施M31首特性。按docs/MODULES/M31_RERANK_INTEGRATION.md和planning/M31/PLAN.md完成qwen3.7-text-rerank专用端口/协议与代表内容实测，保留当前Hybrid和active发布；按AGENTS从main建特性分支，验收/中文提交/推送/合并/同步后停止。只做首特性，不同时迁数据库或部署Langfuse；后续真实会话/MCP/学习页与正式发布另启。”
+补检索能力下一项可使用：“实施M31同链接入与受控对照特性。按docs/MODULES/M31_RERANK_INTEGRATION.md、planning/M31/PLAN.md和handoffs/M31.md，在召回后、意图归并前复用已验RerankPort；固定同候选/同向量，dev确定instruct/预算/失败策略，独立test验收排序与拒识。保留active发布；按AGENTS验收/中文提交/推送/合并/同步后停止。只做本特性，不同时迁数据库或部署Langfuse；后续真实会话/MCP/学习页与正式发布另启。”
 
 容量与资源：现有约7.51GiB适合先做受控低负载试验，不保证完整Langfuse与训练峰值共存。当前Langfuse需Web/Worker/PG/ClickHouse/专用noeviction队列Redis/S3对象存储；不能照旧截图写ClickHouse或对象存储可选。选官方支持的SeaweedFS单机自托管，使用现有磁盘/容器网络，和PG/ClickHouse一起做容量及隔离恢复实测；不购买COS、RDS或其他托管存储，不默认安装已归档社区MinIO。容量不足则报告，不自动开通计费资源。
 

@@ -60,6 +60,8 @@ M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、
 
 调用者必须共享原 ExecutionBudget，model 调用前有正 token/cost 上限；超时/取消不释放可能已发生的计费预留。ChatResult 保存 usage/finish_reason/provider_request_id 与校验过的 schema/tool 字段，EmbeddingResult 按输入顺序含签名、缓存命中和索引适配标记。模型结果不是业务事实，模型工具调用不是 ToolResult 或 MCP 执行证据；下游仍做白名单、身份/归属和参数核验。接口与版本限制见 [模型矩阵](MODEL_CAPABILITIES.md)。
 
+M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/RerankResult 与 `ports.py` 的 RerankPort。输入文档为不可变有序 tuple，包含本地 doc_id/content/intent_code/source；仅 query、文档文本及可选 instruct 送模型，top_n 严格为 1..文档数。响应 index 为唯一范围内非bool整数，数量等于 top_n，score 有限且按降序返回，并列按原输入 index 稳定排序；以 index 映射原文档，不采信响应替换内容/标签。score_kind 固定 rerank，无概率/融合含义。完整合法 usage 通过原共享预算结算一次；缺失/不完整 usage 为 null，结构诊断保留已知项，未知尝试保留预留。该增量不改变业务 envelope、DenseResult 或 M20 wire/profile，正式检索消费者接入另按 M31 后续特性实施。
+
 | 阶段 | 当前要落地 | 只作未来约束 |
 |---|---|---|
 | M02 | 请求/响应、实体来源、最小Question、IntentDecision、工具/证据结果、当前版本/预算摘要、目录与fixture | DB语义可以设计，不能称已验证数据库；审批恢复/outbox领取不实现 |
