@@ -8,7 +8,7 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 import uvicorn
@@ -69,11 +69,28 @@ class ObservedEmbedding:
         self.gateway, self.actions = gateway, actions
 
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> Any:
+        return await self.invoke("embedding", lambda: self.gateway.embed(texts, budget), budget)
+
+    async def rerank(self, request: Any, budget: ExecutionBudget) -> Any:
+        return await self.invoke("rerank", lambda: self.gateway.rerank(request, budget), budget)
+
+    async def invoke(
+        self,
+        action: Literal["embedding", "rerank"],
+        operation: Callable[[], Awaitable[Any]],
+        budget: ExecutionBudget,
+    ) -> Any:
         before, started = budget.usage(), time.perf_counter()
         ids: tuple[str, ...] = ()
         try:
-            result = await self.gateway.embed(texts, budget)
-            ids = tuple(result.provider_request_ids)
+            result = await operation()
+            ids = (
+                tuple(result.provider_request_ids)
+                if action == "embedding"
+                else (result.provider_request_id,)
+                if result.provider_request_id
+                else ()
+            )
             return result
         except AppError as exc:
             if exc.provider_request_id:
@@ -83,7 +100,7 @@ class ObservedEmbedding:
             after = budget.usage()
             self.actions.append(
                 RetrievalAction(
-                    action="embedding",
+                    action=action,
                     elapsed_ms=(time.perf_counter() - started) * 1000,
                     attempts=after.attempts - before.attempts,
                     model_calls=after.attempts - before.attempts,
@@ -168,12 +185,18 @@ class RetrievalBackend:
             scope = self.binding.scope
             if isinstance(scope, HybridScope):
                 retriever = HybridRetriever(
-                    embedding, MilvusHybridStore(milvus, budget), dense_weight=self.binding.weight
+                    embedding,
+                    MilvusHybridStore(milvus, budget),
+                    dense_weight=self.binding.weight,
+                    reranker=embedding if self.binding.rerank_policy else None,
+                    rerank_policy=self.binding.rerank_policy,
+                    records=self.binding.records,
+                    corpus_digest=self.binding.corpus_digest,
                 )
                 if name == NAMES[1]:
                     return await retriever.compare(query.query, scope, budget, top_k=query.top_k)
                 return {
-                    "hybrid": await retriever.retrieve(
+                    self.binding.mode: await retriever.retrieve(
                         query.query, scope, budget, top_k=query.top_k
                     )
                 }
@@ -192,7 +215,7 @@ def make_server(backend: Any, credentials: ServiceCredentials) -> Server[dict[st
     async def listing(
         ctx: ServerRequestContext[dict[str, Any]], params: PaginatedRequestParams | None
     ) -> ListToolsResult:
-        return ListToolsResult(tools=registered_tools())
+        return ListToolsResult(tools=registered_tools(backend.binding))
 
     @server_call("mcp.retrieval.call")
     async def calling(
@@ -213,11 +236,14 @@ def make_server(backend: Any, credentials: ServiceCredentials) -> Server[dict[st
                 raise AppError(ErrorCode.FORBIDDEN, "Retrieval subject or scope not authorized")
             if (
                 delegation.name != params.name
+                or delegation.version != backend.binding.version
                 or delegation.query_hash
                 != hashlib.sha256(canonical(query.model_dump(mode="json"))).hexdigest()
                 or delegation.profile_id != backend.binding.profile_id
             ):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Retrieval request or profile differs")
+            if backend.binding.rerank_policy and query.top_k != backend.binding.top_k:
+                raise AppError(ErrorCode.VERSION_CONFLICT, "Final top_k differs from the release")
             cap = delegation.allowance
             if (
                 cap.attempts > allowance.attempts
@@ -257,6 +283,7 @@ def make_server(backend: Any, credentials: ServiceCredentials) -> Server[dict[st
             if detail:
                 results = {}
             reply = RetrievalReply(
+                version=backend.binding.version,
                 call_id=payload["nonce"],
                 delegation=delegation,
                 query=query,

@@ -13,11 +13,11 @@ from mcp.types import CallToolResult, TextContent
 
 from deephelp_app.adapters.mcp_protocol import canonical
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig, ServiceCredentials
-from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.providers import ProviderConfig, RerankEndpointConfig
 from deephelp_app.adapters.retrieval_mcp import RemoteRetriever
 from deephelp_app.adapters.retrieval_protocol import RetrievalBinding
 from deephelp_app.application.corpus import read_corpus
-from deephelp_app.application.hybrid import normalized_fusion, result_for
+from deephelp_app.application.hybrid import normalized_fusion, rerank_result, result_for
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
 from deephelp_app.domain.models import (
@@ -27,6 +27,10 @@ from deephelp_app.domain.models import (
     DenseScope,
     ErrorCode,
     HybridScope,
+    ModelUsage,
+    RerankHit,
+    RerankPolicy,
+    RerankResult,
     RetrievalAction,
     RetrievalContext,
     RetrievalDelegation,
@@ -162,6 +166,174 @@ def config(http, credentials_path):
 
 def budget(timeout=20, attempts=20):
     return ExecutionBudget.start(timeout, attempts, 0, token_limit=20000, cost_limit=Decimal("2"))
+
+
+class FakeRerankBackend(FakeBackend):
+    async def execute(self, name, query, run, actions):
+        base = await super().execute("compare_intents", query, run, actions)
+        limit = self.binding.candidate_budget
+        base = {
+            mode: result_for(
+                self.binding.scope, mode, list(result.hits), limit, self.binding.weight, 1
+            )
+            for mode, result in base.items()
+        }
+        backend = self
+
+        class Port:
+            async def rerank(self, request, budget):
+                budget.claim_attempt(retry=False, tokens=100, cost=Decimal("0.0008"))
+                budget.settle_model(100, Decimal("0.0008"), 40, Decimal("0.00032"))
+                actions.append(
+                    RetrievalAction(
+                        action="rerank",
+                        elapsed_ms=2,
+                        attempts=1,
+                        model_calls=1,
+                        tokens=40,
+                        charged_tokens=40,
+                    )
+                )
+                return RerankResult(
+                    model=backend.binding.rerank_policy.model,
+                    instruct=request.instruct,
+                    usage=ModelUsage(input_tokens=40, output_tokens=0),
+                    hits=tuple(
+                        RerankHit(index=i, document=d, score=0.5)
+                        for i, d in enumerate(request.documents)
+                    ),
+                )
+
+        base["hybrid_rerank"] = await rerank_result(
+            query.query,
+            base["hybrid"],
+            Port(),
+            self.binding.rerank_policy,
+            run,
+            top_k=query.top_k,
+        )
+        return base if name == "compare_intents" else {self.binding.mode: base[self.binding.mode]}
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+async def test_rerank_profile_four_routes_once_or_disabled_and_shared_receipt(
+    binding, credentials_path, enabled
+):
+    config_rerank = binding.config.model_copy(
+        update={"rerank": RerankEndpointConfig(input_cny_per_million=Decimal("8"))}
+    )
+    owned = replace(
+        binding,
+        config=config_rerank,
+        rerank_policy=RerankPolicy(
+            candidate_budget=6,
+            top_n=6,
+            instruct=None,
+            enabled=enabled,
+        ),
+    )
+    backend = FakeRerankBackend(owned)
+    app = application(backend, credentials_path)
+    async with app.router.lifespan_context(app), api_client(app, http=True) as http:
+        remote = RemoteRetriever(config(http, credentials_path), owned)
+        async with remote.open():
+            token = request_execution.set(backend.context)
+            run = budget()
+            try:
+                results = await remote.compare("coupon", owned.scope, run)
+            finally:
+                request_execution.reset(token)
+            assert set(results) == {"dense", "bm25", "hybrid", "hybrid_rerank"}
+            state = results["hybrid_rerank"].rerank
+            assert state.status == ("passed" if enabled else "not_run")
+            receipt = remote.diagnostics[-1]
+            assert receipt["model_calls"] == (2 if enabled else 1)
+            assert run.tokens_used == run.token_upper_bound == (46 if enabled else 6)
+            assert run.attempts_used == (7 if enabled else 6)
+            assert run.uncertain_attempts == 0
+            assert owned.profile_id != binding.profile_id
+            assert receipt["receipt"]["version"] == "m31-retrieval-v1"
+
+
+def test_rerank_allowance_owns_pairwise_query_input_and_policy_fingerprint(binding):
+    from deephelp_app.adapters.retrieval_protocol import validate_results
+
+    owned = replace(
+        binding,
+        config=binding.config.model_copy(
+            update={
+                "rerank": RerankEndpointConfig(input_cny_per_million=Decimal("8")),
+            }
+        ),
+        rerank_policy=RerankPolicy(candidate_budget=6, top_n=6, instruct=None),
+    )
+    short, long = owned.allowance("x", 20), owned.allowance("x" * 500, 20)
+    assert long.tokens - short.tokens >= 499 * 7  # One embedding + six query/document pairs.
+    changed = replace(owned, rerank_policy=owned.rerank_policy.model_copy(update={"instruct": "s"}))
+    assert changed.profile_id != owned.profile_id
+    q = RetrievalQuery(query="x", top_k=3, scope_id=owned.scope.fingerprint)
+    with pytest.raises(AppError):
+        validate_results(owned, q, "retrieve_intents", {})
+
+
+@pytest.mark.parametrize("change", ["policy", "index", "metadata", "native_usage", "double"])
+async def test_rerank_signed_receipt_still_requires_semantic_mapping_and_one_usage(
+    binding, credentials_path, change
+):
+    owned = replace(
+        binding,
+        config=binding.config.model_copy(
+            update={
+                "rerank": RerankEndpointConfig(input_cny_per_million=Decimal("8")),
+            }
+        ),
+        rerank_policy=RerankPolicy(candidate_budget=6, top_n=6, instruct=None),
+    )
+    backend = FakeRerankBackend(owned)
+    app = application(backend, credentials_path)
+    async with app.router.lifespan_context(app), api_client(app, http=True) as http:
+        async with RemoteRetriever(config(http, credentials_path), owned).open() as remote:
+            original = remote.network.call_tool
+
+            async def tampered(*args, **kwargs):
+                result = await original(*args, **kwargs)
+                data = deepcopy(result.structured_content)
+                ranked = data["reply"]["results"]["hybrid_rerank"]
+                if change == "policy":
+                    ranked["rerank"]["policy"]["instruct"] = "forged"
+                    ranked["rerank"]["result"]["instruct"] = "forged"
+                elif change == "index":
+                    ranked["rerank"]["result"]["hits"][0]["index"] = 6
+                elif change == "metadata":
+                    ranked["hits"][0]["metadata"] = {"entity_constraints": {"order_id": "other"}}
+                elif change == "native_usage":
+                    ranked["rerank"]["result"]["usage"]["input_tokens"] = 999
+                else:
+                    data["reply"]["actions"][-1]["model_calls"] = 2
+                data["proof"] = dict(
+                    remote.credentials.protect(
+                        "retrieval-receipt",
+                        {
+                            "action": "receipt",
+                            "nonce": data["reply"]["call_id"],
+                            "reply_hash": hashlib.sha256(canonical(data["reply"])).hexdigest(),
+                        },
+                    )
+                )
+                return CallToolResult(
+                    structured_content=data, content=[TextContent(text=canonical(data).decode())]
+                )
+
+            remote.network.call_tool = tampered
+            run, token = budget(), request_execution.set(backend.context)
+            try:
+                with pytest.raises(AppError) as error:
+                    await remote.retrieve("q", owned.scope, run)
+                assert error.value.code == ErrorCode.MODEL_OUTPUT_INVALID
+                assert run.uncertain_attempts == 1 and run.tokens_used == 0
+                assert remote.diagnostics[-1]["status"] == "unknown"
+            finally:
+                request_execution.reset(token)
 
 
 async def test_initialize_compare_schema_candidates_actions_and_shared_budget(

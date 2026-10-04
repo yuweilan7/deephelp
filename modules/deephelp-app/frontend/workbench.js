@@ -884,14 +884,23 @@ $("retrieval-form").addEventListener("submit", (e) => {
       );
       for (const [mode, result] of Object.entries(d.routes)) {
         const box = node("div", undefined, "lesson");
-        box.append(node("h3", mode));
+        box.append(node("h3", mode === "hybrid_rerank" ? "Hybrid + Rerank" : mode));
+        const state = result.rerank;
+        if (state) {
+          box.append(node("p", `${state.status} · ${state.reason ?? "已重排"} · 模型 ${state.policy.model} · 指令 ${state.policy.instruct ?? "供应商默认"} · 候选 ${state.input_doc_ids.length}/${state.policy.candidate_budget} · ${state.elapsed_ms.toFixed(1)} ms`));
+          box.append(node("p", `profile ${d.receipt.receipt?.delegation?.profile_id ?? "未知"} · usage ${state.result?.usage?.total_tokens ?? "未知"} tokens`));
+        }
         for (const c of result.candidates)
           box.append(
             node(
               "p",
-              `${c.rank}. ${c.intent_code} · ${c.score_kind} ${c.raw_score}`,
+              `${c.rank}. ${c.intent_code} · 证据 ${c.evidence_doc_id} · 原 ${c.score_kind} ${c.raw_score}`,
             ),
           );
+        for (const [index, hit] of result.hits.entries()) {
+          const rank = state?.result?.hits.find((r) => r.document.doc_id === hit.doc_id);
+          box.append(node("p", `${index + 1}. ${hit.doc_id} · ${hit.intent_code} · 原名次 ${hit.rank ?? index + 1} → ${index + 1} · 原 ${hit.score_kind} ${hit.raw_score}${rank ? ` · rerank ${rank.score}` : ""} · ${hit.content}`));
+        }
         $("retrieval-summary").append(box);
       }
       await api("/auth/session").then(showIdentity);

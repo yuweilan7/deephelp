@@ -1,6 +1,6 @@
-# M30 当前本机入口
+# 当前本机入口
 
-正式云应用通过`infra/client/tunnel.ps1 -Profile personal -Action start/health`访问18080；Grafana23000对应云13002。应用/两MCP只用显式PG配置与Langfuse配置；PG/Langfuse隧道分别由`infra/postgres/tunnel.ps1`及`infra/langfuse/tunnel.ps1`管理。基础infra转发仅Redis/Milvus；旧MySQL3306及Tempo/Collector已经退出正式消费，下面旧源资料是保留环境/迁移读取依据，不能直接启动双写。当前状态见PROJECT_STATE与M30 handoff，完整安装/访问/恢复见[deployment](../infra/deployment/README.md)。
+正式云应用通过`infra/client/tunnel.ps1 -Profile personal -Action start/health`访问18080；Grafana23000对应云13002。应用/两MCP只用显式PG配置与Langfuse配置；PG/Langfuse隧道分别由`infra/postgres/tunnel.ps1`及`infra/langfuse/tunnel.ps1`管理。基础infra转发仅Redis/Milvus；旧MySQL3306及Tempo/Collector已经退出正式消费，下面旧源资料是保留环境/迁移读取依据，不能直接启动双写。当前状态见PROJECT_STATE；M31默认关闭重排，开启版须完整channel/profile一起选择，见[M31运行入口](../modules/deephelp-app/README.md#m31-专用重排端口)。完整安装/访问/恢复见[deployment](../infra/deployment/README.md)。
 
 # 本地启动与依赖交接
 
@@ -8,7 +8,7 @@
 
 原生观测显式设置`DEEPHELP_LANGFUSE_CONFIG`指向服务器私有JSON，字段见[模板](../modules/deephelp-app/native-observation.example.json)。host/public_key/secret_key由已部署项目提供，首次配置生成32随机字节hex的redaction_key并持久保存；恢复必须使用同一密钥，模板零值须替换。enabled=false用于停用导出。配置同样传给两个MCP进程；原业务权限、模型请求/预算保持。旧OTLP参数会被拒绝，未登记到原生平台的旧run明确返回retired；旧部署/Tempo历史材料见M30交接，不启动旧后端查询。
 
-这是运行环境入口。显式demo使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`；新源码PostgreSQL可维护记录先启动[独立Business服务](../modules/deephelp-services/README.md#启动与凭据)，应用选择`--business-mcp-url`及持久服务凭据。独立检索见[Retrieval启动](../modules/deephelp-services/README.md#独立检索服务)，应用另选`--retrieval-mcp-url`与其专用凭据；省略该组时仍用原本地检索。完整发布仍使用release_cli serve及精确清单；本次没有新完整发布。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
+这是运行环境入口。显式demo使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`；新源码PostgreSQL可维护记录先启动[独立Business服务](../modules/deephelp-services/README.md#启动与凭据)，应用选择`--business-mcp-url`及持久服务凭据。独立检索见[Retrieval启动](../modules/deephelp-services/README.md#独立检索服务)，应用另选`--retrieval-mcp-url`与其专用凭据；省略该组时仍用原本地检索。完整发布使用精确清单及明确release channel；最新实际发布见PROJECT_STATE。中间件可连接、模型目录可读不代表内容验收。
 
 用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。当前文档仅列特性分支验收命令；历史main证据留Git历史与handoff，当前规则以AGENTS/ROADMAP为准。
 

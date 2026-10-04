@@ -49,6 +49,6 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 
 可用候选、端口已接入、目标能力实测和正式主链分别记录。更换Chat模型前验证任务所需schema/tool能力；更换Embedding按签名新集合/reindex。Rerank不能作为Embedding或Chat端口使用；新增可选ProviderConfig.rerank显式配置完整原生endpoint，使用同一AsyncCalls/ExecutionBudget和OTel观测。当前未启用自动切换。
 
-2026-10-04 M31首特性端口/协议试验已交付，证据见[M31](../handoffs/M31.md)，运行参数见[应用入口](../modules/deephelp-app/README.md#m31-专用重排端口)。三条固定合成query使用同一12条reference文本，券不可用/优惠未兑现/含否定的活动查询首位均符合预期；无Chat或Embedding调用。该小样本证明接口、index映射与实际usage，不证明Hybrid收益、主链已启用或企业泛化。后续机制见[M31规格](MODULES/M31_RERANK_INTEGRATION.md)，未完范围见[PLAN](../planning/M31/PLAN.md)。
+2026-10-04 M31首特性端口/协议试验已交付，证据见[M31](../handoffs/M31.md)，运行参数见[应用入口](../modules/deephelp-app/README.md#m31-专用重排端口)。三条固定合成query使用同一12条reference文本，券不可用/优惠未兑现/含否定的活动查询首位均符合预期；无Chat或Embedding调用。该小样本只证明接口、index映射与实际usage。2026-10-05全部后续特性已验：同候选dev/test选择N6/default，真实会话/独立MCP/四路学习与开启/关闭完整发布通过；test总体持平且一条退化，正式默认关闭，开启版明确试用。不证明企业泛化或统一收益，范围见[M31规格](MODULES/M31_RERANK_INTEGRATION.md)。
 
 2026-10-03按用户要求补验原Embedding及Rerank：两条Embedding均为1024维有限向量；`qwen3.7-text-rerank`真实接口对三条固定合成候选返回完整index/有限relevance_score，券无法抵扣查询首位是券有效期/使用条件候选。只证明该排序路径可调用与内容相符，不代表主链已启用、最终分类更准或企业效果。原始报告留`.local/model-interface-check/report.json`。请求结构参考[官方Rerank API](https://help.aliyun.com/zh/model-studio/text-rerank-api)的该模型专用input/parameters格式，不能与qwen3-rerank的扁平格式混用。

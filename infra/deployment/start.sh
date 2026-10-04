@@ -13,6 +13,7 @@ app_port=${DEEPHELP_APP_PORT:-8000}
 business_port=${DEEPHELP_BUSINESS_PORT:-8011}
 retrieval_port=${DEEPHELP_RETRIEVAL_PORT:-8012}
 rights_port=${DEEPHELP_LEARNING_RIGHTS_PORT:-8015}
+providers=${DEEPHELP_PROVIDERS:-modules/deephelp-app/providers.example.json}
 case "${1:-}" in
   rights)
     unset DEEPHELP_METRICS_PORT
@@ -23,7 +24,7 @@ case "${1:-}" in
   retrieval)
     export DEEPHELP_METRICS_PORT=${DEEPHELP_RETRIEVAL_METRICS_PORT:-9466}
     exec "$python" -m deephelp_services.retrieval serve --credentials "$state/retrieval.json" --port "$retrieval_port" \
-      --providers modules/deephelp-app/providers.example.json --auth "$state/auth.json" \
+      --providers "$providers" --auth "$state/auth.json" \
       --pointer "$state/pointer.json" --corpus "$DEEPHELP_CORPUS" ;;
   app)
     export DEEPHELP_METRICS_PORT=${DEEPHELP_APP_METRICS_PORT:-9464}
@@ -36,7 +37,7 @@ case "${1:-}" in
     exec "$python" -m deephelp_tools.learning.workbench serve --port "$app_port" \
       --business-mcp-url "http://127.0.0.1:$business_port/mcp" --service-credentials "$state/business.json" \
       --retrieval-mcp-url "http://127.0.0.1:$retrieval_port/mcp" --retrieval-credentials "$state/retrieval.json" \
-      --providers modules/deephelp-app/providers.example.json --pointer "$state/pointer.json" \
+      --providers "$providers" --pointer "$state/pointer.json" \
       --fasttext-pointer "$state/fasttext.json" --corpus "$DEEPHELP_CORPUS" \
       --auth "$state/auth.json" --budget-state "$state/budget.json" --trace-path "$state/trace.jsonl" \
       "${release_args[@]}" ;;

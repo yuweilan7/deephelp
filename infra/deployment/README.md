@@ -2,6 +2,14 @@
 
 正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程；关系事实与官方checkpoint在应用PG，原生trace进入Langfuse。Prometheus/Grafana保留，三个应用进程各自暴露loopback指标。M30已完成正式单写与旧服务退役；旧M23源码/脚本由`bak/mysql-otel`保留，旧安装/源数据/冷备继续作为恢复资料。当前交付状态以PROJECT_STATE和M30 handoff为准。
 
+## M31 策略发布与恢复
+
+start.sh通过`DEEPHELP_PROVIDERS`将同一模型配置传给应用及Retrieval服务，缺省仍用原公开模板；启用native rerank时另外明确完整`DEEPHELP_RERANK_URL`。同时绑定发布指针、相邻reference语料和PG release channel，不能只给运行中的旧profile增加模型。providers/env不含客户端可选端点。
+
+正式默认使用关闭策略，新开启策略保存在独立已验收channel；当前安装、channel/hash/revision见PROJECT_STATE。两版都通过11会话14消息内容门禁，开启版另有独立MCP/PG主链和四路学习内容证据。选择开启版时先control.sh stop，核对PG该channel指向已验证完整清单，再一并改为开启版指针、语料/providers和release channel，重建四单元；不能只改应用channel而保留不同的Retrieval profile。保留原业务/审批/UNKNOWN/预算状态，切换不重放消息。
+
+切回旧M30安装须同时恢复旧完整release与其指针/运行配置。受保护恢复闭包`/srv/deephelp-modern/recovery/m31-rerank-v1`记录原安装、active/previous和配置字节；先停止四单元，读取最新PG revision，以CAS切换到记录的原active，恢复闭包中的runtime.env与pointer.json，再执行switch.sh对应旧安装。artifact-map未改，旧A/B文件和安装仍保留；不回退数据库快照、不清零累计预算。仅切symlink而不恢复精确release/profile会被拒绝。
+
 ## 安装与控制
 
 根Python3.14.7、uv0.12.13、单一uv.lock和三个包保持。使用根锁导出`requirements.lock`，三包sdist→wheel，连同`start.sh`生成SHA256SUMS。`install.sh ABSOLUTE_BUNDLE_DIR VERSION`只安装新的不可覆盖版本，核对完整hash与Python/包/FastText/SDK；安装成功不等于完整内容发布通过。

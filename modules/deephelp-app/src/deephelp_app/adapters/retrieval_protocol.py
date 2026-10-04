@@ -7,7 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from jsonschema import Draft202012Validator
 from mcp.types import Tool, ToolAnnotations
@@ -15,16 +15,20 @@ from mcp.types import Tool, ToolAnnotations
 from deephelp_app.adapters.mcp_protocol import canonical
 from deephelp_app.adapters.providers import ProviderConfig
 from deephelp_app.application.corpus import read_corpus
-from deephelp_app.application.dense import load_json
+from deephelp_app.application.dense import load_json, reference_matches
 from deephelp_app.application.hybrid import normalized_fusion, result_for
 from deephelp_app.application.retrieval_policy import validate_published_selection
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models import (
     CorpusRecord,
+    DenseCandidate,
+    DenseHit,
     DenseResult,
     DenseScope,
     ErrorCode,
     HybridScope,
+    IntentCode,
+    RerankPolicy,
     RetrievalAllowance,
     RetrievalQuery,
     RetrievalWire,
@@ -43,25 +47,46 @@ class RetrievalBinding:
     corpus_digest: str
     records: tuple[CorpusRecord, ...]
     config: ProviderConfig
+    rerank_policy: RerankPolicy | None = None
+
+    @property
+    def version(self) -> Literal["m20-retrieval-v1", "m31-retrieval-v1"]:
+        return "m31-retrieval-v1" if self.rerank_policy is not None else "m20-retrieval-v1"
+
+    @property
+    def candidate_budget(self) -> int:
+        return (
+            self.rerank_policy.candidate_budget
+            if self.rerank_policy and self.rerank_policy.enabled
+            else self.top_k
+        )
+
+    @property
+    def mode(self) -> str:
+        if self.rerank_policy and self.rerank_policy.enabled:
+            return "hybrid_rerank"
+        return "hybrid" if isinstance(self.scope, HybridScope) else "dense"
 
     @property
     def profile_id(self) -> str:
-        return hashlib.sha256(
-            canonical(
-                {
-                    "version": VERSION,
-                    "scope": self.scope.model_dump(mode="json"),
-                    "top_k": self.top_k,
-                    "weight": self.weight,
-                    "corpus_digest": self.corpus_digest,
-                    "embedding": self.config.embedding.model_dump(mode="json"),
-                    "provider": self.config.provider,
-                    "allow_zero_embedding_indices": self.config.allow_zero_embedding_indices,
-                    "cache_entries": self.config.cache_entries,
-                    "cache_bytes": self.config.cache_bytes,
-                }
+        payload: dict[str, Any] = {
+            "version": self.version,
+            "scope": self.scope.model_dump(mode="json"),
+            "top_k": self.top_k,
+            "weight": self.weight,
+            "corpus_digest": self.corpus_digest,
+            "embedding": self.config.embedding.model_dump(mode="json"),
+            "provider": self.config.provider,
+            "allow_zero_embedding_indices": self.config.allow_zero_embedding_indices,
+            "cache_entries": self.config.cache_entries,
+            "cache_bytes": self.config.cache_bytes,
+        }
+        if self.rerank_policy:
+            payload["rerank_policy"] = self.rerank_policy.model_dump(mode="json")
+            payload["rerank_endpoint"] = (
+                self.config.rerank.model_dump(mode="json") if self.config.rerank else None
             )
-        ).hexdigest()
+        return hashlib.sha256(canonical(payload)).hexdigest()
 
     def allowance(self, text: str, seconds: float) -> RetrievalAllowance:
         # Exact framing used by the existing one-text embedding adapter. No output truncation.
@@ -73,9 +98,37 @@ class RetrievalBinding:
         }
         tokens = len(json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()) + 1024
         cost = self.config.embedding.input_cny_per_million * tokens / Decimal(1000000)
+        rerank = self.rerank_policy
+        if rerank and rerank.enabled:
+            if self.config.rerank is None:
+                raise ConfigurationError("Published rerank requires a configured endpoint")
+            # Owned reference documents only; largest N bounds every authorized recall subset.
+            docs = sorted(
+                (r.content for r in self.records),
+                key=lambda text: len(json.dumps(text, ensure_ascii=False).encode()),
+                reverse=True,
+            )[: rerank.candidate_budget]
+            params: dict[str, Any] = {"top_n": len(docs)}
+            if rerank.instruct is not None:
+                params["instruct"] = rerank.instruct
+            request = {
+                "model": rerank.model,
+                "input": {"query": text, "documents": docs},
+                "parameters": params,
+            }
+            paired = (
+                len(json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode())
+                + 1024
+                + (len(text.encode()) + len((rerank.instruct or "").encode()))
+                * max(0, len(docs) - 1)
+            )
+            tokens += paired
+            cost += self.config.rerank.input_cny_per_million * paired / Decimal(1000000)
         cost = max(cost, Decimal("0.000001"))
         return RetrievalAllowance(
-            attempts=6 if isinstance(self.scope, HybridScope) else 10,
+            attempts=(7 if rerank and rerank.enabled else 6)
+            if isinstance(self.scope, HybridScope)
+            else 10,
             tokens=tokens,
             cost=cost,
             seconds=min(60, seconds),
@@ -83,12 +136,20 @@ class RetrievalBinding:
 
     def health(self) -> dict[str, Any]:
         return {
-            "source": VERSION,
+            "source": self.version,
             "scope": self.scope.model_dump(mode="json"),
             "profile_id": self.profile_id,
             "corpus_digest": self.corpus_digest,
             "top_k": self.top_k,
             "weight": self.weight,
+            **(
+                {
+                    "rerank_policy": self.rerank_policy.model_dump(mode="json"),
+                    "candidate_budget": self.candidate_budget,
+                }
+                if self.rerank_policy
+                else {}
+            ),
         }
 
 
@@ -101,7 +162,7 @@ def load_binding(
         if isinstance(active, dict) and active.get("index_kind") == "intent_hybrid"
         else DenseScope.model_validate(active)
     )
-    top_k, weight = 3, 0.5
+    top_k, weight, rerank = 3, 0.5, None
     corpus = read_corpus(corpus_path) if corpus_path else None
     if corpus:
         corpus.require_valid()
@@ -113,7 +174,11 @@ def load_binding(
         selection = pointer.get("selection")
         if not isinstance(selection, dict) or pointer.get("format") != "m09-pointer-v1":
             raise ConfigurationError("Hybrid pointer requires a frozen retrieval policy")
-        selected_k = selection.get("candidate_budget")
+        selected_k = (
+            selection.get("top_k")
+            if selection.get("format") == "m31-dev-selection-v1"
+            else selection.get("candidate_budget")
+        )
         if type(selected_k) is not int or not 1 <= selected_k <= 20:
             raise ConfigurationError("Hybrid candidate budget must be an integer 1..20")
         top_k = selected_k
@@ -121,6 +186,10 @@ def load_binding(
         if pointer.get("dense_weight") != selection["dense_weight"]:
             raise ConfigurationError("Hybrid pointer corpus/weight mismatch")
         weight = float(selection["dense_weight"])
+        if selection["format"] == "m31-dev-selection-v1":
+            rerank = RerankPolicy.model_validate(selection["rerank_policy"])
+            if rerank.enabled and (config.rerank is None or config.rerank.model != rerank.model):
+                raise ConfigurationError("Published rerank endpoint/model is missing")
     if scope.signature != config.signature():
         raise ConfigurationError("Active collection embedding signature differs")
     return RetrievalBinding(
@@ -130,6 +199,7 @@ def load_binding(
         str(pointer.get("corpus_digest", "")),
         corpus.index_records if corpus else (),
         config,
+        rerank,
     )
 
 
@@ -137,14 +207,14 @@ def binding_from_files(pointer: Path, config: ProviderConfig, corpus: Path) -> R
     return load_binding(load_json(pointer), config, corpus)
 
 
-def registered_tools() -> list[Tool]:
+def registered_tools(binding: RetrievalBinding | None = None) -> list[Tool]:
     return [
         Tool(
             name=name,
             description=(
                 "检索发布语料的意图候选。"
                 if name == NAMES[0]
-                else "同一查询对照Dense、BM25与Hybrid；分数不是概率。"
+                else "同一查询对照发布的检索路线与可选重排；分数不是概率。"
             ),
             input_schema=RetrievalQuery.model_json_schema(),
             output_schema=RetrievalWire.model_json_schema(),
@@ -154,7 +224,7 @@ def registered_tools() -> list[Tool]:
                 idempotent_hint=True,
                 open_world_hint=False,
             ),
-            _meta={"deephelp/tool_version": VERSION},
+            _meta={"deephelp/tool_version": binding.version if binding else VERSION},
         )
         for name in NAMES
     ]
@@ -175,20 +245,36 @@ def validate_results(
 ) -> None:
     """Check public candidates against owned frozen records, independently of the SDK schema."""
     hybrid = isinstance(binding.scope, HybridScope)
-    modes = {"dense", "bm25", "hybrid"} if name == NAMES[1] else {"hybrid" if hybrid else "dense"}
+    modes = {"dense", "bm25", "hybrid"} if name == NAMES[1] else {binding.mode}
+    if name == NAMES[1] and binding.rerank_policy:
+        modes.add("hybrid_rerank")
     if set(results) != modes or (name == NAMES[1] and not hybrid):
         raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Retrieval result modes differ")
     records = {r.doc_id: r for r in binding.records}
     try:
         for mode, result in results.items():
-            kind = {"dense": "cosine", "bm25": "bm25", "hybrid": "fusion"}[mode]
+            result = DenseResult.model_validate(result.model_dump())
+            ranked = mode == "hybrid_rerank"
+            kind = {
+                "dense": "cosine",
+                "bm25": "bm25",
+                "hybrid": "fusion",
+                "hybrid_rerank": "fusion",
+            }[mode]
+            limit = binding.candidate_budget if binding.rerank_policy else query.top_k
             if (
                 result.scope != binding.scope
                 or result.retrieval_mode != mode
-                or len(result.hits) > query.top_k
+                or len(result.hits) > limit
                 or len({h.doc_id for h in result.hits}) != len(result.hits)
                 or result.policy_version
-                != ("hybrid-weighted-v1" if hybrid else "dense-baseline-v1")
+                != (
+                    "m31-rerank-v1"
+                    if ranked
+                    else "hybrid-weighted-v1"
+                    if hybrid
+                    else "dense-baseline-v1"
+                )
             ):
                 raise ValueError
             for hit in result.hits:
@@ -196,11 +282,10 @@ def validate_results(
                 if (
                     hit.scope != binding.scope
                     or hit.score_kind != kind
-                    or hit.intent_code != record.intent_code
-                    or hit.content != record.content
+                    or not reference_matches(hit, record, binding.corpus_digest)
                 ):
                     raise ValueError
-                if mode == "hybrid":
+                if mode in {"hybrid", "hybrid_rerank"}:
                     sources = tuple(
                         m
                         for m, v in (("dense", hit.raw_dense), ("bm25", hit.raw_sparse))
@@ -232,14 +317,49 @@ def validate_results(
                 raise ValueError
             if hybrid:
                 assert isinstance(binding.scope, HybridScope)
+                original = sorted(result.hits, key=lambda hit: hit.rank or 0)
+                expected = result_for(
+                    binding.scope, "hybrid" if ranked else mode, original, limit, binding.weight, 0
+                ).candidates
+                if ranked:
+                    state = result.rerank
+                    if (
+                        state is None
+                        or state.policy != binding.rerank_policy
+                        or state.input_doc_ids != tuple(h.doc_id for h in original)
+                    ):
+                        raise ValueError
+                    if state.result:
+                        if any(
+                            h.document.source != binding.scope.dataset_version
+                            for h in state.result.hits
+                        ):
+                            raise ValueError
+                        best: dict[IntentCode, DenseHit] = {}
+                        for hit in result.hits:
+                            best.setdefault(hit.intent_code, hit)
+                        expected = tuple(
+                            DenseCandidate(
+                                intent_code=h.intent_code,
+                                raw_score=h.raw_score,
+                                score_kind=h.score_kind,
+                                rank=i,
+                                evidence_doc_id=h.doc_id,
+                            )
+                            for i, h in enumerate(list(best.values())[: query.top_k], 1)
+                        )
+                    else:
+                        expected = expected[: query.top_k]
                 if (
-                    result.candidate_budget != query.top_k
+                    result.candidate_budget
+                    != (
+                        binding.rerank_policy.candidate_budget
+                        if ranked and binding.rerank_policy
+                        else limit
+                    )
                     or result.dense_weight != binding.weight
-                    or [h.rank for h in result.hits] != list(range(1, len(result.hits) + 1))
-                    or result_for(
-                        binding.scope, mode, list(result.hits), query.top_k, binding.weight, 0
-                    ).candidates
-                    != candidates
+                    or [h.rank for h in original] != list(range(1, len(result.hits) + 1))
+                    or expected != candidates
                 ):
                     raise ValueError
             elif list(candidates) != sorted(
@@ -248,3 +368,7 @@ def validate_results(
                 raise ValueError
     except KeyError, TypeError, ValueError:
         raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Unverified retrieval candidates") from None
+    if "hybrid_rerank" in results and "hybrid" in results:
+        ranked_result, base = results["hybrid_rerank"], results["hybrid"]
+        if sorted(ranked_result.hits, key=lambda h: h.rank or 0) != list(base.hits):
+            raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Rerank recall differs from Hybrid")

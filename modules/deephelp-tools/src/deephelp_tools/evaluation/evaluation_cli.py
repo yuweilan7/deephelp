@@ -15,6 +15,7 @@ from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.application.corpus import digest
+from deephelp_app.application.dense import load_json
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
 from deephelp_app.bootstrap.settings import Settings
@@ -139,6 +140,18 @@ def select_scope(args: argparse.Namespace, cases: list[Any]) -> tuple[list[Any],
     return selected, modes or list(MODES)
 
 
+def rerank_scope(pointer: Path, capability: str) -> dict[str, Any] | None:
+    policy = load_json(pointer).get("selection", {})
+    if not isinstance(policy, dict):
+        raise ConfigurationError("Invalid retrieval selection")
+    rerank = policy.get("rerank_policy")
+    if rerank is not None and capability != "rerank":
+        raise ConfigurationError("Rerank evaluation requires explicit --capability rerank")
+    if capability == "rerank" and rerank is None:
+        raise ConfigurationError("Rerank evaluation requires a frozen M31 selection")
+    return rerank
+
+
 async def run(args: argparse.Namespace) -> int:
     cases, data_summary = audit(Path(args.data), Path(args.manifest))
     selected, modes = select_scope(args, cases)
@@ -196,6 +209,10 @@ async def run(args: argparse.Namespace) -> int:
     gate = None
     if args.live:
         auth = LocalAuth(Path(args.auth))
+        configuration["rerank_policy"] = rerank_scope(
+            Path(args.pointer), getattr(args, "capability", "standard")
+        )
+        report["capability_scope"] = getattr(args, "capability", "standard")
         configuration.update(
             providers=file_digest(Path(args.providers)),
             strong_model=file_digest(Path("modules/deephelp-app/event-judge.example.json")),
@@ -288,6 +305,9 @@ async def run(args: argparse.Namespace) -> int:
                     "checks": {},
                     "capabilities": {
                         "retrieval": "dense" if mode == "rule_dense" else "hybrid",
+                        "rerank": configuration.get("rerank_policy")
+                        if mode != "rule_dense"
+                        else None,
                         "events": mode in {"memory_event", "fasttext"},
                         "fasttext": "enabled"
                         if args.live and mode == "fasttext"
@@ -657,6 +677,7 @@ def main() -> None:
         "--full-evaluation", action="store_true", help="Explicit four-mode quality evaluation"
     )
     parser.add_argument("--mode", action="append", choices=MODES)
+    parser.add_argument("--capability", choices=("standard", "rerank"), default="standard")
     parser.add_argument("--case", action="append", help="Select a whole frozen conversation by ID")
     parser.add_argument(
         "--list-cases", action="store_true", help="Include selectable IDs in offline audit"

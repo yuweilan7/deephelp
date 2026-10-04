@@ -1440,6 +1440,27 @@ class RetrievalRerank(DTO):
             raise ValueError("Duplicate rerank input IDs")
         if (self.status == "passed") != (self.result is not None):
             raise ValueError("Only passed rerank carries a model result")
+        if len(self.input_doc_ids) > self.policy.candidate_budget:
+            raise ValueError("Rerank exceeds published candidate budget")
+        if self.status == "passed" and (
+            not self.policy.enabled or not self.input_doc_ids or self.reason or self.error_code
+        ):
+            raise ValueError("Passed rerank requires enabled nonempty input without an error")
+        if self.status == "not_run" and (
+            self.attempts != 0
+            or self.error_code is not None
+            or self.reason != ("empty_recall" if not self.input_doc_ids else "disabled")
+            or (self.input_doc_ids and self.policy.enabled)
+        ):
+            raise ValueError("Rerank skip reason must match the input and disabled policy")
+        if self.status == "fallback" and (
+            not self.policy.enabled
+            or self.policy.failure_policy != "hybrid_on_unavailable"
+            or self.reason != "upstream_unavailable"
+            or self.error_code
+            not in {ErrorCode.TIMEOUT, ErrorCode.UPSTREAM_UNAVAILABLE, ErrorCode.RATE_LIMITED}
+        ):
+            raise ValueError("Rerank fallback is limited to published availability failures")
         if self.result is not None and (
             self.result.model != self.policy.model
             or self.result.instruct != self.policy.instruct
@@ -1729,7 +1750,7 @@ class RetrievalAllowance(DTO):
 
 
 class RetrievalDelegation(DTO):
-    version: Literal["m20-retrieval-v1"] = "m20-retrieval-v1"
+    version: Literal["m20-retrieval-v1", "m31-retrieval-v1"] = "m20-retrieval-v1"
     context: RetrievalContext
     name: Literal["retrieve_intents", "compare_intents"]
     query_hash: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
@@ -1738,7 +1759,7 @@ class RetrievalDelegation(DTO):
 
 
 class RetrievalAction(DTO):
-    action: Literal["mcp", "embedding", "milvus_validate", "dense", "bm25", "fusion"]
+    action: Literal["mcp", "embedding", "rerank", "milvus_validate", "dense", "bm25", "fusion"]
     elapsed_ms: Annotated[float, Field(ge=0, allow_inf_nan=False)]
     attempts: Count = 0
     model_calls: Count = 0
@@ -1749,12 +1770,12 @@ class RetrievalAction(DTO):
 
 
 class RetrievalReply(DTO):
-    version: Literal["m20-retrieval-v1"] = "m20-retrieval-v1"
+    version: Literal["m20-retrieval-v1", "m31-retrieval-v1"] = "m20-retrieval-v1"
     call_id: Identifier
     delegation: RetrievalDelegation
     query: RetrievalQuery
     service_pid: PositiveCount
-    results: dict[Literal["dense", "bm25", "hybrid"], DenseResult]
+    results: dict[Literal["dense", "bm25", "hybrid", "hybrid_rerank"], DenseResult]
     used: BudgetUsed
     actions: tuple[RetrievalAction, ...] = Field(max_length=16)
     error: ErrorDetail | None = None

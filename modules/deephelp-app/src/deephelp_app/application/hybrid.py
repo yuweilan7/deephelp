@@ -5,10 +5,11 @@ import math
 import time
 from typing import Literal, Protocol
 
-from deephelp_app.application.dense import validate_vector
+from deephelp_app.application.dense import reference_matches, validate_vector
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
+    CorpusRecord,
     DenseCandidate,
     DenseHit,
     DenseResult,
@@ -138,7 +139,12 @@ async def rerank_result(
     best: dict[str, DenseHit] = {}
     for hit in hits:
         best.setdefault(hit.intent_code.value, hit)  # Ranked best evidence, never class sums.
-    ordered = list(best.values())[:top_k]
+    by_id = {h.doc_id: h for h in original}
+    ordered = (
+        list(best.values())[:top_k]
+        if result
+        else [by_id[c.evidence_doc_id] for c in baseline.candidates[:top_k]]
+    )
     return DenseResult(
         scope=baseline.scope,
         hits=hits,
@@ -180,6 +186,8 @@ class HybridRetriever:
         reranker: RerankPort | None = None,
         rerank_policy: RerankPolicy | None = None,
         candidate_budget: int | None = None,
+        records: tuple[CorpusRecord, ...] | None = None,
+        corpus_digest: str | None = None,
     ) -> None:
         if (
             isinstance(dense_weight, bool)
@@ -198,6 +206,8 @@ class HybridRetriever:
         self.candidate_budget = (
             rerank_policy.candidate_budget if rerank_policy else candidate_budget
         )
+        self.records = {r.doc_id: r for r in records} if records is not None else None
+        self.corpus_digest = corpus_digest
 
     async def compare(
         self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
@@ -229,6 +239,15 @@ class HybridRetriever:
                 len(hits) > limit or any(h.scope != scope for h in hits) for hits in routes.values()
             ):
                 raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Hybrid route scope/budget mismatch")
+            if self.records is not None and any(
+                h.doc_id not in self.records
+                or not reference_matches(h, self.records[h.doc_id], self.corpus_digest)
+                for hits in routes.values()
+                for h in hits
+            ):
+                raise AppError(
+                    ErrorCode.MODEL_OUTPUT_INVALID, "Recall differs from owned reference"
+                )
             elapsed = (time.perf_counter() - started) * 1000
             results = {
                 mode: result_for(scope, mode, hits, limit, self.dense_weight, elapsed)

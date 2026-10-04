@@ -37,22 +37,24 @@
 | M28 | LIVE_VERIFIED；[交接](../handoffs/M28.md) | 两特性完成：原生SDK/官方callback、跨MCP与暂停恢复持久前序；实际业务13段、generation脱敏IO/usage、原工作台/分页/越权及停用故障重放通过；旧部署与Tempo历史保留M30 |
 | M29 | LIVE_VERIFIED；[交接](../handoffs/M29.md) | 全部特性已交付：原历史29行映射/恢复及工作台0模型；不可变Prompt版本→本地hash工件→原完整发布，11会话14消息内容PASS；平台annotation经显式审核/CAS回流，实际v1→v2→v1与平台故障下原请求通过；两版本文本等价，不宣称质量提升 |
 | M30 | LIVE_VERIFIED；[交接](../handoffs/M30.md) | 两特性完成：直接指标/新安装，最终源快照/官方历史转换/PG单写、新代码A/B各完整内容门禁及实际回滚、云浏览器四轮/同trace120观测/审批一效果、独立故障恢复、180秒容量及隔离全存储恢复通过；旧MySQL/Collector/Tempo及旧指标栈已停用且取消自启，原数据/冷备/bak保留。合成单机短窗口，不声明长期SLA |
-| M31 | CORE_COMPARISON_LIVE_VERIFIED；[交接](../handoffs/M31.md) | 专用端口与Hybrid文档重排/最佳意图证据已交付；冻结dev/test选择N6/default，test总体持平且一条退化，拒识6/6；会话/MCP/学习页/正式发布待下一特性，active未改变 |
+| M31 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M31.md) | 专用端口、同候选dev/test、真实会话/独立MCP/四路学习与新完整发布已验；N6/default/fail_closed、最终K3。test总体持平且一条退化，拒识6/6；正式默认关闭，开启版保留显式试用；不证明企业泛化 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
 ## 现代路线实施与规划
 
-2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成专用端口及同链核心/受控对照；MCP/会话/学习页和正式发布待后续特性。规格是工程目标，不是当前运行事实。
+2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成端口、同链对照、MCP/会话/学习页与精确完整发布。规格定义目标，实际结果与限制见下表及各handoff。
 
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25–M30全部迁移模块已按特性交付：PG全部关系仓储、官方saver历史、Langfuse平台/原生观测、M29学习与发布扩展及M30正式单写切换/旧服务退役。M31已有专用协议和同链/受控对照，远端/学习页/正式发布仍未实施。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
+用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25–M30全部迁移模块已按特性交付：PG全部关系仓储、官方saver历史、Langfuse平台/原生观测、M29学习与发布扩展及M30正式单写切换/旧服务退役。M31全部三项亦已实施验证。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
 
 2026-10-04用户明确调整实施范围：“完成Mxx”由同一会话、同一主写者从未完成项续做该M全部特性，逐项验收与分支交付后继续，全部完成后停止；同模块下一特性无需逐项另启。该条为范围规则调整的历史说明；随后M25完整实施按此规则交付，未启动M26/M31后续特性或改变调度配置。
 
 ## 当前运行与验收边界
 
-正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m30-retirement-v2`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
+正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m31-rerank-v1`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision4，active为退役代码B、previous为兼容PG代码A；两版各通过原11会话14消息完整内容门禁，实际B→A→B保留新写及审批一效果。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision5，active为M31关闭版`7b4c12337c2b5404bbedee80063b225a496ad79cf895b98b1396d174be0b3134`，previous为M30退役代码B。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；切换开启需同时重建应用/检索profile。两版各通过11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+
+M31开启版通过三个实际进程的PG订单主链，实付173.45/优惠12.30；一次Embedding/一次Rerank/原600一次Chat，Langfuse三次generation与调用数一致。显式学习比较四路共享同一向量/原候选，实际模型2次；签名usage仅结算一次。重复消息、登录后页面/历史/三视图和越权守卫通过，读取0模型。安装后正式MCP version/profile/签名health/schema与页面/历史检查通过，亦0模型；未把HTTP健康当内容证据。离线全量在来源metadata修复前1216 passed/2 skipped，修复后192项相关回归及格式/类型检查通过。M31全部特性收尾，不启动下一M。
 
 当前应用/Business/Retrieval/权益四单元active且enabled，业务trace为Langfuse原生SDK，三进程直接指标进入新Prometheus/Grafana。旧四应用单元inactive/disabled；旧MySQL、Collector、Tempo及旧Prometheus/Grafana五容器exited/restart=no，旧端口退出。旧数据目录、只读源快照、完整冷备/原配置/身份及两版安装保持；未删除旧数据卷。M29独立学习库`deephelp_m25_m28_native`保留，不能作为第二活动业务写入口。浏览器本机18080、Grafana23000及恢复方法见LOCAL_SETUP和infra/deployment。
 

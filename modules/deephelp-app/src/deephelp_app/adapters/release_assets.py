@@ -5,6 +5,8 @@ from typing import Any
 
 from deephelp_app.adapters.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_manifest
+from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.retrieval_protocol import binding_from_files
 from deephelp_app.adapters.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.corpus import digest
@@ -33,6 +35,16 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     registry = SOPRegistry.model_validate(manifest.sop_registry)
     package = PACKAGE
     validation = read_data(Path(manifest.validation_path))
+    if dense.get("selection", {}).get("format") == "m31-dev-selection-v1":
+        pointer = resolve_artifact(data["dense_pointer"])
+        corpus = pointer.parent / "corpus.jsonl"
+        retrieval_binding = binding_from_files(
+            pointer, ProviderConfig.load(Path(manifest.providers_path)), corpus
+        )
+        if validation.get("retrieval_profile") != retrieval_binding.health() or str(corpus) not in {
+            str(resolve_artifact(p)) for p in manifest.files
+        }:
+            raise ConfigurationError("Unverified released rerank profile or reference corpus")
     prompts = {
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }

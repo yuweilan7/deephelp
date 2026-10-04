@@ -30,6 +30,7 @@ from deephelp_tools.evaluation.flywheel_assets import (
 from deephelp_tools.evaluation.flywheel_assets import read_data as load_json
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore
 from deephelp_tools.evaluation.mvp_acceptance import api_client
+from deephelp_tools.probes.usage import api_records, summarize_usage
 
 
 async def cleanup_event_collection(collection: str) -> bool:
@@ -134,6 +135,8 @@ async def validate(
         synthetic=True,
         interpretation="real services and SDK tools; synthetic business only",
         event_collection=collection,
+        retrieval_profile=runtime.retrieval_binding.health(),
+        api_observations=[],
     )
     try:
         async with asyncio.timeout(1800), app.router.lifespan_context(app):
@@ -152,10 +155,26 @@ async def validate(
                         )
                         source_ids[turn.turn_id] = body["message_id"]
                         started = perf_counter()
+                        before_primary = list(runtime.gateway.diagnostics)
+                        before_strong = list(runtime.judge_gateway.diagnostics)
                         raw = await client.post(
                             "/converse", json=body, headers={"Authorization": "Bearer " + token}
                         )
                         response = ResponseEnvelope.model_validate(raw.json())
+                        report["api_observations"].extend(
+                            api_records(
+                                runtime.gateway.diagnostics,
+                                phase="release-primary",
+                                sample=turn.turn_id,
+                                previous=before_primary,
+                            )
+                            + api_records(
+                                runtime.judge_gateway.diagnostics,
+                                phase="release-strong",
+                                sample=turn.turn_id,
+                                previous=before_strong,
+                            )
+                        )
                         if response.error and response.error.code in {
                             ErrorCode.UPSTREAM_UNAVAILABLE,
                             ErrorCode.UNAUTHENTICATED,
@@ -179,7 +198,9 @@ async def validate(
                             if question
                             else {},
                             tools=records,
-                            retrievals=[],
+                            retrievals=[response.intent_decision.retrieval.model_dump(mode="json")]
+                            if response.intent_decision and response.intent_decision.retrieval
+                            else [],
                             entity_sources={
                                 e.name.value: e.source.model_dump(mode="json")
                                 for e in question.entities
@@ -259,6 +280,18 @@ async def validate(
             r["score"]["completed"] and not r["score"]["hard_failures"] for r in report["rows"]
         )
         report["checks"]["all_sessions"] = report["metrics"]["case_completion_rate"]["value"] == 1
+        observations = report.pop("api_observations")
+        report["model_usage"] = summarize_usage(
+            observations,
+            attempts=sum(r["response"]["call_counts"]["model_calls"] for r in report["rows"]),
+        )
+        rerank_calls = sum(r.get("path") == "rerank/text-rerank" for r in observations)
+        report["rerank_calls"] = rerank_calls
+        policy = runtime.retrieval_binding.rerank_policy
+        if policy:
+            report["checks"]["published_rerank_execution"] = (
+                rerank_calls > 0 if policy.enabled else rerank_calls == 0
+            )
         if baseline:
             old = load_json(baseline)
             if old.get("status") != "PASS" or any(

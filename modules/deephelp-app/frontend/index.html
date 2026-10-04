@@ -286,12 +286,13 @@
       </section>
       <section id="retrieval" class="tab learning" hidden>
         <div>
-          <p class="eyebrow">ONE QUERY / ONE VECTOR / THREE ROUTES</p>
-          <h1>同输入，比较三种召回</h1>
+          <p class="eyebrow">ONE QUERY / ONE VECTOR / FROZEN PROFILE</p>
+          <h1>同输入，比较召回与重排</h1>
           <p>
             使用当前已发布的语料与签名，原 RemoteRetriever.compare
             在服务端只生成一次向量，再比较
-            Dense、BM25、Hybrid。分数类型和归一融合不能当作分类概率。
+            Dense、BM25、Hybrid及已明确开启的Hybrid+Rerank。重排在意图归并前排序文档；
+            原始分数和重排分数分别显示，均不能当作分类概率。关闭的发布不会调用重排模型。
           </p>
           <form id="retrieval-form">
             <label for="retrieval-text">检索 query</label
@@ -300,14 +301,15 @@
             >
             <p id="retrieval-budget" class="muted"></p>
             <button id="retrieval-execute" class="primary">
-              明确执行三路真实检索
+              明确执行已发布路线的真实对照
             </button>
           </form>
           <div class="lesson">
             <h3>预期观察与反例</h3>
             <p>
-              三列应显示同
-              scope/Embedding签名/语料版本，候选带原分数、score_kind及融合信息；服务内动作及实际耗时在签名回执。陌生scope不允许由浏览器传入。无关查询仍可能召回相似候选，只有原级联门限与反证能决定是否接管。
+              各路使用同scope/Embedding签名/语料版本，重排与Hybrid共享文档；
+              回执显示模型、指令、profile、用量和耗时。无关查询仍可能召回相似候选，
+              最终意图由原600服务确认。当前固定测试集重排总体持平且有退化，不默认全量开启。
             </p>
             <p class="code">
               adapters/retrieval_mcp.py · RemoteRetriever.compare<br />application/hybrid.py
