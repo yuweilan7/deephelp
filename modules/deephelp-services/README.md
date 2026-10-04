@@ -1,6 +1,6 @@
-# DeepHelp独立业务服务
+# DeepHelp独立业务与检索服务
 
-M20第1特性复用应用的唯一DTO、只读工具schema与会话引擎，Business服务拥有订单/券/活动的MySQL维护事务及查询快照。Retrieval MCP为下一顺序特性，当前检索仍由应用直接调用既有Embedding/Milvus/BM25适配器。服务不依赖deephelp-tools，不提供任意SQL或中间件命令。
+M20复用应用的唯一DTO、只读工具schema与会话引擎。Business服务拥有订单/券/活动的MySQL维护事务及查询快照；Retrieval服务复用既有Embedding/Milvus/BM25适配器与Dense/Hybrid排序。两个服务不依赖deephelp-tools，不提供任意SQL或中间件命令。
 
 ## 启动与凭据
 
@@ -53,3 +53,28 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 ```
 
 探针显式创建JSON没有的新记录，通过原引擎的三类客诉核对事实，证明至少一条实际检索/MCP；固定动作验证CAS、归属、旧消息零调用、独立进程重启。失败保存必要状态，只有完成了Business重启而应用重启未结束的报告可用`--resume-report`补测重启相关动作；沿用同一auth/服务凭据/累计预算，不重新跑已通过模型样本。最终证据见[M20交接](../../handoffs/M20.md)。个人合成持久记录不等于企业订单/支付；synthetic_rights不修改这些表。完整发布仍须精确清单和专项发布验收，本特性没有注册新发布。
+
+## 独立检索服务
+
+Retrieval使用自己的持久Bearer与委托key。服务的`--auth`映射允许主体；应用使用同一份身份映射与当前发布pointer、corpus、providers。它只验证现有集合，不导入语料、不reindex。新机器先按应用init准备身份/累计预算；已有文件不重置。启动前按LOCAL_SETUP检查隧道health并显式加载模型环境。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_services.retrieval init --credentials .local/m20/retrieval-service.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_services.retrieval serve --credentials .local/m20/retrieval-service.json --auth .local/m20/auth.json --pointer .local/m09/active.json --corpus demo/data/m09_corpus.jsonl --port 8012
+# 保持Business服务运行，在另一个终端选择两个服务。
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --business-mcp-url http://127.0.0.1:8011/mcp --service-credentials .local/m20/service.json --retrieval-mcp-url http://127.0.0.1:8012/mcp --retrieval-credentials .local/m20/retrieval-service.json --auth .local/m20/auth.json --budget-state .local/m20/budget.json --pointer .local/m09/active.json --corpus demo/data/m09_corpus.jsonl --trace-path .local/m20/runtime.trace.jsonl
+```
+
+两个只读工具`retrieve_intents`与`compare_intents`的正式schema使用唯一RetrievalQuery/Wire DTO。参数只有query、top_k和发布scope指纹；身份、工具/query/profile关联及本次有限预算在签名元数据。Hybrid对照保留三组候选、原始分数、score_kind、K、weight、融合来源；分数不是概率。纯Dense发布可检索，对照返回VERSION_CONFLICT。服务及应用分别核对发布资产、归属、schema和候选语义；`deephelp://m20/retrieval/health`也要求受保护委托。
+
+应用先原子预留并持久化本次尝试/Embedding上界，服务按子预算执行且不自动重试；签名回执包含实际MCP/Embedding/Milvus/Dense/BM25/fusion动作、延迟、provider请求ID与用量。应用回验后结算原累计文件，未知、取消、无有效回执保留预留；重启不归零，断连不回退本地。应用的私有事件记忆和事实校验仍直接使用既有适配器。受限、脱敏流程视图增加retrievals；超大/未知诊断沿用incomplete边界，OTel集成留M21。
+
+专项真实验收在安装app、services、tools的环境启动，明确选择固定查询与新业务记录，复用仍适用的模型能力证据。首次init使用本轮上限变量；不要覆盖已有controls。先完成协议阶段，再用其适用报告仅补业务/应用重启阶段；两阶段沿用同一累计预算。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.retrieval_probe init --max-calls $AcceptanceMaxCalls --max-tokens $AcceptanceMaxTokens --max-cost $AcceptanceMaxCost
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.retrieval_probe run --live --phase protocol --output .local/m20/retrieval-protocol-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.retrieval_probe run --live --resume-report .local/m20/retrieval-protocol-new.json --output .local/m20/retrieval-final-new.json
+```
+
+协议阶段仅在专用子进程增加观测：先调用原真实Embedding网关，把实际返回向量暂存到自身系统临时目录，再用该向量对照原本地检索。它不是Mock或第二次模型响应；生产服务没有该观测入口。报告保留向量hash、实际回执和三路结果，成功后删除临时向量/日志。业务阶段使用未加观测的正式服务，验收跨两个MCP的事实、双端校验、独立重启、零调用重放与越权。失败先保留脱敏结果/必要状态，修复只复验失败及受影响路径，不串跑历史模块或P00 full。

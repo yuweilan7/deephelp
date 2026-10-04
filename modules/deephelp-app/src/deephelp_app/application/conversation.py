@@ -105,6 +105,7 @@ class RunTrace:
     deferred: bool = False
     tools: list[dict[str, object]] = field(default_factory=list)
     sop_nodes: list[dict[str, object]] = field(default_factory=list)
+    retrievals: list[dict[str, object]] = field(default_factory=list)
 
     def counts(self) -> CallCounts:
         return CallCounts(
@@ -404,6 +405,15 @@ class Conversation:
             current_run.reset(token)
 
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
+        from deephelp_app.domain.execution import request_execution
+
+        token = request_execution.set(request)
+        try:
+            return await self._run(request, budget)
+        finally:
+            request_execution.reset(token)
+
+    async def _run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         initial = budget.usage()
         # Authorize hints before receipt lookup; a hint never resumes an old run.
         if request.question_hint:
@@ -893,6 +903,7 @@ class Conversation:
             "versions": response.versions.model_dump(mode="json"),
             "stages": [s.model_dump(mode="json") for s in response.stages],
             "tools": stats.tools,
+            "retrievals": stats.retrievals,
             "sop": definition.model_dump(mode="json") if definition else None,
             "sop_nodes": stats.sop_nodes,
             "response": response.model_dump(
@@ -904,6 +915,8 @@ class Conversation:
         gaps: list[str] = []
         if getattr(self.trace, "dropped", 0):
             gaps.append("trace_events_dropped")
+        if any(row.get("model_calls") is None for row in stats.retrievals):
+            gaps.append("retrieval_usage_unknown")
         # Diagnostics can omit oversized sections; authoritative ledger facts are untouched.
         for field_name in (
             "memory",
@@ -912,6 +925,7 @@ class Conversation:
             "input",
             "question",
             "sop",
+            "retrievals",
             "tools",
             "intent",
         ):

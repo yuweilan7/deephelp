@@ -129,6 +129,10 @@ def main() -> int:
     p.add_argument("--max-cost", type=str, default="10")
     p.add_argument("--mcp-module", help="Explicit stdio MCP module (demo requires deephelp-tools)")
     p.add_argument("--business-mcp-url", help="Independent Business MCP /mcp endpoint")
+    p.add_argument("--retrieval-mcp-url", help="Independent Retrieval MCP /mcp endpoint")
+    p.add_argument(
+        "--retrieval-credentials", type=Path, help="Retrieval transport/delegation credentials"
+    )
     p.add_argument("--event-collection", help="Explicit owned dh_m10_events_ collection")
     p.add_argument(
         "--service-credentials", type=Path, help="Persistent transport/delegation credentials"
@@ -168,6 +172,8 @@ def main() -> int:
                     )
                 if bool(args.business_mcp_url) != bool(args.service_credentials):
                     raise ConfigurationError("Business MCP requires --service-credentials")
+                if bool(args.retrieval_mcp_url) != bool(args.retrieval_credentials):
+                    raise ConfigurationError("Retrieval MCP requires --retrieval-credentials")
                 assembly = LiveAssembly(
                     Path.cwd(),
                     Path(args.providers),
@@ -181,6 +187,13 @@ def main() -> int:
                         url=args.business_mcp_url, credentials_path=args.service_credentials
                     )
                     if args.business_mcp_url
+                    else None,
+                    retrieval_mcp=HTTPMCPConfig(
+                        url=args.retrieval_mcp_url,
+                        credentials_path=args.retrieval_credentials,
+                        audience="retrieval",
+                    )
+                    if args.retrieval_mcp_url
                     else None,
                     corpus_path=args.corpus,
                     event_collection=args.event_collection,

@@ -139,7 +139,7 @@ class NetworkMCPClient:
             ):
                 raise AppError(
                     ErrorCode.MODEL_CAPABILITY_UNAVAILABLE,
-                    "Business MCP initialize version differs",
+                    "MCP initialize version differs",
                 )
             self.handshakes.append(
                 {"initialized": True, "protocol_version": client.session.protocol_version}

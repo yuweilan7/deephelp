@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, observe_sop_node, sop_node_observer
-from deephelp_app.application.debug import export_json, sanitize, scope_hash
+from deephelp_app.application.debug import export_json, project, sanitize, scope_hash
 from deephelp_app.application.reply import ReplyComposer, apply_wording, fact_reply
 from deephelp_app.bootstrap.mvp_runtime import validate_trace_path
 from deephelp_app.domain.errors import AppError, ConfigurationError
@@ -156,6 +156,41 @@ def test_scope_isolates_all_three_dimensions():
         scope_hash(b"x" * 32, identity.model_copy(update={"tenant_id": "t2"}), "s"),
     }
     assert len(scopes) == 4
+
+
+def test_retrieval_flow_preserves_actions_and_redacts_nested_delegation_and_query():
+    raw = {
+        "retrievals": [
+            {
+                "client_validation": "PASS",
+                "server_validation": "PASS",
+                "receipt": {
+                    "delegation": {
+                        "context": {
+                            "identity": {"tenant_id": "private-tenant", "user_id": "private-user"}
+                        }
+                    },
+                    "query": {"query": "订单 M20R-private 的优惠", "scope_id": "f" * 64},
+                    "actions": [{"action": "dense", "elapsed_ms": 2.5}],
+                },
+            }
+        ],
+        "input": {"order_id": "M20R-private"},
+    }
+    snapshot = DebugSnapshot(
+        scope_hash="a" * 64,
+        run_id="r",
+        question_id="q",
+        trace_id="t",
+        data=sanitize(raw, b"x" * 32),
+    )
+    flow = project(snapshot, "flow")
+    encoded = json.dumps(flow)
+    assert all(value not in encoded for value in ("private-tenant", "private-user", "M20R-private"))
+    assert flow["data"]["retrievals"][0]["receipt"]["actions"] == [
+        {"action": "dense", "elapsed_ms": 2.5}
+    ]
+    assert project(snapshot, "intent")["data"].get("retrievals") is None
 
 
 def event(trace, run="run", **changes):

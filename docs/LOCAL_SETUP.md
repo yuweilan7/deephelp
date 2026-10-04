@@ -1,6 +1,6 @@
 # 本地启动与依赖交接
 
-这是运行环境入口。显式demo使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`；MySQL可维护记录先启动[独立Business服务](../modules/deephelp-services/README.md#启动与凭据)，应用选择`--business-mcp-url`及持久服务凭据。完整发布仍使用release_cli serve及精确清单；本次没有新完整发布。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
+这是运行环境入口。显式demo使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`；MySQL可维护记录先启动[独立Business服务](../modules/deephelp-services/README.md#启动与凭据)，应用选择`--business-mcp-url`及持久服务凭据。独立检索见[Retrieval启动](../modules/deephelp-services/README.md#独立检索服务)，应用另选`--retrieval-mcp-url`与其专用凭据；省略该组时仍用原本地检索。完整发布仍使用release_cli serve及精确清单；本次没有新完整发布。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
 用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。当前文档仅列特性分支验收命令；历史main证据留Git历史与handoff，当前规则以AGENTS/ROADMAP为准。
 
@@ -48,7 +48,7 @@ py -3.14 -m uv sync --locked --all-packages
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
 ```
 
-配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。当前demo必须安装deephelp-tools并明确指定MCP模块，Hybrid语料也须显式选择；没有MySQL业务后端或自动JSON回退。仅学习骨架使用 `uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501；fake回放由独立工具包明确装配。业务启动不导入工具/demo或读取冻结dev/test，包安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。
+配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。当前demo必须安装deephelp-tools并明确指定MCP模块，Hybrid语料也须显式选择；MySQL业务后端与独立检索通过上述M20服务选择，依赖故障关闭，没有自动JSON回退。仅学习骨架使用 `uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501；fake回放由独立工具包明确装配。业务启动不导入工具/demo或读取冻结dev/test，包安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。
 
 解释器核验：`py -3.14 -m uv run --locked python -c "import sys; assert sys.version_info[:3] == (3, 14, 7); print(sys.executable)"`。旧启动入口的历史验证原文保留 Git 历史，当前运行命令统一使用 3.14.7。uv 为独立工具；版本门禁不会降低应用的 Python 要求。
 

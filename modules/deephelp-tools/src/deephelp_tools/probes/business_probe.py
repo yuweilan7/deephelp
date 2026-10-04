@@ -105,7 +105,7 @@ async def reclaim_owned_lock(path: Path) -> None:
 def cleanup_logs(path: Path) -> bool:
     if any(p.is_symlink() or p.is_junction() for p in [path, *path.parents]):
         return False
-    for name in ("application.log", "business.log"):
+    for name in ("application.log", "business.log", "retrieval.log", "actual-embedding.json"):
         item = path / name
         if item.is_symlink() or item.is_junction():
             return False
