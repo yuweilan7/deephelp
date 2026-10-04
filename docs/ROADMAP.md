@@ -9,6 +9,7 @@
 1. M08最小闭环：三类客诉，真实千问、Milvus和MCP协议，业务数据合成。
 2. 核心深化：Hybrid、记忆、事件聚合、完整级联、FastText、SOP治理、调试、评测与审核回流。
 3. 个人学习与远端运行：M19工程分层→M20持久业务→M21可观测性→M22学习工作台→M23个人云部署。M15已提供审批基础；真实业务写工具仍须实际执行适配与专项验收。
+4. 用户2026-10-04追加现代技术路线：旧技术栈已保存在bak/mysql-otel，main继续演进；M25全业务PostgreSQL→M26官方checkpoint→M27 Langfuse平台→M28原生观测→M30新环境切换/旧服务退役；M29 Prompt/评测平台为推荐学习扩展。另明确追加M31 qwen3.7-text-rerank接入/效果验证，可独立于迁移启动。模块尚未实施，见下方独立路线。
 
 身份隔离、幂等、预算和事实证据贯穿核心。15+情境、500+样本为完整规模目标，未完成单列限制，不用小样本冒充。
 
@@ -26,7 +27,7 @@
 | 67–69 | SOP/MCP/ReAct/输出 | M06–M08/M14/M16；真实协议+合成下游，写操作需M15 |
 | 70–76 | 调试、评测、分期 | M08/M16–M18；实际覆盖与规模分开 |
 
-内部后台/京ME、全供应商、本地大模型、多Agent及Rerank不默认逐项建设；另需验证时明确目标。M19–M23为用户2026-10-04指定的个人学习扩展，不宣称来自PDF原实现。细页码见 [SOURCE_MAP](SOURCE_MAP.md)，裁决见 [DECISIONS](DECISIONS.md)。
+内部后台/京ME、全供应商、本地大模型及多Agent不默认逐项建设；另需验证时明确目标。M19–M23及M25–M31为用户2026-10-04指定的个人学习/工程扩展，Rerank已另立M31，不宣称来自PDF原实现。细页码见 [SOURCE_MAP](SOURCE_MAP.md)，裁决见 [DECISIONS](DECISIONS.md)。
 
 ## 能力与退出条件
 
@@ -61,7 +62,37 @@
 
 M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23个人学习路线已完成；旧M19部署/故障要求的必要部分归M23，旧M20物流、M21框架对照从当前路线撤下，历史由Git追溯。每M可有多个顺序特性，完成后停止，不自动启动业务扩展。
 
+## 现代技术路线（M25–M31，规划）
+
+用户明确要求保留当前main整套MySQL/OTel实践与部署入口，后续学习更活跃的Agent技术栈。旧代码与历史由bak/mysql-otel保留，main继续开发。此路线复用全部有效机制，以维护责任/可调试性选择工具，不以名字或热度证明效果；它是用户工程扩展，不改写M00–M23历史来源和验收。
+
+选定**全部应用关系数据迁PostgreSQL + 官方AsyncPostgresSaver + Langfuse原生Python SDK**。实际LangGraph审批图使用官方callback，自定义13段/httpx模型网关显式接原生SDK。Langfuse元数据库与应用事实库分离，可共用PG实例；业务/outbox事务不跨Langfuse。Redis/Milvus/etcd和基础指标Prometheus/Grafana保留。原独立Collector/Tempo与MySQL仅在M30满足功能/数据/恢复条件后退役；SDK内部OTel/W3C上下文继续使用。LangSmith不作为此轮主平台，托管需求以后另评估。
+
+备份分支bak/mysql-otel已推送并固定在`930958a2f21bab7377c30c74ca770771fa1004cf`，保留M00–M23、Linux CI修复及原MySQL/OTel部署恢复入口；后续提交不合入该分支，不移动/覆盖它。继续遵守AGENTS：从同步main建立feature、特性分支验收、合入/推送main、同步六SHA，最终回到干净main。本轮计划由用户明确授权直接提交/推送main；备份动作已完成，不再为它建立独立模块或修改默认分支。
+
+| 模块 | 用户可启动的首特性 | 后续范围/前置 |
+|---|---|---|
+| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 驱动/真实事务与全部持久消费者盘点；可首先启动 | 旧路线已备份；探针后细化全业务迁移/隔离备份恢复 |
+| [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换、独立进程恢复 | M25全持久特性；探针后正式装配/完整历史恢复 |
+| [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS、Web/Worker实际存入/读回 | M25/M26；无需付费对象存储，随后组合容量/平台恢复 |
+| [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP、官方图与pause/resume可查关联 | M26/M27；随后业务覆盖和原工作台查询替换 |
+| [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | 现有报告/冻结集的Dataset/Experiment/Score映射 | M28；可选，随后Prompt版本/审核映射，不替换M18 active |
+| [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标与新部署/隔离恢复演练 | M25–M28；另启动最后快照/单写切换/旧服务退役，M29可跳过 |
+| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [计划](../planning/M31/PLAN.md) | qwen3.7-text-rerank专用端口/协议及真实内容试验；可独立启动 | 已交付M03/M09/M12/M17/M18/M20/M22；随后同链质量对照、Retrieval MCP/学习页/正式发布，不依赖迁库完成 |
+
+每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25和独立M31的首特性当前可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
+
+实施Prompt可直接使用：“实施M25首特性。按docs/MODULES/M25_POSTGRES_FACTS.md和planning/M25/PLAN.md验证隔离PostgreSQL/psycopg异步事务并盘点持久消费者；旧路线保留在bak/mysql-otel，按AGENTS从main建特性分支并合入main。一个主写者，验证/中文提交/推送/同步后停止，不切现网、不卸载、不购买资源，不启动下一特性或M26。”后续选择对应首特性，并核对实际前置。
+
+补检索能力可先使用：“实施M31首特性。按docs/MODULES/M31_RERANK_INTEGRATION.md和planning/M31/PLAN.md完成qwen3.7-text-rerank专用端口/协议与代表内容实测，保留当前Hybrid和active发布；按AGENTS从main建特性分支，验收/中文提交/推送/合并/同步后停止。只做首特性，不同时迁数据库或部署Langfuse；后续真实会话/MCP/学习页与正式发布另启。”
+
+容量与资源：现有约7.51GiB适合先做受控低负载试验，不保证完整Langfuse与训练峰值共存。当前Langfuse需Web/Worker/PG/ClickHouse/专用noeviction队列Redis/S3对象存储；不能照旧截图写ClickHouse或对象存储可选。选官方支持的SeaweedFS单机自托管，使用现有磁盘/容器网络，和PG/ClickHouse一起做容量及隔离恢复实测；不购买COS、RDS或其他托管存储，不默认安装已归档社区MinIO。容量不足则报告，不自动开通计费资源。
+
+规划交付只改文档/PLAN和明确授权的Git引用/提交，不创建空handoff，不改变当前数据库、服务、锁或发布资产。用户本轮明确授权备份旧分支及提交/推送计划；它不启动任何迁移、平台部署或Rerank实施。事实进度只写STATE；M25–M31 handoff均待实际实施产生。
+
 ## 学习与运行方式
+
+以下段落描述已交付的MySQL/OTel路线；未来main演进目标由M25–M31及ADR024/025单独定义。它们不是新路线应当继续保留MySQL/Tempo的实施指令。
 
 保留一个工程和一套引擎。模型执行方式、业务数据源、运行地点分别选择：离线练习/CI不联网；demo只在显式选择或导入时使用样例；个人运行从MySQL读取可维护记录并显式调用真实模型。合成内容可以是真实持久业务记录，是否连接数据库/协议/模型与内容是否来自企业分别说明。服务器位置不自动决定联网模式，数据库失败不回退JSON。
 

@@ -8,6 +8,12 @@
 
 M08先交付优惠未享受、券不可用、订单活动查询等3–5个合成场景；M14扩展配置/场景，M17做冻结评测，M18做最小审核回流。2026-10-04用户将后续目标改为个人学习工作台：M19工程分层、M20持久业务、M21观测、M22教程/操作前端、M23云运行。该扩展复用核心引擎，旧物流迁移/框架对照撤下；真实支付/发券/退款与企业数据接入仍不在默认范围。15+情境和500+样本的历史证据与未完成项见STATE，不能用小样本外推质量。
 
+同日用户追加[M25–M31现代路线](ROADMAP.md#现代技术路线m25m31规划)，裁决见ADR024：原完整MySQL/OTel版本保存于bak/mysql-otel，main按原feature→main流程继续演进；全部应用关系事实迁PostgreSQL、checkpoint用官方AsyncPostgresSaver，Langfuse原生SDK负责LLM观测/工程功能，实际审批图接官方callback。应用事实与Langfuse元数据库分离，checkpoint仍非账本，outbox/审批/版本及UNKNOWN先对账机制保持。Langfuse必需对象存储用SeaweedFS单机自托管，不依赖付费COS/RDS。新路线保留Milvus/Redis/etcd及基础Prometheus/Grafana，功能/指标/恢复接替后才退役独立Collector/Tempo与MySQL；SDK内部OTel/W3C上下文保留。
+
+用户另要求补齐[M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md)，见ADR025。在较宽的授权文档召回之后用qwen3.7-text-rerank重排，再按意图最佳证据归并；本地/独立Retrieval MCP共享签名策略和预算，原融合分数与重排分数分开，600仍唯一主分类。当前仅规划，不依赖迁库，不把历史三候选验证当主链启用。
+
+以上为尚未实施的工程目标。本章后续MySQL/OTel设计仍说明已交付旧路线，不是要求后续main继续维护双后端。M25/26证明事务/历史状态兼容，M27证明平台/自托管对象存储/容量，M28证明观测/页面授权，M30最后单写切换；不会仅为迁中间件重写13段引擎、工具协议、唯一领域DTO或旧历史清单。Prompt候选在Langfuse编辑，但运行始终绑定M18已发布工件，不建立第二个active。
+
 ## 2. 物理目录与依赖方向
 
 [仓库] 根目录已是uv workspace、一个Git仓库与一个根uv.lock。保留现有infra；M01已创建业务包；后续增量复用，不按模块重建。当前实际文件见应用README。用户2026-10-04选定的新结构以[M19目录规格](MODULES/M19_STRUCTURE_LEARNING.md#目标与结构)为唯一目标：运行源码按职责分层，学习/探针/评测独立工具包，冻结集在datasets、演示在demo，不新增sops/evals/configs/scripts等重复入口。该迁移尚未实施；本章不复制第二套目标树。

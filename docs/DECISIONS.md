@@ -27,6 +27,12 @@
 | 021 Milvus元数据启动 | M05实际重启复现embedded etcd选举未完成时Milvus2.6.23读取元数据、`etcdserver: leader changed`并退出134；缩短选举时间不能稳定修复 | 将同一份etcd3.5.23元数据目录改由同机独立256MiB/0.25CPU容器提供，先健康再启动原Milvus；无主机端口，镜像锁digest，保留本地Woodpecker。用户授权现有专用云实验环境维护，不新购资源 | 迁移前冷备原数据/配置；只读核对原两个M05集合全部记录/向量与查询，再实际重启复验。不能并发运行两份etcd访问同目录；回退先停两容器、冷备再恢复匹配配置/目录；未证明整机重启或高可用 |
 | 022 个人学习工作台（2026-10-04） | 用户要求可维护业务、可跟随教程/观测及个人云运行，撤下未实施的旧M19–M21 | 同仓库同引擎；M19结构、M20业务、M21观测、M22学习前端、M23云部署。模型执行/业务源/部署地点分别配置，工具包依赖运行包；demo、冻结评测及隐藏推理不充当实际业务事实/本次trace | 当前只完成规划；旧部署必要恢复能力移M23。分特性验收；维护API与会话写工具分开，synthetic_rights仍为合成效果。每次按影响选择离线/必要live，纯规划不自动提交 |
 | 023 MCP服务与统一观测（2026-10-04） | 用户追加RPC/schema学习与4核8GB低负载截图；源码证明正式stdio协议与审批图/MySQLSaver已有 | 同仓库独立Business/Retrieval MCP进程，采用经锁定SDK验证的Streamable HTTP；保留账本/outbox/Saver直接事务。观测选OTel SDK/Collector、Tempo单体、Prometheus、Grafana；M22增加协议与恢复教程 | M20/M21各两个顺序特性，M22四个；当前只是计划。schema/双端校验、共享预算、跨进程span/恢复链接、平台查询与峰值实际验收；首轮不共置Langfuse整套服务，不把截图当组合容量证明 |
+| 024 旧栈备份与现代路线（2026-10-04） | 用户保留完整旧main实践并委托决定数据库/观测，随后明确改为bak分支备份、main继续演进，不购买托管存储；自建MySQLSaver/原httpx网关及官方平台架构核对 | 旧快照保存于bak/mysql-otel，原feature→main流程不变；全部应用关系数据PG，Langfuse元数据独立库；官方AsyncPostgresSaver，原生Langfuse SDK+实际审批图callback；对象存储SeaweedFS单机自托管；保留Redis/Milvus/etcd和Prometheus/Grafana，条件满足后退役MySQL/独立Collector/Tempo，OTel底层仍保留 | 备份已完成，M25–M30为尚未实施规格；原冻结分支模块撤下，不改默认分支。取代ADR001/010/023仅在未来新路线的后端/平台选择，业务权威、短事务、幂等、审批/UNKNOWN、资产门禁不变；MySQL仍是当前事实。PG事务/历史checkpoint/S3/容量/平台恢复均实测，最后单写切换；新PG已写后禁止直切陈旧MySQL。M29为可选扩展，不产生第二个active |
+| 025 Reranker正式接入（2026-10-04） | 用户指出qwen3.7-text-rerank未使用；当前网关/本地Hybrid/独立Retrieval MCP确无Rerank，历史三候选只证明接口内容 | 独立M31优先该模型的专用端口/协议；授权文档召回后重排，再按意图最佳证据归并，600仍唯一主分类；本地/远端共享发布profile/预算，四路学习对照，不依赖迁库 | 首协议试验可先启动；同候选/同向量与独立dev/test证明内容/效果，再接真实会话/MCP/学习页及新完整发布。保留原分数/来源，重排score不当confidence，非法映射/签名拒收，availability fallback显式可见；无收益不默认启用，不把注册候选或小接口测试当主链/企业效果 |
+
+ADR024的取舍：本项目尚无必须长期依赖MySQL的企业系统边界，永久双数据库增加驱动/备份/故障定位及状态协调；统一PG的价值是官方持久集成与维护一致性，不断言MySQL不能做Agent或PG天然更快。LangGraph还支持其他后端。选择Langfuse是自托管/原生LLM工程功能与既有自定义流程的适配；LangSmith完整自托管属于Enterprise，本轮不引入第二套主平台。
+
+Langfuse SDK基于OTel，原生接入与OTel传输不互斥。服务端当前需要ClickHouse/队列与对象存储；专用队列Redis不能复用原allkeys-lru缓存策略。对象存储采用Langfuse官方支持的SeaweedFS单机自托管，使用现有服务器并实测S3操作、持久化/恢复与全组合容量；不购买COS/RDS，也不默认安装当前已归档社区MinIO。官方Compose的4核/16GiB建议不等于本机7.51GiB必然失败，但旧RSS截图同样不能证明组合/merge/训练峰值可行。依据和机制见[M27](MODULES/M27_LANGFUSE_PLATFORM.md)、[M28](MODULES/M28_NATIVE_OBSERVABILITY.md)，退役见[M30](MODULES/M30_MODERN_CUTOVER.md)。
 
 ## M00阶段待查证事项（历史）
 
