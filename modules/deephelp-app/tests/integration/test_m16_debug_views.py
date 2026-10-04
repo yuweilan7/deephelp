@@ -351,7 +351,7 @@ async def test_trace_disk_failure_does_not_reverse_committed_response(tmp_path, 
 
 async def test_html_three_accessible_views_safe_text_and_no_token_storage(tmp_path):
     async with client(tmp_path) as (api, repo, judge, sink, assembly):
-        page = (await api.get("/")).text
+        page = (await api.get("/debug")).text
         assert all(f'data-view="{v}"' in page for v in ("intent", "turns", "flow"))
         assert "textContent" in page and "innerHTML" not in page
         assert "localStorage" not in page and "sessionStorage" not in page

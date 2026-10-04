@@ -22,11 +22,24 @@ def provenance() -> dict[str, Any]:
         str(p.relative_to(PACKAGE)): file_digest(p)
         for p in sorted(PACKAGE.rglob("*"))
         if p.is_file()
-        and p.suffix in {".py", ".json", ".jsonl", ".txt", ".html", ".sql"}
+        and p.suffix in {".py", ".json", ".jsonl", ".txt", ".html", ".sql", ".js", ".css"}
         and not any(
-            part in {"learning", "probes", "evaluation"} for part in p.relative_to(PACKAGE).parts
+            part in {"learning", "probes", "evaluation", "frontend"}
+            for part in p.relative_to(PACKAGE).parts
         )
     }
+    # Editable and wheel installations bind the same unique frontend bytes and paths.
+    frontend = PACKAGE / "frontend"
+    if not frontend.is_dir():
+        frontend = PACKAGE.parents[1] / "frontend"
+    if frontend.is_dir():
+        inputs.update(
+            {
+                "frontend/" + str(p.relative_to(frontend)).replace("\\", "/"): file_digest(p)
+                for p in sorted(frontend.rglob("*"))
+                if p.is_file() and p.suffix in {".html", ".js", ".css"}
+            }
+        )
     # Installed serving still verifies every runtime byte without needing a Git checkout.
     # Preparation separately requires source provenance; unknown is never a clean commit.
     commit: str | None = None

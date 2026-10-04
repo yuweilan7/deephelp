@@ -311,3 +311,9 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 `ReleasePointer`由MySQL active表给出channel/revision/active/previous；文件不再决定完整发布入口的active。switch以显式expected revision短事务锁定并CAS，来源行在同一事务核验；相同目标与当前revision幂等，旧revision返回409。发布事件与active同事务提交。prepared工件/远端验证不占用发布事务。
 
 `VersionManifest.release_manifest`默认null兼容旧只读入口；完整发布的receipt事务将问题绑定及run引用一起提交。运行及续接只消费其完整版本，新请求选择当时active。跨版本自动归属在原接收事务回滚后一次返回原版本；终态receipt回放零模型/工具。旧审批按原版本查询/恢复，批准和再次dispatch从当前MySQL active读取SOP核验，UNKNOWN先对账不改原计划。retire只标记无引用版本；active/previous和全部run引用都阻止退休，保留终态审计及共享文件，不提供隐式文件删除。
+
+## M22浏览器会话与历史
+
+`POST /auth/login`仅接收`{token}`，通过原可信LocalAuth映射换取8小时随机HttpOnly/SameSite=strict会话及CSRF标记；无正文自报身份。cookie仅支持当前loopback同源，登录/退出拒绝外Origin/跨站，写请求需`X-CSRF-Token`；原Bearer协议兼容且优先，错误Bearer不能回退cookie。`GET /auth/session`返回当前身份及调用/维护模式，`POST /auth/logout`撤销服务会话，重启需重新登录。全部API返回no-store。
+
+`GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原MySQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。
