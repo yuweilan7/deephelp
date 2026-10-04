@@ -154,6 +154,8 @@ def require_attempt(budget: ExecutionBudget) -> None:
 
 
 def retrieval_reason(result: DenseResult, text: TextEntityResult, gate: ScoreGate | None) -> str:
+    if result.rerank is not None and result.rerank.status == "passed":
+        return "rerank_requires_semantic_confirmation"
     if not result.candidates:
         return "no_candidates"
     if any(not c.intent_code.actionable for c in result.candidates):

@@ -70,7 +70,9 @@ M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、
 
 调用者必须共享原 ExecutionBudget，model 调用前有正 token/cost 上限；超时/取消不释放可能已发生的计费预留。ChatResult 保存 usage/finish_reason/provider_request_id 与校验过的 schema/tool 字段，EmbeddingResult 按输入顺序含签名、缓存命中和索引适配标记。模型结果不是业务事实，模型工具调用不是 ToolResult 或 MCP 执行证据；下游仍做白名单、身份/归属和参数核验。接口与版本限制见 [模型矩阵](MODEL_CAPABILITIES.md)。
 
-M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/RerankResult 与 `ports.py` 的 RerankPort。输入文档为不可变有序 tuple，包含本地 doc_id/content/intent_code/source；仅 query、文档文本及可选 instruct 送模型，top_n 严格为 1..文档数。响应 index 为唯一范围内非bool整数，数量等于 top_n，score 有限且按降序返回，并列按原输入 index 稳定排序；以 index 映射原文档，不采信响应替换内容/标签。score_kind 固定 rerank，无概率/融合含义。完整合法 usage 通过原共享预算结算一次；缺失/不完整 usage 为 null，结构诊断保留已知项，未知尝试保留预留。该增量不改变业务 envelope、DenseResult 或 M20 wire/profile，正式检索消费者接入另按 M31 后续特性实施。
+M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/RerankResult 与 `ports.py` 的 RerankPort。输入文档为不可变有序 tuple，包含本地 doc_id/content/intent_code/source；仅 query、文档文本及可选 instruct 送模型，top_n 严格为 1..文档数。响应 index 为唯一范围内非bool整数，数量等于 top_n，score 有限且按降序返回，并列按原输入 index 稳定排序；以 index 映射原文档，不采信响应替换内容/标签。score_kind 固定 rerank，无概率/融合含义。完整合法 usage 通过原共享预算结算一次；缺失/不完整 usage 为 null，结构诊断保留已知项，未知尝试保留预留。
+
+同链增量 `RerankPolicy` 绑定版本/模型/instruct/enabled/candidate_budget/top_n/failure_policy及指纹；当前对全部候选重排，top_n=candidate_budget，实际文档不足时top_n为实际数量。`DenseResult.retrieval_mode=hybrid_rerank`/`policy_version=m31-rerank-v1`附`RetrievalRerank`，记录输入顺序、passed/not_run/fallback、原因、原生结果/usage及耗时/attempt。hits仅重排原始融合证据，原分数不变；candidates按重排最佳证据归并截top_k。passed强制原600语义确认，不复用fusion阈值。发布selection支持m31-dev-selection-v1，明确最终top_k与更宽candidate_budget、完整策略指纹；旧selection仍可验证。M20远端wire/profile升级在下一特性，业务envelope不变。
 
 | 阶段 | 当前要落地 | 只作未来约束 |
 |---|---|---|

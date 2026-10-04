@@ -44,7 +44,17 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 默认三条固定合成query共享原M09的12条reference文本，使用语义相似度instruct、每次返回全部12条；gold预期仅在本地断言。一次三样本需至少3次剩余调用；不足在派发前拒绝。探针单次30秒、共享总120秒、重试0，恢复沿用累计预算且使用新报告。输出包括原文档映射、独立重排分数、模型/instruct、结构诊断、API实际usage和预算预留；output/reasoning未提供则标未知，不与input相加。成功报告只留一份，预算阶段只保存摘要与报告指纹。
 
-首特性仅交付网关端口与内容试验，进度/证据见[M31交接](../../handoffs/M31.md)。原Hybrid、唯一600主分类、Retrieval MCP、学习页及active仍按已发布策略；召回后重排、同条件dev/test对照及新完整发布须按后续PLAN另启。
+同链核心支持显式 `RerankPolicy`：先取有界文档，重排全部文档，再按意图保留最前证据并截取最终top_k。原始fusion分数与独立rerank分数分别保存；重排通过后交原语义分类确认，不使用原fusion门限接管。关闭策略保持原top_k召回，空召回不调用模型；默认fail_closed，显式availability fallback仅接受超时/服务不可用/限流，协议与授权错误仍拒绝。
+
+冻结开发集18条/测试集24条、reference12条沿用M09，不重建Embedding集合。开发阶段比较同一次实际向量的max12召回前缀N=6/12、语义相似度/默认指令；各组使用同候选文本，测试阶段只消费已冻结选择。报告中的Recall@N与排序指标分开，检索耗时含三路查询及重排、不含Embedding；API usage与所有外部attempt预算分别核算。报告主文件引用逐查询有界记录，失败续跑沿用同路径和累计预算，完成后不可再次派发。
+
+```powershell
+# 先初始化本轮共享预算并确认现有Milvus/模型，现有budget不能重置。
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.rerank_cli tune --live --providers $rerankProviders --pointer $hybridPointer --selection $frozenSelection --budget-state $probeBudgetFile --output $devReport
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.rerank_cli evaluate --live --providers $rerankProviders --pointer $hybridPointer --selection $frozenSelection --budget-state $probeBudgetFile --output $testReport
+```
+
+进度/内容结果见[M31交接](../../handoffs/M31.md)。开发集选择N=6/default，独立test排序总体持平且有一条退化，保留明确开启能力；远端/工作台/完整发布在下一顺序特性接入，当前active未改变。
 
 ## 业务启动入口
 
