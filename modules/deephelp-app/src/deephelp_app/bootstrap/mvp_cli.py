@@ -15,6 +15,7 @@ import uvicorn
 from mcp import StdioServerParameters
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
+from deephelp_app.adapters.network_mcp import HTTPMCPConfig
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import (
     BudgetSession,
@@ -127,6 +128,11 @@ def main() -> int:
     p.add_argument("--max-tokens", type=int, default=600000)
     p.add_argument("--max-cost", type=str, default="10")
     p.add_argument("--mcp-module", help="Explicit stdio MCP module (demo requires deephelp-tools)")
+    p.add_argument("--business-mcp-url", help="Independent Business MCP /mcp endpoint")
+    p.add_argument("--event-collection", help="Explicit owned dh_m10_events_ collection")
+    p.add_argument(
+        "--service-credentials", type=Path, help="Persistent transport/delegation credentials"
+    )
     p.add_argument(
         "--corpus", type=Path, help="Exact published Hybrid corpus; no bundled demo fallback"
     )
@@ -156,16 +162,28 @@ def main() -> int:
             gate = BudgetSession(local_path(args.budget_state))
             gate.open()
             try:
-                if not args.mcp_module:
-                    raise ConfigurationError("serve requires --mcp-module")
+                if bool(args.mcp_module) == bool(args.business_mcp_url):
+                    raise ConfigurationError(
+                        "serve requires one of --mcp-module/--business-mcp-url"
+                    )
+                if bool(args.business_mcp_url) != bool(args.service_credentials):
+                    raise ConfigurationError("Business MCP requires --service-credentials")
                 assembly = LiveAssembly(
                     Path.cwd(),
                     Path(args.providers),
                     local_path(args.pointer),
                     tool_server=StdioServerParameters(
                         command=sys.executable, args=["-m", args.mcp_module]
-                    ),
+                    )
+                    if args.mcp_module
+                    else None,
+                    business_mcp=HTTPMCPConfig(
+                        url=args.business_mcp_url, credentials_path=args.service_credentials
+                    )
+                    if args.business_mcp_url
+                    else None,
                     corpus_path=args.corpus,
+                    event_collection=args.event_collection,
                     fasttext_pointer=local_path(args.fasttext_pointer)
                     if args.fasttext_pointer
                     else None,

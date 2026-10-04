@@ -1,6 +1,6 @@
 # DeepHelp
 
-M19已将运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具可独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)；当前业务后端仍是显式demo MCP，M20持久业务另行启动。
+运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)。M20第1特性已提供[MySQL业务记录与独立Business MCP](modules/deephelp-services/README.md)，显式demo入口继续保留；Retrieval MCP是下一顺序特性。
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 

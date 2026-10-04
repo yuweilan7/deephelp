@@ -114,7 +114,9 @@ def verify_metadata(secret: str, meta: RequestParamsMeta | None) -> dict[str, An
         raise AppError(ErrorCode.FORBIDDEN, "Trusted execution context required") from None
 
 
-def validate_observation(request: ToolRequest, result: ToolResult) -> None:
+def validate_observation(
+    request: ToolRequest, result: ToolResult, *, evidence_version: str = "business-fixtures-v1"
+) -> None:
     facts = {f.name: f for f in result.facts}
     expected = (
         {
@@ -148,7 +150,7 @@ def validate_observation(request: ToolRequest, result: ToolResult) -> None:
         for k, f in facts.items()
     }
     if (
-        ref.version != "business-fixtures-v1"
+        ref.version != evidence_version
         or ref.locator != request.parameters.order_id
         or ref.content_hash != hashlib.sha256(canonical(values)).hexdigest()
         or any(f.evidence_ids != (ref.evidence_id,) for f in result.facts)

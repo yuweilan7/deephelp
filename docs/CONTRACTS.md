@@ -6,6 +6,20 @@
 
 M19保持HTTP/工具DTO和wire版本不变，Python入口按职责迁移：Port在domain/ports.py，会话/SOP/审批在application，具体外部实现/发布读侧在adapters，装配CLI在bootstrap。学习、demo、冻结评测与发布prepare/validate只由deephelp-tools消费；运行包无反向依赖。ToolGateway通过显式StdioServerParameters选择现有协议进程，serve须明确MCP模块，Hybrid提供已发布语料；不隐式启用demo或回退数据库。现行路径与安装边界见[M19交接](../handoffs/M19.md)。
 
+## M20业务数据与网络MCP
+
+Business服务独立包为deephelp-services，app不导入services；唯一输入/记录DTO仍在domain/models.py，Money/VerifiedIdentity/ToolRequest/ToolResult不复制。服务拥有`dh_m20_orders/coupons/activities/order_activities/evidence`事务，消息/问题/操作账本、outbox和MySQLSaver继续由原应用直接维护。业务来源由显式stdio或`--business-mcp-url`互斥选择，数据库失败关闭，无demo回退。
+
+应用身份入口的维护API为`POST/GET /business/{orders,coupons,activities}`、`GET/PUT /business/{kind}/{id}`、`GET/PUT /business/orders/{id}/activities`及`GET /business/evidence/{evidence_id}`。服务内部同一资源在`/records`下；请求需服务Bearer及签名委托的完整tenant/user、method、target、body_hash、nonce、audience=business和60秒expires_at。正文没有归属字段；过期/篡改/重放拒绝。返回记录包含identity、正整数version、typed data；调用端回验身份和结构。分页offset/limit，limit 1–100，返回items/next_offset；PUT完整data加expected_version，ID与路径须一致，旧版409。创建同主体/ID/内容重复返回原记录，不同内容409；无删除，停用使用status。活动关系替换与订单版本递增在同一短事务内，关联订单/券/活动必须同主体。
+
+金额只收十进制字符串/Decimal，CNY最多两位，业务最大值受DECIMAL(20,2)约束；回读以SQL精确金额列为准。券有效期、当前订单状态/实付与显式券状态共同决定usable；活动查询只返回当前有效且启用的订单关联。规则/有效期等完整资料由维护详情读取，既有工具事实schema保留。
+
+网络工具仍为两项m06-readonly-v1 wire/原inputSchema/outputSchema；版本表示已有工具契约，不表示使用demo数据。身份和关联ID在受保护元数据，工具参数只含订单/券。正式MCP2.2.0的实际HTTP initialize/list/call、structuredContent、schema/语义和取消各有独立验证；stdio签名使用父子进程临时key，网络另用持久Bearer+委托key，两者不混用。服务限制Host/Origin且目前仅loopback；MCP session/trace不等于业务身份。网络客户端每个有界请求初始化SDK会话，重启后新调用重新连接，未知旧调用不自动重放。
+
+数据库工具证据version为business-mysql-v1，demo仍为business-fixtures-v1。显式装配向Gateway/SOP注入证据来源，ToolResult实际call_id、record_id、事实hash与双端语义守卫保持。查询将订单/券/活动完整版本和当时结果保存为不可变、主体隔离的evidence快照，GET可回查。新message_id读取新提交数据，旧message_id沿用原receipt/事实/证据及本次零预算；不改旧回复。
+
+维护是用户手工资料操作，模型目录没有维护命令；synthetic_rights仍为合成效果，并未接入本次业务表。Retrieval MCP未实施，检索仍用原真实直接适配器；完整发布仍须精确绑定/内容验收，未产生新发布或远端部署。
+
 ## 哪个阶段实现什么
 
 M05在唯一domain/models.py增量发布CorpusRecord、DenseScope、DenseHit、DenseCandidate、DenseResult，ports.py发布DenseRetrieverPort；envelope仍0.2.0-m02，旧消费者兼容。CorpusRecord只接受actionable目录标签及合成语料。DenseScope绑定namespace/dataset_version/registry_version/完整EmbeddingSignature；同维度不同模型不等价，scope改变使用另一个集合。namespace为语料范围，不是用户授权凭据。

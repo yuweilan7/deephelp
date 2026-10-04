@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "deephelp-app",
+    "deephelp-services",
     "deephelp-tools",
     "deephelp-workspace",
 ]
@@ -271,6 +272,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fasttext-community" },
     { name = "httpx" },
+    { name = "httpx2" },
     { name = "jieba" },
     { name = "jsonschema" },
     { name = "langgraph" },
@@ -287,6 +289,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "fasttext-community", specifier = "==0.11.8" },
     { name = "httpx", specifier = ">=0.28,<0.29" },
+    { name = "httpx2", specifier = "==2.13.1" },
     { name = "jieba", specifier = "==0.42.1" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
     { name = "langgraph", specifier = "==1.2.12" },
@@ -296,6 +299,17 @@ requires-dist = [
     { name = "redis", specifier = "==6.4.0" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
 ]
+
+[[package]]
+name = "deephelp-services"
+version = "0.1.0"
+source = { editable = "modules/deephelp-services" }
+dependencies = [
+    { name = "deephelp-app" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deephelp-app", editable = "modules/deephelp-app" }]
 
 [[package]]
 name = "deephelp-tools"
@@ -315,6 +329,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "deephelp-services" },
     { name = "deephelp-tools" },
     { name = "mypy" },
     { name = "pytest" },
@@ -327,6 +342,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "deephelp-services", editable = "modules/deephelp-services" },
     { name = "deephelp-tools", editable = "modules/deephelp-tools" },
     { name = "mypy", specifier = ">=1.15,<2" },
     { name = "pytest", specifier = ">=8.3,<9" },

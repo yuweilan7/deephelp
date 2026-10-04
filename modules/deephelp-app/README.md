@@ -36,7 +36,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve -
 py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --text "订单 000031 未享受优惠，请查一下"
 ```
 
-`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module`，Hybrid另指定 `--corpus` 为当前发布语料；当前合成闭环需要安装独立deephelp-tools并选择demo MCP，MySQL可维护业务后端留M20。模型与业务来源分别配置，默认不启用写业务。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取MySQL active并固定完整版本，不隐式切换业务channel。
+`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；MySQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取MySQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
 
 直接 `uvicorn deephelp_app.api.app:create_app --factory` 是M01离线骨架，`/converse`保持501，用于学习生命周期。它不能作为三类业务启动命令。学习入口 `python -m deephelp_tools.learning.experiments`；受控能力验收 `python -m deephelp_tools.probes.live_probe --help`；冻结评测 `python -m deephelp_tools.evaluation.evaluation_cli --help`。
 
@@ -46,6 +46,7 @@ py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --
 
 - M08 `GET /health`返回M08/READ_ONLY_SINGLE_MESSAGE，只证明应用存活；`POST /converse`接收channel/session_id/message_id/raw_text/带时区occurred_at，需要固定合成身份的Bearer令牌。业务结果包含run/question、事实/工具证据、13段耗时与调用数。
 - 未传业务组装器的M01离线`create_app`保留501/NOT_IMPLEMENTED，run/question为null、调用0；不会因机器存在Key自动联网。
+- M20数据库模式增加`/business`维护、分页/详情、expected_version更新、活动关联和查询证据快照。沿用同一个Bearer身份入口；维护经受保护委托转给Business服务，模型工具仍只读。路由/字段见[业务服务接口](../deephelp-services/README.md#维护与查询)及[契约](../../docs/CONTRACTS.md#m20业务数据与网络mcp)。
 
 M01使用loopback/testclient本地测试身份，M08本机令牌映射为固定合成身份，不开发登录系统，服务仅绑定127.0.0.1。正文拒绝自报身份和诊断ID。X-Request-ID/X-Trace-ID仅供诊断，响应头/正文一致；回放沿用业务run/结果但使用本次传输ID。入口错误不回显输入或异常详情。
 

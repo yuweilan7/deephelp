@@ -16,6 +16,7 @@ from deephelp_app.adapters.cases import MySQLCaseRepository
 from deephelp_app.adapters.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
+from deephelp_app.adapters.network_mcp import HTTPMCPConfig
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
 from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.adapters.tool_gateway import ToolGateway
@@ -194,6 +195,7 @@ class LiveAssembly:
         pointer: Path,
         *,
         tool_server: StdioServerParameters | None = None,
+        business_mcp: HTTPMCPConfig | None = None,
         corpus_path: Path | None = None,
         cascade_policy: Path | None = None,
         event_collection: str | None = None,
@@ -270,7 +272,11 @@ class LiveAssembly:
                 raise ConfigurationError("Hybrid pointer corpus/weight mismatch")
         if self.scope.signature != self.config.signature():
             raise ConfigurationError("Active collection embedding signature differs")
-        self.tool_server = tool_server
+        if tool_server is not None and business_mcp is not None:
+            raise ConfigurationError("Choose one explicit business MCP source")
+        if business_mcp:
+            business_mcp.credentials()
+        self.tool_server, self.business_mcp = tool_server, business_mcp
         self.gateway: Any = None
         self.judge_gateway: Any = None
         self.event_index: MilvusEventIndex | None = None
@@ -281,7 +287,7 @@ class LiveAssembly:
     async def open(
         self, client: httpx.AsyncClient, trace: TraceSink
     ) -> AsyncIterator[Conversation]:
-        if self.tool_server is None:
+        if self.tool_server is None and getattr(self, "business_mcp", None) is None:
             raise ConfigurationError(
                 "Select an explicit MCP server before opening runtime dependencies"
             )
@@ -341,7 +347,7 @@ class LiveAssembly:
                 raise ConfigurationError("Cascade calibration retrieval weight differs")
             if policy.corpus_digest and policy.corpus_digest != self.pointer.get("corpus_digest"):
                 raise ConfigurationError("Cascade calibration corpus differs")
-            tools = ToolGateway(server=self.tool_server)
+            tools = ToolGateway(server=self.tool_server, http=self.business_mcp)
             self.tools = tools
             await stack.enter_async_context(tools.open())
             assembly = self
@@ -407,6 +413,7 @@ class LiveAssembly:
                     TrackedTools(tools),
                     registry=self.sop_registry,
                     history=self.sop_snapshots,
+                    evidence_version=tools.evidence_version,
                 ),
                 trace,
                 versions,
@@ -436,7 +443,7 @@ def live_app(
     budget: BudgetSession,
     trace_path: str = ".local/m08/trace.jsonl",
 ) -> FastAPI:
-    return create_app(
+    app = create_app(
         Settings(
             mode="mvp",
             request_timeout=90,
@@ -449,3 +456,9 @@ def live_app(
         conversation_factory=assembly.open,
         budget_factory=budget.request,
     )
+    if config := getattr(assembly, "business_mcp", None):
+        from deephelp_app.adapters.business_client import BusinessClient
+        from deephelp_app.api.business import business_router
+
+        app.include_router(business_router(BusinessClient(config), auth))
+    return app
