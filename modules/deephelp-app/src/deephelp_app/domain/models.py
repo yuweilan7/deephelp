@@ -1402,6 +1402,58 @@ class HybridScope(DenseScope):
         return "m09_intent_" + self.fingerprint[:32]
 
 
+class RerankPolicy(DTO):
+    version: Literal["m31-rerank-v1"] = "m31-rerank-v1"
+    model: Literal["qwen3.7-text-rerank"] = "qwen3.7-text-rerank"
+    enabled: StrictBool = True
+    candidate_budget: Annotated[int, Field(strict=True, ge=3, le=20)]
+    top_n: Annotated[int, Field(strict=True, ge=3, le=20)]
+    instruct: RawText | None
+    failure_policy: Literal["fail_closed", "hybrid_on_unavailable"] = "fail_closed"
+
+    @model_validator(mode="after")
+    def complete_ranking(self) -> RerankPolicy:
+        if self.top_n != self.candidate_budget:
+            raise ValueError("Rank all recalled documents before per-intent aggregation")
+        return self
+
+    @property
+    def fingerprint(self) -> str:
+        return hashlib.sha256(
+            json.dumps(self.model_dump(mode="json"), sort_keys=True).encode()
+        ).hexdigest()
+
+
+class RetrievalRerank(DTO):
+    policy: RerankPolicy
+    status: Literal["passed", "not_run", "fallback"]
+    reason: Identifier | None = None
+    input_doc_ids: tuple[Identifier, ...]
+    result: RerankResult | None = None
+    elapsed_ms: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 0
+    attempts: Count = 0
+    error_code: ErrorCode | None = None
+
+    @model_validator(mode="after")
+    def bound_result(self) -> RetrievalRerank:
+        if len(set(self.input_doc_ids)) != len(self.input_doc_ids):
+            raise ValueError("Duplicate rerank input IDs")
+        if (self.status == "passed") != (self.result is not None):
+            raise ValueError("Only passed rerank carries a model result")
+        if self.result is not None and (
+            self.result.model != self.policy.model
+            or self.result.instruct != self.policy.instruct
+            or len(self.result.hits) != len(self.input_doc_ids)
+            or any(
+                hit.index >= len(self.input_doc_ids)
+                or hit.document.doc_id != self.input_doc_ids[hit.index]
+                for hit in self.result.hits
+            )
+        ):
+            raise ValueError("Rerank result/profile/input mismatch")
+        return self
+
+
 class DenseHit(DTO):
     doc_id: Identifier
     intent_code: IntentCode
@@ -1442,11 +1494,33 @@ class DenseResult(DTO):
     scope: HybridScope | DenseScope
     hits: tuple[DenseHit, ...]
     candidates: tuple[DenseCandidate, ...]
-    policy_version: Literal["dense-baseline-v1", "hybrid-weighted-v1"] = "dense-baseline-v1"
-    retrieval_mode: Literal["dense", "bm25", "hybrid"] = "dense"
+    policy_version: Literal["dense-baseline-v1", "hybrid-weighted-v1", "m31-rerank-v1"] = (
+        "dense-baseline-v1"
+    )
+    retrieval_mode: Literal["dense", "bm25", "hybrid", "hybrid_rerank"] = "dense"
     candidate_budget: PositiveCount | None = None
     dense_weight: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)] | None = None
     elapsed_ms: Annotated[float, Field(ge=0, allow_inf_nan=False)] | None = None
+    rerank: RetrievalRerank | None = None
+
+    @model_validator(mode="after")
+    def rerank_evidence(self) -> DenseResult:
+        if self.retrieval_mode == "hybrid_rerank":
+            if self.rerank is None or self.policy_version != "m31-rerank-v1":
+                raise ValueError("Rerank mode needs its policy and execution status")
+            if self.rerank.result is not None:
+                ranked = self.rerank.result.hits
+                if [hit.doc_id for hit in self.hits] != [
+                    hit.document.doc_id for hit in ranked
+                ] or any(
+                    hit.content != rank.document.content
+                    or hit.intent_code != rank.document.intent_code
+                    for hit, rank in zip(self.hits, ranked, strict=True)
+                ):
+                    raise ValueError("Rerank output must retain local evidence mapping")
+        elif self.rerank is not None:
+            raise ValueError("Legacy modes cannot carry rerank evidence")
+        return self
 
 
 # Resolve the incremental evidence reference without a second family of retrieval DTOs.

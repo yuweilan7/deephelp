@@ -78,7 +78,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [交接](../handoffs/M28.md) | 两特性完成：跨MCP/官方图及暂停恢复前序、实际业务13段/脱敏generation/usage与原工作台替换 | M26/M27；SDK无公开Span Link参数，使用持久显式前序；旧服务留M30 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [交接](../handoffs/M29.md) | 历史报告映射/恢复、不可变Prompt、原审核回流与完整发布回退 | M28；模块可选，启动则完成全部特性，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [交接](../handoffs/M30.md) | 两特性完成：直接指标/安装/恢复、最终单写切换/新完整发布/浏览器/兼容PG回滚及旧服务退役 | M25–M29已覆盖；原数据/备份保留，全部交付后停止 |
-| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口/内容已交付（[交接](../handoffs/M31.md)）→同链质量对照→Retrieval MCP/学习页/正式发布 | 后两项尚未实施；不依赖迁库完成 |
+| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口与同链对照已交付（[交接](../handoffs/M31.md)）→Retrieval MCP/学习页/正式发布 | 最后一项待实施；test总体持平，保留显式开启 |
 
 “完成Mxx”授权同一实施会话、同一主写者顺序完成当前M的全部规格特性；每项独立建分支、验收、合入main并同步后继续下一项，无需逐项另启。已有交付从未完成项续做；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不预写后续实现细节，结果出来后更新同一PLAN并继续。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS；首试验通过不等于全库迁移或Rerank主链已交付。M25已全部交付，M26持久前置已满足；后续M或独立M31剩余特性须按用户启动范围推进，不并行写共享网关/根锁。全部特性交付后才报告当前M完成并停止；跨M推进须由用户或已授权的顺序调度启动，阻塞不能冒充模块交付。
 
