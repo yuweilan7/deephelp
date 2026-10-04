@@ -72,8 +72,8 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 
 | 模块 | 模块内顺序特性 | 前置与边界 |
 |---|---|---|
-| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) | 协议/盘点与全持久迁移/导入/隔离恢复均交付（[交接](../handoffs/M25.md)） | M26的持久前置满足；旧部署未切换，PG审批图需M26 |
-| [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换/独立进程试验→正式装配/完整历史恢复 | M25全持久特性；依试验结果更新同一PLAN继续 |
+| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) | 协议/盘点与全持久迁移/导入/隔离恢复均交付（[交接](../handoffs/M25.md)） | M26持久前置满足；现行旧部署未切換 |
+| [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) | 两特性均交付；官方保存器/原ID转换、正式装配/学习HTTP、全历史逐状态恢复与保留守卫（[交接](../handoffs/M26.md)） | M25前置完成；现网切换/旧服务退役留M30，不冒称旧无效绑定已恢复执行 |
 | [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS/Web与Worker存入读回→组合容量/平台恢复 | M25/M26；无需付费对象存储 |
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP/官方图/pause与resume关联→业务覆盖/工作台查询替换 | M26/M27；依API/SDK实际能力继续 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | Dataset/Experiment/Score映射→Prompt版本/审核映射 | M28；模块可选，启动则完成全部特性，不替换M18 active |

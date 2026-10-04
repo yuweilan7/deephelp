@@ -395,11 +395,11 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             header, _, summary, digest = read_snapshot(args.snapshot)
             if args.command == "read":
                 from deephelp_app.adapters.approval_store import ApprovalRepository
-                from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
                 from deephelp_app.adapters.history import PostgresHistory
                 from deephelp_app.domain.errors import AppError
                 from deephelp_app.domain.models import RequestEnvelope, VerifiedIdentity
                 from deephelp_services.business_store import BusinessRepository
+                from deephelp_tools.evaluation.legacy_checkpoints import LegacyCheckpointArchive
 
                 repo = ApprovalRepository(pool)
                 async with pool.acquire() as conn, conn.cursor() as cur:

@@ -81,9 +81,15 @@ async def migrate() -> None:
     try:
         async with asyncio.timeout(30):
             await ledger.migrate()
+            from deephelp_app.adapters.postgres_checkpoints import official_checkpoints
+
+            async with official_checkpoints(
+                ledger.pool.config, owner=ledger.pool.owner, setup=True
+            ):
+                pass
     finally:
         await ledger.aclose()
-    print("M08/M10/M15 PostgreSQL project tables ready")
+    print("M08/M10/M15 fact tables and official checkpoint migrations ready")
 
 
 async def ask(args: argparse.Namespace) -> None:

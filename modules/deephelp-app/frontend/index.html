@@ -201,7 +201,7 @@
           <p>
             SOP 产生绑定参数与快照的计划；只有 M15 审批部分使用实际
             LangGraph。PostgreSQL 操作账本是业务权威，checkpoint
-            记录历史图进度。当前仅能读取旧历史，执行和恢复等待M26。
+            记录图进度。明确审批后，按原操作恢复并核对持久效果。
           </p>
           <button id="workflow-load">读取当前 SOP 与实际图</button>
           <div id="workflow-graph"></div>
@@ -211,7 +211,7 @@
             <p>
               固定 DEMO-D01、固定动作回放、真实 stdio MCP / PostgreSQL / 独立权益
               HTTP 服务；不调用远程模型，不表示真实退款。创建后应观察
-              历史审批与checkpoint；M26通过前创建、批准和恢复关闭。
+              审批与checkpoint练习只使用固定合成动作；普通消息不会批准操作。
             </p>
             <button id="demo-create" disabled>创建合成待审批练习</button>
           </div>
@@ -238,8 +238,8 @@
             ><button id="demo-resume" disabled>恢复 / 核对原操作</button>
           </div>
           <p class="code">
-            application/approval.py · ApprovalService.graph / decide / resume<br />adapters/checkpoints.py
-            · LegacyCheckpointArchive.alist
+            application/approval.py · ApprovalService.graph / decide / resume<br />adapters/postgres_checkpoints.py
+            · PostgresCheckpoints.alist
           </p>
         </div>
         <div>

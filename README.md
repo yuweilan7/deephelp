@@ -4,7 +4,7 @@
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 
-先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG`；M26前审批执行/恢复关闭，旧发布证据不能用于新运行。现行云端安装仍保留MySQL，M30另切换。
+先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG` 并执行迁移；新PG审批使用官方保存器，旧发布证据不能用于新运行。现行云端安装仍保留MySQL，M30另切换。
 
 从仓库根用 `py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json` 启动现有业务链；先按 LOCAL_SETUP 核对身份、累计预算和真实依赖。`python -m deephelp_app --help` 列出 init/migrate/serve/ask。正式业务通过真实模型、PostgreSQL/Redis/Milvus及本机合成业务MCP；业务事实为合成值，服务绑定127.0.0.1。完整发布按应用文档的 release_cli 入口选取PostgreSQL登记版本。
 

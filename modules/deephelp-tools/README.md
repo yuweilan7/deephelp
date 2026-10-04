@@ -1,6 +1,6 @@
 # DeepHelp 独立工具包
 
-M25新源码关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。现行旧安装未切换。审批执行/恢复需M26，当前只读历史；旧完整发布不能当作新字节通过的证据。
+新源码关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。现行旧安装未切换，旧完整发布不能当作新字节通过的证据。
 
 本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装两包，独立机器可只安装app wheel；需要演示/学习时再安装tools wheel。
 
@@ -46,6 +46,6 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 
 候选不修改active。`prepare`复用`prepare_manifest`及`ReleaseStore.register`，完整发布和回退复用`ReleaseStore.switch`、目标hash与revision CAS；回退还绑定当前previous。代码/工具/供应商/SOP/审核或绑定资产失效时旧报告PASS也不可发布。页面不自动执行训练、全量live或切换版本；本轮UI验收没有新质量发布。
 
-M25新PG路线保留已迁移的操作/审计/历史checkpoint读取，暂不启用创建、批准或恢复图。学习页显示M26门禁，按原operation/session/run仅读取本主体的合成历史；旧执行步骤属于bak/mysql-otel，M26官方saver实测通过后再接入。普通消息仍不能批准旧操作，UNKNOWN仍须对账；synthetic_rights不改M20资料、不表示真实退款。页面不写checkpoint，也不暴露任意MCP、SQL或文件接口。
+学习页按原operation/session/run读取本主体的官方checkpoint和实际审批图；显式配置合成权益服务并使用专用演示身份后，可创建固定练习、批准/拒绝/撤销及恢复同一原操作。普通消息仍不能批准旧操作，UNKNOWN先对账；synthetic_rights不改M20资料、不表示真实退款。页面不允许直接写checkpoint，也不暴露任意MCP、SQL或文件接口。旧reader仅供迁移资格验证，正式app不包含旧自建codec；转换与历史逐状态恢复见[M26交接](../../handoffs/M26.md)。
 
 扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测使用已保存run的OTel ID、M21分页与私有Grafana深链接；如需实际平台设置，见[观测运行入口](../../infra/observability/README.md#平台与访问)，平台故障明确显示，不重跑业务。

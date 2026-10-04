@@ -351,8 +351,9 @@ async def test_unknown_queries_before_any_redispatch(pair, observation):
             return RightsObservation(status="ABSENT")
         return RightsObservation(status="SUCCEEDED", effect=effect(current))
 
-    service = ApprovalService(repo, SimpleNamespace(call=call), "snapshot-v1")
-    service.saver = InMemorySaver()
+    service = ApprovalService(
+        repo, SimpleNamespace(call=call), "snapshot-v1", saver=InMemorySaver()
+    )
     result = await service.resume(
         op.plan.identity,
         op.plan.operation_id,
@@ -384,8 +385,9 @@ async def test_external_cancellation_keeps_unknown_and_releases_claim(pair):
         entered.set()
         await asyncio.Event().wait()
 
-    service = ApprovalService(repo, SimpleNamespace(call=call), "snapshot-v1")
-    service.saver = InMemorySaver()
+    service = ApprovalService(
+        repo, SimpleNamespace(call=call), "snapshot-v1", saver=InMemorySaver()
+    )
     task = asyncio.create_task(
         service.resume(
             op.plan.identity,
@@ -413,8 +415,7 @@ async def test_external_cancellation_keeps_unknown_and_releases_claim(pair):
 async def test_resume_without_approval_never_calls_downstream(pair, status):
     op, _ = pair
     repo = OfflineAuthority(op.model_copy(update={"approval_status": status}))
-    service = ApprovalService(repo, SimpleNamespace(), "snapshot-v1")
-    service.saver = InMemorySaver()
+    service = ApprovalService(repo, SimpleNamespace(), "snapshot-v1", saver=InMemorySaver())
     with pytest.raises(AppError):
         await service.resume(
             op.plan.identity,
@@ -443,8 +444,7 @@ async def test_downstream_result_binding_failure_is_not_success(pair):
 async def test_committed_terminal_ledger_repairs_stale_checkpoint_without_effect(pair):
     op, _ = pair
     repo = OfflineAuthority(op)
-    service = ApprovalService(repo, SimpleNamespace(), "snapshot-v1")
-    service.saver = InMemorySaver()
+    service = ApprovalService(repo, SimpleNamespace(), "snapshot-v1", saver=InMemorySaver())
     await service.pause(op.plan.operation_id, ExecutionBudget.start(30, 8, 0))
     graph = service.graph(ExecutionBudget.start(30, 8, 0))
     assert (await graph.aget_state(service.config(op))).next
@@ -459,3 +459,73 @@ async def test_committed_terminal_ledger_repairs_stale_checkpoint_without_effect
     )
     assert result.status == OperationStatus.CANCELLED and repo.events == []
     assert not (await graph.aget_state(service.config(op))).next
+
+
+@pytest.mark.parametrize("status", [OperationStatus.SUCCEEDED, OperationStatus.CANCELLED])
+async def test_released_terminal_replay_closes_gap_without_loading_new_runtime(
+    pair, monkeypatch, status
+):
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock
+
+    from deephelp_app.bootstrap.release_runtime import ReleasedApprovals
+
+    op, _ = pair
+    repo = OfflineAuthority(op)
+    service = ApprovalService(repo, SimpleNamespace(), "snapshot-v1", saver=InMemorySaver())
+    await service.pause(op.plan.operation_id, ExecutionBudget.start(30, 8, 0))
+    repo.op = op.model_copy(update={"status": status, "approval_status": ApprovalStatus.APPROVED})
+    repo.scoped = AsyncMock(return_value=repo.op)
+    router = SimpleNamespace(entry=AsyncMock(side_effect=AssertionError("terminal loaded runtime")))
+
+    @asynccontextmanager
+    async def opened(*args, **kwargs):
+        yield service
+
+    monkeypatch.setattr(ApprovalService, "open", opened)
+    result = await ReleasedApprovals(router, repo).resume(
+        op.plan.identity,
+        op.plan.operation_id,
+        ResumeCommand(session_id=op.session_id, run_id=op.run_id),
+        ExecutionBudget.start(30, 8, 0),
+    )
+    assert result == repo.op and not repo.events
+    router.entry.assert_not_awaited()
+    assert not (
+        await service.graph(ExecutionBudget.start(30, 8, 0)).aget_state(service.config(op))
+    ).next
+
+
+async def test_unknown_bound_release_keeps_original_runtime_gate_before_query_or_execute(pair):
+    from unittest.mock import AsyncMock
+
+    from deephelp_app.bootstrap.release_runtime import ReleasedApprovals
+    from deephelp_app.domain.errors import ConfigurationError
+
+    op, _ = pair
+    op = op.model_copy(
+        update={
+            "status": OperationStatus.UNKNOWN,
+            "pending_response": op.pending_response.model_copy(
+                update={
+                    "versions": op.pending_response.versions.model_copy(
+                        update={"release_manifest": "old"}
+                    )
+                }
+            ),
+        }
+    )
+    repo = OfflineAuthority(op)
+    repo.scoped = AsyncMock(return_value=op)
+    router = SimpleNamespace(
+        entry=AsyncMock(side_effect=ConfigurationError("Runtime bytes differ"))
+    )
+    with pytest.raises(ConfigurationError):
+        await ReleasedApprovals(router, repo).resume(
+            op.plan.identity,
+            op.plan.operation_id,
+            ResumeCommand(session_id=op.session_id, run_id=op.run_id),
+            ExecutionBudget.start(30, 8, 0),
+        )
+    assert repo.op.status == OperationStatus.UNKNOWN and repo.events == []
+    router.entry.assert_awaited_once_with("old")

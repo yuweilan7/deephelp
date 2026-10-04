@@ -1,15 +1,18 @@
 """Explicit human decisions and restartable approval graph; PostgreSQL ledger is authority."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, TypedDict
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from deephelp_app.adapters.approval_store import TERMINAL, ApprovalRepository
-from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
-from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints
+from deephelp_app.adapters.postgres import application_config
+from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints, official_checkpoints
 from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect, binding_hash
 from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
 from deephelp_app.domain.errors import AppError
@@ -99,16 +102,36 @@ class ApprovalService:
         snapshot: str,
         *,
         fault: Callable[[str], None] | None = None,
-        saver: PostgresCheckpoints | None = None,
+        saver: BaseCheckpointSaver[Any] | None = None,
     ) -> None:
-        if getattr(repo.pool, "backend", None) == "postgresql" and saver is None:
+        if saver is None or (
+            getattr(repo.pool, "backend", None) == "postgresql"
+            and not isinstance(saver, PostgresCheckpoints)
+        ):
             raise AppError(
                 ErrorCode.NOT_IMPLEMENTED,
-                "PostgreSQL approval execution/resume requires the qualified M26 saver",
+                "Approval execution/resume requires an explicitly opened official saver",
                 501,
             )
         self.repo, self.rights, self.snapshot, self.fault = repo, rights, snapshot, fault
-        self.saver = saver or LegacyCheckpointArchive(repo.pool)
+        self.saver = saver
+
+    @classmethod
+    @asynccontextmanager
+    async def open(
+        cls,
+        repo: ApprovalRepository,
+        rights: RightsClient,
+        snapshot: str,
+        *,
+        root: Path | None = None,
+        fault: Callable[[str], None] | None = None,
+    ) -> AsyncIterator[ApprovalService]:
+        async with official_checkpoints(
+            getattr(repo.pool, "config", None) or application_config(root or Path.cwd()),
+            owner=getattr(repo.pool, "owner", None),
+        ) as saver:
+            yield cls(repo, rights, snapshot, fault=fault, saver=saver)
 
     def inject(self, stage: str) -> None:
         if self.fault:

@@ -41,7 +41,7 @@ $env:DEEPHELP_POSTGRES_CONFIG = (Resolve-Path .local/m25/facts.json).Path
 
 health只证明15432转发可连接，数据库语义由显式验收证明。停止使用`-Action stop`；该入口只关闭自己记录并核对的SSH进程，旧infra/personal隧道独立。正常应用/Uvicorn/工具CLI保留原入口循环；Windows池拥有单独Selector线程，支持Proactor中的MCP子进程，取消等待数据库动作结束后再归还连接，关闭池后退出线程。协议探针的Runner只用于直接驱动资格试验。
 
-应用短写使用Read Committed+锁/CAS；记忆多表窗口和Business事实+证据使用局部Repeatable Read。旧checkpoint字节保存在`m25_legacy`，PG装配在M26前拒绝审批图创建/执行/恢复，学习GET可只读旧历史。原MySQL只在tools只读导出中出现；M30旧安装/脚本保留，不用旧完整release对新包宣称通过。
+应用短写使用Read Committed+锁/CAS；记忆多表窗口和Business事实+证据使用局部Repeatable Read。旧checkpoint字节保存在`m25_legacy`，只读reader归tools迁移包。M26正式审批使用独立`deephelp_checkpoints` schema内的官方saver；旧状态须先显式转换。原MySQL只在tools只读导出中出现；M30旧安装/脚本保留，不用旧完整release对新包宣称通过。
 
 ## 稳定快照、导入与复验
 
@@ -76,3 +76,16 @@ py -3.14 -m uv run --locked python -m deephelp_tools.probes.postgres_business_ht
 ```
 
 workdir需先创建。固定动作使用真实PG仓储/协议、独立HTTP进程和受控合成权益；模型调用/token均0，不证明模型质量或企业业务泛化。发布固定动作只验私有数据库提交阶段，公共完整门禁仍拒绝旧版本；测试指针/记录精确清理后再核对全源hash。失败报告/快照保留，必要故障和恢复细节记录交接；最终快照、dump及受保护配置长期保留，临时安装/传输/脚本核对后删除。
+
+## M26 官方保存器与历史恢复
+
+在隔离恢复库或尚未运行的目标库设置上述配置，再执行app的`migrate`。保存器使用同一应用配置的独立autocommit/dict_row池；官方setup仅在显式迁移入口运行，业务迁移不管理官方表。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_app migrate
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.checkpoint_migration import --live --config .local/m26/history.json --snapshot .local/m25/source-new.jsonl.gz --schema deephelp_checkpoints --output .local/m26/import-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.checkpoint_migration verify --live --config .local/m26/history.json --snapshot .local/m25/source-new.jsonl.gz --schema deephelp_checkpoints --output .local/m26/verify-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.checkpoint_migration audit --live --config .local/m26/history.json --snapshot .local/m25/source-new.jsonl.gz --schema deephelp_checkpoints --output .local/m26/audit-new.json
+```
+
+import/verify必须在图不执行时完成；执行过的目标拒绝再导入覆盖。audit只读实际图和原操作绑定，不表示执行恢复。`approval_probe history --live --snapshot ... --output ... --key ...`只资格验证原快照的新隔离副本：所有原计划先核对，过期UNKNOWN先查询，原绑定无效则拒绝并保留；不重规划或重签。使用新报告/控制路径，源库不改写。协议验收、学习页HTTP及完整历史逐状态结果见[M26交接](../../handoffs/M26.md)。

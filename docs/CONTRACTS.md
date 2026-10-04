@@ -10,7 +10,9 @@ M19保持HTTP/工具DTO和wire版本不变，Python入口按职责迁移：Port�
 
 新源码所有关系事实由同一PostgreSQL应用库承载；连接必须显式 `DEEPHELP_POSTGRES_CONFIG`，不回退MySQL/demo。唯一DTO、HTTP/MCP wire保持；新工具证据来源为`business-postgres-v1`，历史`business-mysql-v1`结果/清单/签名字节原样读取，不重新执行。`PostgresLedger/PostgresCaseRepository/PostgresHistory`保留接收/终态/身份契约；原MySQL只由tools的专门只读快照入口访问，现行旧部署保留。
 
-`m25_legacy`保存typed checkpoint、parent/pending writes与迁移进度；`LegacyCheckpointArchive`在PG池只读。PG `ApprovalService`构造与rights运行装配明确拒绝创建/批准/恢复图，学习页只读旧历史；下方M15图机制为历史契约，M26实测官方saver后再接入。业务写效果仍由操作账本与下游对账证明。旧schema不适用的release返回明确配置错误，不补字段后冒充原签名。
+`m25_legacy`保存typed checkpoint、parent/pending writes与迁移进度，tools的`LegacyCheckpointArchive`只读。M26正式PG审批只注入显式打开的官方`AsyncPostgresSaver`薄接缝，独立schema为`deephelp_checkpoints`；业务连接与保存器使用同一应用配置、独立连接池。app migrate执行官方setup，serve不隐式迁移。学习查询读取正式saver和原图，不另建审批流程。业务写效果仍由操作账本与下游对账证明。
+
+旧状态通过官方公共aput/aput_writes转换，保留原ID/parent/metadata/频道与任务版本及pending writes索引/路径；整数线程继续锁定的公共整数版本序列，新线程使用官方序列。原绑定缺失/失效不能因转换补写或重签。已终态的完整发布操作可依原账本修补checkpoint而不加载替代运行或重发效果；未终态操作仍须原完整运行/资产门禁。旧schema不适用的release返回明确配置错误，不补字段后冒充原签名。
 
 短写事务使用Read Committed+唯一约束/显式锁/CAS；记忆多表窗口和业务事实+不可变证据使用局部Repeatable Read，避免拼接不同时间的版本；导出/全表校验为独立read-only一致快照。JSON保留原文本、bytea原bytes、金额numeric(20,2)/Decimal、UTC微秒和前导零文本。Windows PG池独立持有Selector线程，调用入口保留Proactor子进程能力；不改全局policy。
 

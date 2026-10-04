@@ -41,7 +41,7 @@
 | 接收/运行/问题 | `dh_m08_messages`、`dh_m08_runs`、`dh_m08_questions` | app `adapters/ledger.py`；完整身份/channel/message唯一接收、payload冲突、终态CAS与原响应回放；008增量DDL和010取消run/question唯一关系 |
 | 会话/成员/outbox | `dh_m10_sessions`、`dh_m10_members`、`dh_m10_outbox` | app `adapters/cases.py`、`application/memory.py`、`adapters/milvus_memory.py`；session→question锁序、generation、回查归属/status/version、唯一question/version事件与lease token确认；010回填 |
 | 操作/审批审计 | `dh_m15_operations`、`dh_m15_audit` | app `adapters/approval_store.py`、`application/approval.py`；session→question→operation锁序，批准/期限/版本/参数/SOP绑定、唯一领取、UNKNOWN查询优先；015 |
-| 历史checkpoint | `dh_m15_checkpoints`、`dh_m15_checkpoint_writes` | app `adapters/checkpoints.py`；typed bytes、parent、pending writes、write_index语义；M25原样保留历史数据，M26转换到官方saver，未通过前新路线禁审批恢复 |
+| 历史checkpoint | `dh_m15_checkpoints`、`dh_m15_checkpoint_writes` | tools `evaluation/legacy_checkpoints.py`只读reader；typed bytes、parent、pending writes、write_index语义；M25原样保留历史数据，M26已验证转换/恢复，实际范围见其handoff |
 | 合成效果/调用 | `dh_m15_synthetic_effects`、`dh_m15_synthetic_calls` | tools `demo/synthetic_rights.py`、`demo/approval_prepare.py`；独立短事务登记调用，operation锁持有到effect提交，query不得错误ABSENT；非订单/券真实写操作 |
 | 反馈/审核/租约/工件 | `dh_m18_candidates`、`dh_m18_reviews`、`dh_m18_tasks`、`dh_m18_derivatives` | app `adapters/feedback_store.py`、tools `evaluation/flywheel_store.py`；revision审核、有限lease/attempts、四路派生完整引用；018_flywheel |
 | 完整发布/切换/引用 | `dh_m18_releases`、`dh_m18_active`、`dh_m18_run_releases`、`dh_m18_release_events` | app `adapters/release_store.py`；channel行锁+revision CAS、active/previous与event同事务、run/待审批引用阻止退役；018_release；不能改旧manifest/hash |

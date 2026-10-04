@@ -6,10 +6,12 @@ the separately reported HTTP conversation uses the configured real model.
 
 import argparse
 import asyncio
+import json
 import os
 import socket
 import subprocess
 import sys
+from contextlib import AsyncExitStack
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
@@ -90,12 +92,17 @@ async def worker(args: argparse.Namespace) -> None:
     # A short, real lease expiry keeps the owned crash matrix bounded.
     repo.lease_seconds = 8
     try:
-        async with httpx.AsyncClient(trust_env=False, timeout=15) as client:
-            service = ApprovalService(
-                repo,
-                RightsClient(client, args.port, args.key.read_bytes()),
-                proposal_registry().snapshot_hash,
-                fault=lambda stage: os._exit(87) if stage == args.fault else None,
+        async with (
+            httpx.AsyncClient(trust_env=False, timeout=15) as client,
+            AsyncExitStack() as approval_stack,
+        ):
+            service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    proposal_registry().snapshot_hash,
+                    fault=lambda stage: os._exit(87) if stage == args.fault else None,
+                )
             )
             op = await repo.get(args.operation)
             budget = ExecutionBudget.start(60, 8, 0)
@@ -361,7 +368,7 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if not args.key.exists():
         args.key.write_bytes(os.urandom(32))
-    if not args.budget_state.exists():
+    if not args.fixed_only and not args.budget_state.exists():
         atomic_json(
             args.budget_state,
             {
@@ -382,11 +389,16 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
     faults = args.output.with_suffix(".faults.json")
     atomic_json(faults, {})
     server = await start_rights(args, faults)
-    repo = await ApprovalRepository.open(Path.cwd())
+    repo = None
     report: dict[str, Any] = {"status": "RUNNING", "stage": args.stage, "checks": {}, "matrix": []}
     try:
+        repo = await ApprovalRepository.open(Path.cwd())
         await repo.migrate()
-        await real_http(args, report)
+        if not args.fixed_only:
+            await real_http(args, report)
+        else:
+            report["model_calls"] = report["model_tokens"] = 0
+            report["scope"] = "fixed approval/database/downstream recovery protocol"
         for name, stage in (
             ("before_interrupt", "before_checkpoint"),
             ("approval_checkpoint_gap", "after_decision"),
@@ -446,21 +458,25 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
                 "before_effect",
             }:
                 assert after_replay["query_calls"] >= 1
-        async with httpx.AsyncClient(trust_env=False) as client:
-            service = ApprovalService(
-                repo,
-                RightsClient(client, args.port, args.key.read_bytes()),
-                proposal_registry().snapshot_hash,
+        async with httpx.AsyncClient(trust_env=False) as client, AsyncExitStack() as approval_stack:
+            service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    proposal_registry().snapshot_hash,
+                )
             )
             changed_registry = proposal_registry().model_copy(
                 update={"registry_version": "sop-registry-m15-after-approval-v2"}
             )
             changed_store = RegistryStore(args.output.parent / (args.output.stem + "-changed-sop"))
             changed_store.publish(changed_registry)
-            changed_service = ApprovalService(
-                repo,
-                RightsClient(client, args.port, args.key.read_bytes()),
-                changed_store.history()[0].snapshot_hash,
+            changed_service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    changed_store.history()[0].snapshot_hash,
+                )
             )
             for kind in (
                 "reject",
@@ -556,6 +572,95 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
                     **await counts(repo, op.plan.operation_id),
                 }
             )
+            if args.fixed_only:
+                held = await prepare(repo, "m26-cancel-query-lock-" + uuid4().hex)
+                await service.pause(held.plan.operation_id, ExecutionBudget.start(60, 8, 0))
+                await service.decide(held.plan.identity, held.plan.operation_id, decision(held))
+                marker = faults.with_suffix(".entered.json")
+                atomic_json(faults, {held.plan.operation_id: "hold_before_effect"})
+                running = asyncio.create_task(
+                    service.resume(
+                        held.plan.identity,
+                        held.plan.operation_id,
+                        resume_command(held),
+                        ExecutionBudget.start(60, 8, 0),
+                    )
+                )
+                query = None
+                try:
+                    async with asyncio.timeout(5):
+                        for _ in range(250):
+                            if (
+                                marker.exists()
+                                and json.loads(marker.read_text()).get("operation")
+                                == held.plan.operation_id
+                            ):
+                                break
+                            await asyncio.sleep(0.02)
+                        else:
+                            raise TimeoutError("Owned downstream did not enter the effect hold")
+                    current = await repo.get(held.plan.operation_id)
+                    query = asyncio.create_task(
+                        service.rights.call("query", current, ExecutionBudget.start(60, 8, 0))
+                    )
+                    blocked = False
+                    async with asyncio.timeout(2):
+                        for _ in range(100):
+                            async with repo.pool.acquire() as conn, conn.cursor() as cursor:
+                                await cursor.execute(
+                                    "SELECT COUNT(*) FROM pg_stat_activity "
+                                    "WHERE datname=current_database() "
+                                    "AND cardinality(pg_blocking_pids(pid))>0"
+                                )
+                                blocked = (await cursor.fetchone())[0] > 0
+                                await conn.rollback()
+                            if blocked:
+                                break
+                            await asyncio.sleep(0.02)
+                        else:
+                            raise TimeoutError("Database did not observe the query lock wait")
+                    assert not query.done(), "Query must wait rather than observe false ABSENT"
+                    running.cancel()
+                    atomic_json(faults, {})
+                    try:
+                        await running
+                    except asyncio.CancelledError:
+                        pass
+                    else:
+                        raise AssertionError("Approval cancellation was swallowed")
+                    observation = await query
+                finally:
+                    atomic_json(faults, {})
+                    if not running.done():
+                        running.cancel()
+                    if query is not None and not query.done():
+                        query.cancel()
+                    await asyncio.gather(
+                        running, *([query] if query is not None else []), return_exceptions=True
+                    )
+                assert observation.status == "SUCCEEDED" and observation.effect
+                assert (await repo.get(held.plan.operation_id)).status == OperationStatus.UNKNOWN
+                recovered = await service.resume(
+                    held.plan.identity,
+                    held.plan.operation_id,
+                    resume_command(held),
+                    ExecutionBudget.start(60, 8, 0),
+                )
+                stats = await counts(repo, held.plan.operation_id)
+                assert recovered.status == OperationStatus.SUCCEEDED
+                assert stats == {"effects": 1, "execute_calls": 1, "query_calls": 2}
+                marker.unlink()
+                report["checks"]["cancel_and_absence_commit_mutex"] = blocked
+                report["observations"].append(
+                    {
+                        "case": "cancel_and_absence_commit_mutex",
+                        "operation_id": held.plan.operation_id,
+                        "status": recovered.status.value,
+                        "server_blocking_pids_observed": blocked,
+                        "blocked_query_observed": observation.status,
+                        **stats,
+                    }
+                )
             # All three dimensions are checked against the same persisted operation.
             for field in ("tenant_id", "user_id", "session_id", "run_id"):
                 identity = (
@@ -594,15 +699,253 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
         raise
     finally:
         atomic_json(args.output, report)
-        await repo.aclose()
-        await stop(server)
+        try:
+            if repo is not None:
+                await repo.aclose()
+        finally:
+            await stop(server)
     return report
+
+
+async def historical(args: argparse.Namespace) -> None:
+    """Own the synthetic endpoint while the original isolated history is resumed."""
+    from deephelp_app.adapters.postgres import application_config
+    from deephelp_app.adapters.postgres_checkpoints import official_checkpoints
+    from deephelp_tools.evaluation.checkpoint_migration import SnapshotCheckpoints, recover_history
+    from deephelp_tools.probes.postgres_probe import require_isolated
+
+    if not args.live or not args.snapshot or args.output.exists():
+        raise ValueError("History requires --live, --snapshot and a new report path")
+    config = application_config(Path.cwd())
+    require_isolated(config)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.key.parent.mkdir(parents=True, exist_ok=True)
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    source = SnapshotCheckpoints(args.snapshot)
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        args.port = sock.getsockname()[1]
+    faults = args.output.with_suffix(".faults.json")
+    atomic_json(faults, {})
+    server = await start_rights(args, faults)
+    try:
+        repo = await ApprovalRepository.open(Path.cwd())
+        try:
+            async with official_checkpoints(config, owner=repo.pool.owner) as saver:
+                atomic_json(
+                    args.output,
+                    await recover_history(
+                        source,
+                        saver,
+                        repo.pool,
+                        args.snapshot,
+                        args.port,
+                        args.key.read_bytes(),
+                        args.output,
+                    ),
+                )
+        finally:
+            await repo.aclose()
+    except BaseException as exc:
+        partial_report = json.loads(args.output.read_text()) if args.output.exists() else {}
+        atomic_json(
+            args.output, partial_report | {"status": "FAIL", "error_type": type(exc).__name__}
+        )
+        raise
+    finally:
+        await stop(server)
+
+
+async def learning(args: argparse.Namespace) -> None:
+    """Actual LiveAssembly and learning HTTP routes, with fixed actions and zero models."""
+    from deephelp_app.adapters.postgres import application_config
+    from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints
+    from deephelp_tools.learning.workbench_protocol import learning_router
+    from deephelp_tools.probes.postgres_probe import require_isolated
+
+    if not args.live or args.output.exists():
+        raise ValueError("Learning qualification requires --live and a new report path")
+    require_isolated(application_config(Path.cwd()))
+    args.key.parent.mkdir(parents=True, exist_ok=True)
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    auth_path = args.key.parent / (args.output.stem + ".auth.json")
+    if auth_path.exists() or args.budget_state.exists():
+        raise ValueError("Learning qualification requires new owned auth/budget paths")
+    atomic_json(
+        auth_path,
+        {
+            "tokens": [
+                {
+                    "token": uuid4().hex + uuid4().hex,
+                    "identity": {"tenant_id": "synthetic-tenant", "user_id": "synthetic-user-a"},
+                }
+            ]
+        },
+    )
+    atomic_json(
+        args.budget_state,
+        {
+            "max_calls": 1,
+            "max_tokens": 200000,
+            "max_cost_cny": "10",
+            "attempts": 0,
+            "tokens": 0,
+            "charged_tokens": 0,
+            "cost_upper_cny": "0",
+            "uncertain_attempts": 0,
+            "stages": {},
+        },
+    )
+    gate = BudgetSession(args.budget_state)
+    gate.open()
+    report: dict[str, Any] = {"status": "RUNNING", "model_calls": 0, "checks": {}}
+    directory = args.key.parent / (args.output.stem + "-sop")
+    RegistryStore(directory).publish(proposal_registry())
+    collection = "dh_m10_events_m26_" + uuid4().hex[:12]
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        args.port = sock.getsockname()[1]
+    faults = args.key.parent / (args.output.stem + ".faults.json")
+    atomic_json(faults, {})
+    try:
+        assembly = LiveAssembly(
+            Path.cwd(),
+            Path(args.providers),
+            local_path(args.pointer),
+            sop_directory=directory,
+            event_collection=collection,
+            rights_port=args.port,
+            rights_key=args.key,
+        )
+        auth = LocalAuth(auth_path)
+        app = live_app(
+            assembly, auth, gate, str(args.key.parent / (args.output.stem + ".trace.jsonl"))
+        )
+        app.include_router(
+            learning_router(
+                assembly,
+                app.state.browser_auth,
+                rights_port=args.port,
+                rights_key=args.key.read_bytes(),
+            )
+        )
+        server = await start_rights(args, faults)
+    except BaseException as exc:
+        gate.close()
+        atomic_json(args.output, report | {"status": "FAIL", "error_type": type(exc).__name__})
+        raise
+    headers = {"Authorization": "Bearer " + auth.rows[0][0]}
+
+    async def cleanup_projection() -> None:
+        index = assembly.event_index
+        assert index is not None
+        await index.rpc(
+            partial(index.client.drop_collection, collection, timeout=None, retry_times=0)
+        )
+        assert not await index.rpc(
+            partial(index.client.has_collection, collection, timeout=None, retry_times=0)
+        )
+        report["checks"]["owned_projection_deleted"] = True
+
+    report["owned_projection"] = collection
+    try:
+        async with (
+            app.router.lifespan_context(app),
+            api_client(app, http=True) as api,
+            AsyncExitStack() as cleanup,
+        ):
+            cleanup.push_async_callback(cleanup_projection)
+            service = app.state.resources.conversation.approvals
+            assert isinstance(service.saver, PostgresCheckpoints)
+            report["checks"]["formal_assembly_official_saver"] = True
+            assert (await api.get("/learning/workflow")).status_code == 401
+            workflow = (await api.get("/learning/workflow", headers=headers)).json()
+            report["workflow"] = workflow
+            assert workflow["approval_graph"] and workflow["model_calls"] == 0
+            assert (await api.get("/learning/status", headers=headers)).json()["demo_enabled"]
+            op = OperationRecord.model_validate(
+                (await api.post("/learning/demo", headers=headers)).json()
+            )
+            path = "/learning/demo/" + op.plan.operation_id
+            params = {"session_id": op.session_id, "run_id": op.run_id}
+            pending = (await api.get(path, params=params, headers=headers)).json()
+            assert pending["interrupts"] and pending["checkpoints"] and pending["effects"] == 0
+            bad = decision(op).model_dump(mode="json") | {"parameters_hash": "tampered"}
+            assert (
+                await api.post(path + "/approval", json=bad, headers=headers)
+            ).status_code == 409
+            assert (
+                await api.get(path, params=params | {"run_id": "foreign"}, headers=headers)
+            ).status_code == 404
+            assert (
+                await api.post(
+                    path + "/resume",
+                    json=resume_command(op).model_dump(mode="json"),
+                    headers=headers,
+                )
+            ).status_code == 403
+            assert await counts(service.repo, op.plan.operation_id) == {
+                "effects": 0,
+                "execute_calls": 0,
+                "query_calls": 0,
+            }
+            assert (
+                await api.post(
+                    path + "/approval", json=decision(op).model_dump(mode="json"), headers=headers
+                )
+            ).status_code == 200
+            # Resume through the formal generic HTTP route, then replay/view through learning.
+            result = await api.post(
+                "/operations/" + op.plan.operation_id + "/resume",
+                json=resume_command(op).model_dump(mode="json"),
+                headers=headers,
+            )
+            assert result.status_code == 200 and result.json()["status"] == "SUCCEEDED"
+            replay = await api.post(
+                path + "/resume", json=resume_command(op).model_dump(mode="json"), headers=headers
+            )
+            assert replay.status_code == 200
+            final = (await api.get(path, params=params, headers=headers)).json()
+            assert final["effects"] == 1 and not final["next"] and not final["interrupts"]
+            assert any(c["parent"] for c in final["checkpoints"])
+            stats = await counts(service.repo, op.plan.operation_id)
+            assert stats == {"effects": 1, "execute_calls": 1, "query_calls": 0}
+            report["operation"] = {
+                "operation_id": op.plan.operation_id,
+                "status": result.json()["status"],
+                **stats,
+                "checkpoint_count": len(final["checkpoints"]),
+                "pending_interrupt_count": len(pending["interrupts"]),
+            }
+            report["checks"].update(
+                {
+                    "same_graph_learning_formal_resume": True,
+                    "approval_and_scope_guards_zero_effect": True,
+                    "replay_unique_effect": True,
+                    "official_history_and_parent": True,
+                }
+            )
+        assert gate.state["attempts"] == gate.state["tokens"] == 0
+        report["status"] = "PASS"
+    except BaseException as exc:
+        report.update(status="FAIL", error_type=type(exc).__name__)
+        raise
+    finally:
+        atomic_json(args.output, report)
+        gate.close()
+        await stop(server)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", nargs="?", default="accept", choices=["accept", "worker"])
+    parser.add_argument(
+        "command", nargs="?", default="accept", choices=["accept", "worker", "history", "learning"]
+    )
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--fixed-only", action="store_true")
+    parser.add_argument("--timeout", type=float, default=900)
     parser.add_argument("--stage", choices=["feature", "main"], default="feature")
     parser.add_argument("--output", type=local_path, default=Path(".local/m15/feature.json"))
     parser.add_argument("--budget-state", type=local_path, default=Path(".local/m15/budget.json"))
@@ -614,9 +957,22 @@ def main() -> None:
     parser.add_argument("--operation")
     parser.add_argument("--action", choices=["pause", "approve", "resume"], default="resume")
     parser.add_argument("--fault", default="")
+    parser.add_argument("--snapshot", type=Path)
     args = parser.parse_args()
     with environment("deephelp-app"):
-        asyncio.run(worker(args) if args.command == "worker" else matrix(args))
+
+        async def bounded() -> None:
+            async with asyncio.timeout(args.timeout):
+                if args.command == "worker":
+                    await worker(args)
+                elif args.command == "history":
+                    await historical(args)
+                elif args.command == "learning":
+                    await learning(args)
+                else:
+                    await matrix(args)
+
+        asyncio.run(bounded())
 
 
 if __name__ == "__main__":

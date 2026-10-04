@@ -686,9 +686,7 @@ async function learningStatus() {
     $("demo-create").disabled = !s.demo_enabled;
     $("demo-prerequisite").textContent = s.demo_enabled
       ? "独立演示身份与权益执行口已启用。"
-      : s.execution_gate === "M26"
-        ? "当前仅可读取审批历史；M26验证保存器后才能创建、批准和恢复。"
-        : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
+      : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
     try {
       await loadEvaluation();
       document.querySelector("[data-evaluation]").hidden = false;

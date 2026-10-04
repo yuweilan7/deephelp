@@ -225,9 +225,12 @@ class PostgresPool:
     backend = "postgresql"
 
     def __init__(
-        self, pool: AsyncConnectionPool[AsyncConnection[Any]], owner: PoolLoop | None = None
+        self,
+        pool: AsyncConnectionPool[AsyncConnection[Any]],
+        owner: PoolLoop | None = None,
+        config: PostgresConfig | None = None,
     ) -> None:
-        self.inner, self.owner = pool, owner
+        self.inner, self.owner, self.config = pool, owner, config
 
     @classmethod
     async def open(cls, config: PostgresConfig) -> PostgresPool:
@@ -262,7 +265,7 @@ class PostgresPool:
             return pool
 
         try:
-            return cls(await on_pool_loop(owner, open_pool()), owner)
+            return cls(await on_pool_loop(owner, open_pool()), owner, config)
         except BaseException:
             if owner:
                 await owner.close()
