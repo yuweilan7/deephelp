@@ -19,6 +19,8 @@ dependencies = [
     "langgraph==1.2.12",
     "opentelemetry-sdk==1.45.0",
     "opentelemetry-exporter-otlp-proto-http==1.45.0",
+    "psycopg[binary]==3.3.6",
+    "psycopg-pool==3.3.3",
 ]
 
 [build-system]

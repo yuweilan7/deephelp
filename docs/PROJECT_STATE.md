@@ -31,13 +31,14 @@
 | M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接及导出故障通过；平台由M23远端组合复用 |
 | M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项学习页面已完成；M23在云端提供同源工作台，业务仍为个人合成持久资料 |
 | M23 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M23.md) | Linux3.14.7三包/FastText、保签名路径绑定、新完整发布、浏览器四轮/同trace、独立重启、实际隔离恢复和安装回滚通过；私有SSH入口、短时低并发，不证明公网TLS/长期SLA/历史代码升级 |
+| M25 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M25.md) | PG18.6/psycopg异步池在Windows/Linux3.14.7各12项协议检查通过；27表只读盘点与全消费者映射完成；全业务迁移/隔离恢复尚未实施，M26前置未满足 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
-## 现代路线规划交付（尚未实施）
+## 现代路线实施与规划
 
 2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31补qwen3.7-text-rerank端口、同链/MCP/学习页及效果验收，当前仍未接入。规格是工程目标，不是当前运行事实。
 
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按原AGENTS的feature→main流程；本轮计划用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。未迁库/部署/卸载/调用模型；旧MySQL/OTel运行配置与资产保持。M25与独立M31首特性可启动，其余受前置约束；当前无M25–M31实施handoff，不能引用计划当通过证据。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
+用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按原AGENTS的feature→main流程；本轮计划用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。规划交付未迁库/部署/卸载/调用模型；后续M25首特性仅增隔离PG协议环境，未导入全业务或切换现行服务，旧MySQL/OTel运行配置与资产保持。M25全持久迁移特性待用户启动，独立M31首特性可启动，其余受前置约束；M25首特性已交付协议资格与消费者盘点，证据见M25 handoff；M26–M31无实施handoff，不能引用计划当通过证据。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
 
 ## 当前运行与验收边界
 
