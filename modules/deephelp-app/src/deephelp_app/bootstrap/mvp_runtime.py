@@ -210,6 +210,7 @@ class LiveAssembly:
         rights_key: Path | None = None,
         release_manifest: ReleaseManifest | None = None,
         release_channel: str | None = None,
+        prompt_artifact: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -217,6 +218,14 @@ class LiveAssembly:
             load_json(pointer),
         )
         self.release_manifest, self.release_channel = release_manifest, release_channel
+        from deephelp_app.application.intent_prompt import published_prompt, read_prompt
+
+        if release_manifest and prompt_artifact:
+            raise ConfigurationError("Published runtime Prompt must come from its ReleaseManifest")
+        binding = published_prompt(release_manifest) if release_manifest else None
+        self.intent_prompt = (
+            binding[1] if binding else (read_prompt(prompt_artifact) if prompt_artifact else None)
+        )
         self.judge_providers = (
             resolve_artifact(release_manifest.judge_providers_path)
             if release_manifest
@@ -385,7 +394,9 @@ class LiveAssembly:
                         text, scope, budget, top_k=top_k
                     )
 
-            fallback: Any = StructuredFallback(strong_model)
+            fallback: Any = StructuredFallback(
+                strong_model, system_prompt=self.intent_prompt.text if self.intent_prompt else None
+            )
             classifier = None
             if self.fasttext_pointer is not None:
                 from deephelp_app.adapters.fasttext_runtime import (
@@ -408,7 +419,11 @@ class LiveAssembly:
                 embedding_signature=self.scope.signature.fingerprint,
                 model=endpoint.model,
                 provider=self.config.provider,
-                prompt="m12-fallback-v2",
+                prompt=(
+                    f"{self.intent_prompt.name}-v{self.intent_prompt.version}-{self.intent_prompt.request_digest[:12]}"
+                    if self.intent_prompt
+                    else "m12-fallback-v2"
+                ),
                 policy="cascade-policy-v1",
                 fasttext_model=classifier.manifest.version if classifier else None,
                 fasttext_preprocessing=classifier.preprocessor.signature if classifier else None,

@@ -351,3 +351,11 @@ prepare调用原prepare_manifest/ReleaseStore.register。POST /release收publish
 ### M29 历史平台映射
 
 `EvaluationCatalog`增加可选`platform_config`与最多16个`imports`；每条只允许服务器持有的report/data/manifest路径、1–20个case和1–4个mode。GET `/learning/evaluation/imports/{id}`先原owner守卫、后审计冻结来源与读取持久状态；来源变更409。POST原`/tasks`增加`platform_upload`及受控`import_id`，仍要求confirmed；其他action不接受import_id。应用业务观测与上传SDK分别拥有进程资源。COMPLETE必须逐行完整读回，与原历史质量门禁独立；部分/取消/中断不显示全量通过。平台Score不会更改候选review或M18 active。
+
+### M29 不可变Prompt与审核依据
+
+原ReleaseManifest DTO形状保持：`prompts`新增保留键`langfuse:intent-fallback`，值为本地`m29-prompt-v1`工件SHA256；`files`必须包含唯一对应文件及hash。工件固定name、正整数version、静态system全文、原请求contract和request_digest。当前契约无模板插值，完整输入仍为text/confirmed_event_context/retrievals，schema/参数/tools由代码核对；模型绑定原judge_providers_digest。原内容报告必须绑定相同请求摘要，不同文本/契约拒绝；相同请求的不同平台版本仍各有完整release hash。验证了自定义文本却遗漏工件同样拒绝。运行VersionManifest.prompt记录name/version/请求摘要前缀，只读取清单的本地工件，无平台标签热切换或故障降级。
+
+`EvaluationCatalog.prompt_artifact`可选服务器路径，原validate/prepare复用。验证只写任务报告，不覆盖被完整版本引用的资产验证文件；准备绑定所选资产最近验证任务，只有SUCCEEDED/PASS继续，原精确门禁再核验；稳定版本名绑定准备任务ID，避免同资产的不同Prompt冲突。GET `/candidates/{hash}/platform`仍先owner；导出核对整份候选revision摘要、结束观察、输入/输出及trace/observation。POST `/tasks`增加`platform_candidate`，仅一个已知candidate_id及确切candidate_revision、confirmed；其他action不接受该revision。平台非幂等Prompt/评分配置POST结果未知不自动重发，GET/确定性映射继续有限重试。SDK写入独立子进程，原取消/恢复槽位守卫保持。
+
+POST原review可附`platform_score_id`，只允许v3 Score的ANNOTATION、有作者、当前revision具体observation、m29_intent_label/CATEGORICAL支持标签。v3 subject/value/annotation字段显式适配；trace级、API/EVAL、数值高分不成为独立标签。选中score与本次独立label必须一致；仍要求人工review、留出隔离、reason、confirmed，审核者来自owner；原事务CAS防读回后的revision竞争。审核理由绑定score ID/摘要和原revision。平台读回/导出均0模型，不自动review、派生或发布，修改revision后旧证据失效。

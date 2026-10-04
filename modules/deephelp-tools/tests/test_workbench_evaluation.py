@@ -173,6 +173,7 @@ async def test_catalog_owner_all_routes_and_no_browser_paths(tmp_path, monkeypat
             "/plan",
             "/tasks/task",
             "/candidates/" + "a" * 64,
+            "/candidates/" + "a" * 64 + "/platform",
             "/releases/" + "a" * 64,
         ]
         for path in paths:
@@ -181,6 +182,15 @@ async def test_catalog_owner_all_routes_and_no_browser_paths(tmp_path, monkeypat
             ("/capture", {"run_id": "a" * 32}),
             ("/tasks", {"action": "offline", "confirmed": True}),
             ("/tasks", {"action": "platform_upload", "import_id": "trusted", "confirmed": True}),
+            (
+                "/tasks",
+                {
+                    "action": "platform_candidate",
+                    "candidate_ids": ["a" * 64],
+                    "candidate_revision": 0,
+                    "confirmed": True,
+                },
+            ),
             ("/tasks/task/resume", None),
             (
                 "/release",
@@ -230,6 +240,8 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
     seen = []
     budget = ExecutionBudget.start(90, 20, 2)
     registry = object()
+    passing = False
+    validation_paths = []
 
     async def build(store, ids, output, version, gate, providers, original_fasttext):
         assert ids == [] and output.name == "assets" and providers == key
@@ -237,13 +249,30 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
         seen.append("build")
         return {"status": "PREPARED", "version": version}
 
-    async def validate(store, assets, output, gate, providers, auth, *, registry):
+    async def validate(
+        store,
+        assets,
+        output,
+        gate,
+        providers,
+        auth,
+        *,
+        registry,
+        prompt_artifact,
+        persist_assets_validation,
+    ):
         assert assets == key and output.name == "validation.json" and gate.request() is budget
         assert registry is assembly.sop_registry and auth == providers == key
+        assert prompt_artifact is config.prompt_artifact
+        assert persist_assets_validation is False
+        validation_paths.append(output)
         seen.append("validate")
-        return {"status": "REJECTED", "checks": {"facts": False}}
+        return {"status": "PASS" if passing else "REJECTED", "checks": {"facts": passing}}
 
-    def prepare(*args):
+    def prepare(*args, **kwargs):
+        assert kwargs["prompt_artifact"] is config.prompt_artifact
+        assert kwargs["validation_path"] == validation_paths[-1]
+        assert len(args[3]) == 36 and args[3].startswith("m22-")
         seen.append("prepare")
         raise ConfigurationError("Exact current byte gate rejected")
 
@@ -261,7 +290,11 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
             ("build", "PREPARED"),
             ("validate", "REJECTED"),
             ("prepare", None),
+            ("validate", "PASS"),
+            ("prepare", None),
         ):
+            if expected == "PASS":
+                passing = True
             r = await c.post(
                 "/learning/evaluation/tasks",
                 json={
@@ -281,8 +314,14 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
                 assert row["state"] == "SUCCEEDED" and row["result"]["evidence_status"] == expected
             else:
                 assert row["state"] == "FAILED"
-                assert row["diagnostic"]["message"] == "Exact current byte gate rejected"
-        assert seen == ["build", "validate", "prepare"]
+                expected_error = (
+                    "Exact current byte gate rejected"
+                    if passing
+                    else "Latest validation task is not PASS; cannot prepare"
+                )
+                assert row["diagnostic"]["message"] == expected_error
+        assert seen == ["build", "validate", "validate", "prepare"]
+        assert key.read_bytes() == b"k" * 32
 
 
 async def test_platform_worker_cancel_closes_child_before_partial_state(tmp_path, monkeypatch):
@@ -352,3 +391,132 @@ async def test_platform_worker_cancel_closes_child_before_partial_state(tmp_path
         assert cancelled.json()["state"] == "CANCELLED" and closed.is_set()
         state = json.loads((tmp_path / ".local/jobs/imports/trusted.json").read_text())
         assert state["status"] == "CANCELLED" and len(state["rows"]) == 1
+
+
+async def test_platform_annotation_still_requires_confirmation_label_isolation_and_cas(
+    tmp_path, monkeypatch
+):
+    import deephelp_tools.learning.workbench_evaluation as module
+    from deephelp_app.domain.errors import ConfigurationError
+    from deephelp_app.domain.feedback import FeedbackCandidate
+    from deephelp_tools.evaluation.flywheel import reviewed
+    from deephelp_tools.evaluation.langfuse_prompt_review import SCORE_NAME, candidate_binding
+
+    monkeypatch.chdir(tmp_path)
+    key = tmp_path / "key"
+    key.write_bytes(b"k" * 32)
+    owner = VerifiedIdentity(tenant_id="owner", user_id="a")
+    config = EvaluationCatalog(
+        owner=owner,
+        task_root=Path(".local/jobs"),
+        channel="learning",
+        redaction_key=key,
+        providers=key,
+        auth=key,
+        budget_state=key,
+        pointer=key,
+        fasttext_pointer=key,
+        platform_config=key,
+    )
+    candidate = FeedbackCandidate(
+        candidate_id="a" * 64,
+        run_id="b" * 32,
+        source_group="m29-fresh",
+        variant_group="m29-fresh",
+        text="订单参加什么活动",
+        observation={},
+    )
+    binding = candidate_binding(candidate)
+    evidence = dict(
+        status="EXPORTED",
+        binding=binding,
+        scores=[
+            dict(
+                id="annotation",
+                source="ANNOTATION",
+                authorUserId="learner",
+                name=SCORE_NAME,
+                dataType="CATEGORICAL",
+                stringValue="ORDER_ACTIVITY_QUERY",
+                traceId=binding["trace_id"],
+                observationId=binding["observation_id"],
+            )
+        ],
+    )
+    commits = []
+    race = False
+
+    class Store:
+        def __init__(self, pool):
+            pass
+
+        async def get(self, identity):
+            return candidate
+
+        async def review(self, identity, expected, route, review, **kwargs):
+            nonlocal candidate
+            if race or expected != candidate.revision:
+                raise ConfigurationError("Candidate revision CAS rejected")
+            result = reviewed(candidate, route, review)
+            commits.append(result)
+            candidate = result
+            return result
+
+    async def read(platform, current):
+        return evidence
+
+    monkeypatch.setattr(module, "FeedbackStore", Store)
+    monkeypatch.setattr(module, "annotations", read)
+    monkeypatch.setattr("deephelp_app.adapters.native_observation.configuration", lambda p: {})
+    app = create_app(Settings(mode="test"), trace=MemoryTrace())
+    app.include_router(
+        evaluation_router(
+            SimpleNamespace(ledger=SimpleNamespace(pool=object())),
+            lambda r: owner,
+            config,
+            lambda: None,
+        )
+    )
+    body = dict(
+        revision=0,
+        route="corpus",
+        review=dict(
+            state="approved",
+            label="ORDER_ACTIVITY_QUERY",
+            method="human",
+            reviewer="untrusted-browser-name",
+            reason="synthetic UI protocol evidence",
+            independent_from_heldout=True,
+        ),
+        reason="synthetic UI protocol evidence",
+        confirmed=True,
+        platform_score_id="annotation",
+    )
+    path = "/learning/evaluation/candidates/" + candidate.candidate_id + "/review"
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1"
+        ) as client,
+    ):
+        assert (await client.post(path, json={**body, "confirmed": False})).status_code == 422
+        for label, independent in (("DISCOUNT_MISSING", True), ("ORDER_ACTIVITY_QUERY", False)):
+            altered = {
+                **body,
+                "review": {
+                    **body["review"],
+                    "label": label,
+                    "independent_from_heldout": independent,
+                },
+            }
+            assert (await client.post(path, json=altered)).status_code == 409
+        race = True
+        assert (await client.post(path, json=body)).status_code == 409
+        race = False
+        assert not commits and candidate.revision == 0
+        result = await client.post(path, json=body)
+        assert result.status_code == 200 and result.json()["revision"] == 1
+        review = commits[0].reviews["corpus"]
+        assert review.reviewer == "owner/a" and "annotation" in review.reason
+        assert "candidate r0" in review.reason and "sha256=" in review.reason
+        assert (await client.post(path, json=body)).status_code == 409 and len(commits) == 1

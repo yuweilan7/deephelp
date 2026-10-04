@@ -1,8 +1,8 @@
 # M29｜Prompt版本、评测实验与审核回流
 
-**状态：** FIRST_FEATURE_LIVE_VERIFIED；报告映射已交付，Prompt版本/审核映射继续同一实施会话。依赖M28；推荐学习扩展，不阻塞纯基础设施迁移后的M30。
+**状态：** 以[PROJECT_STATE](../PROJECT_STATE.md)与[M29交接](../../handoffs/M29.md)为准。依赖M28；推荐学习扩展，不阻塞纯基础设施迁移后的M30。
 
-**前置：** M17/M18/M22 现行冻结评测、审核/资产/完整发布接口和 M28 observation映射。见 [计划](../../planning/M29/PLAN.md)。
+**前置：** M17/M18/M22 现行冻结评测、审核/资产/完整发布接口和 M28 observation映射。
 
 ## 把已有工程机制接到平台
 

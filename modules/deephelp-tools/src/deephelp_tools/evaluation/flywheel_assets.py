@@ -256,6 +256,7 @@ def assembly(data: dict[str, Any], providers: Path, collection: str) -> LiveAsse
         fasttext_pointer=Path(data["fasttext_pointer"]),
         reviewed_rules=Path(data["rules"]),
         event_collection=collection,
+        corpus_path=Path(data["dense_pointer"]).parent / "corpus.jsonl",
     )
 
 

@@ -256,3 +256,82 @@ async def test_terminal_write_cannot_publish_mixed_release(release):
     )
     with pytest.raises(ConfigurationError, match="mixed complete release"):
         await repo.before_finish(None, receipt, question, response)
+
+
+def test_platform_prompt_binds_local_version_and_exact_validated_requests(release, tmp_path):
+    from deephelp_app.application.intent_prompt import (
+        ROLE,
+        PromptArtifact,
+        default_system,
+        fallback_contract,
+        published_prompt,
+    )
+
+    artifact = PromptArtifact(
+        name="deephelp-intent-fallback",
+        version=1,
+        text=default_system(),
+        contract=fallback_contract(),
+        request_digest=digest([default_system(), fallback_contract()]),
+    )
+    path = tmp_path / "prompt-v1.json"
+    path.write_text(artifact.model_dump_json(), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="request changed"):
+        prepare_manifest(
+            Path(release.assets_path),
+            Path(release.providers_path),
+            bundled_registry(),
+            "prompt-a",
+            prompt_artifact=path,
+        )
+    validation_path = Path(release.validation_path)
+    validation = json.loads(validation_path.read_text())
+    validation["intent_prompt_request_digest"] = artifact.request_digest
+    validation_path.write_text(json.dumps(validation), encoding="utf-8")
+    bound = prepare_manifest(
+        Path(release.assets_path),
+        Path(release.providers_path),
+        bundled_registry(),
+        "prompt-a",
+        prompt_artifact=path,
+    )
+    assert bound.prompts[ROLE] == file_digest(path)
+    assert verify_release(bound) and published_prompt(bound)[1] == artifact
+    # A second immutable platform version with byte-identical requests can reuse
+    # one exact content observation; provenance remains different in the manifest.
+    path2 = tmp_path / "prompt-v2.json"
+    path2.write_text(artifact.model_copy(update={"version": 2}).model_dump_json(), encoding="utf-8")
+    other = prepare_manifest(
+        Path(release.assets_path),
+        Path(release.providers_path),
+        bundled_registry(),
+        "prompt-b",
+        prompt_artifact=path2,
+    )
+    assert release_hash(other) != release_hash(bound) and verify_release(other)
+    assert published_prompt(bound)[1].version == 1 and published_prompt(other)[1].version == 2
+    changed = artifact.model_copy(
+        update={"text": "不同语义", "request_digest": digest(["不同语义", fallback_contract()])}
+    )
+    changed_path = tmp_path / "changed.json"
+    changed_path.write_text(changed.model_dump_json(), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="request changed"):
+        prepare_manifest(
+            Path(release.assets_path),
+            Path(release.providers_path),
+            bundled_registry(),
+            "changed",
+            prompt_artifact=changed_path,
+        )
+    validation["intent_prompt_request_digest"] = changed.request_digest
+    validation_path.write_text(json.dumps(validation), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="requires its immutable artifact"):
+        prepare_manifest(
+            Path(release.assets_path),
+            Path(release.providers_path),
+            bundled_registry(),
+            "omitted-custom",
+        )
+    path.write_text(path2.read_text(), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="artifact changed"):
+        verify_release(bound)

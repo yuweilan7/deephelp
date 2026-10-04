@@ -8,6 +8,12 @@ from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_m
 from deephelp_app.adapters.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.corpus import digest
+from deephelp_app.application.intent_prompt import (
+    ROLE,
+    default_system,
+    fallback_contract,
+    published_prompt,
+)
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import ConfigurationError
@@ -30,6 +36,15 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     prompts = {
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }
+    if binding := published_prompt(manifest):
+        prompts[ROLE] = file_digest(binding[0])
+        if validation.get("intent_prompt_request_digest") != binding[1].request_digest:
+            raise ConfigurationError("Published Prompt request has no matching content validation")
+    elif validation.get("intent_prompt_request_digest") not in {
+        None,
+        digest([default_system(), fallback_contract()]),
+    }:
+        raise ConfigurationError("Validated custom Prompt is missing from the complete release")
     if (
         digest(data) != manifest.assets_digest
         or dense["corpus_digest"] != manifest.corpus_digest
