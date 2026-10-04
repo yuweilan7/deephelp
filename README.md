@@ -4,17 +4,20 @@
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 
-先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG` 并执行迁移；新PG审批使用官方保存器，旧发布证据不能用于新运行。现行云端安装仍保留MySQL，M30另切换。
+先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG` 并执行迁移；PG审批使用官方保存器，旧发布证据不能用于新运行。M30已完成正式PG单写和旧MySQL/Tempo退役；旧源数据/恢复资料继续保留，当前云入口见[部署说明](infra/deployment/README.md)。
 
 从仓库根用 `py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json` 启动现有业务链；先按 LOCAL_SETUP 核对身份、累计预算和真实依赖。`python -m deephelp_app --help` 列出 init/migrate/serve/ask。正式业务通过真实模型、PostgreSQL/Redis/Milvus及本机合成业务MCP；业务事实为合成值，服务绑定127.0.0.1。完整发布按应用文档的 release_cli 入口选取PostgreSQL登记版本。
 
-学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行资源在包内 `assets/runtime`、`assets/demo` 和 `sop_data`；冻结数据与学习数据分别在 `assets/evaluation`、`assets/learning`。业务启动不导入这些工具或读取冻结评测集。
+学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行策略/SOP/Prompt在业务包resources；合成事实、冻结集和学习数据的唯一来源见[datasets职责](datasets/README.md)，工具包安装时包含对应资源。业务启动不导入这些工具或读取冻结评测集。
+
+2026-10-05已交付[M32–M36规格与实施计划](docs/ROADMAP.md#可读性与学习体验m32m36待实施)：结构/清理、面向Java的详细教程与代码注释、个人免登录、Vue组件前端、真实运行解释与观测学习。这些改进尚未实施，现有教程/登录/页面仍按当前代码运行；推荐先M34解除进入门槛，再M32→M33→M35→M36。当前默认模型已另行切换qwen3.7-flash并通过真实内容验收，见[M03](handoffs/M03.md#qwen37-flash切换2026-10-05)。
 
 | 需要什么 | 入口 |
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
-| 个人学习工作台与云运行 | M19–M23已完成；[私有云运行入口](infra/deployment/README.md)、[部署/恢复交接](handoffs/M23.md) |
+| 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
+| 结构/清理、教程、免登录与前端改进计划 | [M32–M36顺序及每M的PLAN](docs/ROADMAP.md#可读性与学习体验m32m36待实施)；待实施 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

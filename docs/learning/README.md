@@ -2,6 +2,8 @@
 
 保留一套引擎。先用离线样本观察实际类型、决策、事实与trace，再由明确live入口运行真实模型；浏览文档、帮助、预览和pytest不会自动调用模型。开始异步基础可先读[M01指南](M01_ASYNC_GUIDE.md)。运行、工具和demo安装说明见[工具包](../../modules/deephelp-tools/README.md)。
 
+当前这里主要是一页异步说明和机制索引，尚未达到面向Java开发者的详细课程目标。2026-10-05新增[M33课程规格](../MODULES/M33_JAVA_LEARNING_COURSE.md)和[实施计划](../../planning/M33/PLAN.md)：先读懂一次请求/类型/高级写法，再跑异步时序/取消/资源实验，最后学习Agent、检索、记忆、审批和发布；核心源码注释与实验同步交付。[M32](../MODULES/M32_CODE_ORGANIZATION.md)先整理职责与路径，[M35](../MODULES/M35_FRONTEND_FOUNDATION.md)/[M36](../MODULES/M36_EXPLAINABLE_WORKBENCH.md)再让教程与实际页面/run对应。以下仍是当前可用入口，新增课程尚未实施。
+
 | 机制 | 调用入口与核心函数 | 最小离线样本 | 观察点 |
 |---|---|---|---|
 | 13段主链 | [Conversation.run](../../modules/deephelp-app/src/deephelp_app/application/conversation.py)，[Cascade.recognize](../../modules/deephelp-app/src/deephelp_app/application/cascade.py) | `pytest modules/deephelp-app/tests/integration/test_m12_pipeline.py -q` | 清洗/实体、事件归属、600主意图、SOP与回复；缺槽位不得调用工具；主分类只在600 |
@@ -17,6 +19,6 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.evaluation_cli audit
 ```
 
-领域类型与确定性安全规则在domain；会话/级联/SOP/审批在application；供应商、MySQL/Redis/Milvus、MCP和trace在adapters；HTTP在api；配置、生命周期和CLI在bootstrap；运行策略、SOP/Prompt与SQL在resources。审批客户端与合成服务已经分开，查看一个HTTP请求时可以沿客户端、协议值、独立demo服务和审批账本追踪。
+领域类型与确定性安全规则在domain；会话/级联/SOP/审批在application；供应商、PostgreSQL/Redis/Milvus、MCP和trace在adapters；HTTP在api；配置、生命周期和CLI在bootstrap；运行策略、SOP/Prompt与SQL在resources。审批客户端与合成服务已经分开，查看一个HTTP请求时可以沿客户端、协议值、独立demo服务和审批账本追踪。
 
-真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。M20独立Business/Retrieval服务的运行、schema、委托、预算回执及维护学习见[服务包](../../modules/deephelp-services/README.md)；前端、M21观测平台与部署按后续特性实施。整个13段主链也不宣称全部由LangGraph实现。
+真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。Business/Retrieval服务的运行、schema、委托、预算回执及维护学习见[服务包](../../modules/deephelp-services/README.md)。M22工作台及M30个人云已交付，当前观测是M28原生Langfuse，旧M21 Tempo路线仅保留历史资料。整个13段主链不宣称全部由LangGraph实现；可读性改进按M32–M36实施，不因历史模块通过认定学习体验已满足。

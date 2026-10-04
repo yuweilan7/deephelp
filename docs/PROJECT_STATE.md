@@ -38,6 +38,7 @@
 | M29 | LIVE_VERIFIED；[交接](../handoffs/M29.md) | 全部特性已交付：原历史29行映射/恢复及工作台0模型；不可变Prompt版本→本地hash工件→原完整发布，11会话14消息内容PASS；平台annotation经显式审核/CAS回流，实际v1→v2→v1与平台故障下原请求通过；两版本文本等价，不宣称质量提升 |
 | M30 | LIVE_VERIFIED；[交接](../handoffs/M30.md) | 两特性完成：直接指标/新安装，最终源快照/官方历史转换/PG单写、新代码A/B各完整内容门禁及实际回滚、云浏览器四轮/同trace120观测/审批一效果、独立故障恢复、180秒容量及隔离全存储恢复通过；旧MySQL/Collector/Tempo及旧指标栈已停用且取消自启，原数据/冷备/bak保留。合成单机短窗口，不声明长期SLA |
 | M31 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M31.md) | 专用端口、同候选dev/test、真实会话/独立MCP/四路学习与新完整发布已验；N6/default/fail_closed、最终K3。test总体持平且一条退化，拒识6/6；正式默认关闭，开启版保留显式试用；不证明企业泛化 |
+| M32–M36 | SPEC_AND_PLAN_DELIVERED；[规格/PLAN入口](ROADMAP.md#可读性与学习体验m32m36待实施) | 2026-10-05按用户要求分别交付结构清理、Java教程/注释、免登录、Vue前端、机制/观测学习的5份规格+5份PLAN；尚未实施，不标记问题已解决，不创建空handoff或启动调度 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05通用Chat/归属判断切qwen3.7-flash，三项接口及11会话14消息内容通过；云PG订单/同run Langfuse/零调用重放通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 现代路线实施与规划
