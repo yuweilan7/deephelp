@@ -449,6 +449,9 @@ def live_app(
     budget: BudgetSession,
     trace_path: str = ".local/m08/trace.jsonl",
 ) -> FastAPI:
+    from deephelp_app.api.workbench import BrowserAuth, workbench_router
+
+    browser_auth = BrowserAuth(auth)
     app = create_app(
         Settings(
             mode="mvp",
@@ -458,13 +461,28 @@ def live_app(
             retry_limit=2,
             trace_path=trace_path,
         ),
-        identity_provider=auth,
+        identity_provider=browser_auth,
         conversation_factory=assembly.open,
         budget_factory=budget.request,
+    )
+    app.include_router(
+        workbench_router(
+            browser_auth,
+            lambda: {
+                "mode": "live",
+                "business_source": "mysql" if getattr(assembly, "business_mcp", None) else "demo",
+                "remaining_calls": max(0, budget.state["max_calls"] - budget.state["attempts"]),
+                "max_tokens": budget.state["max_tokens"],
+                "charged_tokens": budget.state["charged_tokens"],
+                "request_timeout_seconds": 90,
+                "expected_calls_per_message": "0–8（含Embedding，复杂多轮依原预算）",
+                "business_maintenance": bool(getattr(assembly, "business_mcp", None)),
+            },
+        )
     )
     if config := getattr(assembly, "business_mcp", None):
         from deephelp_app.adapters.business_client import BusinessClient
         from deephelp_app.api.business import business_router
 
-        app.include_router(business_router(BusinessClient(config), auth))
+        app.include_router(business_router(BusinessClient(config), browser_auth))
     return app

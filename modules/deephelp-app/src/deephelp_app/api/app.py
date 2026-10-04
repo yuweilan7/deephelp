@@ -135,10 +135,11 @@ class RequestMiddleware:
                 message["headers"] = [
                     (key, value)
                     for key, value in message.get("headers", [])
-                    if key.lower() not in {b"x-request-id", b"x-trace-id"}
+                    if key.lower() not in {b"x-request-id", b"x-trace-id", b"cache-control"}
                 ] + [
                     (b"x-request-id", request_id.encode("ascii")),
                     (b"x-trace-id", trace_id.encode("ascii")),
+                    (b"cache-control", b"no-store"),
                 ]
             await send(message)
 
@@ -309,7 +310,25 @@ def create_app(
             else "NOT_IMPLEMENTED",
         }
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/")
+    async def workbench_page() -> Response:
+        from deephelp_app.api.workbench import static_response
+
+        return static_response("index.html")
+
+    @app.get("/workbench.js")
+    async def workbench_script() -> Response:
+        from deephelp_app.api.workbench import static_response
+
+        return static_response("workbench.js")
+
+    @app.get("/workbench.css")
+    async def workbench_style() -> Response:
+        from deephelp_app.api.workbench import static_response
+
+        return static_response("workbench.css")
+
+    @app.get("/debug", response_class=HTMLResponse)
     async def debug_page() -> str:
         from importlib.resources import files
 

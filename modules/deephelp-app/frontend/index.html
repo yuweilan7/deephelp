@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DeepHelp · 学习工作台</title>
+    <link rel="stylesheet" href="/workbench.css" />
+    <script src="/workbench.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">DeepHelp <span>学习工作台</span></a>
+      <div id="identity">尚未登录</div>
+      <button id="logout" hidden>退出</button>
+    </header>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <main id="login-panel" class="login">
+      <p class="eyebrow">PERSONAL LEARNING SPACE</p>
+      <h1>从一次真实对话，<br />看懂整个过程。</h1>
+      <p>连接你的个人后端，查看业务事实、问题历史和每一步执行证据。</p>
+      <form id="login-form">
+        <label for="token">本机访问令牌</label
+        ><input
+          id="token"
+          type="password"
+          autocomplete="off"
+          required
+          minlength="32"
+          maxlength="512"
+          placeholder="使用已配置的个人令牌"
+        /><button class="primary">登录工作台</button>
+      </form>
+      <p class="muted">
+        登录后浏览历史不会调用模型。会话在本机服务重启后需重新登录。
+      </p>
+    </main>
+    <main id="workspace" hidden>
+      <nav aria-label="工作区">
+        <button data-tab="conversation" class="selected">对话与全过程</button
+        ><button data-tab="business">业务资料</button>
+      </nav>
+      <section id="conversation" class="tab">
+        <aside>
+          <div class="section-title">
+            <h2>会话</h2>
+            <button id="new-session">＋ 新会话</button>
+          </div>
+          <button id="reload-sessions">刷新持久历史</button>
+          <div id="sessions"></div>
+          <button id="more-sessions" hidden>更多会话</button>
+          <div class="lesson">
+            <h3>这一页怎样用</h3>
+            <ol>
+              <li>在业务资料创建一条订单。</li>
+              <li>提问“我的订单没有享受优惠”。</li>
+              <li>点“补充此问题”填写订单号。</li>
+              <li>查看原始事实、不可变证据和13段时间线。</li>
+            </ol>
+            <p>
+              新提问使用新消息ID；网络重试使用原消息ID。普通聊天不会批准业务写操作。
+            </p>
+            <p class="code">
+              入口：application/conversation.py · Conversation.run<br />adapters/history.py
+              · MySQLHistory
+            </p>
+          </div>
+        </aside>
+        <div class="chat">
+          <div class="section-title">
+            <h2>当前会话</h2>
+            <code id="session-id"></code>
+          </div>
+          <div id="messages" aria-live="polite"></div>
+          <button id="more-messages" hidden>继续读取历史消息</button>
+          <form id="chat-form">
+            <div id="continuation">正在提出新问题</div>
+            <button id="clear-hint" type="button" hidden>改为新问题</button
+            ><label for="text">你的问题或补充</label
+            ><textarea
+              id="text"
+              rows="3"
+              maxlength="16000"
+              required
+              placeholder="例如：我的订单没有享受优惠，请帮我核对。"
+            ></textarea>
+            <p id="execution" class="muted"></p>
+            <div class="actions">
+              <button id="send" class="primary">明确执行真实对话</button
+              ><button id="retry" type="button" hidden>重试原消息</button
+              ><button id="replay" type="button" hidden>核对原消息重投</button>
+            </div>
+          </form>
+          <div id="current-result"></div>
+        </div>
+        <aside class="inspector">
+          <h2>事实与执行证据</h2>
+          <p class="muted">
+            点击一条结果查看对应 run。历史次数是原执行记录，本次重投次数另列。
+          </p>
+          <div id="inspection"></div>
+        </aside>
+      </section>
+      <section id="business" class="tab" hidden>
+        <div class="business-list">
+          <p class="eyebrow">MANUAL RECORDS</p>
+          <h1>可维护的业务事实</h1>
+          <p>这里直接维护个人 MySQL 资料。模型只通过两项只读 MCP 工具查询。</p>
+          <label for="kind">资料类型</label
+          ><select id="kind">
+            <option value="orders">订单</option>
+            <option value="coupons">优惠券</option>
+            <option value="activities">活动</option>
+          </select>
+          <div class="actions">
+            <button id="reload-business">读取列表</button
+            ><button id="new-record">新建资料</button>
+          </div>
+          <div id="business-records"></div>
+          <button id="more-business" hidden>更多资料</button>
+        </div>
+        <div class="business-editor">
+          <h2 id="editor-title">新建订单</h2>
+          <p id="business-mode" class="muted"></p>
+          <form id="record-form">
+            <div id="record-fields"></div>
+            <button id="save-record" class="primary">保存资料</button>
+          </form>
+          <section id="relations" hidden>
+            <h3>订单关联活动</h3>
+            <p>填写当前身份已有活动ID，以逗号分隔。保存采用当前订单版本。</p>
+            <label for="activity-ids">活动ID</label
+            ><input id="activity-ids" /><button id="save-relations">
+              保存活动关系
+            </button>
+          </section>
+          <pre id="record-result"></pre>
+          <div class="lesson">
+            <h3>预期观察与反例</h3>
+            <p>
+              更新金额后，新提问读取新版本；重投旧消息仍返回原事实与证据。旧版本更新会收到冲突，需重新读取资料后再改。另一身份不能读取或修改你的资料。
+            </p>
+            <p class="code">
+              入口：api/business.py · business_router<br />deephelp_services/business_store.py
+              · BusinessRepository
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      个人学习环境 · M22 主工作台 · 数据来源与实际调用以当前后端为准
+    </footer>
+  </body>
+</html>

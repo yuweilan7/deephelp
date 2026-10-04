@@ -558,3 +558,13 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 ## M21标准观测
 
 显式配置DEEPHELP_OTLP_ENDPOINT后，原业务入口与两个MCP导出标准OTel链路和指标；三视图保留身份/session守卫并增加otel_trace_id。运行、计数/时钟/脱敏、固定动作和Collector边界见[观测入口](../../infra/observability/README.md)。审批/Saver已接实际Span Link；Tempo/Prometheus/私有Grafana已实测，受保护历史查询见观测入口；应用未迁移到云端。
+
+## M22浏览器工作台
+
+原业务serve命令无需增加前端进程；启动后访问 `http://127.0.0.1:8000/`，使用该次 `--auth` 配置中的个人令牌登录。令牌仅用于换取短期HttpOnly会话，页面不写入浏览器存储；服务重启后重新登录。原三视图页面在 `/debug`，已有Bearer客户端保持兼容。当前仅支持loopback，远端TLS/应用部署属于M23。
+
+选择MySQL业务资料时，先启动M20 Business服务；可同时选择Retrieval服务，参数见[服务README](../deephelp-services/README.md#启动与凭据)。个人auth与Retrieval允许身份映射应一致。工作台复用原累计预算，显示调用模式/事实来源/剩余额度，点击“明确执行真实对话”才调用模型。浏览历史、事实/追踪与手工维护不请求模型。
+
+可以先在业务资料创建订单，再提问“我的订单没有享受优惠”，在缺槽位结果点“补充此问题”填订单号；续接绑定question/version。刷新页面后从左侧打开持久会话；点击结果读取事实/不可变Business证据/13段及同run诊断。诊断轮转丢失会明确显示，持久历史仍来自MySQL。网络失败用“重试原消息”，沿用原ID/正文/时间；新问题另建message_id。重放的本次计数与历史阶段计数分开显示。
+
+资料页支持订单/券/活动及订单活动关系。完整更新使用当前expected_version，冲突后重新读取；金额输入十进制字符串。更新后新消息读取新资料，重投旧消息返回旧事实与证据。维护不属于会话退款/发券，两个MCP工具仍只读。当前M22第1特性已验收，后续学习页按同一模块计划顺序建设。源码位于`frontend/`，直接同源运行并随app包打包，不需要Node或npm构建；详情见[M22交接](../../handoffs/M22.md)。
