@@ -236,6 +236,16 @@ class Telemetry:
     def setup_metrics(
         self, resource: Resource, endpoint: str | None, reader: MetricReader | None
     ) -> None:
+        self.metrics_endpoint = None
+        if port := os.getenv("DEEPHELP_METRICS_PORT"):
+            if endpoint or reader:
+                raise ValueError("Direct metrics require a single exporter; remove OTLP metrics")
+            if not port.isdecimal() or not 1 <= int(port) <= 65535:
+                raise ValueError("DEEPHELP_METRICS_PORT must be a valid loopback port")
+            from deephelp_app.adapters.prometheus import MetricsEndpoint
+
+            self.metrics_endpoint = MetricsEndpoint(int(port))
+            reader = self.metrics_endpoint.reader
         readers = (
             [
                 PeriodicExportingMetricReader(
@@ -294,6 +304,11 @@ class Telemetry:
     def shutdown(self) -> None:
         self.provider.shutdown()
         self.metrics.shutdown()
+        self.close_metrics()
+
+    def close_metrics(self) -> None:
+        if self.metrics_endpoint is not None:
+            self.metrics_endpoint.close()
 
 
 @contextmanager

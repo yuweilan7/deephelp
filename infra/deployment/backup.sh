@@ -1,22 +1,46 @@
 #!/usr/bin/env bash
-# Quiesce the sole application writer, then keep DB and required local state together.
+# All app writers stop before database/state and native platform snapshots.
 set -euo pipefail
 umask 077
-[[ $# == 0 ]] || { echo 'Usage: backup.sh' >&2; exit 2; }
-runtime=$(realpath -e /srv/deephelp-personal)
-[[ "$runtime" == /srv/deephelp-personal ]] || { echo 'Unexpected runtime root' >&2; exit 1; }
-stamp=$(date -u +%Y%m%dT%H%M%SZ)
-destination="/srv/deephelp-backup/personal-$stamp"
+label=${1:?new backup label required}
+[[ "$label" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]{1,64}$ ]]
+root=/srv/deephelp-modern
+[[ $(realpath -e "$root") == "$root" && ! -L /srv && ! -L "$root" ]]
+destination="/srv/deephelp-backup/modern-$label"
+[[ ! -e "$destination" && ! -L "$destination" ]]
 mkdir -m 700 -- "$destination"
-systemctl stop deephelp-personal@app
-trap 'systemctl start deephelp-personal@app' EXIT
-bash /srv/deephelp-infra/scripts/backup-mysql.sh > "$destination/mysql-path.txt"
-database=$(tail -1 "$destination/mysql-path.txt")
-[[ "$database" == /srv/deephelp-backup/*.sql.gz ]] || { echo 'Unexpected DB backup path' >&2; exit 1; }
-cp -- "$database" "$destination/database.sql.gz"
-tar -czf "$destination/runtime.tar.gz" -C /srv deephelp-personal
-readlink -f /opt/deephelp-app/current > "$destination/installed-version.txt"
-cd -- "$destination"
-sha256sum database.sql.gz runtime.tar.gz installed-version.txt > SHA256SUMS
+mkdir "$root/.backup-lock"
+restart() {
+  code=$?
+  trap - EXIT INT TERM
+  if ! bash /opt/deephelp-app/bin/control.sh start; then
+    echo 'Application restart failed; preserve backup and lock for recovery' >&2; exit 1
+  fi
+  rmdir "$root/.backup-lock"
+  exit "$code"
+}
+trap restart EXIT
+trap 'exit 130' INT TERM
+bash /opt/deephelp-app/bin/control.sh stop
+set -a; source "$root/config/runtime.env"; set +a
+database=$(/opt/deephelp-app/modern/.venv/bin/python -c 'import json; print(json.load(open("/srv/deephelp-modern/config/postgres.json"))["dbname"])')
+[[ "$database" =~ ^deephelp_m25_[a-z0-9_]+$ ]]
+connections=$(docker exec deephelp-postgres-protocol psql -X -At -U deephelp_app -d postgres -c "SELECT count(*) FROM pg_stat_activity WHERE datname='$database'")
+[[ "$connections" == 0 ]] || { echo 'Unregistered application DB connections remain' >&2; exit 1; }
+bash /opt/deephelp-app/bin/postgres-backup.sh "$database" "$destination/application.dump"
+learning=${DEEPHELP_LEARNING_DATABASE:-}
+if [[ -n "$learning" && "$database" != "$learning" ]]; then
+  [[ "$learning" =~ ^deephelp_m25_[a-z0-9_]+$ ]]
+  connections=$(docker exec deephelp-postgres-protocol psql -X -At -U deephelp_app -d postgres -c "SELECT count(*) FROM pg_stat_activity WHERE datname='$learning'")
+  [[ "$connections" == 0 ]] || { echo 'Learning DB writer/connections remain' >&2; exit 1; }
+  bash /opt/deephelp-app/bin/postgres-backup.sh "$learning" "$destination/learning.dump"
+fi
+bash /srv/deephelp-langfuse/backup.sh "modern-$label"
+cp /srv/deephelp-langfuse/backups/"modern-$label".tar.gz "$destination/langfuse.tar.gz"
+tar --exclude=deephelp-modern/.backup-lock -czf "$destination/runtime.tar.gz" -C /srv deephelp-modern
+readlink -f /opt/deephelp-app/modern > "$destination/installed-version.txt"
+tar --exclude='.venv' -czf "$destination/installation.tar.gz" -C /opt/deephelp-app/releases "$(basename "$(cat "$destination/installed-version.txt")")"
+cd "$destination"
+sha256sum *.dump *.tar.gz installed-version.txt > SHA256SUMS
 sha256sum --strict --check SHA256SUMS
-printf 'Consistent personal backup: %s\n' "$destination"
+echo "Protected complete backup: $destination"

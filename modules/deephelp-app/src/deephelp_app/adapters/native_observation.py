@@ -158,8 +158,11 @@ class NativeTelemetry(Telemetry):
                         context.detach(token)
 
     def shutdown(self) -> None:
-        self.client.shutdown()
-        self.metrics.shutdown()
+        try:
+            self.client.shutdown()
+        finally:
+            self.metrics.shutdown()
+            self.close_metrics()
 
 
 def graph_callbacks() -> list[Any]:

@@ -1,40 +1,54 @@
-# M23 个人云运行
+# M30 PostgreSQL/Langfuse 个人云运行
 
-一个应用进程提供同源工作台，Business/Retrieval 各一个独立 Streamable HTTP MCP 进程；MySQL/Redis/Milvus/etcd 和 M21 观测栈复用现有服务器。可选的第四个进程只演示合成权益与 MySQLSaver，不修改订单/券业务。服务仍只绑定服务器 loopback，通过严格 host key 的加密 SSH 端口转发访问；浏览器不取得 MCP、模型或数据库凭据。
+正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程；关系事实与官方checkpoint在应用PG，原生trace进入Langfuse。Prometheus/Grafana保留，三个应用进程各自暴露loopback指标。旧M23源码/脚本由`bak/mysql-otel`保留；旧安装和数据在切换验收前保留。当前交付状态以PROJECT_STATE和M30 handoff为准。
 
-## 构建与配置
+## 安装与控制
 
-在包含根锁的 Linux 构建目录安装 Python 3.14.7 / uv 0.12.13，运行根锁检查并构建三个包。构建目录是临时的，服务器版本目录只保留运行 wheels、根锁导出的依赖清单、启动文件和 SHA256SUMS。正式目录不包含源码检出、开发环境、完整 `.local`、PDF 或过程报告。
+根Python3.14.7、uv0.12.13、单一uv.lock和三个包保持。使用根锁导出`requirements.lock`，三包sdist→wheel，连同`start.sh`生成SHA256SUMS。`install.sh ABSOLUTE_BUNDLE_DIR VERSION`只安装新的不可覆盖版本，核对完整hash与Python/包/FastText/SDK；安装成功不等于完整内容发布通过。
+
+受保护持久根为`/srv/deephelp-modern`，配置见runtime.env.example。复制已有凭据、来源/受引用最小资产闭包和历史状态，秘密独立交付，0600/0700。显式`DEEPHELP_POSTGRES_CONFIG`和`DEEPHELP_LANGFUSE_CONFIG`是唯一新运行装配；不配置旧OTLP/Tempo端点。保留原签名字节，用artifact-map只映射读文件位置，不重写旧manifest、审批或向量空间。
+
+`deephelp-modern@.service`读取该根的runtime.env，执行`/opt/deephelp-app/modern/start.sh`。将control/install/switch/backup/restore脚本及`infra/postgres/backup.sh`、`restore.sh`分别交付至`/opt/deephelp-app/bin/`，后两者命名postgres-backup.sh、postgres-restore.sh。控制入口：
 
 ```bash
-uv lock --check
-uv export --locked --all-packages --no-dev --no-emit-workspace \
-  --format requirements-txt --output-file /tmp/BUNDLE/requirements.lock --quiet
-uv build --package deephelp-app --out-dir /tmp/BUNDLE/wheels
-uv build --package deephelp-services --out-dir /tmp/BUNDLE/wheels
-uv build --package deephelp-tools --out-dir /tmp/BUNDLE/wheels
+sudo bash /opt/deephelp-app/bin/control.sh start
+sudo bash /opt/deephelp-app/bin/control.sh health
+sudo bash /opt/deephelp-app/bin/control.sh stop
+sudo bash /opt/deephelp-app/bin/switch.sh INSTALLED_VERSION
 ```
 
-将 requirements.lock、wheels 和启动文件加入 SHA256SUMS。传输缓慢时可以从已核对根锁哈希的离线 wheel 目录安装；临时构建依赖和开发检查环境不成为第二份运行锁。`install.sh ABSOLUTE_BUNDLE_DIR VERSION` 拒绝覆盖版本，实际核对 Python、哈希、三包、FastText 与 OTel 安装。先由管理员创建 `/opt/deephelp-app/releases` 并授予运行用户写权限；本机模板使用现有 Ubuntu 用户，其他主机须相应调整 service 的 User/Group。安装中断时保留现场，核对原清单后只完成缺失安装步骤，不覆盖已安装版本或自动切换 current。
+stop同时停止应用、两个MCP和权益进程，systemd结束其子进程组；检查MainPID和状态。人工维护/外部CLI/审核发布写者也必须结束，并核验实际数据库连接及在途状态。health证明服务与直接指标可用，内容验收另做。switch只切安装文件及重启，不更新内容active，不重放业务；失败保留现场，不能自动回退陈旧数据库。
 
-持久根 `/srv/deephelp-personal` 与版本根分开：`config` 存只允许运行用户读取的环境/凭据映射；`state` 存 auth、两个服务凭据、累计预算、任务/追踪及合成权益 key；`assets` 可存新版本不可变运行工件，`legacy` 只交付已引用旧文件的最小闭包。当前语料也在 legacy 的受绑定闭包内，`DEEPHELP_CORPUS` 必须指向实际发布文件，不能假设模板目录存在。现有中间件连接模板位于该根的 `infra/config/connections.env`。配置模板是 `runtime.env.example`；所有真实配置文件权限 0600、目录 0700，秘密独立传输。
+首项隔离演练使用新PG库、8100/8111/8112/8115和19464–19466，配置`DEEPHELP_ISOLATED_REHEARSAL=1`才允许不带完整release channel。正式切换须删除该标记，使用精确内容验收通过的PG完整发布channel；8000/8011/8012/8015及9464–9466不得与旧入口并行占用。访问通过原personal SSH隧道，本机浏览器18080，Grafana23000；没有公网TLS或SLA声明。
 
-`DEEPHELP_STATE_ROOT` 必须为绝对路径，兼容旧 CLI 的 `.local/...` 参数并将写入限制在状态根内。`DEEPHELP_ARTIFACT_MAP` 是绝对 JSON 配置路径，例如 `[{"source":"D:\\source\\deephelp","target":"/srv/deephelp-personal/legacy"}]`。映射只改变读文件的位置，不改旧 JSON、release hash、向量签名或文件指纹；未声明根、重叠映射、遍历或链接越界拒绝。缺少工件不回退到其他目录。新指纹统一使用 `/` 分隔符，旧清单仍按原完整发布门禁拒绝不适用字节。
+## 直接指标
 
-## 启动、版本与访问
+官方PrometheusMetricReader按抓取从原SDK度量动作读取，独立registry/loopback端口/关闭生命周期；保留W3C与Langfuse SDK内部OTel。拒绝同时启用直接指标和OTLP度量转发。原指标operations/outcomes/inflight/model tokens/unknown usage/retries及duration秒直方图保持；标签只有固定动作/状态/model/方向/service，不带用户、订单、run或query。
 
-`start.sh` 复用现有业务 CLI 与可选学习扩展。`--release-channel` 通过原 ReleaseRuntime/MySQL active 选择完整版本，保留历史 run 的版本绑定，接入两个独立 HTTP MCP；不绕过 `verify_release`。学习实验使用启动时选定的装配，完整业务每个请求仍按原发布协议选择版本。
+同一model.attempt的真实input/output只计一次，未知usage另计，已包含在output的推理不相加。重复抓取不产生新执行，receipt重放不产生新model attempt。成功比例只以completed/failed为分母，零分母无值；取消/拒绝独立显示。小样本分位数保留至少100个动作的门槛。看板不推断Langfuse内部队列长度或零丢span。
 
-把 `deephelp-personal@.service` 安装到 systemd，配置独立 environment file，启用 business、retrieval、app；启用合成工作流时另启 rights。安装/切换/备份脚本也交付到 `/opt/deephelp-app/bin`，不依赖临时构建目录。`switch.sh INSTALLED_VERSION` 只切换安装版本及重启三个进程，不更新 release channel、不重放业务；启动不健康时保留现场，显式切回先前已验版本。完整内容 active/previous 回退仍使用原 `release_cli rollback --live --channel ... --expected-revision ...`；安装版本必须与所选清单匹配。包回退与内容回退分别报告。
+首项新指标栈模板metrics.compose.yaml/metrics.prometheus.yaml使用host网络但HTTP只绑定loopback，抓取三个应用出口及Milvus原生指标。Prometheus19092、Grafana13002便于与旧观测并行演练；替换后客户端需映射实际Grafana端口。资源报告同时记录主机/cgroup/磁盘，Langfuse不能代替这部分。
 
-本机运行 `infra/client/tunnel.ps1 -Profile personal -Action start`，复用已有 SSH key / known_hosts，将本机 18080、23000 映射到服务器 8000、13000；`-Action health` 检查远端应用，原默认 infra profile 保持中间件隧道。打开 `http://127.0.0.1:18080/` 即为服务器页面；本机没有应用/MCP/前端进程，SSH 仅传输字节。Grafana 是个人管理员入口，继续使用其独立凭据。当前入口是私有 SSH，没有宣称公网 TLS；公开访问须另配并实测证书与可信源配置。
+依据：[官方Python Prometheus出口](https://opentelemetry.io/docs/languages/python/exporters/#prometheus)、[锁定0.66b0](https://pypi.org/project/opentelemetry-exporter-prometheus/0.66b0/)。不启动多worker共享registry；每个服务一个受控进程。
 
-当前Grafana12.0.2打开既有`traceId`深链接后，需选择一次 **TraceQL**，保留自动填入的同一trace ID，即可显示实际trace。此浏览器路径已实测81 span；旧深链接直接展示的兼容项未在本次改动观测代码。学习页的受保护Tempo查询可直接返回同次span；不要把旧链接初始No data当作业务/Tempo丢失。
+## 一致备份与隔离恢复
 
-## 备份恢复与资源
+```bash
+sudo bash /opt/deephelp-app/bin/backup.sh NEW_LABEL
+sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL \
+  deephelp_m25_m30_restore_NEWNAME /srv/deephelp-modern-restore-NEWNAME
+```
 
-管理员运行 `backup.sh`：停止唯一应用写者、使用现有事务备份入口，再备份运行状态/必要工件和当前安装版本，最后恢复应用。备份期间暂停人工维护与合成权益执行；独立 MCP 和合成下游仍是可写入口，不将停止 app 解释成数据库全局只读。秘密包含在受保护备份中，不提交 Git。恢复先按 SHA256SUMS 检查，原 `infra/scripts/restore-mysql.sh` 只允许 `deephelp_restore_NAME` 隔离新库。运行目录解包到另一个明确隔离根，修改它自己的数据库配置、middleware secret 路径、状态根、映射 target、实际 corpus 和端口；不覆盖现行库、现行 state 或预算。实际比较业务、消息/问题/操作、发布和 checkpoint 表，并通过隔离服务查询订单、回读原 receipt；文件存在或 gzip 检查不足以证明恢复。
+备份先停所有modern单元并拒绝未登记PG连接；再custom-format dump应用全schema（含官方checkpoint/发布/关系/观测登记）。M29独立学习数据库另存learning.dump，不合并不同演示的审批/效果状态。随后冷停Langfuse六组件、保存元PG/CH/Redis AOF/SeaweedFS对象/master/filer及身份密钥。保存运行根、受引用工件、任务/M29状态与当前安装材料（依赖hash清单、三wheel、启动文件）；EXIT恢复已停服务，失败保留必要现场/锁。进行备份前须结束SDK/平台人工写者；业务与平台之间没有跨库事务。
 
-Redis 投影可由 MySQL 窗口/outbox 重建，Milvus 意图集合按原 corpus、scope、Embedding signature、FP32 向量清单重建或核对；事件投影仍先回查 MySQL。不要混用向量空间或删审批/UNKNOWN/active/previous 引用。容量验收同时观察应用、两 MCP、原中间件和观测栈，覆盖真实索引/查询与 CPU 训练；区分 RSS、cgroup 当前/峰值、磁盘与观察窗口。个人短时低并发结果不能外推长期稳定性。
+恢复只允许新命名库与新绝对运行根，校验SHA256SUMS、pg_restore单事务和Python tar data filter；只调整部署配置/映射target，原签名资产不改。按备用端口启动恢复副本，核对所有表行hash、历史/关系/官方图与同run平台内容。Langfuse归档通过infra/langfuse/restore.sh另恢复到新根，在容量允许前先停止源平台，验后恢复源；不双挂数据目录。learning.dump同样恢复到独立新库以验证M29记录，禁止把它作为第二活动业务写入口。
 
-当前实际交付状态和最终证据由 PROJECT_STATE / M23 handoff 记录；此运行入口本身不是验收 PASS。
+工具入口`python -m deephelp_tools.probes.modern_deployment_probe --live --config ABS_CONFIG --compare-config ABS_SOURCE_CONFIG --output NEW_REPORT`对所有PG应用/归档/官方表作只读一致性原值行hash比较；可追加明确auth/base-url与metrics-ports，实际查询Business/历史、鉴权/schema和直接指标，模型0次。平台仍需实际内容/usage/Score、Dataset/Prompt关联读回，health和文件hash不足以替代。
+
+## 切换与回退边界
+
+维护窗口先停止旧应用、Business/Retrieval、权益、任务与人工写者，记录在途/UNKNOWN，源最后只读一致快照导入新PG并转换M26官方状态。核对全表/关系、审批原计划/版本/效果及签名闭包。只启动新路线一个活动写入口；缓存/向量按原signature/归属/version校验复用或重建。
+
+运行字节变化必须新的完整内容门禁及manifest，保留旧PASS原样；不改旧hash换通过。新库未写前可恢复旧入口与快照；新库已写后只回滚兼容当前PG schema且其对应manifest已验的应用安装，不能直接回切陈旧MySQL。跨路线回退缺反向迁移/对账证据时停止。
+
+只有新发布、云浏览器业务/历史/审批/同trace、幂等/越权、故障重启、隔离恢复与容量通过后才退役旧MySQL/Collector/Tempo容器及自启；数据卷、旧安装、源快照、Tempo/Grafana必要资料及bak分支保留。退役与删除恢复资料分别处理，不默认删卷或采购资源。

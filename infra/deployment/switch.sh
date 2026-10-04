@@ -11,14 +11,14 @@ target=$(realpath -e -- "$base/releases/$1")
 }
 cd -- "$target"
 sha256sum --strict --check SHA256SUMS
-systemctl stop deephelp-personal@app deephelp-personal@retrieval deephelp-personal@business
+bash "$base/bin/control.sh" stop
 temporary="$base/.current.$$"
 trap 'rm -f -- "$temporary"' EXIT
 ln -s -- "$target" "$temporary"
-mv -Tf -- "$temporary" "$base/current"
-systemctl start deephelp-personal@business deephelp-personal@retrieval deephelp-personal@app
+mv -Tf -- "$temporary" "$base/modern"
+bash "$base/bin/control.sh" start
 for attempt in {1..20}; do
-  if curl -fsS --max-time 2 http://127.0.0.1:8000/health >/dev/null 2>&1; then
+  if bash "$base/bin/control.sh" health >/dev/null 2>&1; then
     printf 'Serving installed version %s\n' "$1"; exit 0
   fi
   sleep 1
