@@ -30,3 +30,5 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli --he
 如需独立合成审批练习，先用 `python -m deephelp_tools.demo.approval_cli init` 准备专用key/合成SOP，再用 `python -m deephelp_tools.demo.synthetic_rights --port 8024 --key .local/m15/rights.key` 启动受控服务。启动学习扩展前设置本机 `DEEPHELP_LEARNING_RIGHTS_PORT=8024` 和 `DEEPHELP_LEARNING_RIGHTS_KEY=.local/m15/rights.key`。auth中需显式配置synthetic-tenant/synthetic-user-a的演示令牌；个人资料身份不能创建该固定fixture练习。示例key路径来自已有运行入口，不从浏览器接受路径/端口/密钥。
 
 协议页只允许四种固定动作，查询仍使用可信身份与原只读守卫；工作流页读取实际SOP及ApprovalService图。演示先实际MySQL落计划并interrupt，审批绑定operation/版本/参数hash/SOP快照，独立确认后再显式resume；重启后用原operation/session/run读取与恢复。UNKNOWN仍先对账，重复恢复不重复效果；synthetic_rights不改M20资料、不表示真实退款。页面不写checkpoint，也不暴露任意MCP、SQL或文件接口。
+
+扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测使用已保存run的OTel ID、M21分页与私有Grafana深链接；如需实际平台设置，见[观测运行入口](../../infra/observability/README.md#平台与访问)，平台故障明确显示，不重跑业务。

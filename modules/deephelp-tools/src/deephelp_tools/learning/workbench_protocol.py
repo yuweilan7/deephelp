@@ -86,6 +86,7 @@ def learning_router(
             "installed": True,
             "protocol": True,
             "workflow": True,
+            "analysis": True,
             "demo_enabled": rights_port is not None and identity == DEMO_IDENTITY,
             "demo_identity_required": "synthetic-tenant / synthetic-user-a",
             "model_calls": 0,

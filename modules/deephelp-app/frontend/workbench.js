@@ -13,6 +13,8 @@ const state = {
   messagesOffset: null,
   businessOffset: null,
   demo: null,
+  selected: null,
+  observationCursor: null,
 };
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
@@ -71,6 +73,7 @@ function clearSession() {
     last: null,
     record: null,
     demo: null,
+    selected: null,
   });
   for (const id of [
     "sessions",
@@ -85,6 +88,17 @@ function clearSession() {
     "workflow-result",
     "demo-result",
     "demo-summary",
+    "rules-result",
+    "rules-summary",
+    "intent-result",
+    "retrieval-result",
+    "retrieval-summary",
+    "memory-result",
+    "memory-summary",
+    "turns-result",
+    "observation-result",
+    "observation-summary",
+    "grafana-link",
     "workflow-graph",
   ])
     $(id).replaceChildren();
@@ -112,6 +126,9 @@ function clearSession() {
     $(id).value = "";
   $("demo-confirm").checked = false;
   demoButtons();
+  $("memory-session").value = "";
+  for (const n of document.querySelectorAll(".selected-run"))
+    n.textContent = "尚未选择结果。";
 }
 function showIdentity(data) {
   state.csrf = data.csrf;
@@ -128,6 +145,8 @@ function showIdentity(data) {
     : "当前后端未启用MySQL业务维护；请按启动说明选择Business服务。";
   $("save-record").disabled = !e.business_maintenance;
   run(learningStatus);
+  $("retrieval-budget").textContent =
+    `调用模式：真实Embedding，预计1次（缓存命中可为0），无chat/推理调用。单次90秒，沿用共享预算：剩余${e.remaining_calls}次，上限${e.max_tokens} tokens。失败和未知预留保留。`;
 }
 function newSession() {
   state.session = crypto.randomUUID();
@@ -231,6 +250,10 @@ function detail(label, value, parent = $("inspection")) {
 }
 async function inspect(r) {
   const sid = state.session;
+  state.selected = { session_id: sid, run_id: r.run_id };
+  $("memory-session").value = sid;
+  for (const n of document.querySelectorAll(".selected-run"))
+    n.textContent = `session ${sid} · run ${r.run_id}`;
   const box = $("inspection");
   box.replaceChildren(
     node("p", `run ${r.run_id}`, "code"),
@@ -740,6 +763,129 @@ $("demo-resume").addEventListener("click", () =>
     );
     await readDemo();
   }),
+);
+function selectedPath(view) {
+  if (!state.selected) throw new Error("先在主对话选一条结果的事实 / 时间线。");
+  const s = state.selected;
+  return `/debug/runs/${encodeURIComponent(s.run_id)}/${view}?session_id=${encodeURIComponent(s.session_id)}`;
+}
+$("rules-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    const d = await api("/learning/rules", "POST", {
+      text: $("rules-text").value,
+    });
+    $("rules-result").textContent = JSON.stringify(d, null, 2);
+    $("rules-summary").replaceChildren(
+      node("p", "纯规则结果 · 0模型调用 · 未运行600分类"),
+    );
+    for (const o of d.observations)
+      $("rules-summary").append(
+        node(
+          "p",
+          `[${o.start}, ${o.end}) ${o.source.excerpt} → ${o.name} / ${o.disposition}`,
+        ),
+      );
+  });
+});
+for (const [id, view] of [
+  ["intent", "intent"],
+  ["turns", "turns"],
+])
+  $(id + "-read").addEventListener("click", () =>
+    run(async () => {
+      const path = selectedPath(view),
+        selected = state.selected;
+      const d = await api(path);
+      if (selected === state.selected)
+        $(id + "-result").textContent = JSON.stringify(d, null, 2);
+    }),
+  );
+$("retrieval-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    $("retrieval-execute").disabled = true;
+    try {
+      const d = await api("/learning/retrieval", "POST", {
+        text: $("retrieval-text").value,
+      });
+      $("retrieval-result").textContent = JSON.stringify(d, null, 2);
+      $("retrieval-summary").replaceChildren(
+        node(
+          "p",
+          `实际端到端 ${d.elapsed_ms.toFixed(1)} ms · 模型 ${d.receipt.model_calls} · trace ${d.trace_id}`,
+        ),
+      );
+      for (const [mode, result] of Object.entries(d.routes)) {
+        const box = node("div", undefined, "lesson");
+        box.append(node("h3", mode));
+        for (const c of result.candidates)
+          box.append(
+            node(
+              "p",
+              `${c.rank}. ${c.intent_code} · ${c.score_kind} ${c.raw_score}`,
+            ),
+          );
+        $("retrieval-summary").append(box);
+      }
+      await api("/auth/session").then(showIdentity);
+    } finally {
+      $("retrieval-execute").disabled = false;
+    }
+  });
+});
+$("memory-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    const d = await api(
+      `/learning/memory?session_id=${encodeURIComponent($("memory-session").value)}`,
+    );
+    $("memory-result").textContent = JSON.stringify(d, null, 2);
+    $("memory-summary").replaceChildren(
+      node(
+        "p",
+        `权威 ${d.authority} · generation ${d.window.generation} · Redis ${d.redis.status} · outbox ${d.outbox.length}条 · 0模型调用`,
+      ),
+    );
+  });
+});
+async function observe(cursor = 0) {
+  selectedPath("flow");
+  const selected = state.selected;
+  const flow = await api(selectedPath("flow"));
+  const obs = await api(
+    `/observability/runs/${encodeURIComponent(selected.run_id)}?session_id=${encodeURIComponent(selected.session_id)}&cursor=${cursor}&page_size=100`,
+  );
+  if (selected !== state.selected) return;
+  state.observationCursor = obs.next_cursor;
+  $("observation-more").hidden = obs.next_cursor === null;
+  $("observation-result").textContent = JSON.stringify(
+    { flow, observation: obs },
+    null,
+    2,
+  );
+  $("observation-summary").replaceChildren(
+    node(
+      "p",
+      `平台 ${obs.status} · 当前run子span样本 ${obs.total} · 原 trace ${flow.trace_id} · OTel ${obs.otel_trace_id || "未知"}`,
+    ),
+    node(
+      "p",
+      `原执行计数 ${JSON.stringify(flow.data.response?.call_counts || {})} · usage ${JSON.stringify(flow.data.budget || "未知")} · 浏览新增调用0`,
+    ),
+  );
+  $("grafana-link").replaceChildren();
+  if (obs.grafana_url) {
+    const a = node("a", "在独立受保护的 Grafana 打开同一 trace");
+    a.href = obs.grafana_url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    $("grafana-link").append(a);
+  }
+}
+$("observation-read").addEventListener("click", () => run(() => observe()));
+$("observation-more").addEventListener("click", () =>
+  run(() => observe(state.observationCursor)),
 );
 run(async () => {
   try {

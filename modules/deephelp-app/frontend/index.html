@@ -40,6 +40,10 @@
         ><button data-tab="business">业务资料</button>
         <button data-tab="protocol" data-learning hidden>MCP 协议实验</button>
         <button data-tab="workflow" data-learning hidden>SOP 与工作流</button>
+        <button data-tab="intent" data-learning hidden>意图与实体</button>
+        <button data-tab="retrieval" data-learning hidden>检索实验</button>
+        <button data-tab="memory" data-learning hidden>多轮与记忆</button>
+        <button data-tab="observation" data-learning hidden>运行观测</button>
       </nav>
       <section id="conversation" class="tab">
         <aside>
@@ -242,6 +246,141 @@
           <pre id="workflow-result"></pre>
           <div id="demo-summary" class="lesson">尚未创建练习。</div>
           <pre id="demo-result">尚未创建练习。</pre>
+        </div>
+      </section>
+      <section id="intent" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">TEXT / ENTITY / CASCADE</p>
+          <h1>候选怎样变成决策</h1>
+          <p>
+            原文定位、否定和更正先由共享实体规则处理。规则命中只是候选；只有主链600进入意图级联，缺槽位、拒识和冲突由代码裁决。
+          </p>
+          <form id="rules-form">
+            <label for="rules-text">零模型规则练习原文</label
+            ><textarea id="rules-text" required maxlength="2000">
+不是订单90220000，是订单90221004，优惠未到账</textarea
+            ><button>执行原实体 / 意图规则</button>
+          </form>
+          <div class="lesson">
+            <h3>如何观察完整级联</h3>
+            <p>
+              在主对话明确执行后，点一条结果的“事实 /
+              时间线”；下面自动绑定同一个session/run。可查看原实体提取、规则→当前检索→记忆增强→兜底的实际尝试和反证。查看不会重新分类，命中规则不等于模型泛化通过。
+            </p>
+            <p class="code">
+              application/text_entity.py · regex_entities / merge_entities<br />application/intent.py
+              · IntentService.recognize<br />application/cascade.py ·
+              Cascade.recognize
+            </p>
+          </div>
+          <button id="intent-read">读取已选 run 的意图与原文证据</button>
+          <p class="selected-run"></p>
+        </div>
+        <div>
+          <h2>原文范围、候选与实际路径</h2>
+          <div id="rules-summary"></div>
+          <pre id="rules-result"></pre>
+          <pre id="intent-result"></pre>
+        </div>
+      </section>
+      <section id="retrieval" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">ONE QUERY / ONE VECTOR / THREE ROUTES</p>
+          <h1>同输入，比较三种召回</h1>
+          <p>
+            使用当前已发布的语料与签名，原 RemoteRetriever.compare
+            在服务端只生成一次向量，再比较
+            Dense、BM25、Hybrid。分数类型和归一融合不能当作分类概率。
+          </p>
+          <form id="retrieval-form">
+            <label for="retrieval-text">检索 query</label
+            ><textarea id="retrieval-text" required maxlength="2000">
+订单优惠未到账</textarea
+            >
+            <p id="retrieval-budget" class="muted"></p>
+            <button id="retrieval-execute" class="primary">
+              明确执行三路真实检索
+            </button>
+          </form>
+          <div class="lesson">
+            <h3>预期观察与反例</h3>
+            <p>
+              三列应显示同
+              scope/Embedding签名/语料版本，候选带原分数、score_kind及融合信息；服务内动作及实际耗时在签名回执。陌生scope不允许由浏览器传入。无关查询仍可能召回相似候选，只有原级联门限与反证能决定是否接管。
+            </p>
+            <p class="code">
+              adapters/retrieval_mcp.py · RemoteRetriever.compare<br />application/hybrid.py
+              · HybridRetriever.compare / result_for
+            </p>
+          </div>
+        </div>
+        <div>
+          <h2>实际候选与服务回执</h2>
+          <div id="retrieval-summary"></div>
+          <pre id="retrieval-result"></pre>
+        </div>
+      </section>
+      <section id="memory" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">AUTHORITATIVE HISTORY / PROJECTIONS</p>
+          <h1>同一句补充，归到哪个问题</h1>
+          <p>
+            问题归属、当前槽位、版本和消息成员由MySQL裁决。Redis缓存与Milvus投影可重建；checkpoint也不能替代业务账本。
+          </p>
+          <form id="memory-form">
+            <label for="memory-session">要查看的会话编号</label
+            ><input id="memory-session" required /><button>
+              读取受授权记忆与投影状态
+            </button>
+          </form>
+          <button id="turns-read">读取已选 run 的归属过程</button>
+          <p class="selected-run"></p>
+          <div class="lesson">
+            <h3>可操作例子</h3>
+            <p>
+              先提问缺订单号的优惠问题，再明确补槽；比较question、成员消息、版本和event。换一条订单另提问题，不能把普通“好的”当作审批。浏览不触发向量检索或投影重建；outbox未完成时按实际状态显示。
+            </p>
+            <p class="code">
+              application/event_cluster.py · EventAggregationService<br />application/memory.py
+              · MemoryService / ProjectionWorker<br />adapters/cases.py ·
+              MySQLCaseRepository.snapshot
+            </p>
+          </div>
+        </div>
+        <div>
+          <h2>本次权威窗口与实际投影</h2>
+          <div id="memory-summary"></div>
+          <pre id="memory-result"></pre>
+          <pre id="turns-result"></pre>
+        </div>
+      </section>
+      <section id="observation" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">SAME RUN / SAME TRACE</p>
+          <h1>观察发生过的动作</h1>
+          <p>
+            先在主对话选择一条结果。这里读取原计数、错误、usage与时间线，再按保存的OTel
+            trace读取子span；不会重新执行业务。小样本耗时不表示稳定P95/P99。
+          </p>
+          <button id="observation-read">读取已选 run 的实际观测</button
+          ><button id="observation-more" hidden>继续读取同 trace span</button>
+          <p class="selected-run"></p>
+          <div id="grafana-link"></div>
+          <div class="lesson">
+            <h3>预期观察与反例</h3>
+            <p>
+              每个span保留进程/service、父子关系、Link、状态和实际耗时。Grafana使用独立受保护登录，前端只给同一次trace深链接。平台不可用、usage未知或诊断缺失会明确标记；持久业务结果仍可读取。
+            </p>
+            <p class="code">
+              adapters/telemetry.py · observed / environment<br />adapters/tempo.py
+              · TempoClient.read<br />api/app.py · observability run scope guard
+            </p>
+          </div>
+        </div>
+        <div>
+          <h2>当前 run 样本与专业平台</h2>
+          <div id="observation-summary"></div>
+          <pre id="observation-result"></pre>
         </div>
       </section>
     </main>

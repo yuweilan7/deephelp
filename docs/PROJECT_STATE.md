@@ -29,7 +29,7 @@
 | M19 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M19.md) | 运行分层、独立工具/demo安装、冻结数据字节和机制导航通过；模型0次，无新完整业务发布 |
 | M20 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M20.md) | Business特性22项实测；独立Retrieval、原Port接入、同向量三路对照、断连/重启与跨两个MCP业务11项实测通过；个人合成数据、loopback运行 |
 | M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接、独立重启与两类导出故障通过；应用未迁移 |
-| M22 | PARTIALLY_IMPLEMENTED；[交接](../handoffs/M22.md) | 第1主工作台、第2协议/schema与实际审批checkpoint已浏览器闭环；第3–4检索记忆、评测飞轮按序实施；未部署 |
+| M22 | PARTIALLY_IMPLEMENTED；[交接](../handoffs/M22.md) | 第1–3主工作台、协议/schema与审批checkpoint、意图/同向量三路检索/权威记忆/同run观测已浏览器闭环；第4评测飞轮待完；未部署 |
 | M23 | NOT_IMPLEMENTED | 个人云应用部署、浏览器闭环、隔离恢复/回滚；现有云中间件不是应用已部署 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
