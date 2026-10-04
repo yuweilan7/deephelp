@@ -74,7 +74,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 |---|---|---|
 | [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) | 协议/盘点与全持久迁移/导入/隔离恢复均交付（[交接](../handoffs/M25.md)） | M26持久前置满足；现行旧部署未切換 |
 | [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) | 两特性均交付；官方保存器/原ID转换、正式装配/学习HTTP、全历史逐状态恢复与保留守卫（[交接](../handoffs/M26.md)） | M25前置完成；现网切换/旧服务退役留M30，不冒称旧无效绑定已恢复执行 |
-| [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) · [交接](../handoffs/M27.md) | 版本/自托管SeaweedFS/Web与Worker存入读回→组合容量/平台恢复 | M25/M26；无需付费对象存储 |
+| [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [交接](../handoffs/M27.md) | 全部完成：固定平台/自托管SeaweedFS存入读回、180.61秒组合容量、实际冷备恢复 | M25/M26；无需付费对象存储 |
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP/官方图/pause与resume关联→业务覆盖/工作台查询替换 | M26/M27；依API/SDK实际能力继续 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | Dataset/Experiment/Score映射→Prompt版本/审核映射 | M28；模块可选，启动则完成全部特性，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标/新部署/隔离恢复演练→最后快照/单写切换/旧服务退役 | M25–M28；每项真实验收后继续，M29可跳过 |

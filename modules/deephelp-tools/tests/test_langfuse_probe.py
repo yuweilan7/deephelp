@@ -70,6 +70,7 @@ def stored_trace():
         "observations": [
             {
                 "id": "root",
+                "type": "SPAN",
                 "traceId": "trace",
                 "isRootObservation": True,
                 "parentObservationId": "sdk-physical-parent",
@@ -78,6 +79,8 @@ def stored_trace():
             },
             {
                 "id": "generation",
+                "type": "GENERATION",
+                "input": "Synthetic platform storage check",
                 "traceId": "trace",
                 "name": "m27-synthetic-generation",
                 "output": "Synthetic amount 173.45",
@@ -88,6 +91,8 @@ def stored_trace():
         "scores": [
             {
                 "id": "score",
+                "dataType": "NUMERIC",
+                "name": "m27-storage-proof",
                 "value": 1,
                 "subject": {"kind": "observation", "id": "generation", "traceId": "trace"},
             }
@@ -97,7 +102,19 @@ def stored_trace():
 
 
 @pytest.mark.parametrize(
-    "defect", ["identity", "name", "content", "usage", "score", "association", "parent", "root"]
+    "defect",
+    [
+        "identity",
+        "name",
+        "content",
+        "usage",
+        "score",
+        "association",
+        "parent",
+        "root",
+        "input",
+        "score-type",
+    ],
 )
 def test_successful_http_cannot_hide_content_or_association_defect(stored_trace, defect):
     original, expected = stored_trace
@@ -105,6 +122,10 @@ def test_successful_http_cannot_hide_content_or_association_defect(stored_trace,
     assert check_trace(body, expected)["parent_id"] == "root"
     if defect == "identity":
         body["observations"][1]["traceId"] = "another-trace"
+    elif defect == "input":
+        body["observations"][1]["input"] = "wrong"
+    elif defect == "score-type":
+        body["scores"][0]["dataType"] = "BOOLEAN"
     elif defect in {"name", "content", "usage"}:
         body["observations"][1][
             {"name": "name", "content": "output", "usage": "usageDetails"}[defect]
