@@ -12,18 +12,34 @@ processors:
     send_batch_size: 128
     send_batch_max_size: 256
 exporters:
-  file:
-    path: /data/standard-observation.jsonl
-    rotation: {max_megabytes: 10, max_backups: 1}
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls: {insecure: true}
+    timeout: 2s
+    sending_queue: {queue_size: 256, num_consumers: 2}
+    retry_on_failure: {initial_interval: 1s, max_interval: 5s, max_elapsed_time: 30s}
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    resource_to_telemetry_conversion: {enabled: true}
+    metric_expiration: 10m
 service:
   telemetry:
     logs: {level: warn}
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: "0.0.0.0"
+                port: 8888
+                without_type_suffix: true
+                without_units: true
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [file]
+      exporters: [otlp/tempo]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [file]
+      exporters: [prometheus]

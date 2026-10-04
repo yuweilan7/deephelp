@@ -33,7 +33,9 @@ def message(text, session="s", **changes):
 
 
 @asynccontextmanager
-async def client(tmp_path, *, trace=None, tweak=None, mock=None):
+async def client(
+    tmp_path, *, trace=None, tweak=None, mock=None, transport=None, tempo_endpoint=None
+):
     path = tmp_path / "auth.json"
     path.write_text(
         json.dumps(
@@ -78,6 +80,9 @@ async def client(tmp_path, *, trace=None, tweak=None, mock=None):
         trace=sink,
         identity_provider=LocalAuth(path),
         conversation_factory=factory,
+        transport=transport,
+        tempo_endpoint=tempo_endpoint,
+        grafana_url="http://127.0.0.1:13000" if tempo_endpoint else None,
     )
     async with (
         app.router.lifespan_context(app),
@@ -142,6 +147,44 @@ async def test_otel_real_stage_context_history_scope_and_zero_new_replay(tmp_pat
                     headers={"Authorization": "Bearer " + "b" * 32},
                 )
                 assert denied.status_code == 404
+    finally:
+        runtime.shutdown()
+
+
+async def test_tempo_queries_only_after_identity_and_session_authorization(tmp_path):
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from deephelp_app.adapters.telemetry import Telemetry, using
+
+    queried = []
+
+    def tempo(req):
+        queried.append(req.url.path)
+        return httpx.Response(404)
+
+    runtime = Telemetry("deephelp-app", InMemorySpanExporter())
+    try:
+        with using(runtime):
+            async with client(
+                tmp_path, transport=httpx.MockTransport(tempo), tempo_endpoint="http://tempo"
+            ) as (api, repo, judge, sink, assembly):
+                receipt = (
+                    await api.post("/converse", json=message("订单 000031 优惠未到账", "s"))
+                ).json()
+                url = f"/observability/runs/{receipt['run_id']}"
+                for token, session in [("b", "s"), ("a", "wrong"), ("c", "s")]:
+                    response = await api.get(
+                        url,
+                        params={"session_id": session},
+                        headers={"Authorization": "Bearer " + token * 32},
+                    )
+                    assert response.status_code == 404
+                assert queried == []
+                response = await api.get(url, params={"session_id": "s"})
+                assert response.status_code == 200 and response.json()["status"] == "unavailable"
+                assert queried == ["/api/traces/" + response.json()["otel_trace_id"]]
+                invalid = await api.get(url, params={"session_id": "s", "page_size": 201})
+                assert invalid.status_code == 422 and len(queried) == 1
     finally:
         runtime.shutdown()
 

@@ -5,6 +5,8 @@ import asyncio
 import json
 import os
 import tempfile
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -20,13 +22,19 @@ from deephelp_app.adapters.retrieval_mcp import RemoteRetriever
 from deephelp_app.adapters.retrieval_protocol import binding_from_files
 from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.adapters.telemetry import environment, observation, trace_id
+from deephelp_app.adapters.tempo import TempoClient
 from deephelp_app.adapters.tool_gateway import ToolGateway
+from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.api.app import create_app
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth
+from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
 from deephelp_app.domain.models import BusinessOrderInput, Money, OperationStatus, ToolStatus
+from deephelp_tools.evaluation.samples import load_corpus
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry
+from deephelp_tools.learning.mvp_replay import ReplayAssembly
 from deephelp_tools.probes.approval_probe import (
     counts,
     decision,
@@ -220,6 +228,203 @@ async def approval(args: argparse.Namespace, report: dict[str, Any], processes: 
         await repo.aclose()
 
 
+async def platform(args: argparse.Namespace, report: dict[str, Any]) -> None:
+    """Real platform and original application paths; fixed engine responses, no model API."""
+    auth = LocalAuth(args.platform_auth)
+    owner_token = next(
+        t
+        for t, i in auth.rows
+        if i == next(c for c in load_corpus().cases if c.case_id == "M02-005").identity
+    )
+    assembly, sink = ReplayAssembly(), MemoryTrace()
+
+    @asynccontextmanager
+    async def factory(http: httpx.AsyncClient, trace: Any) -> Any:
+        async with assembly.open(http, trace) as service:
+            yield service
+
+    app = create_app(
+        Settings(mode="test", request_timeout=60, max_attempts=40),
+        trace=sink,
+        transport=httpx.AsyncHTTPTransport(retries=0),
+        identity_provider=auth,
+        conversation_factory=factory,
+        tempo_endpoint=args.tempo_endpoint,
+        grafana_url=args.grafana_url,
+    )
+    from deephelp_app.adapters.telemetry import current
+
+    runtime = current()
+    assert runtime is not None
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app),
+            base_url="http://local",
+            headers={"Authorization": "Bearer " + owner_token},
+        ) as api,
+    ):
+        runtime = current()
+        assert runtime is not None
+        body = dict(
+            channel="m21",
+            session_id="platform-" + uuid4().hex,
+            message_id=uuid4().hex,
+            raw_text=next(
+                c for c in load_corpus().cases if c.case_id == "M02-005"
+            ).message.raw_text,
+            occurred_at=datetime.now(UTC).isoformat(),
+        )
+        response = await api.post("/converse", json=body)
+        report["fixed_pipeline_response"] = {
+            "http_status": response.status_code,
+            "outcome": response.json().get("outcome"),
+            "error_code": (response.json().get("error") or {}).get("code"),
+        }
+        assert response.status_code == 200 and response.json()["outcome"] == "ANSWERED"
+        receipt = response.json()
+        report["platform_trace_id"] = response.headers["x-otel-trace-id"]
+        report["platform_run_id"] = receipt["run_id"]
+        assert runtime.provider.force_flush(5000)
+        endpoint = f"/observability/runs/{receipt['run_id']}"
+        pages = []
+        for _attempt in range(20):
+            page = (
+                await api.get(endpoint, params={"session_id": body["session_id"], "page_size": 5})
+            ).json()
+            if page["status"] == "available":
+                break
+            await asyncio.sleep(0.5)
+        assert page["status"] == "available"
+        assert page["otel_trace_id"] == report["platform_trace_id"] and page["grafana_url"]
+        pages.extend(page["spans"])
+        while page["next_cursor"] is not None:
+            page = (
+                await api.get(
+                    endpoint,
+                    params={
+                        "session_id": body["session_id"],
+                        "page_size": 5,
+                        "cursor": page["next_cursor"],
+                    },
+                )
+            ).json()
+            pages.extend(page["spans"])
+            assert len(pages) <= 20000
+        assert len(pages) == page["total"] and len({s["span_id"] for s in pages}) == len(pages)
+        assert any(s["name"].startswith("stage.") for s in pages)
+        denied = await api.get(endpoint, params={"session_id": "other"})
+        assert denied.status_code == 404
+        replay = (await api.post("/converse", json=body)).json()
+        assert replay["replayed"] and replay["call_counts"]["model_calls"] == 0
+        report["checks"].update(
+            scoped_actual_tempo_projection=True,
+            pagination_without_duplicates=True,
+            private_grafana_deeplink=True,
+            replay_zero_new_model_calls=True,
+        )
+        report["projected_spans"] = len(pages)
+        report["source"] = (
+            "fixed ReplayAssembly; actual SDK/Collector/Tempo; no model quality claim"
+        )
+    async with httpx.AsyncClient(trust_env=False) as api:
+        reused = json.loads(args.reuse_report.read_text(encoding="utf-8"))["protocol_trace_id"]
+        trace = await TempoClient(api, args.tempo_endpoint).read(reused, 0, 200)
+        assert trace["status"] == "available" and trace["total"] == 42
+        assert {s["service"] for s in trace["spans"]} == {
+            "deephelp-app",
+            "deephelp-business-mcp",
+            "deephelp-retrieval-mcp",
+        }
+        report["checks"]["same_actual_cross_mcp_trace_in_tempo"] = True
+        report["reused_trace_id"] = reused
+        # One scrape window is needed; no model calls or repeated business actions.
+        await asyncio.sleep(6)
+        data = (
+            await api.get(
+                args.prometheus_endpoint + "/api/v1/query",
+                params={"query": "sum(deephelp_operations_total)"},
+            )
+        ).json()
+        assert data["status"] == "success" and float(data["data"]["result"][0]["value"][1]) > 0
+        data = (
+            await api.get(
+                args.prometheus_endpoint + "/api/v1/query",
+                params={"query": "sum(deephelp_duration_seconds_count)"},
+            )
+        ).json()
+        assert data["data"]["result"] and float(data["data"]["result"][0]["value"][1]) > 0
+        report["checks"]["prometheus_actual_counts_histograms"] = True
+
+
+async def failure(args: argparse.Namespace, report: dict[str, Any], processes: Processes) -> None:
+    """Caller deliberately stops Collector first; one actual DB tool call must succeed."""
+    from deephelp_app.adapters.telemetry import current
+
+    runtime = current()
+    assert runtime is not None
+    business_port = port()
+    business = HTTPMCPConfig(
+        url=f"http://127.0.0.1:{business_port}/mcp", credentials_path=args.business_credentials
+    )
+    await processes.start(
+        "business",
+        [
+            "-m",
+            "deephelp_services.business",
+            "serve",
+            "--credentials",
+            str(args.business_credentials),
+            "--port",
+            str(business_port),
+        ],
+        business.url,
+    )
+    owner = LocalAuth(args.auth).rows[0][1]
+    rows = await BusinessClient(business).request(owner, "GET", "orders")
+    order = next(r for r in rows["items"] if r["data"]["order_id"].startswith("M21-"))
+    req, question, context = synthetic_request(
+        ExecutionBudget.start(60, 10, 0),
+        order_id=order["data"]["order_id"],
+        user=owner.user_id,
+        tenant=owner.tenant_id,
+    )
+    with observation("probe.export_failure"):
+        report["failure_trace_id"] = trace_id()
+        async with ToolGateway(http=business).open() as tools:
+            tool_budget = ExecutionBudget.start(60, 10, 0)
+            result = await tools.execute(req, question, tool_budget, context=context)
+            assert tool_budget.tool_steps_used == 1 and tool_budget.retries_used == 0
+            report["actual_tool_dispatches"] = tool_budget.tool_steps_used
+    assert result.status == ToolStatus.SUCCEEDED
+    paid = next(
+        f.value.amount for f in result.facts if f.name == "paid" and isinstance(f.value, Money)
+    )
+    assert paid == Decimal("173.45")
+    assert runtime.provider.force_flush(5000)
+    if args.mode == "failure":
+        assert runtime.exporter.failures > 0
+    else:
+        assert runtime.exporter.failures == 0
+        async with httpx.AsyncClient(trust_env=False) as api:
+            try:
+                ready = await api.get(args.tempo_endpoint + "/ready", timeout=2)
+                assert ready.status_code != 200
+            except httpx.TransportError:
+                pass
+    report["checks"].update(
+        actual_db_result_during_export_failure=True,
+        no_model_calls=True,
+    )
+    report["checks"][
+        "diagnostic_failure_counted"
+        if args.mode == "failure"
+        else "collector_accepted_while_backend_stopped"
+    ] = True
+    report["failed_export_spans"] = runtime.exporter.failures
+    report["paid"] = str(paid)
+
+
 def cleanup(directory: Path) -> None:
     if directory.is_symlink() or directory.is_junction():
         raise ValueError("Changed diagnostic path")
@@ -248,8 +453,13 @@ async def run(args: argparse.Namespace) -> int:
                 await protocol(args, report, processes)
             if args.mode in {"approval", "all"}:
                 await approval(args, report, processes)
+            if args.mode == "platform":
+                await platform(args, report)
+            if args.mode in {"failure", "backend-failure"}:
+                await failure(args, report, processes)
             assert telemetry.provider.force_flush(5000)
-            report["checks"]["sdk_export_completed"] = telemetry.exporter.failures == 0
+            if args.mode != "failure":
+                report["checks"]["sdk_export_completed"] = telemetry.exporter.failures == 0
         report["status"] = "PASS" if all(report["checks"].values()) else "FAIL"
         return 0 if report["status"] == "PASS" else 1
     except Exception as exc:
@@ -268,9 +478,20 @@ async def run(args: argparse.Namespace) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true")
-    parser.add_argument("--mode", choices=["protocol", "approval", "all"], default="all")
+    parser.add_argument(
+        "--mode",
+        choices=["protocol", "approval", "all", "platform", "failure", "backend-failure"],
+        default="all",
+    )
+    parser.add_argument("--tempo-endpoint", default="http://127.0.0.1:13200")
+    parser.add_argument("--grafana-url", default="http://127.0.0.1:13000")
+    parser.add_argument("--prometheus-endpoint", default="http://127.0.0.1:19090")
+    parser.add_argument(
+        "--reuse-report", type=Path, default=Path(".local/m21/standard-protocol-v3.json")
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--auth", type=Path, default=Path(".local/m20/retrieval-auth.json"))
+    parser.add_argument("--platform-auth", type=Path, default=Path(".local/m21/auth.json"))
     parser.add_argument(
         "--business-credentials", type=Path, default=Path(".local/m20/service.json")
     )

@@ -271,6 +271,7 @@ class Telemetry:
         self.tokens = meter.create_counter("deephelp.model.tokens", unit="{token}")
         self.outcomes = meter.create_counter("deephelp.request.outcomes", unit="{request}")
         self.unknown_usage = meter.create_counter("deephelp.model.usage_unknown", unit="{attempt}")
+        self.retries = meter.create_counter("deephelp.model.retries", unit="{attempt}")
         meter.create_observable_counter("deephelp.export.failed_spans", [self._failures])
         meter.create_observable_counter("deephelp.export.dropped_spans", [self._dropped])
 
@@ -367,11 +368,17 @@ def observation(
             if span.is_recording():
                 status = getattr(span, "attributes", {}).get("deephelp.status", status)
             elapsed = time.perf_counter() - started
+            if status == "failed":
+                span.set_status(Status(StatusCode.ERROR))
             span.set_attributes({"deephelp.status": status, "deephelp.elapsed_ms": elapsed * 1000})
             if runtime:
                 runtime.inflight.add(-1, labels)
                 runtime.operations.add(1, {**labels, "status": status})
                 runtime.duration.record(elapsed, labels)
+                if name == "model.attempt" and getattr(span, "attributes", {}).get(
+                    "deephelp.retry", False
+                ):
+                    runtime.retries.add(1)
                 if name == "model.attempt" and not getattr(span, "attributes", {}).get(
                     "deephelp.usage_known", False
                 ):
@@ -401,10 +408,11 @@ def observed(
                         )
                 error = getattr(result, "error", None)
                 if error is not None or getattr(result, "is_error", False):
+                    code = result_error_code(result)
                     annotate(
                         **{
                             "deephelp.status": "rejected"
-                            if str(getattr(error, "code", ""))
+                            if code
                             in {
                                 "FORBIDDEN",
                                 "UNAUTHENTICATED",
@@ -412,9 +420,7 @@ def observed(
                                 "VERSION_CONFLICT",
                             }
                             else "failed",
-                            "deephelp.error_code": str(
-                                getattr(error, "code", "SEMANTIC_REJECTION")
-                            ),
+                            "deephelp.error_code": code,
                         }
                     )
                 return result
@@ -422,6 +428,16 @@ def observed(
         return wrapped
 
     return decorate
+
+
+def result_error_code(result: Any) -> str:
+    from deephelp_app.domain.models import ErrorCode
+
+    code = str(getattr(getattr(result, "error", None), "code", ""))
+    content = getattr(result, "structured_content", None)
+    if not code and isinstance(content, dict) and isinstance(content.get("error"), dict):
+        code = str(content["error"].get("code", ""))
+    return code if code in {item.value for item in ErrorCode} else "MODEL_OUTPUT_INVALID"
 
 
 def checked(name: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
@@ -465,7 +481,21 @@ def server_call(
             ):
                 result = await fn(*args, **kwargs)
                 if getattr(result, "is_error", False):
-                    annotate(**{"deephelp.status": "rejected"})
+                    code = result_error_code(result)
+                    annotate(
+                        **{
+                            "deephelp.status": "rejected"
+                            if code
+                            in {
+                                "FORBIDDEN",
+                                "UNAUTHENTICATED",
+                                "INVALID_ARGUMENT",
+                                "VERSION_CONFLICT",
+                            }
+                            else "failed",
+                            "deephelp.error_code": code,
+                        }
+                    )
                 return result
 
         return wrapped

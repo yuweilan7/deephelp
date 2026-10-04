@@ -28,7 +28,7 @@
 | M18 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 审核回流与完整ReleaseManifest/MySQL单一active已实现；运行绑定、审批资产保留、并发回退及进程中断真实通过；不提供每日自动训练/隐式文件删除 |
 | M19 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M19.md) | 运行分层、独立工具/demo安装、冻结数据字节和机制导航通过；模型0次，无新完整业务发布 |
 | M20 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M20.md) | Business特性22项实测；独立Retrieval、原Port接入、同向量三路对照、断连/重启与跨两个MCP业务11项实测通过；个人合成数据、loopback运行 |
-| M21 | STANDARD_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel SDK/Collector、跨两MCP/图/Saver与恢复Link已实测；Tempo/Prometheus/Grafana平台待第2特性 |
+| M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接、独立重启与两类导出故障通过；应用未迁移 |
 | M22 | NOT_IMPLEMENTED | 四个顺序前端特性，含MCP/schema与LangGraph/checkpoint教程；现有debug.html不是完整工作台 |
 | M23 | NOT_IMPLEMENTED | 个人云应用部署、浏览器闭环、隔离恢复/回滚；现有云中间件不是应用已部署 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
@@ -37,7 +37,7 @@
 
 正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁、infra及MySQL事实源保持；Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游、任意RUNNING重领及M22–M23未实现；M21平台尚待集成。
+完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游、任意RUNNING重领及M22–M23未实现；M21观测平台已集成，DeepHelp应用仍本机运行。
 
 2026-10-04路线规划后的M19交付：运行源码归domain/application/adapters/api/bootstrap/resources，工具/demo独立deephelp-tools；datasets与demo/data为单一数据源，wheel安装后读取工具包资源。该特性时业务仍为显式合成JSON后端，一个领域和引擎，没有学习/正式双份实现。全量924 passed/1 skipped及后增安装/发布59项通过，927项最终收集；两包各83文件逐字节一致，无工具/无Git检出的独立运行安装与追加工具stdio通过。该特性模型0次，无云检查、部署或新完整发布；旧清单不能套到新运行字节。
 
@@ -47,11 +47,13 @@ M20第2特性已接入独立Retrieval MCP与原Dense/Hybrid Port，复用原模�
 
 第2特性较广app/tools离线926 passed/1 skipped；最终services、M16、预算及运行边界组合113项通过，986项收集。Ruff/193文件格式、140源文件mypy、根锁及三包构建通过；wheel资源88/6/85文件逐字节一致。无tools、无Git检出的独立安装中70个app模块与4个services模块可导入，CLI及两个正式HTTP服务的SDK发现/检索profile握手通过；该安装检查不调用模型或云库。细节见[M20](../handoffs/M20.md)。未产生新完整发布、前端或应用部署；M20两项结束。
 
-同日M19后源码核对时：ToolGateway已有正式SDK/stdio与双端守卫，当时业务来源为demo JSON且无独立HTTP服务；M20现已补上Business与Retrieval服务。approval.py确有LangGraph StateGraph/interrupt/resume，checkpoints.py确有自建MySQLSaver及pending writes，非官方MySQL插件；并不代表整条13段主链都是LangGraph。后续按此复用，不重建已有能力。用户提供4核8GB/低负载截图，仅是截图时点，不作本轮服务器容量/峰值测量。该次核对为规划时点；当前M21标准SDK/Collector已接入，未部署应用。
+同日M19后源码核对时：ToolGateway已有正式SDK/stdio与双端守卫，当时业务来源为demo JSON且无独立HTTP服务；M20现已补上Business与Retrieval服务。approval.py确有LangGraph StateGraph/interrupt/resume，checkpoints.py确有自建MySQLSaver及pending writes，非官方MySQL插件；并不代表整条13段主链都是LangGraph。后续按此复用，不重建已有能力。用户提供4核8GB/低负载截图，仅是截图时点，不作本轮服务器容量/峰值测量。该次核对为规划时点；当前M21标准SDK及Tempo/Prometheus/私有Grafana已实测，未部署应用。
 
 代表性历史证据：M17冻结548会话/1820消息、22业务情境；真实抽样29会话43消息×4组及17审批/6越权/9重放。运行边界特性真实HTTP 15/15，完整发布两版各14/14消息、11/11会话与23项守卫通过。数据同作者合成，不证明企业泛化或质量增益。必要明细在[M14](../handoffs/M14.md)、[M15](../handoffs/M15.md)、[M17](../handoffs/M17.md)、[M18](../handoffs/M18.md)，此处不复制逐轮过程。
 
 按影响验收已实施：M03能力、M04实体样本/强端口、M17模式/完整会话可独立选择；完整四组显式启动。pytest收集前阻止远程DNS/TCP，保留本机HTTP/stdio；`--live`仅配置检查。报告区分实际usage、未知项、预留与费用估算。所有验收在特性分支，main仅合并、保存与同步。
+
+M21两项已交付：标准Python OTel SDK1.45.0、Collector0.128.0、Tempo2.8.2、Prometheus3.4.2、Grafana12.0.2。原两MCP实际trace42 span及4个审批恢复Link可查询；受原身份/session保护的Tempo分页、Grafana实际帧/12面板查询、四组件独立重启持久及Collector/Tempo停止时金额173.45/唯一派发均通过。最终固定平台主链采用ReplayAssembly（模型API0），不证明新增质量；本轮Embedding2次用于真实检索关联。完整离线968 passed/1 skipped，最终观测组合88项、相邻M15/API/运行边界38项通过，后增例未冒称参加同一次全量。隔离观测栈cgroup当前合计361.9MiB、各容器峰值之和367.5MiB，RSS合计778.2MiB，主机可用5.75GiB；仅当前负载，无M23容量结论。详情见M21交接。M21结束，不自动启动M22/M23。
 
 ## 全项目清理与任务收尾
 
