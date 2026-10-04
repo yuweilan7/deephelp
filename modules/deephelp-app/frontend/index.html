@@ -44,6 +44,7 @@
         <button data-tab="retrieval" data-learning hidden>检索实验</button>
         <button data-tab="memory" data-learning hidden>多轮与记忆</button>
         <button data-tab="observation" data-learning hidden>运行观测</button>
+        <button data-tab="evaluation" data-evaluation hidden>评测与飞轮</button>
       </nav>
       <section id="conversation" class="tab">
         <aside>
@@ -381,6 +382,163 @@
           <h2>当前 run 样本与专业平台</h2>
           <div id="observation-summary"></div>
           <pre id="observation-result"></pre>
+        </div>
+      </section>
+      <section id="evaluation" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">FROZEN EVIDENCE → REVIEW → CANDIDATE → RELEASE</p>
+          <h1>让改进有依据</h1>
+          <p>
+            先看冻结集与差例，再采集独立合成来源并人工审核。候选构建与验证不会切换
+            active；完整版本须通过原 M18 门禁后显式发布。
+          </p>
+          <button id="evaluation-refresh">刷新受控目录与执行计划</button>
+          <p id="evaluation-scope" class="muted"></p>
+          <label for="evaluation-report">已有冻结报告</label>
+          <select id="evaluation-report"></select>
+          <button id="evaluation-report-read">读取指标与差例</button>
+          <button id="evaluation-report-more" hidden>继续读取差例</button>
+          <div id="evaluation-report-summary"></div>
+          <details>
+            <summary>报告范围、指标与差例明细</summary>
+            <pre id="evaluation-report-result"></pre>
+          </details>
+          <div class="lesson">
+            <h3>一次操作怎样学习</h3>
+            <ol>
+              <li>核对合成会话数、独立来源组和本次选中范围。</li>
+              <li>看错误断言，区分意图、归属、事实与工具参数。</li>
+              <li>
+                采集专用 m18-collect 的已完成 run；冻结测试输入不可再用作训练。
+              </li>
+              <li>人工确认标签、路由和与留出集独立，检查 revision 冲突。</li>
+              <li>
+                显式构建候选、实测验证、准备完整版本，再核对门禁与 active
+                revision。
+              </li>
+            </ol>
+            <p>
+              历史 PASS
+              只属于原字节和样本。当前代码变化后旧清单可能不可发布。取消会保留部分证据；重启只标中断，不自动重跑。已经提交或状态未知的派生先对账。
+            </p>
+            <p id="evaluation-code" class="code"></p>
+          </div>
+          <h2>采集与人工审核</h2>
+          <label for="evaluation-source">可采集的专用合成来源 run</label>
+          <select id="evaluation-source"></select
+          ><button id="evaluation-capture">采集已完成来源</button>
+          <p class="muted">
+            仅消费已有 m18-collect；新内容使用原
+            flywheel/主链入口生成。页面浏览与采集不请求模型。
+          </p>
+          <label for="evaluation-candidate">反馈候选</label
+          ><select id="evaluation-candidate"></select>
+          <button id="evaluation-candidate-read">读取审核与派生</button>
+          <form id="evaluation-review-form">
+            <label for="evaluation-review-route">目标路由</label
+            ><select id="evaluation-review-route">
+              <option value="corpus">检索语料</option>
+              <option value="fasttext">FastText</option>
+              <option value="rule">字面规则</option>
+              <option value="withdraw">撤回全部路由</option>
+            </select>
+            <label for="evaluation-review-state">审核结论</label
+            ><select id="evaluation-review-state">
+              <option value="disputed">有争议</option>
+              <option value="rejected">拒绝</option>
+              <option value="approved">批准</option>
+            </select>
+            <label for="evaluation-review-label">独立标签</label
+            ><select id="evaluation-review-label">
+              <option value="">尚未确认标签</option>
+              <option value="DISCOUNT_MISSING">优惠未到账</option>
+              <option value="COUPON_UNUSABLE">优惠券不可用</option>
+              <option value="ORDER_ACTIVITY_QUERY">订单活动查询</option>
+            </select>
+            <label for="evaluation-review-phrases"
+              >规则短语（每行一条，仅规则路由需要）</label
+            ><textarea id="evaluation-review-phrases" rows="2"></textarea>
+            <label for="evaluation-review-exclusions"
+              >规则排除短语（每行一条）</label
+            ><textarea id="evaluation-review-exclusions" rows="2"></textarea>
+            <label for="evaluation-review-reason">依据 / 反例</label
+            ><textarea
+              id="evaluation-review-reason"
+              rows="2"
+              required
+              maxlength="1000"
+            ></textarea>
+            <label
+              ><input type="checkbox" id="evaluation-review-independent" />
+              已核对与冻结留出集独立</label
+            >
+            <label
+              ><input type="checkbox" id="evaluation-review-confirm" />
+              已核对当前候选内容及 revision，独立确认本次审核</label
+            >
+            <button>提交人工审核</button>
+          </form>
+          <details>
+            <summary>候选、当前审核与不可变派生</summary>
+            <pre id="evaluation-candidate-result"></pre>
+          </details>
+        </div>
+        <div>
+          <h2>显式任务 · 同时一个</h2>
+          <div id="evaluation-plan" class="lesson"></div>
+          <form id="evaluation-task-form">
+            <label for="evaluation-task-action">任务</label
+            ><select id="evaluation-task-action">
+              <option value="audit">冻结集审计 · 0模型</option>
+              <option value="offline">四路离线语义回归 · 0模型</option>
+              <option value="build">
+                构建已审核候选 · 真实Embedding / 可选训练
+              </option>
+              <option value="validate">候选内容验证 · 真实模型</option>
+              <option value="prepare">准备并登记完整版本 · 原精确门禁</option>
+            </select>
+            <label for="evaluation-build-ids"
+              >构建候选 ID（每行一条；空白只构建基线）</label
+            ><textarea id="evaluation-build-ids" rows="2"></textarea>
+            <label for="evaluation-asset">候选资产</label
+            ><select id="evaluation-asset"></select>
+            <button type="button" id="evaluation-asset-read">
+              核对资产与当前审核
+            </button>
+            <label
+              ><input type="checkbox" id="evaluation-task-confirm" />
+              已核对执行模式、样本与共享预算，明确启动该任务</label
+            >
+            <button id="evaluation-task-start" class="primary">
+              启动选定任务
+            </button>
+          </form>
+          <label for="evaluation-task">持久任务</label
+          ><select id="evaluation-task"></select>
+          <button id="evaluation-task-read">读取实际任务状态</button
+          ><button id="evaluation-task-cancel" disabled>取消任务</button
+          ><button id="evaluation-task-resume" disabled>显式恢复任务</button>
+          <div id="evaluation-task-summary"></div>
+          <details>
+            <summary>任务 / 部分证据 / 资产明细</summary>
+            <pre id="evaluation-task-result"></pre>
+          </details>
+          <h2>完整版本与原发布门禁</h2>
+          <p id="evaluation-pointer" class="muted"></p>
+          <label for="evaluation-release">已登记完整版本</label
+          ><select id="evaluation-release"></select>
+          <button id="evaluation-release-read">核对当前发布资格</button>
+          <p id="evaluation-release-summary"></p>
+          <label
+            ><input type="checkbox" id="evaluation-release-confirm" />
+            已核对目标 hash 与当前 active revision，明确切换完整版本</label
+          >
+          <button id="evaluation-publish" disabled>显式发布所选版本</button
+          ><button id="evaluation-rollback" disabled>显式回退 previous</button>
+          <details>
+            <summary>完整版本门禁明细</summary>
+            <pre id="evaluation-release-result"></pre>
+          </details>
         </div>
       </section>
     </main>

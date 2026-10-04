@@ -325,3 +325,13 @@ GET /learning/status、/protocol、/workflow复用BrowserAuth；POST /learning/p
 ### M22 学习扩展：实体、三路与记忆
 
 POST /learning/rules只收非空text（最多2000字符），原规则输出带原文范围/否定/更正，模型0次、不表示600决策。POST /learning/retrieval相同输入边界，仅使用装配的Retrieval MCP和scope，固定top3、原同向量compare、持久budget_factory及request_execution；返回原候选、签名回执、动作/耗时和实际usage，不能传scope/模型/路径。GET /learning/memory?session_id先MySQLHistory.messages主体验证再只读权威窗口/本generation Redis/outbox末50条；缺失投影不重建，外身份404。意图、归属、运行观测页继续原/debug/runs/{run}/intent|turns|flow及/observability/runs/{run}，同session/run守卫，不另分类或任意trace搜索。
+
+### M22 学习扩展：评测与飞轮
+
+服务器显式设置DEEPHELP_LEARNING_CATALOG才装配`/learning/evaluation`；只允许该受控配置中的owner，其他主体读/写均404。GET根目录、/reports/{id}?offset、/candidates/{hash}、/assets/{id}、/releases/{hash}、/plan及/tasks/{id}只读；报告ID/资产ID映射服务器文件，浏览上限8MB、差例每页20，目录最多16报告/16资产。字段投影保持冻结范围、分母、分数、差例和适用边界，不暴露账号/模型密钥或累计费用原始JSON。
+
+POST /capture仅原专用合成m18-collect已完成run；POST /candidates/{hash}/review绑定原revision、route、人工review和独立confirmed，审核者取受信owner。批准仍走原留出隔离/独立标签/规则约束；撤回全部路由也复用原store。不提供任意SQL、训练输入或checkpoint写入。
+
+POST /tasks仅audit/offline/build/validate/prepare及明确candidate_ids/asset_id/confirmed；重任务同进程串行、1800秒、最多3次尝试/100记录，超出或冲突关闭。GET任务的state与result.evidence_status、部分证据独立；硬退出后标INTERRUPTED，POST /tasks/{id}/cancel|resume明确取消/恢复。取消等待原适配器关闭；恢复新不可变尝试路径，已提交/未知提交的派生、验证或版本登记先对账，原M18任务lease仍生效。构建/验证复用已打开的应用预算writer，仅显式启动消耗模型；已知不足构建Embedding批次的预算在启动前拒绝。构建PREPARED、验证PASS均不改active。
+
+prepare调用原prepare_manifest/ReleaseStore.register。POST /release收publish|rollback、target完整hash、revision、confirmed，只切配置的单一channel；rollback额外核对当前previous，原switch重验字节/验证/审核/保留资产和CAS。历史PASS不表示当前发布资格。基础app不反向导入此工具扩展。
