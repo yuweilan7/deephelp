@@ -86,9 +86,8 @@ async def test_normal_response_replay_and_13_stages(identity, body):
         assert "textContent" in page and "innerHTML" not in page
 
 
-@pytest.mark.parametrize("case_id", [c.case_id for c in load_corpus().cases])
-async def test_all_frozen_samples_run_full_api_and_preserve_safety(case_id):
-    case = next(c for c in load_corpus().cases if c.case_id == case_id)
+@pytest.mark.parametrize("case", load_corpus().cases, ids=lambda c: c.case_id)
+async def test_all_frozen_samples_run_full_api_and_preserve_safety(case):
     async with app_client(case.identity) as (client, assembly, trace, app):
         response = await client.post("/converse", json=case.message.model_dump(mode="json"))
         result = response.json()

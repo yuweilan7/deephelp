@@ -63,21 +63,3 @@ async def test_unselected_runtime_rejects_before_any_dependency_is_opened(monkey
         async with assembly.open(None, None):
             pytest.fail("Unselected runtime must never run")
     open_database.assert_not_called()
-
-
-def test_installed_runtime_integrity_without_git_still_binds_content(tmp_path, monkeypatch):
-    from deephelp_app.adapters import asset_integrity
-
-    source = tmp_path / "runtime.py"
-    source.write_text("version = 1")
-    monkeypatch.setattr(asset_integrity, "PACKAGE", tmp_path)
-
-    def no_git(*args, **kwargs):
-        raise FileNotFoundError("Git is not installed")
-
-    monkeypatch.setattr(asset_integrity.subprocess, "run", no_git)
-    before = asset_integrity.provenance()
-    assert before["git_commit"] is None
-    assert before["dirty_worktree"] is None
-    source.write_text("version = 2")
-    assert asset_integrity.provenance()["package_digest"] != before["package_digest"]

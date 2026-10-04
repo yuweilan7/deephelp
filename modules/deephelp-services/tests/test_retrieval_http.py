@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+from copy import deepcopy
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -41,8 +42,8 @@ from deephelp_tools.probes.mcp_smoke import synthetic_request
 pytestmark = pytest.mark.integration
 
 
-@pytest.fixture
-def binding():
+@pytest.fixture(scope="module")
+def binding_assets():
     config = ProviderConfig.load(Path("modules/deephelp-app/providers.example.json"))
     corpus = read_corpus(asset_path("m09_corpus.jsonl"))
     scope = HybridScope(
@@ -55,10 +56,9 @@ def binding():
 
 
 @pytest.fixture
-def credentials_path(tmp_path):
-    path = tmp_path / "retrieval.json"
-    path.write_text('{"bearer":"' + "t" * 64 + '","delegation_key":"' + "k" * 64 + '"}')
-    return path
+def binding(binding_assets):
+    # Records include mutable metadata; share loading, but isolate every consumer.
+    return deepcopy(binding_assets)
 
 
 class FakeBackend:

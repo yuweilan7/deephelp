@@ -58,3 +58,11 @@ M20第2特性已接入独立Retrieval MCP与原Dense/Hybrid Port，复用原模�
 `feature/project-cleanup` 已在特性分支离线验收：18受控文件及6875原有忽略文件删除，旧重复PLAN/临时环境/渲染/构建/胶水脚本/迭代与等价行日志清除；占用从约1.896 GB降至0.724 GB。必要规格/学习资料/最终证据、875份本机保留来源与配置hash、96条账本文件引用保持。旧修订稿和暂停调度引用暂留，理由见[M18清理交接](../handoffs/M18.md#全项目清理与任务收尾)。
 
 最终918 passed/1 skipped、919项收集；Ruff/154格式文件/110源文件mypy/根锁/构建通过，wheel147份包文件和安装边界通过。模型API 0次，运行内容与冻结资产字节不变；只读MySQL保护引用，不删云端数据。AGENTS与现有入口落实任务收尾、必要证据保留、成功后清除等价journal及原子临时文件；完成本特性后停止，不启动业务/部署，main不复验。
+
+## 回归测试精简
+
+`feature/test-suite-pruning` 删除M19重复摘要测试和M02逐条重复标注检查；无Git来源/运行字节绑定迁入runtime边界，并独立覆盖learning/probes/evaluation排除。M02整份36条语料校验保留，新增7个非法标注反例；M08的36个API场景及ID全部保留。M02只读fixture、M08样本加载及services独立凭据/检索资产准备整合，嵌套metadata仍逐用例隔离。M07/M08/M14、M10/M12的不同调用层、协议和组装路径保留；产品源码、配置、Prompt、冻结数据、运行资产、根锁、CI与收集前网络守卫未改。
+
+测试文件45→45、测试函数455→453、展开用例986→958（app 765→766、tools 163→134、services 58→58）；收集精确差异38旧节点移除、10新节点加入，默认live配置跳过项仍为1。清理前完整离线985 passed/1 skipped、263.87秒；迁移后70项、删除后相关138项通过，10个内存缺陷全部被捕获；Ruff、193文件格式、140源文件mypy及测试文档路径检查通过。
+
+最终完整离线为956 passed/1 failed/1 skipped、254.76秒，退出1，不能标为验收PASS或性能增益。失败为services的`test_disconnected_http_tool_is_classified_without_facts_or_demo_fallback`：loopback服务退出后SDK会话初始化抛出含`httpx2.ConnectError`的ExceptionGroup，未返回FAILED；主体未改，根因与准备整合的因果尚未确认，未顺带修复产品。2026-10-04用户知悉失败后明确授权直接推送/合并、删除过程副本且不再跑测试；按此交付保留已知未通过项，无重复测试、模型/云调用、构建或main复验。持续提速与维护工时收益未测量；失败定位信息继续保留本机。
