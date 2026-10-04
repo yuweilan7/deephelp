@@ -127,17 +127,6 @@ pre {
   max-height: 340px;
   overflow: auto;
 }
-.login {
-  max-width: 620px;
-  margin: 68px auto;
-  padding: 30px;
-}
-.login form {
-  max-width: 430px;
-}
-.login button {
-  margin-top: 16px;
-}
 nav {
   display: flex;
   gap: 12px;
@@ -352,9 +341,6 @@ footer {
   }
   .business-editor {
     margin-top: 20px;
-  }
-  .login {
-    margin: 24px auto;
   }
   nav {
     padding: 14px 16px;

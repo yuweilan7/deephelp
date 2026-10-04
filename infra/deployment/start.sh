@@ -27,6 +27,7 @@ case "${1:-}" in
       --providers "$providers" --auth "$state/auth.json" \
       --pointer "$state/pointer.json" --corpus "$DEEPHELP_CORPUS" ;;
   app)
+    : "${DEEPHELP_PERSONAL_IDENTITY:?Set the explicit existing personal identity JSON}"
     export DEEPHELP_METRICS_PORT=${DEEPHELP_APP_METRICS_PORT:-9464}
     release_args=()
     if [[ -n "${DEEPHELP_RELEASE_CHANNEL:-}" ]]; then
@@ -39,7 +40,8 @@ case "${1:-}" in
       --retrieval-mcp-url "http://127.0.0.1:$retrieval_port/mcp" --retrieval-credentials "$state/retrieval.json" \
       --providers "$providers" --pointer "$state/pointer.json" \
       --fasttext-pointer "$state/fasttext.json" --corpus "$DEEPHELP_CORPUS" \
-      --auth "$state/auth.json" --budget-state "$state/budget.json" --trace-path "$state/trace.jsonl" \
+      --auth "$state/auth.json" --personal-identity "$DEEPHELP_PERSONAL_IDENTITY" \
+      --budget-state "$state/budget.json" --trace-path "$state/trace.jsonl" \
       "${release_args[@]}" ;;
   *) echo 'Usage: start.sh app|business|retrieval|rights' >&2; exit 2 ;;
 esac

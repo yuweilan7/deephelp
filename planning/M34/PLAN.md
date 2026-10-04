@@ -1,8 +1,8 @@
 # M34实施计划
 
-基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD f7bbc336b6ab0594b6b4ca71d2d075b95c8110c4；现行BrowserAuth/LocalAuth及私有个人云已实现，当前页仍有登录表单。
+基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD a740bbc（实际开始时main）；现行BrowserAuth/LocalAuth及私有个人云已实现，当前页仍有登录表单。
 
-**decision=DECOMPOSE；readiness=READY（个人入口可先做），正式安装验收仍待执行。** [规格](../../docs/MODULES/M34_PERSONAL_ACCESS.md)两项按序完成；无需等待M32/M33。本轮尚未移除登录。
+**decision=DECOMPOSE；readiness=READY（个人入口可先做），正式安装验收仍待执行。** [规格](../../docs/MODULES/M34_PERSONAL_ACCESS.md)两项按序完成；无需等待M32/M33。首项已验：显式 --personal-identity，GET /auth/session自动会话，旧登录/退出界面及路由删除。
 
 ## 目标和改动入口
 
@@ -24,3 +24,5 @@
 ## 停止与交付
 
 身份配置歧义、必要守卫失败、真实内容/安装/推送失败即停；不为免登录开放公网或创建企业账户系统。两个特性分别验收/中文提交/推送/合并/同步，同M继续。handoffs/M34.md记录实际UI/HTTP/安装和恢复证据，STATE只记实际；受保护的旧安装/manifest及个人配置可恢复，不能恢复陈旧数据库或清零预算。全部完成停止，不自动启动M35。
+
+首项适用离线76 passed、Ruff/245格式/mypy172与JS语法通过。第二项从交付后的同步main继续；核对服务器实际owner/channel/installation与恢复闭包，再建立新精确发布。首项没有联网/模型调用，不把当前云运行写成已免登录。

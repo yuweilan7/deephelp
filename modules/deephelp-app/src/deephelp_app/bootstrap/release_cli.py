@@ -22,6 +22,8 @@ from deephelp_app.domain.models import ReleaseManifest
 async def run(args: argparse.Namespace) -> int:
     if not args.live:
         raise ConfigurationError("Release database/service operations require --live")
+    auth = LocalAuth(local_path(args.auth)) if args.command == "serve" else None
+    personal_identity = auth.personal(args.personal_identity) if auth is not None else None
     store = await ReleaseStore.open(Path.cwd())
     gate = None
     try:
@@ -59,6 +61,7 @@ async def run(args: argparse.Namespace) -> int:
                 (await store.switch(args.channel, target, args.expected_revision)).model_dump_json()
             )
         else:
+            assert auth is not None
             if not args.mcp_module:
                 raise ConfigurationError("serve requires --mcp-module")
             runtime = ReleaseRuntime(
@@ -72,9 +75,10 @@ async def run(args: argparse.Namespace) -> int:
             )
             app = live_app(
                 runtime,
-                LocalAuth(local_path(args.auth)),
+                auth,
                 gate,
                 trace_path=str(local_path(args.trace_path)),
+                personal_identity=personal_identity,
             )
             await uvicorn.Server(
                 uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="warning")
@@ -102,6 +106,7 @@ def main() -> None:
         ),
     )
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--personal-identity", type=Path)
     parser.add_argument("--channel", default="m18-demo")
     parser.add_argument("--release")
     parser.add_argument("--expected-revision", type=int)

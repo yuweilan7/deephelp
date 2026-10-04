@@ -16,13 +16,9 @@ from pydantic import Field
 
 from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import DTO, ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models import ErrorCode, VerifiedIdentity
 
 COOKIE = "deephelp_session"
-
-
-class Login(DTO):
-    token: Annotated[str, Field(strict=True, min_length=32, max_length=512)]
 
 
 @dataclass(frozen=True)
@@ -33,10 +29,17 @@ class BrowserSession:
 
 
 class BrowserAuth:
-    """One-process opaque sessions. Restart requires login; business history is durable."""
+    """The server chooses the owner; cookies and CSRF only bind a browser to that owner."""
 
-    def __init__(self, bearer: Callable[[Request], VerifiedIdentity], *, ttl: float = 28800):
+    def __init__(
+        self,
+        bearer: Callable[[Request], VerifiedIdentity],
+        *,
+        identity: VerifiedIdentity | None = None,
+        ttl: float = 28800,
+    ):
         self.bearer, self.ttl = bearer, ttl
+        self.identity = identity
         self.sessions: dict[str, BrowserSession] = {}
 
     def origin(self, request: Request) -> None:
@@ -47,7 +50,7 @@ class BrowserAuth:
             parsed = urlsplit(origin)
             if (parsed.scheme, parsed.netloc) != (request.url.scheme, request.url.netloc):
                 raise AppError(ErrorCode.FORBIDDEN, "跨站请求被拒绝。", 403)
-        if request.headers.get("sec-fetch-site") == "cross-site":
+        if request.headers.get("sec-fetch-site", "none") not in {"none", "same-origin"}:
             raise AppError(ErrorCode.FORBIDDEN, "跨站请求被拒绝。", 403)
 
     def session(self, request: Request) -> BrowserSession:
@@ -55,7 +58,7 @@ class BrowserAuth:
         session = self.sessions.get(key)
         if session is None or session.expires <= monotonic():
             self.sessions.pop(key, None)
-            raise AppError(ErrorCode.UNAUTHENTICATED, "请登录工作台。", 401)
+            raise AppError(ErrorCode.UNAUTHENTICATED, "工作区连接需要重新建立。", 401)
         return session
 
     def __call__(self, request: Request) -> VerifiedIdentity:
@@ -98,17 +101,30 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
     def no_store(value: Any) -> JSONResponse:
         return JSONResponse(value, headers={"Cache-Control": "no-store"})
 
-    @router.post("/auth/login")
-    async def login(body: Login, request: Request) -> JSONResponse:
+    @router.get("/auth/session")
+    async def current(request: Request) -> JSONResponse:
         auth.origin(request)
-        scope = dict(request.scope)
-        scope["headers"] = [(b"authorization", ("Bearer " + body.token).encode("utf-8"))]
-        identity = auth.bearer(Request(scope))
+        identity = auth.identity
+        if identity is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "请在服务端配置 --personal-identity。", 503)
+        if "authorization" in request.headers and auth.bearer(request) != identity:
+            raise AppError(ErrorCode.FORBIDDEN, "此入口只建立已配置的个人工作区。", 403)
+        # A refresh reuses the opaque session. Restart/expiry creates a new session for
+        # the same configured owner; no business state or cumulative budget is reset.
+        try:
+            session = auth.session(request)
+        except AppError as exc:
+            if exc.code != ErrorCode.UNAUTHENTICATED:
+                raise
+        else:
+            return no_store(
+                dict(
+                    identity=session.identity.model_dump(), csrf=session.csrf, execution=execution()
+                )
+            )
         auth.sessions = {k: v for k, v in auth.sessions.items() if v.expires > monotonic()}
         if len(auth.sessions) >= 128:
-            raise AppError(ErrorCode.BUDGET_EXHAUSTED, "登录会话已满，请先退出旧会话。", 429)
-        if old := request.cookies.get(COOKIE):
-            auth.sessions.pop(hashlib.sha256(old.encode()).hexdigest(), None)
+            raise AppError(ErrorCode.BUDGET_EXHAUSTED, "工作区连接已满，请稍后重试。", 429)
         cookie, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         auth.sessions[hashlib.sha256(cookie.encode()).hexdigest()] = BrowserSession(
             identity, csrf, monotonic() + auth.ttl
@@ -123,23 +139,6 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
             secure=request.url.scheme == "https",
             path="/",
         )
-        return response
-
-    @router.get("/auth/session")
-    async def current(request: Request) -> JSONResponse:
-        auth.origin(request)
-        session = auth.session(request)
-        return no_store(
-            dict(identity=session.identity.model_dump(), csrf=session.csrf, execution=execution())
-        )
-
-    @router.post("/auth/logout")
-    async def logout(request: Request) -> JSONResponse:
-        auth(request)
-        key = hashlib.sha256(request.cookies.get(COOKIE, "").encode()).hexdigest()
-        auth.sessions.pop(key, None)
-        response = no_store({"status": "logged_out"})
-        response.delete_cookie(COOKIE, path="/", httponly=True, samesite="strict")
         return response
 
     def history(request: Request) -> PostgresHistory:
