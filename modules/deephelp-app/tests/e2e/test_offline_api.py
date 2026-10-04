@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from deephelp_app.app import create_app
-from deephelp_app.settings import Settings
+from deephelp_app.api.app import create_app
+from deephelp_app.bootstrap.settings import Settings
 
 pytestmark = pytest.mark.e2e
 

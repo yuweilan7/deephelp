@@ -13,7 +13,7 @@ jobs:
       - run: uv python install 3.14.7
       - run: uv sync --locked --all-packages
       - run: uv run --locked python --version
-      - run: uv run --locked ruff check conftest.py modules/deephelp-app
-      - run: uv run --locked ruff format --check conftest.py modules/deephelp-app
+      - run: uv run --locked ruff check conftest.py modules
+      - run: uv run --locked ruff format --check conftest.py modules
       - run: uv run --locked mypy
       - run: uv run --locked pytest

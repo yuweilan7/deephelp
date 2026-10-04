@@ -1,0 +1,1 @@
+"""DeepHelp adapters responsibility boundary."""

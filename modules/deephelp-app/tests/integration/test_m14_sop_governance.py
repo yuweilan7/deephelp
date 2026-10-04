@@ -5,7 +5,12 @@ from importlib.resources import files
 import pytest
 from pydantic import ValidationError
 
+from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.application.sop import SOPExecutor
+from deephelp_app.application.sop_governance import RegistryStore, SOPRegistry, bundled_registry
 from deephelp_app.domain.checks import response_from_sop
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     EntityName,
     ErrorCode,
@@ -16,14 +21,10 @@ from deephelp_app.domain.models import (
     SOPStatus,
     VersionManifest,
 )
-from deephelp_app.errors import AppError
-from deephelp_app.evaluation.sop_acceptance import proposal_registry, scenario_config, scenarios
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.sop_replay import ReplayModel
-from deephelp_app.probes.sop_probe import sop_question
-from deephelp_app.sop import SOPExecutor
-from deephelp_app.sop_governance import RegistryStore, SOPRegistry, bundled_registry
-from deephelp_app.tool_gateway import ToolGateway, process_alive
+from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
+from deephelp_tools.evaluation.sop_acceptance import proposal_registry, scenario_config, scenarios
+from deephelp_tools.learning.sop_replay import ReplayModel
+from deephelp_tools.probes.sop_probe import sop_question
 
 pytestmark = pytest.mark.integration
 
@@ -289,7 +290,9 @@ async def test_runtime_version_and_action_guards(change):
 
 
 def test_published_schema_matches_exact_contract():
-    data = json.loads(files("deephelp_app").joinpath("sop_data/governance-schema.json").read_text())
+    data = json.loads(
+        files("deephelp_app").joinpath("resources/sop_data/governance-schema.json").read_text()
+    )
     assert {k: v for k, v in data.items() if k != "$schema"} == SOPRegistry.model_json_schema()
     registry = bundled_registry()
     with pytest.raises(ValidationError):

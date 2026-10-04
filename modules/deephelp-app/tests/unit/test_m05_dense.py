@@ -8,8 +8,9 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.corpus import REQUIRED, frozen_preview, read_corpus, validate_records
-from deephelp_app.dense import (
+from deephelp_app.adapters.milvus_dense import FIELDS, MilvusDenseStore, activate, rollback
+from deephelp_app.application.corpus import REQUIRED, read_corpus, validate_records
+from deephelp_app.application.dense import (
     Capacity,
     DenseImporter,
     DenseRetriever,
@@ -17,6 +18,8 @@ from deephelp_app.dense import (
     evaluate_dev,
     load_json,
 )
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     DenseHit,
     DenseResult,
@@ -27,9 +30,7 @@ from deephelp_app.domain.models import (
     IntentCode,
     ModelUsage,
 )
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.milvus_dense import FIELDS, MilvusDenseStore, activate, rollback
+from deephelp_tools.evaluation.corpus_preview import frozen_preview
 
 pytestmark = pytest.mark.unit
 SIGNATURE = EmbeddingSignature(provider="synthetic", model="offline-only", dimension=3)
@@ -523,7 +524,7 @@ def test_atomic_manifest_size_bounds(tmp_path):
 
 
 def test_live_control_paths_cannot_overwrite_budget_or_share_lock(monkeypatch, tmp_path):
-    from deephelp_app.dense_cli import control_paths
+    from deephelp_tools.evaluation.dense_cli import control_paths
 
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ConfigurationError, match="must differ"):
@@ -615,7 +616,7 @@ def test_atomic_state_retries_transient_destination_lock(monkeypatch, tmp_path):
         return original(self, target)
 
     monkeypatch.setattr(Path, "replace", briefly_locked)
-    monkeypatch.setattr("deephelp_app.dense.time.sleep", lambda _: None)
+    monkeypatch.setattr("deephelp_app.application.dense.time.sleep", lambda _: None)
     atomic_json(path, {"attempts": 3})
     assert load_json(path) == {"attempts": 3}
     assert attempts == 3

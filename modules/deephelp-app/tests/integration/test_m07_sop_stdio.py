@@ -2,13 +2,14 @@ import asyncio
 
 import pytest
 
-from deephelp_app.demo.tool_config import FaultSpec, MockConfig
+from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.application.sop import SOPExecutor
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import ErrorCode, IntentCode, SOPStatus
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.sop_replay import ReplayModel
-from deephelp_app.probes.sop_probe import demo, sop_question
-from deephelp_app.sop import SOPExecutor
-from deephelp_app.tool_gateway import ToolGateway, process_alive
+from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
+from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
+from deephelp_tools.learning.sop_replay import ReplayModel
+from deephelp_tools.probes.sop_probe import demo, sop_question
 
 pytestmark = pytest.mark.integration
 
@@ -51,7 +52,7 @@ async def test_tool_injection_cannot_change_whitelist_even_if_replay_obeys_it():
 
 
 async def test_sop_tool_timeout_returns_actual_call_id_and_server_cancel():
-    from deephelp_app.sop_config import SOPDefinition, load_sops
+    from deephelp_app.application.sop_config import SOPDefinition, load_sops
 
     definitions = load_sops()
     data = definitions[IntentCode.DISCOUNT_MISSING].model_dump()
@@ -76,7 +77,7 @@ async def test_sop_tool_timeout_returns_actual_call_id_and_server_cancel():
 
 
 async def test_total_deadline_during_real_send_keeps_dispatch_id_for_reconciliation():
-    from deephelp_app.sop_config import SOPDefinition, load_sops
+    from deephelp_app.application.sop_config import SOPDefinition, load_sops
 
     definitions = load_sops()
     data = definitions[IntentCode.DISCOUNT_MISSING].model_dump()

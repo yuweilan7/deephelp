@@ -1,6 +1,6 @@
 import pytest
 
-from deephelp_app.settings import Settings
+from deephelp_app.bootstrap.settings import Settings
 
 pytestmark = pytest.mark.live
 

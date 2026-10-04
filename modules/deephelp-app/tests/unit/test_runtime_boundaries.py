@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from deephelp_app.asset_integrity import provenance
-from deephelp_app.corpus import digest
+from deephelp_app.adapters.asset_integrity import provenance
+from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.application.corpus import digest
+from deephelp_app.application.hybrid import ANALYZER
+from deephelp_app.application.retrieval_policy import validate_published_selection
+from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models import HybridScope
-from deephelp_app.errors import ConfigurationError
-from deephelp_app.hybrid import ANALYZER
-from deephelp_app.providers import ProviderConfig
-from deephelp_app.retrieval_policy import validate_published_selection
 
 pytestmark = pytest.mark.unit
 
@@ -30,39 +30,39 @@ from types import SimpleNamespace
 
 class NoTools(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        blocked = ("deephelp_app.learning", "deephelp_app.probes", "deephelp_app.evaluation")
+        blocked = ("deephelp_tools",)
         if fullname.startswith(blocked):
             raise AssertionError("Developer tool imported by serving: " + fullname)
 
 sys.meta_path.insert(0, NoTools())
 original_open = Path.open
 def no_gold(path, *args, **kwargs):
-    if "assets" in path.parts and any(p in {"evaluation", "learning"} for p in path.parts):
+    if any(p in {"datasets", "evaluation", "learning"} for p in path.parts):
         raise AssertionError("Developer data read by serving: " + str(path))
     return original_open(path, *args, **kwargs)
 Path.open = no_gold
 
 import httpx
-from deephelp_app import mvp_cli, release_cli
-from deephelp_app.app import create_app
-from deephelp_app.asset_integrity import provenance
-from deephelp_app.assets import asset_path
-from deephelp_app.corpus import digest, read_corpus
-from deephelp_app.demo.mcp_server import MockBackend
+from deephelp_app.bootstrap import mvp_cli
+from deephelp_app.bootstrap import release_cli
+from deephelp_app.api.app import create_app
+from deephelp_app.adapters.asset_integrity import provenance
+from deephelp_app.resources import asset_path
+from deephelp_app.application.corpus import digest, read_corpus
 from deephelp_app.domain.models import HybridScope
-from deephelp_app.hybrid import ANALYZER
-from deephelp_app.mvp_runtime import LiveAssembly
-from deephelp_app.providers import ProviderConfig
-from deephelp_app.release_assets import verify_release
-from deephelp_app.release_runtime import ReleaseRuntime
-from deephelp_app.settings import Settings
-from deephelp_app.synthetic_rights import RightsClient, create_rights_app
-from deephelp_app.trace import MemoryTrace
+from deephelp_app.application.hybrid import ANALYZER
+from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
+from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.release_assets import verify_release
+from deephelp_app.bootstrap.release_runtime import ReleaseRuntime
+from deephelp_app.bootstrap.settings import Settings
+from deephelp_app.adapters.synthetic_rights import RightsClient
+from deephelp_app.adapters.trace import MemoryTrace
 
 providers = Path("modules/deephelp-app/providers.example.json")
 scope = HybridScope(namespace="boundary", dataset_version="boundary-v1",
     index_kind="intent_hybrid", signature=ProviderConfig.load(providers).signature())
-corpus = read_corpus(asset_path("m09_corpus.jsonl"))
+corpus = read_corpus(Path("demo/data/m09_corpus.jsonl"))
 selection = dict(format="m09-dev-selection-v1", scope=scope.model_dump(mode="json"),
     index_digest=corpus.index_digest, dev_digest="a"*64, test_digest="b"*64,
     candidate_budget=3, analyzer=ANALYZER, dense_weight=0.5)
@@ -70,7 +70,8 @@ selection["selection_digest"] = digest(selection)
 pointer = Path(sys.argv[1]) / "pointer.json"
 pointer.write_text(json.dumps(dict(format="m09-pointer-v1", active=scope.model_dump(mode="json"),
     selection=selection, corpus_digest=corpus.index_digest, dense_weight=0.5)))
-assembly = LiveAssembly(Path.cwd(), providers, pointer)
+assembly = LiveAssembly(Path.cwd(), providers, pointer,
+    corpus_path=Path("demo/data/m09_corpus.jsonl"))
 assert assembly.top_k == 3
 assert provenance()["integrity_scope"] == "runtime-v2"
 
@@ -143,7 +144,7 @@ def test_runtime_policy_keeps_query_provenance_and_rejects_missing_hash(selectio
 
 
 def test_runtime_integrity_does_not_require_learning_or_frozen_assets(tmp_path, monkeypatch):
-    import deephelp_app.asset_integrity as integrity
+    import deephelp_app.adapters.asset_integrity as integrity
 
     (tmp_path / "runtime.py").write_text("runtime = 1")
     (tmp_path / "assets/evaluation").mkdir(parents=True)

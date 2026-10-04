@@ -2,11 +2,23 @@ import asyncio
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from importlib.resources import files
 
 import pytest
 from pydantic import ValidationError
 
+from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.application.text_entity import (
+    TextEntityProcessor,
+    TextPolicy,
+    clean_text,
+    grounded_rows,
+    merge_entities,
+    model_chunks,
+    regex_entities,
+    width_normalize,
+)
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ChatResult,
     DemandType,
@@ -19,24 +31,10 @@ from deephelp_app.domain.models import (
     TextEntityResult,
     VerifiedIdentity,
 )
-from deephelp_app.errors import AppError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.text_entity import (
-    TextEntityProcessor,
-    TextPolicy,
-    clean_text,
-    grounded_rows,
-    merge_entities,
-    model_chunks,
-    regex_entities,
-    width_normalize,
-)
-from deephelp_app.trace import MemoryTrace
+from deephelp_tools.assets import asset_path
 
 pytestmark = pytest.mark.unit
-CORPUS = json.loads(
-    files("deephelp_app").joinpath("assets/evaluation/text-golden.json").read_text()
-)
+CORPUS = json.loads(asset_path("text-golden.json").read_text())
 
 
 def request(text="订单0007", message_id="m04-current"):

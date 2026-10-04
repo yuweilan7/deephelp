@@ -6,7 +6,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.debug import export_json, sanitize, scope_hash
+from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, observe_sop_node, sop_node_observer
+from deephelp_app.application.debug import export_json, sanitize, scope_hash
+from deephelp_app.application.reply import ReplyComposer, apply_wording, fact_reply
+from deephelp_app.bootstrap.mvp_runtime import validate_trace_path
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ChatResult,
     DebugSnapshot,
@@ -17,11 +22,6 @@ from deephelp_app.domain.models import (
     SOPResult,
     VerifiedIdentity,
 )
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mvp_runtime import validate_trace_path
-from deephelp_app.reply import ReplyComposer, apply_wording, fact_reply
-from deephelp_app.trace import JsonlTrace, TraceEvent, observe_sop_node, sop_node_observer
 
 pytestmark = pytest.mark.unit
 

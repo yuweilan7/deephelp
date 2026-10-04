@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "deephelp-app",
+    "deephelp-tools",
     "deephelp-workspace",
 ]
 
@@ -297,12 +298,24 @@ requires-dist = [
 ]
 
 [[package]]
+name = "deephelp-tools"
+version = "0.1.0"
+source = { editable = "modules/deephelp-tools" }
+dependencies = [
+    { name = "deephelp-app" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "deephelp-app", editable = "modules/deephelp-app" }]
+
+[[package]]
 name = "deephelp-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "deephelp-tools" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -314,6 +327,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "deephelp-tools", editable = "modules/deephelp-tools" },
     { name = "mypy", specifier = ">=1.15,<2" },
     { name = "pytest", specifier = ">=8.3,<9" },
     { name = "pytest-asyncio", specifier = ">=0.25,<1" },

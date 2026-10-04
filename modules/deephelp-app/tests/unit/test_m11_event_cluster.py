@@ -3,6 +3,14 @@ from datetime import timedelta
 
 import pytest
 
+from deephelp_app.application.event_cluster import (
+    ClusterPolicy,
+    ConstrainedUnionFind,
+    EventAggregationService,
+    PersistentEventAggregation,
+)
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ClusterCitation,
     ClusterJudgement,
@@ -17,16 +25,8 @@ from deephelp_app.domain.models import (
     QuestionStatus,
     VerifiedIdentity,
 )
-from deephelp_app.errors import AppError
-from deephelp_app.event_cluster import (
-    ClusterPolicy,
-    ConstrainedUnionFind,
-    EventAggregationService,
-    PersistentEventAggregation,
-)
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.cases_fake import MemoryCaseRepository
-from deephelp_app.learning.event_replay import ReplayJudge, envelope, sequences
+from deephelp_tools.learning.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.event_replay import ReplayJudge, envelope, sequences
 
 
 def budget() -> ExecutionBudget:

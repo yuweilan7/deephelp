@@ -7,9 +7,11 @@ import pytest
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from deephelp_app.demo.mcp_server import MockBackend
-from deephelp_app.demo.tool_config import MockConfig
+from deephelp_app.application.sop import SOPExecutor
+from deephelp_app.application.sop_config import SOPDefinition, load_sops
 from deephelp_app.domain.checks import response_from_sop
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     EntityConflict,
     ErrorCode,
@@ -23,12 +25,10 @@ from deephelp_app.domain.models import (
     ToolResult,
     ToolStatus,
 )
-from deephelp_app.errors import AppError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.sop_replay import ReplayModel
-from deephelp_app.probes.sop_probe import sop_question
-from deephelp_app.sop import SOPExecutor
-from deephelp_app.sop_config import SOPDefinition, load_sops
+from deephelp_tools.demo.mcp_server import MockBackend
+from deephelp_tools.demo.tool_config import MockConfig
+from deephelp_tools.learning.sop_replay import ReplayModel
+from deephelp_tools.probes.sop_probe import sop_question
 
 pytestmark = pytest.mark.unit
 
@@ -101,7 +101,7 @@ def configured(**limits):
 def test_schema_three_configs_replay_and_prompt_are_versioned():
     definitions = load_sops()
     assert len(definitions) == 3
-    root = files("deephelp_app").joinpath("sop_data")
+    root = files("deephelp_app").joinpath("resources/sop_data")
     schema = json.loads(root.joinpath("schema.json").read_text())
     # The checked-in schema is derived from the exact current configuration contract.
     generated = SOPDefinition.model_json_schema()

@@ -4,21 +4,21 @@ import hashlib
 import pytest
 from mcp.types import CallToolResult, TextContent
 
-from deephelp_app.demo.fixtures import load_business_fixtures
-from deephelp_app.demo.mcp_server import MockBackend
-from deephelp_app.demo.tool_config import MockConfig
-from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope
-from deephelp_app.errors import AppError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mcp_protocol import (
+from deephelp_app.adapters.mcp_protocol import (
     canonical,
     registered_tools,
     sign_metadata,
     validate_arguments,
     verify_metadata,
 )
-from deephelp_app.probes.mcp_smoke import load_fault_config, synthetic_request
-from deephelp_app.tool_gateway import ToolGateway
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
+from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope
+from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
+from deephelp_tools.demo.fixtures import load_business_fixtures
+from deephelp_tools.demo.mcp_server import MockBackend
+from deephelp_tools.demo.tool_config import MockConfig
+from deephelp_tools.probes.mcp_smoke import load_fault_config, synthetic_request
 
 pytestmark = pytest.mark.unit
 

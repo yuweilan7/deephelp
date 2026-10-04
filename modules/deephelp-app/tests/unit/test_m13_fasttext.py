@@ -7,20 +7,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.cascade import CascadePolicy
-from deephelp_app.domain.models import (
-    Decision,
-    DenseResult,
-    FallbackResult,
-    FastTextPrediction,
-    IntentCode,
-)
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.evaluation.fasttext_cli import bounded_train
-from deephelp_app.evaluation.fasttext_training import DATA, TrainingConfig, audit, calibrate
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.fasttext_preprocess import FastTextPreprocessor
-from deephelp_app.fasttext_runtime import (
+from deephelp_app.adapters.fasttext_runtime import (
     LABELS,
     FastTextClassifier,
     FastTextFallback,
@@ -28,10 +15,23 @@ from deephelp_app.fasttext_runtime import (
     activate,
     pointer_manifest,
 )
-from deephelp_app.intent import IntentService
-from deephelp_app.learning.event_replay import envelope
-from deephelp_app.learning.mvp_replay import REPLAY_SCOPE
-from deephelp_app.text_entity import TextEntityProcessor
+from deephelp_app.application.cascade import CascadePolicy
+from deephelp_app.application.fasttext_preprocess import FastTextPreprocessor
+from deephelp_app.application.intent import IntentService
+from deephelp_app.application.text_entity import TextEntityProcessor
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
+from deephelp_app.domain.models import (
+    Decision,
+    DenseResult,
+    FallbackResult,
+    FastTextPrediction,
+    IntentCode,
+)
+from deephelp_tools.evaluation.fasttext_cli import bounded_train
+from deephelp_tools.evaluation.fasttext_training import DATA, TrainingConfig, audit, calibrate
+from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.learning.mvp_replay import REPLAY_SCOPE
 
 pytestmark = pytest.mark.unit
 

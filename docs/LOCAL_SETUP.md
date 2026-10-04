@@ -1,6 +1,6 @@
 # 本地启动与依赖交接
 
-这是运行环境入口。现有三类业务使用 `python -m deephelp_app serve`，完整版本使用release_cli serve；参数见[业务启动入口](../modules/deephelp-app/README.md#业务启动入口)。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
+这是运行环境入口。现有三类业务使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`，完整版本使用release_cli serve；参数见[业务启动入口](../modules/deephelp-app/README.md#业务启动入口)。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
 用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。当前文档仅列特性分支验收命令；历史main证据留Git历史与handoff，当前规则以AGENTS/ROADMAP为准。
 
@@ -45,10 +45,10 @@ py -3.14 -m pip install --upgrade "uv==0.12.13"
 
 ```powershell
 py -3.14 -m uv sync --locked --all-packages
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
 ```
 
-配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。仅学习骨架使用 `uvicorn deephelp_app.app:create_app --factory --host 127.0.0.1 --port 8000`，其dev/test模式使用fake、`/converse`保持501。业务启动不导入probes/evaluation/learning，也不读取包内dev/test；显式故障配置及评测命令才加载对应工具，见[资源职责](../modules/deephelp-app/src/deephelp_app/assets/README.md)。
+配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。当前demo必须安装deephelp-tools并明确指定MCP模块，Hybrid语料也须显式选择；没有MySQL业务后端或自动JSON回退。仅学习骨架使用 `uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501；fake回放由独立工具包明确装配。业务启动不导入工具/demo或读取冻结dev/test，包安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。
 
 解释器核验：`py -3.14 -m uv run --locked python -c "import sys; assert sys.version_info[:3] == (3, 14, 7); print(sys.executable)"`。旧启动入口的历史验证原文保留 Git 历史，当前运行命令统一使用 3.14.7。uv 为独立工具；版本门禁不会降低应用的 Python 要求。
 
@@ -80,8 +80,8 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 `$probeBudgetFile`须指向已初始化的.local累计文件：任务上限字段为`max_calls`、`max_tokens`、`max_cost_cny`，计数为`attempts`、`tokens`、`charged_tokens`，并保留`cost_upper_cny`、`uncertain_attempts`及`stages`。新任务从零初始化计数；恢复已有任务不得清零。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.probes.live_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.live_probe --live --capability schema --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.live_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.live_probe --live --capability schema --stage feature --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
 ```
 
 明确完整能力验收使用`--all-capabilities`替代`--capability schema`；只选所需能力可重复`--capability chat|schema|tool|embed|extended_chat|thinking_schema`。完整能力命令追加 `--extended` 验证41条消息/76KB合成输入、8192 token输出参数及开启推理的严格schema内容。特性扩展验收共6次请求；保留原累计预算并使用新报告。输出8192是请求参数验收，不是生成8192 token的质量测试。ProviderConfig可设置默认推理及思考额度，ChatRequest可按任务覆盖；当前既有业务路径默认仍为非思考模式。
@@ -95,8 +95,8 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 先查看帮助，设置本任务的累计文件、报告及调用/token/费用上限。累计文件字段与M03相同，恢复继续沿用，不能归零；--output必须与预算/锁文件不同。可选强端口是独立ProviderConfig文件，只改chat候选及保守单价配置，放.local，核对能力并实测后注入；不用或不可恢复时按AGENTS收口。当前M04已验证qwen3.8-flash/qwen3.8-max，不能外推其他模型。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.probes.text_entity_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.text_entity_probe --live --case quoted-order --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.text_entity_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.text_entity_probe --live --case quoted-order --stage feature --budget-state $entityBudgetFile --output $entityReportFile --max-calls $entityCalls --max-tokens $entityTokens --max-cost $entityCost
 # 需要强端口时追加：--strong-providers $entityStrongProviders
 # 恢复当前特性的验收时使用新报告，继续原累计预算；main不复验。
 ```
@@ -110,13 +110,13 @@ live使用transport retries=0、子timeout和共享总deadline；预算预留先
 设置本任务的`$denseBudgetFile`、`$denseManifestFile`、`$densePointerFile`和`$denseReportFile`后执行：
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.dense_cli preview
-py -3.14 -m uv run --locked python -m deephelp_app.dense_cli --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_cli accept --live --budget-state $denseBudgetFile --manifest $denseManifestFile --pointer $densePointerFile --output $denseReportFile
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_cli verify --live --budget-state $denseBudgetFile --manifest $denseManifestFile --output $denseReportFile
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.dense_cli preview
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.dense_cli --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.dense_cli accept --live --budget-state $denseBudgetFile --manifest $denseManifestFile --pointer $densePointerFile --output $denseReportFile
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.dense_cli verify --live --budget-state $denseBudgetFile --manifest $denseManifestFile --output $denseReportFile
 ```
 
-默认namespace=m05_synthetic、dataset-version=m05-smoke-v1。自备文件先preview，运行时加`--source`；CSV/JSONL/XLSX字典见[合成数据说明](../modules/deephelp-app/src/deephelp_app/assets/README.md)。`import`导入/续跑，`search --query`检索，`evaluate`独立dev评测；`accept`额外检查重复导入和内容指标，新manifest时模拟一次真实upsert后的客户端确认丢失（不宣称云故障）。
+默认namespace=m05_synthetic、dataset-version=m05-smoke-v1。自备文件先preview，运行时加`--source`；CSV/JSONL/XLSX字典见[合成数据说明](../datasets/README.md)。`import`导入/续跑，`search --query`检索，`evaluate`独立dev评测；`accept`额外检查重复导入和内容指标，新manifest时模拟一次真实upsert后的客户端确认丢失（不宣称云故障）。
 
 新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
 
@@ -131,8 +131,8 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.dense_c
 设置本次的`$sopBudgetFile`、`$sopReportFile`、`$sopCalls`、`$sopTokens`、`$sopCost`后，从根执行：
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.probes.sop_probe --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.sop_probe --live --stage feature --budget-state $sopBudgetFile --output $sopReportFile --max-calls $sopCalls --max-tokens $sopTokens --max-cost $sopCost
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.sop_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.sop_probe --live --stage feature --budget-state $sopBudgetFile --output $sopReportFile --max-calls $sopCalls --max-tokens $sopTokens --max-cost $sopCost
 # 恢复时使用新报告路径，累计预算保持同一文件。
 ```
 
@@ -146,10 +146,10 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.
 同机已有`.local/m08/auth.json`和`session-budget.json`可复用；独立演示或新机器用mvp_cli init创建新的文件，设本次足够上限。auth须包含样本请求者固定身份。累计格式沿M03计数/上界，恢复不清零；只有serve和显式probe --live联网。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_app.mvp_cli --help
-py -3.14 -m uv run --locked python -m deephelp_app.probes.mvp_probe --output .local/m08/offline-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.mvp_probe --live --http --stage feature --output .local/m08/feature-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.probes.mvp_probe --live --http --samples --stage feature --output .local/m08/samples-new.json
+py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli --help
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.mvp_probe --output .local/m08/offline-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.mvp_probe --live --http --stage feature --output .local/m08/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.mvp_probe --live --http --samples --stage feature --output .local/m08/samples-new.json
 # 恢复当前特性的验收时沿用累计预算，换新输出文件。
 ```
 
