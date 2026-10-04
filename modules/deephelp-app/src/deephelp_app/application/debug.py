@@ -123,6 +123,7 @@ def project(snapshot: DebugSnapshot, view: DebugView, *, dropped: int = 0) -> di
         "run_id": snapshot.run_id,
         "question_id": snapshot.question_id,
         "trace_id": snapshot.trace_id,
+        "otel_trace_id": snapshot.otel_trace_id,
         "incomplete": list(snapshot.incomplete),
         "dropped_events": dropped,
         "data": {key: data.get(key) for key in keys},

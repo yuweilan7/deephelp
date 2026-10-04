@@ -20,6 +20,7 @@ import httpx
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
 from deephelp_app.adapters.synthetic_rights import RightsClient
+from deephelp_app.adapters.telemetry import environment
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.application.sop import SOPExecutor
@@ -686,7 +687,8 @@ def main() -> None:
     parser.add_argument("--action", choices=["pause", "approve", "resume"], default="resume")
     parser.add_argument("--fault", default="")
     args = parser.parse_args()
-    asyncio.run(worker(args) if args.command == "worker" else matrix(args))
+    with environment("deephelp-app"):
+        asyncio.run(worker(args) if args.command == "worker" else matrix(args))
 
 
 if __name__ == "__main__":

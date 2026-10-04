@@ -20,6 +20,8 @@ from langgraph.checkpoint.base import (
     get_checkpoint_metadata,
 )
 
+from deephelp_app.adapters.telemetry import annotate, observed
+
 
 async def migrate_m15(pool: Any) -> None:
     sql = (
@@ -27,6 +29,9 @@ async def migrate_m15(pool: Any) -> None:
         .joinpath("resources/migrations/015_approval.sql")
         .read_text(encoding="utf-8")
     )
+    sql += "\n;" + files("deephelp_app").joinpath(
+        "resources/migrations/021_observation.sql"
+    ).read_text(encoding="utf-8")
     async with pool.acquire() as conn, conn.cursor() as cursor:
         for statement in sql.split(";"):
             if statement.strip():
@@ -43,6 +48,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         super().__init__()
         self.pool = pool
 
+    @observed("checkpoint.read")
     async def aget_tuple(self, config: RunnableConfig) -> CheckpointTuple | None:
         c = config["configurable"]
         thread, ns, cid = c["thread_id"], c.get("checkpoint_ns", ""), get_checkpoint_id(config)
@@ -66,6 +72,13 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                     (thread, ns, cid),
                 )
                 writes = await cursor.fetchall()
+                annotate(
+                    **{
+                        "deephelp.checkpoint_id": cid,
+                        "deephelp.parent_checkpoint_id": parent or "none",
+                        "deephelp.pending_writes": len(writes),
+                    }
+                )
                 return CheckpointTuple(
                     config=configuration(thread, ns, cid),
                     checkpoint=self.serde.loads_typed((ct, cp)),
@@ -78,6 +91,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
             finally:
                 await conn.rollback()
 
+    @observed("checkpoint.write")
     async def aput(
         self,
         config: RunnableConfig,
@@ -86,6 +100,12 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         new_versions: ChannelVersions,
     ) -> RunnableConfig:
         c = config["configurable"]
+        annotate(
+            **{
+                "deephelp.checkpoint_id": checkpoint["id"],
+                "deephelp.parent_checkpoint_id": c.get("checkpoint_id", "none"),
+            }
+        )
         thread, ns = c["thread_id"], c.get("checkpoint_ns", "")
         ct, cp = self.serde.dumps_typed(checkpoint)
         mt, md = self.serde.dumps_typed(get_checkpoint_metadata(config, metadata))
@@ -114,6 +134,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                 raise
         return configuration(thread, ns, checkpoint["id"])
 
+    @observed("checkpoint.pending_writes")
     async def aput_writes(
         self,
         config: RunnableConfig,
@@ -122,6 +143,9 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         task_path: str = "",
     ) -> None:
         c = config["configurable"]
+        annotate(
+            **{"deephelp.checkpoint_id": c["checkpoint_id"], "deephelp.pending_writes": len(writes)}
+        )
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             try:
                 for index, (channel, value) in enumerate(writes):
@@ -193,6 +217,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                 yield item
                 count += 1
 
+    @observed("checkpoint.delete")
     async def adelete_thread(self, thread_id: str) -> None:
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             try:

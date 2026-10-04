@@ -16,6 +16,7 @@ from pymilvus import (  # type: ignore[import-untyped]
 )
 
 from deephelp_app.adapters.milvus_dense import FIELDS, OUTPUT, MilvusDenseStore
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.application.dense import (
     atomic_json,
     existing_json,
@@ -41,6 +42,7 @@ class MilvusHybridStore(MilvusDenseStore):
             sort_keys=True,
         )
 
+    @observed("milvus.validate_hybrid")
     async def validate(self, scope: DenseScope, corpus_digest: str | None = None) -> str:
         if not isinstance(scope, HybridScope):
             raise AppError(ErrorCode.VERSION_CONFLICT, "Hybrid intent scope required")
@@ -220,6 +222,7 @@ class MilvusHybridStore(MilvusDenseStore):
             )
         return hits
 
+    @observed("retrieval.hybrid")
     async def routes(
         self, scope: HybridScope, text: str, vector: list[float], limit: int, weight: float
     ) -> dict[str, list[DenseHit]]:

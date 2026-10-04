@@ -1034,6 +1034,7 @@ class ReplyPresentation(DTO):
 
 
 class DebugSnapshot(DTO):
+    otel_trace_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
     schema_version: Literal["debug-v1"] = "debug-v1"
     scope_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     run_id: Identifier

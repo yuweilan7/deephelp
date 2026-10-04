@@ -13,6 +13,7 @@ import aiomysql  # type: ignore[import-untyped]
 from pymysql.err import IntegrityError, MySQLError  # type: ignore[import-untyped]
 
 from deephelp_app.adapters.milvus_dense import local_connection
+from deephelp_app.adapters.telemetry import ObservedPool
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
     ErrorCode,
@@ -187,7 +188,7 @@ class MySQLLedger:
                 pool_recycle=300,
                 connect_timeout=5,
             )
-            return cls(pool)
+            return cls(ObservedPool(pool))
         except MySQLError, OSError:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL connection unavailable") from None
 

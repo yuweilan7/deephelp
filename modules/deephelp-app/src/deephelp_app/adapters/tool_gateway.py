@@ -3,6 +3,7 @@
 import asyncio
 import json
 import math
+import os
 import secrets
 import sys
 from collections.abc import AsyncIterator, Callable
@@ -28,6 +29,7 @@ from deephelp_app.adapters.mcp_protocol import (
     validate_observation,
 )
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient, ServiceCredentials
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.domain.checks import (
     require_owner,
     validate_question_access,
@@ -115,6 +117,8 @@ class ToolGateway:
             "DEEPHELP_MCP_SESSION_SECRET": self._secret,
             "PYTHONUTF8": "1",
         }
+        if endpoint := os.getenv("DEEPHELP_OTLP_ENDPOINT"):
+            env["DEEPHELP_OTLP_ENDPOINT"] = endpoint
         if self.ledger_path is not None:
             env["DEEPHELP_MCP_LEDGER"] = str(self.ledger_path.resolve())
         params = self.server.model_copy(update={"env": env})
@@ -212,6 +216,7 @@ class ToolGateway:
             validate_arguments(request.tool_name.value, arguments)
             self._connected()
 
+            @observed("tool.dispatch")
             async def operation() -> ToolResult:
                 nonlocal dispatched
                 # Refresh after queueing. The mutable budget owns the actual deadline.

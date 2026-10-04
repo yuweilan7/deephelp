@@ -32,6 +32,14 @@ Retrieval独立进程复用原DenseRetriever/HybridRetriever、Embedding网关�
 
 `/debug/runs/{run_id}/flow`增加同源、主体/session受限且脱敏的retrievals，包含回执、服务PID及双端校验；未知模型用量标incomplete，超大诊断按原大小边界裁剪。实际usage、charged上界和费用估算分开。真实迁移对照必须用同一次实际Embedding向量，避免供应商两次响应波动混入传输一致性结论；专项探针的观测仅记录原网关返回，正式运行不读取测试向量。省略远端配置保留本地端口，选择远端后失败关闭。
 
+## M21观测关联
+
+原HTTP、工具和Retrieval wire契约保持。TraceEvent/DebugSnapshot新增可空32位hex的otel_trace_id，原trace_id不改；三视图读取仍先用身份/session授权run。观测上下文不是身份、receipt、checkpoint或审批依据。
+
+独立MCP deephelp/observation元数据只含W3C校验的traceparent；不传tracestate/baggage或工具参数。签名身份仍由原deephelp/internal验证。无效上下文新建trace，不拒绝有效身份、不触发调用/恢复。stdio和HTTP均复用此接缝。
+
+审批首个实际pause引用保存在增量dh_m21_observation_links，恢复在原归属校验后创建Span Link；它是可丢失诊断，不改checkpoint或业务账本。隐藏推理、正文、凭据和SQL参数不导出；时钟、并发和指标分母见[观测入口](../infra/observability/README.md)。
+
 ## 哪个阶段实现什么
 
 M05在唯一domain/models.py增量发布CorpusRecord、DenseScope、DenseHit、DenseCandidate、DenseResult，ports.py发布DenseRetrieverPort；envelope仍0.2.0-m02，旧消费者兼容。CorpusRecord只接受actionable目录标签及合成语料。DenseScope绑定namespace/dataset_version/registry_version/完整EmbeddingSignature；同维度不同模型不等价，scope改变使用另一个集合。namespace为语料范围，不是用户授权凭据。

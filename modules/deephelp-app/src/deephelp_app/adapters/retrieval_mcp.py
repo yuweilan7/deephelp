@@ -21,6 +21,7 @@ from deephelp_app.adapters.retrieval_protocol import (
     registered_tools,
     validate_results,
 )
+from deephelp_app.adapters.telemetry import observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
 from deephelp_app.domain.models import (
@@ -112,6 +113,7 @@ class RemoteRetriever:
     ) -> dict[str, DenseResult]:
         return await self._call(NAMES[1], text, scope, budget, top_k)
 
+    @observed("retrieval.remote")
     async def _call(
         self, name: str, text: str, scope: DenseScope, budget: ExecutionBudget, top_k: int
     ) -> dict[str, DenseResult]:

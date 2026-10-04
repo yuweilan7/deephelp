@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS dh_m21_observation_links (
+  operation_id VARCHAR(128) NOT NULL PRIMARY KEY,
+  trace_id CHAR(32) NOT NULL,
+  span_id CHAR(16) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

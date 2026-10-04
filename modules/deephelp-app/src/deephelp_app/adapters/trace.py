@@ -13,6 +13,8 @@ from typing import Literal, Protocol
 
 from pydantic import Field
 
+from deephelp_app.adapters.telemetry import observation as observation_span
+from deephelp_app.adapters.telemetry import trace_id as otel_trace_id
 from deephelp_app.domain.models import DTO, DebugSnapshot, Identifier
 
 request_context: ContextVar[tuple[str, str] | None] = ContextVar("request_context", default=None)
@@ -30,23 +32,26 @@ def observe_sop_node(node_id: str, kind: str, calls: list[str]) -> Iterator[dict
         "started_at": datetime.now(UTC).isoformat(),
     }
     before = len(calls)
-    try:
-        yield observation
-    except BaseException as exc:
-        observation["status"] = "failed"
-        observation["error_code"] = str(
-            getattr(
-                exc,
-                "code",
-                "CANCELLED" if isinstance(exc, asyncio.CancelledError) else "INTERNAL_ERROR",
+    with observation_span(
+        "sop.node", attributes={"deephelp.sop_node": node_id, "deephelp.sop_kind": kind}
+    ):
+        try:
+            yield observation
+        except BaseException as exc:
+            observation["status"] = "failed"
+            observation["error_code"] = str(
+                getattr(
+                    exc,
+                    "code",
+                    "CANCELLED" if isinstance(exc, asyncio.CancelledError) else "INTERNAL_ERROR",
+                )
             )
-        )
-        raise
-    finally:
-        observation["finished_at"] = datetime.now(UTC).isoformat()
-        observation["tool_call_ids"] = calls[before:]
-        if observer := sop_node_observer.get():
-            observer(observation)
+            raise
+        finally:
+            observation["finished_at"] = datetime.now(UTC).isoformat()
+            observation["tool_call_ids"] = calls[before:]
+            if observer := sop_node_observer.get():
+                observer(observation)
 
 
 class TraceEvent(DTO):
@@ -66,6 +71,7 @@ class TraceEvent(DTO):
         "ledger_committed",
         "debug_snapshot",
     ]
+    otel_trace_id: str | None = Field(default_factory=otel_trace_id, pattern=r"^[0-9a-f]{32}$")
     request_id: Identifier
     trace_id: Identifier
     at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -39,6 +39,7 @@ from deephelp_app.adapters.network_mcp import (
     ServiceCredentials,
     decode_delegation,
 )
+from deephelp_app.adapters.telemetry import environment, server_call
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models import (
     BusinessInput,
@@ -63,6 +64,7 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
     ) -> ListToolsResult:
         return ListToolsResult(tools=registered_tools())
 
+    @server_call("mcp.business.call")
     async def calling(
         ctx: ServerRequestContext[dict[str, Any]],
         params: CallToolRequestParams,
@@ -155,16 +157,17 @@ def create_business_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        store = repository or await BusinessRepository.open(root)
-        app.state.repository = store
-        manager = session_manager(make_server(store, verifier))
-        app.state.mcp_manager = manager
-        try:
-            async with manager.run():
-                yield
-        finally:
-            if repository is None:
-                await store.aclose()
+        with environment("deephelp-business-mcp"):
+            store = repository or await BusinessRepository.open(root)
+            app.state.repository = store
+            manager = session_manager(make_server(store, verifier))
+            app.state.mcp_manager = manager
+            try:
+                async with manager.run():
+                    yield
+            finally:
+                if repository is None:
+                    await store.aclose()
 
     app.router.lifespan_context = lifespan
 
