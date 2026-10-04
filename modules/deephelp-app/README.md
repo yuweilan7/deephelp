@@ -296,7 +296,7 @@ probe使用随机session、专用缓存前缀与独立事件集合，实际验HT
 
 独立入口只聚合和保存事件上下文，不调用主意图分类器或SOP。`converse`仍使用M10显式hint；M12再把聚合接入同一主流程。输入主体为本机CLI固定合成身份，未新增网络端点或企业登录。
 
-归属裁决使用独立`event-judge.example.json`的qwen3.8-max；清洗/Embedding沿用原provider及1024维签名。`--judge-provider`可显式选择其他已验证端点，切换后重新验黄金序列；不自动降级。所有调用共用本次累计预算。
+归属裁决使用独立`event-judge.example.json`，当前模板为qwen3.7-flash；原M11验收使用qwen3.8-max，属于历史证据。清洗/Embedding沿用原provider及1024维签名。`--judge-provider`可显式选择其他已验证端点，切换后按影响验收；不自动降级。所有调用共用本次累计预算。
 
 ```powershell
 # 无持久化、仅当前消息的离线预览
@@ -322,7 +322,7 @@ PostgreSQL成员、终态响应及outbox保留事实。派生事件摘要通过�
 
 正式live的同一`/converse`现已自动归属，无需给每条补充手工附问题编号。只有600调用统一主意图服务，内部顺序为规则→当前Hybrid→必要的已确认事件增强Hybrid→有限schema兜底。`--pointer .local/m09/active.json`启用已校准Hybrid；旧默认M05指针仍兼容，但不直接按Dense分数接管。已绑定问题保持原意图，FastText默认disabled，可按M13入口显式启用。机制/短路表见[M12规格](../../docs/MODULES/M12_CASCADE_PIPELINE.md)。
 
-归属判断和主意图兜底均使用`event-judge.example.json`配置的强模型（当前qwen3.8-max），按完整语义区分应减未减与一般金额询问/退款；提取、Embedding及SOP沿原provider配置。响应版本记录兜底模型及`m12-fallback-v2`，阶段计数仍分别核算实际调用，不额外重分类。
+归属判断和主意图兜底均使用`event-judge.example.json`，当前模板为qwen3.7-flash，按完整语义区分应减未减与一般金额询问/退款；提取、Embedding及SOP沿原provider配置。原M12的qwen3.8-max结果为历史证据。响应版本记录实际兜底模型及`m12-fallback-v2`，阶段计数仍分别核算实际调用，不额外重分类。
 
 复用已有凭据/合成身份、M09指针和M10迁移。需要中间件时先health，所需能力证据缺失/失效时才补模型检查；新任务设置足够的调用/token/费用累计上限，init只生成新本机文件，恢复不得归零。已存在的`.local/m12/session-budget.json`可继续使用，init不能覆盖它。
 
@@ -622,3 +622,9 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 可以先在业务资料创建订单，再提问“我的订单没有享受优惠”，在缺槽位结果点“补充此问题”填订单号；续接绑定question/version。刷新页面后从左侧打开持久会话；点击结果读取事实/不可变Business证据/13段及同run诊断。诊断轮转丢失会明确显示，持久历史仍来自PostgreSQL。网络失败用“重试原消息”，沿用原ID/正文/时间；新问题另建message_id。重放的本次计数与历史阶段计数分开显示。
 
 资料页支持订单/券/活动及订单活动关系。完整更新使用当前expected_version，冲突后重新读取；金额输入十进制字符串。更新后新消息读取新资料，重投旧消息返回旧事实与证据。维护不属于会话退款/发券，两个MCP工具仍只读。M22四个顺序特性已验收；协议、工作流、意图/检索/记忆/观测以及评测飞轮使用[可选学习扩展](../deephelp-tools/README.md#浏览器学习扩展)。源码位于`frontend/`，直接同源运行并随app包打包，不需要Node或npm构建；详情见[M22交接](../../handoffs/M22.md)。
+
+## 当前Flash模型与完整发布
+
+通用与归属判断模板当前均为qwen3.7-flash；实际切换见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。当前默认完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
+
+使用release_cli validate和prepare时均追加同一--prompt-artifact路径；validate的11会话14消息通过后才prepare/register/CAS-switch。云端应用与Retrieval进程需采用同一显式providers，启动后查实际内容、历史重放与同run模型记录。历史版本、旧审批、UNKNOWN和已绑定工件原样保留；当前状态及恢复见[STATE](../../docs/PROJECT_STATE.md)和[部署入口](../../infra/deployment/README.md)。
