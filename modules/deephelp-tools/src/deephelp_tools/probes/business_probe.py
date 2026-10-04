@@ -22,6 +22,10 @@ from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models import BusinessOrderInput, BusinessRecord, ResponseEnvelope
 from deephelp_tools.assets import asset_path
 
+SUBPROCESS_FLAGS = 0
+if sys.platform == "win32":
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+
 
 def port() -> int:
     with socket.socket() as listener:
@@ -42,7 +46,7 @@ class Processes:
             *args,
             stdout=stream,
             stderr=stream,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            creationflags=SUBPROCESS_FLAGS,
         )
         self.running[name] = child, stream
         self.pids.setdefault(name, []).append(child.pid)
@@ -74,7 +78,7 @@ class Processes:
                     "/F",
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    creationflags=SUBPROCESS_FLAGS,
                 )
                 async with asyncio.timeout(10):
                     await killer.wait()
