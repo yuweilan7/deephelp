@@ -347,3 +347,7 @@ POST /capture仅原专用合成m18-collect已完成run；POST /candidates/{hash}
 POST /tasks仅audit/offline/build/validate/prepare及明确candidate_ids/asset_id/confirmed；重任务同进程串行、1800秒、最多3次尝试/100记录，超出或冲突关闭。GET任务的state与result.evidence_status、部分证据独立；硬退出后标INTERRUPTED，POST /tasks/{id}/cancel|resume明确取消/恢复。取消等待原适配器关闭；恢复新不可变尝试路径，已提交/未知提交的派生、验证或版本登记先对账，原M18任务lease仍生效。构建/验证复用已打开的应用预算writer，仅显式启动消耗模型；已知不足构建Embedding批次的预算在启动前拒绝。构建PREPARED、验证PASS均不改active。
 
 prepare调用原prepare_manifest/ReleaseStore.register。POST /release收publish|rollback、target完整hash、revision、confirmed，只切配置的单一channel；rollback额外核对当前previous，原switch重验字节/验证/审核/保留资产和CAS。历史PASS不表示当前发布资格。基础app不反向导入此工具扩展。
+
+### M29 历史平台映射
+
+`EvaluationCatalog`增加可选`platform_config`与最多16个`imports`；每条只允许服务器持有的report/data/manifest路径、1–20个case和1–4个mode。GET `/learning/evaluation/imports/{id}`先原owner守卫、后审计冻结来源与读取持久状态；来源变更409。POST原`/tasks`增加`platform_upload`及受控`import_id`，仍要求confirmed；其他action不接受import_id。应用业务观测与上传SDK分别拥有进程资源。COMPLETE必须逐行完整读回，与原历史质量门禁独立；部分/取消/中断不显示全量通过。平台Score不会更改候选review或M18 active。

@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import sys
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,6 +18,7 @@ from deephelp_app.adapters.release_assets import verify_release
 from deephelp_app.adapters.release_store import ReleaseStore
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.artifact_paths import resolve_artifact, state_root
+from deephelp_app.application.dense import atomic_json
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LiveAssembly
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
@@ -27,11 +29,20 @@ from deephelp_tools.evaluation.evaluation_cli import run as evaluate
 from deephelp_tools.evaluation.flywheel_assets import build, exports, verify_files
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore
 from deephelp_tools.evaluation.flywheel_validation import validate, validation_cases
+from deephelp_tools.evaluation.langfuse_mapping import plan_import
 from deephelp_tools.evaluation.release_prepare import prepare_manifest
 from deephelp_tools.learning.workbench_jobs import LearningJobs
 
 Key = Annotated[str, Field(pattern=r"^[a-zA-Z0-9_-]{1,80}$")]
 Hash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
+class HistoricalImport(DTO):
+    report: Path
+    data: Path
+    manifest: Path
+    cases: tuple[Key, ...] = Field(min_length=1, max_length=20)
+    modes: tuple[Key, ...] = Field(min_length=1, max_length=4)
 
 
 class EvaluationCatalog(DTO):
@@ -46,6 +57,8 @@ class EvaluationCatalog(DTO):
     pointer: Path
     fasttext_pointer: Path
     redaction_key: Path
+    platform_config: Path | None = None
+    imports: dict[Key, HistoricalImport] = Field(default_factory=dict, max_length=16)
 
 
 class Capture(DTO):
@@ -61,9 +74,10 @@ class Review(DTO):
 
 
 class JobInput(DTO):
-    action: Literal["audit", "offline", "build", "validate", "prepare"]
+    action: Literal["audit", "offline", "build", "validate", "prepare", "platform_upload"]
     candidate_ids: tuple[Hash, ...] = Field(default=(), max_length=10)
     asset_id: Key | None = None
+    import_id: Key | None = None
     confirmed: Literal[True]
 
 
@@ -199,6 +213,52 @@ def evaluation_router(
         output.mkdir(parents=True, exist_ok=False)  # noqa: ASYNC240 -- bounded durable job path
         options, action = row["options"], row["options"]["action"]
         gate = SharedGate(factory)
+        if action == "platform_upload":
+            source = config.imports[options["import_id"]]
+            assert config.platform_config is not None
+            path = root / "imports" / (options["import_id"] + ".json")
+            import_args = [sys.executable, "-m", "deephelp_tools.evaluation.langfuse_cli", "--live"]
+            for key, value in {
+                "report": source.report,
+                "data": source.data,
+                "manifest": source.manifest,
+                "config": config.platform_config,
+                "state": path,
+            }.items():
+                import_args.extend(["--" + key, str(value)])
+            for key, values in (("case", source.cases), ("mode", source.modes)):
+                for value in values:
+                    import_args.extend(["--" + key, value])
+            # SDK resources are keyed by project public key. A child owns its queues
+            # so shutting them down cannot close the application's native observer.
+            child = await asyncio.create_subprocess_exec(
+                *import_args, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+            )
+            try:
+                async with asyncio.timeout(660):
+                    code = await child.wait()
+                if code:
+                    raise ConfigurationError(
+                        "Historical importer failed; durable partial state retained"
+                    )
+            except BaseException as exc:
+                if child.returncode is None:
+                    child.kill()
+                    await asyncio.shield(child.wait())
+                if path.is_file():
+                    partial = json.loads(path.read_text(encoding="utf-8"))
+                    partial.update(
+                        status="CANCELLED" if isinstance(exc, asyncio.CancelledError) else "PARTIAL"
+                    )
+                    atomic_json(path, partial)
+                raise
+            state = json.loads(path.read_text(encoding="utf-8"))
+            return dict(
+                evidence_status=state["status"],
+                model_calls=0,
+                expected_rows=state["expected_rows"],
+                source_report_sha256=state["source_report_sha256"],
+            )
         if action == "audit":
             cases, summary = await asyncio.to_thread(audit)
             return dict(
@@ -324,6 +384,7 @@ def evaluation_router(
         return dict(
             dataset=dataset,
             reports=list(config.reports),
+            platform_imports=list(config.imports) if config.platform_config else [],
             assets=list(config.assets)
             + [
                 "task-" + r["id"]
@@ -370,6 +431,39 @@ def evaluation_router(
             candidate=(await store.get(identity)).model_dump(mode="json"),
             derivatives=await store.lineage(identity),
             tasks=await store.tasks(identity),
+        )
+
+    @router.get("/imports/{identity}")
+    async def imported(request: Request, identity: Key) -> dict[str, Any]:
+        owner(request)
+        if identity not in config.imports or config.platform_config is None:
+            raise AppError(ErrorCode.NOT_FOUND, "Historical import unavailable", 404)
+        source = config.imports[identity]
+        plan = await asyncio.to_thread(
+            plan_import,
+            source.report,
+            source.data,
+            source.manifest,
+            list(source.cases),
+            list(source.modes),
+        )
+        path = root / "imports" / (identity + ".json")
+        state = (
+            json.loads(path.read_text(encoding="utf-8"))
+            if path.is_file()
+            else {"status": "NOT_UPLOADED"}
+        )
+        if state.get("identity") not in {None, plan["identity"]}:
+            raise AppError(
+                ErrorCode.VERSION_CONFLICT, "Import source changed; use a new catalog identity", 409
+            )
+        return dict(
+            source="langfuse",
+            summary=plan["summary"],
+            expected_rows=len(plan["rows"]),
+            state=state,
+            model_calls=0,
+            note="Historical mapping; platform scores do not publish or approve",
         )
 
     @router.post("/capture")
@@ -463,6 +557,13 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
+        if body.action == "platform_upload":
+            if body.import_id not in config.imports or config.platform_config is None:
+                raise AppError(ErrorCode.NOT_FOUND, "Historical import unavailable", 404)
+        elif body.import_id is not None:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Only platform upload consumes an import", 422
+            )
         if body.action in {"validate", "prepare"}:
             asset_path(body.asset_id)
         elif body.asset_id is not None:

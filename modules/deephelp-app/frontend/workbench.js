@@ -116,6 +116,7 @@ function clearSession() {
     "evaluation-pointer",
     "evaluation-release-result",
     "evaluation-release-summary",
+    "evaluation-import-summary",
   ])
     $(id).replaceChildren();
   $("text").value = "";
@@ -146,6 +147,7 @@ function clearSession() {
     "evaluation-asset",
     "evaluation-task",
     "evaluation-release",
+    "evaluation-import",
   ])
     $(id).replaceChildren();
   for (const id of [
@@ -164,6 +166,7 @@ function clearSession() {
     "evaluation-review-independent",
     "evaluation-task-confirm",
     "evaluation-release-confirm",
+    "evaluation-import-confirm",
   ])
     $(id).checked = false;
   for (const id of [
@@ -971,6 +974,8 @@ function choices(id, rows, value, label) {
 async function loadEvaluation() {
   const d = await api("/learning/evaluation");
   state.evaluation = d;
+  choices("evaluation-import", d.platform_imports || [], (r) => r, (r) => r);
+  $("evaluation-import-upload").disabled = !(d.platform_imports || []).length;
   choices(
     "evaluation-report",
     d.reports,
@@ -1111,6 +1116,37 @@ async function evaluationTask() {
   await loadEvaluation();
 }
 $("evaluation-refresh").addEventListener("click", () => run(evaluationPlan));
+async function evaluationImport() {
+  const id = $("evaluation-import").value;
+  if (!id) throw new Error("当前目录尚未配置平台历史映射");
+  const d = await api(`/learning/evaluation/imports/${encodeURIComponent(id)}`);
+  const box = $("evaluation-import-summary");
+  box.replaceChildren(node("p", `${d.state.status} · 预期 ${d.expected_rows} 行 · 历史导入 · 新增模型调用 0`));
+  box.append(node("p", `选中 ${d.summary.selected_case_ids.length} 个完整会话 · ${d.summary.selected_modes.join(" / ")} · 原报告门禁 ${d.summary.release_gate.accepted ? "通过" : "拒绝"}。子集仍保留每行原断言与历史失败。`));
+  box.append(node("p", `原报告 SHA256：${d.summary.source_report_sha256}。平台分数不发布版本、不批准候选。`));
+  for (const [key, label] of [["dataset_url", "Langfuse Dataset"], ["experiment_url", "Langfuse Experiment"]]) {
+    if (d.state[key]) {
+      const link = document.createElement("a");
+      link.textContent = label;
+      link.href = d.state[key];
+      link.target = "_blank";
+      link.rel = "noopener";
+      box.append(link, document.createElement("br"));
+    }
+  }
+  $("evaluation-import-confirm").checked = false;
+}
+$("evaluation-import-read").addEventListener("click", () => run(evaluationImport));
+$("evaluation-import-upload").addEventListener("click", () => run(async () => {
+  if (!$("evaluation-import-confirm").checked) throw new Error("请确认上传历史子集");
+  const task = await api("/learning/evaluation/tasks", "POST", {
+    action: "platform_upload", import_id: $("evaluation-import").value, confirmed: true,
+  });
+  $("evaluation-import-confirm").checked = false;
+  await loadEvaluation();
+  $("evaluation-task").value = task.id;
+  await evaluationTask();
+}));
 $("evaluation-report-read").addEventListener("click", () =>
   run(() => evaluationReport()),
 );

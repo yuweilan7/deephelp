@@ -399,6 +399,13 @@
           <button id="evaluation-report-read">读取指标与差例</button>
           <button id="evaluation-report-more" hidden>继续读取差例</button>
           <div id="evaluation-report-summary"></div>
+          <label for="evaluation-import">Langfuse 历史报告映射</label>
+          <select id="evaluation-import"></select>
+          <button id="evaluation-import-read">读取映射与平台链接</button>
+          <label><input id="evaluation-import-confirm" type="checkbox" />
+            确认上传受控历史子集（0 模型调用）</label>
+          <button id="evaluation-import-upload">上传或核对原映射</button>
+          <div id="evaluation-import-summary"></div>
           <details>
             <summary>报告范围、指标与差例明细</summary>
             <pre id="evaluation-report-result"></pre>
