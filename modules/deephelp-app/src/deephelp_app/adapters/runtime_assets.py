@@ -7,11 +7,13 @@ from typing import Any, cast
 from deephelp_app.adapters.asset_integrity import file_digest
 from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.adapters.milvus_dense import MilvusDenseStore, create_client
+from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import load_json, verify_manifest_rows
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DenseScope
+from deephelp_app.domain.models import DenseScope, HybridScope
 
 
 def read_data(path: Path) -> dict[str, Any]:
@@ -27,19 +29,19 @@ def verify_files(path: Path, *, validation_inputs: bool = False) -> dict[str, An
     if data["source"]["digest"] != digest(data["source"]["candidates"]):
         raise ConfigurationError("Feedback review snapshot changed")
     required = {
-        str(Path(data[k]).resolve()) for k in ("dense_pointer", "fasttext_pointer", "rules")
+        str(resolve_artifact(data[k])) for k in ("dense_pointer", "fasttext_pointer", "rules")
     }
     dense = read_data(Path(data["dense_pointer"]))
     model_path = pointer_manifest(Path(data["fasttext_pointer"]))
     model = FastTextClassifier(model_path)
     required.update(
         {
-            str(Path(dense["manifest"]).resolve()),
+            str(resolve_artifact(dense["manifest"])),
             str(model_path.resolve()),
             str((model_path.parent / model.manifest.model_file).resolve()),
         }
     )
-    if not required.issubset(data["files"]):
+    if not required.issubset({str(resolve_artifact(p)) for p in data["files"]}):
         raise ConfigurationError("Every consumed pointer/manifest/model/rule needs a fingerprint")
     if not data["files"] or any(file_digest(Path(p)) != h for p, h in data["files"].items()):
         raise ConfigurationError("Feedback artifact content changed")
@@ -48,10 +50,19 @@ def verify_files(path: Path, *, validation_inputs: bool = False) -> dict[str, An
 
 async def verify_remote(data: dict[str, Any], gate: BudgetSession) -> None:
     pointer = read_data(Path(data["dense_pointer"]))
-    scope = DenseScope.model_validate(pointer["active"])
+    active = pointer["active"]
+    scope = (
+        HybridScope.model_validate(active)
+        if active.get("index_kind") == "intent_hybrid"
+        else DenseScope.model_validate(active)
+    )
     client = create_client(await asyncio.to_thread(Path.cwd))
     try:
-        store = MilvusDenseStore(client, gate.request())
+        store = (
+            MilvusHybridStore(client, gate.request())
+            if isinstance(scope, HybridScope)
+            else MilvusDenseStore(client, gate.request())
+        )
         state = read_data(Path(pointer["manifest"]))
         await store.validate(scope, str(pointer["corpus_digest"]))
         rows = await store.read(scope, list(state["completed_ids"]))

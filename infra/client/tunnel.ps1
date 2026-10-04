@@ -1,17 +1,21 @@
-param([ValidateSet('start','stop','restart','check','health')][string]$Action='start')
+param(
+ [ValidateSet('start','stop','restart','check','health')][string]$Action='start',
+ [ValidateSet('infra','personal')][string]$Profile='infra'
+)
 $ErrorActionPreference='Stop'
 $base = Split-Path $PSScriptRoot -Parent
 $cfgPath=Join-Path $base 'config/connections.env'
 if (-not (Test-Path -LiteralPath $cfgPath)) {$cfgPath=Join-Path $base 'config/connections.env.example'}
 $cfg=@{}
 Get-Content -LiteralPath $cfgPath | ForEach-Object {if ($_ -match '^([A-Z_]+)=(.*)$') {$cfg[$matches[1]]=$matches[2]}}
-$pidPath=Join-Path $PSScriptRoot '.tunnel-windows.json'
+$pidPath=Join-Path $PSScriptRoot $(if($Profile -eq 'personal'){'.tunnel-personal.json'}else{'.tunnel-windows.json'})
+$remoteMarker=if($Profile -eq 'personal'){'127.0.0.1:8000'}else{'127.0.0.1:3306'}
 function Get-ManagedTunnel {
  if(Test-Path -LiteralPath $pidPath){
   $record=Get-Content -LiteralPath $pidPath -Raw | ConvertFrom-Json
   $p=Get-CimInstance Win32_Process -Filter "ProcessId=$($record.pid)"
   $expectedHost=if($record.host){$record.host}else{$cfg.DEEPHELP_SSH_HOST}
-  if($p -and $p.Name -eq 'ssh.exe' -and $p.CommandLine.Contains($expectedHost) -and $p.CommandLine.Contains('127.0.0.1:3306') -and $p.CommandLine.Contains('ServerAliveInterval=30')){return $p}
+  if($p -and $p.Name -eq 'ssh.exe' -and $p.CommandLine.Contains($expectedHost) -and $p.CommandLine.Contains($remoteMarker) -and $p.CommandLine.Contains('ServerAliveInterval=30')){return $p}
  }
  return $null
 }
@@ -22,9 +26,17 @@ if($Action -in 'stop','restart'){
  if($Action -eq 'stop'){exit 0}
 }
 $ports=@([int]$cfg.MYSQL_PORT,[int]$cfg.REDIS_PORT,[int]$cfg.MILVUS_LOCAL_PORT,[int]$cfg.MILVUS_WEBUI_PORT)
+$remotePorts=@(3306,6379,19530,9091)
+if($Profile -eq 'personal'){$ports=@(18080,23000);$remotePorts=@(8000,13000)}
 if($Action -in 'check','health'){
  foreach($port in $ports){$c=[Net.Sockets.TcpClient]::new(); try{$ok=$c.ConnectAsync('127.0.0.1',$port).Wait(1500); if(-not $ok -or -not $c.Connected){throw "Port $port unavailable"}; Write-Output "127.0.0.1:$port reachable"}finally{$c.Dispose()}}
  if($Action -eq 'health'){
+  if($Profile -eq 'personal'){
+   $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18080/health' -TimeoutSec 5
+   if($health.status -ne 'ok'){throw 'Remote personal application is not healthy'}
+   Write-Output 'Remote personal application health PASS; business acceptance is separate.'
+   exit 0
+  }
   $python=$null
   foreach($envName in @('.venv314','.venv312','.venv')){
    $candidate=Join-Path $base "$envName/Scripts/python.exe"
@@ -42,12 +54,12 @@ foreach($port in $ports){if(Get-NetTCPConnection -State Listen -LocalPort $port 
 $key=$cfg.DEEPHELP_SSH_KEY_WINDOWS
 if(-not(Test-Path -LiteralPath $key)){throw "SSH key missing: $key"}
 $sshArgs=@('-N','-T','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes','-o',('UserKnownHostsFile='+ (Join-Path $PSScriptRoot 'known_hosts')),'-o','KexAlgorithms=curve25519-sha256','-o','ExitOnForwardFailure=yes','-o','ServerAliveInterval=30','-o','ServerAliveCountMax=3','-o','ConnectTimeout=12','-i',$key,'-p',$cfg.DEEPHELP_SSH_PORT)
-$remotePorts=@(3306,6379,19530,9091)
-for($i=0;$i -lt 4;$i++){$sshArgs+=@('-L',"127.0.0.1:$($ports[$i]):127.0.0.1:$($remotePorts[$i])")}
+for($i=0;$i -lt $ports.Count;$i++){$sshArgs+=@('-L',"127.0.0.1:$($ports[$i]):127.0.0.1:$($remotePorts[$i])")}
 $sshArgs+=($cfg.DEEPHELP_SSH_USER+'@'+$cfg.DEEPHELP_SSH_HOST)
 $quoted=$sshArgs | ForEach-Object {'"'+$_.Replace('"','\"')+'"'}
-$p=Start-Process -FilePath (Get-Command ssh.exe).Source -ArgumentList $quoted -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $PSScriptRoot '.tunnel-windows.log')
+$logName=if($Profile -eq 'personal'){'.tunnel-personal.log'}else{'.tunnel-windows.log'}
+$p=Start-Process -FilePath (Get-Command ssh.exe).Source -ArgumentList $quoted -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $PSScriptRoot $logName)
 @{pid=$p.Id;host=$cfg.DEEPHELP_SSH_HOST;started=(Get-Date).ToUniversalTime().ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath $pidPath
 Start-Sleep -Seconds 2
-if($p.HasExited){throw 'SSH exited; inspect client/.tunnel-windows.log'}
+if($p.HasExited){throw "SSH exited; inspect client/$logName"}
 Write-Output "Tunnel started, PID=$($p.Id). Run -Action health for authenticated verification."

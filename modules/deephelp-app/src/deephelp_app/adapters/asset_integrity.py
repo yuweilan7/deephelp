@@ -6,20 +6,21 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.corpus import digest
 
 PACKAGE = Path(__file__).parents[1]
 
 
 def file_digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_artifact(path).read_bytes()).hexdigest()
 
 
 def provenance() -> dict[str, Any]:
     # A complete runtime release binds runtime code/data. Evaluation/learning tools
     # have their own provenance below and need not be installed to serve a release.
     inputs = {
-        str(p.relative_to(PACKAGE)): file_digest(p)
+        p.relative_to(PACKAGE).as_posix(): file_digest(p)
         for p in sorted(PACKAGE.rglob("*"))
         if p.is_file()
         and p.suffix in {".py", ".json", ".jsonl", ".txt", ".html", ".sql", ".js", ".css"}

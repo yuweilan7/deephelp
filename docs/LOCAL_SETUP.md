@@ -180,3 +180,14 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 ## M15 持久审批
 
 运行/明确批准/恢复与两个进程saver门禁见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)。先health，再用增量015迁移创建现有MySQL上的独立审批、操作、checkpoint及合成效果表。LangGraph及其saver协议版本由根uv.lock锁定，使用应用自建MySQL适配，无新增数据库或云服务。loopback合成下游与应用需保留同一32-byte服务key；真实模型/HTTP验收继续原模型、M09指针和独立任务累计预算。恢复不重置预算，报告用新.local路径。进程恢复只覆盖已登记审批工作流，企业支付/退款/补偿或通用RUNNING自动领取未启用。
+
+## M23 个人云入口
+
+部署、版本切换、受保护配置和隔离恢复见[服务器运行入口](../infra/deployment/README.md)，实际证据见[M23交接](../handoffs/M23.md)。本机只运行浏览器和现有 SSH 隧道；应用及两个 HTTP MCP 在服务器运行，不需要本机前端或业务进程。
+
+```powershell
+./infra/client/tunnel.ps1 -Profile personal -Action start
+./infra/client/tunnel.ps1 -Profile personal -Action health
+```
+
+工作台 `http://127.0.0.1:18080/`；Grafana `http://127.0.0.1:23000/`。personal 与默认 infra profile 分别管理进程/端口/状态文件。私有入口使用既有严格 known_hosts 的 SSH 加密链路，没有公网 TLS。登录令牌来自受保护 auth 文件；服务重启后重新登录，MySQL 历史保持。云端累计预算为独立持久 writer，不能用过期的本机预算副本覆盖它。

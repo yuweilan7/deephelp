@@ -12,14 +12,14 @@ def evaluation_provenance() -> dict[str, object]:
     inputs = {"deephelp_app/" + name: sha for name, sha in value["artifact_hashes"].items()}
     inputs.update(
         {
-            "deephelp_tools/" + str(p.relative_to(PACKAGE)): file_digest(p)
+            "deephelp_tools/" + p.relative_to(PACKAGE).as_posix(): file_digest(p)
             for p in sorted(PACKAGE.rglob("*"))
             if p.is_file() and p.suffix in {".py", ".json", ".jsonl", ".txt", ".html", ".sql"}
         }
     )
     for group, names in GROUPS.items():
         for name in sorted(names):
-            inputs["deephelp_tools/" + str(Path("resources") / group / name)] = file_digest(
+            inputs["deephelp_tools/" + (Path("resources") / group / name).as_posix()] = file_digest(
                 asset_path(name)
             )
     value["tooling_digest"] = digest(inputs)

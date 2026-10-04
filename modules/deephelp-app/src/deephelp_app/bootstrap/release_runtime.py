@@ -7,8 +7,10 @@ from typing import Any, cast
 
 from mcp import StdioServerParameters
 
+from deephelp_app.adapters.network_mcp import HTTPMCPConfig
 from deephelp_app.adapters.release_assets import verify_release
 from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseRepository, ReleaseStore
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.conversation import Conversation
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
 from deephelp_app.domain.errors import ConfigurationError
@@ -47,11 +49,23 @@ class ReleaseRuntime:
         after_accept: Any = None,
         tool_server: StdioServerParameters | None = None,
         corpus_path: Path | None = None,
+        business_mcp: HTTPMCPConfig | None = None,
+        retrieval_mcp: HTTPMCPConfig | None = None,
     ) -> None:
         self.channel, self.rights_port, self.rights_key = channel, rights_port, rights_key
         self.after_accept = after_accept
         self.tool_server, self.corpus_path = tool_server, corpus_path
+        self.business_mcp, self.retrieval_mcp = business_mcp, retrieval_mcp
         self.assemblies: dict[str, LiveAssembly] = {}
+        self.initial_assembly: LiveAssembly | None = None
+
+    def __getattr__(self, name: str) -> Any:
+        # Learning labs refer to the assembly selected at startup. Conversation routing
+        # continues to bind each run to the authoritative release as before.
+        initial = self.__dict__.get("initial_assembly")
+        if initial is None or name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(initial, name)
 
     @asynccontextmanager
     async def open(self, client: Any, trace: Any) -> Any:
@@ -76,12 +90,14 @@ class ReleaseRuntime:
                             data = verify_release(manifest)
                             assembly = LiveAssembly(
                                 Path.cwd(),
-                                Path(manifest.providers_path),
-                                Path(data["dense_pointer"]),
-                                fasttext_pointer=Path(data["fasttext_pointer"]),
-                                reviewed_rules=Path(data["rules"]),
+                                resolve_artifact(manifest.providers_path),
+                                resolve_artifact(data["dense_pointer"]),
+                                fasttext_pointer=resolve_artifact(data["fasttext_pointer"]),
+                                reviewed_rules=resolve_artifact(data["rules"]),
                                 event_collection="dh_m10_events_m18_release_" + identity[:20],
                                 tool_server=runtime.tool_server,
+                                business_mcp=runtime.business_mcp,
+                                retrieval_mcp=runtime.retrieval_mcp,
                                 corpus_path=runtime.corpus_path,
                                 rights_port=runtime.rights_port,
                                 rights_key=runtime.rights_key,
@@ -156,6 +172,7 @@ class ReleaseRuntime:
             if active.active is None:
                 raise ConfigurationError("Publish a complete version before serving")
             router.initial = await router.entry(active.active)
+            runtime.initial_assembly = runtime.assemblies[active.active]
             assert isinstance(router.initial.ledger, ReleaseRepository)
             if self.rights_port:
                 router.approvals = ReleasedApprovals(router, router.initial.ledger)

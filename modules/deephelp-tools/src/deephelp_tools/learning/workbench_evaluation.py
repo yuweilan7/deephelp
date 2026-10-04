@@ -16,6 +16,7 @@ from deephelp_app.adapters.asset_integrity import file_digest
 from deephelp_app.adapters.release_assets import verify_release
 from deephelp_app.adapters.release_store import ReleaseStore
 from deephelp_app.api.workbench import BrowserAuth
+from deephelp_app.application.artifact_paths import resolve_artifact, state_root
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LiveAssembly
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
@@ -97,6 +98,7 @@ class LearningRoute(APIRoute):
 
 
 def report_view(path: Path, offset: int = 0, limit: int = 20) -> dict[str, Any]:
+    path = resolve_artifact(path)
     if path.stat().st_size > 8_000_000:
         raise ConfigurationError("Report exceeds browser catalog bound; use its summary index")
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -165,8 +167,8 @@ def evaluation_router(
     if len(config.redaction_key.read_bytes()) != 32:
         raise ConfigurationError("Feedback requires an existing stable 32-byte redaction key")
     root = config.task_root.resolve()
-    if not root.is_relative_to(Path.cwd().resolve() / ".local"):
-        raise ConfigurationError("Learning task storage must be inside project .local")
+    if not root.is_relative_to(state_root()):
+        raise ConfigurationError("Learning task storage must be inside the state root")
     jobs: LearningJobs
 
     def owner(request: Request) -> None:
@@ -185,7 +187,7 @@ def evaluation_router(
 
     def asset_path(identity: str | None) -> Path:
         if identity in config.assets:
-            return config.assets[identity]
+            return resolve_artifact(config.assets[identity])
         if identity and identity.startswith("task-"):
             row = jobs.get(identity[5:])
             path = jobs.output(row) / "assets" / "assets.json"

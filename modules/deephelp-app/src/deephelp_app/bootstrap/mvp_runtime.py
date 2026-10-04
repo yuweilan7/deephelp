@@ -24,6 +24,7 @@ from deephelp_app.adapters.tool_gateway import ToolGateway
 from deephelp_app.adapters.trace import TraceSink
 from deephelp_app.api.app import create_app
 from deephelp_app.application.approval import ApprovalService
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.application.conversation import (
     Conversation,
@@ -217,7 +218,7 @@ class LiveAssembly:
         )
         self.release_manifest, self.release_channel = release_manifest, release_channel
         self.judge_providers = (
-            Path(release_manifest.judge_providers_path)
+            resolve_artifact(release_manifest.judge_providers_path)
             if release_manifest
             else root / "modules/deephelp-app/event-judge.example.json"
         )

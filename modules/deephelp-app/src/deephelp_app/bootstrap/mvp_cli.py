@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import httpx
@@ -115,6 +116,7 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
     p.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     p.add_argument("--pointer", default=".local/m05/active.json")
     p.add_argument("--fasttext-pointer", help="Explicitly enable a dev-calibrated M13 artifact")
+    p.add_argument("--release-channel", help="Serve the authoritative complete MySQL release")
     p.add_argument(
         "--reply-polish", action="store_true", help="Optional closed-vocabulary M16 wording"
     )
@@ -207,6 +209,21 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
                     rights_port=args.rights_port,
                     rights_key=local_path(args.rights_key) if args.rights_key else None,
                 )
+                if args.release_channel:
+                    from deephelp_app.bootstrap.release_runtime import ReleaseRuntime
+
+                    assembly = cast(
+                        LiveAssembly,
+                        ReleaseRuntime(
+                            args.release_channel,
+                            tool_server=assembly.tool_server,
+                            business_mcp=assembly.business_mcp,
+                            retrieval_mcp=assembly.retrieval_mcp,
+                            corpus_path=args.corpus,
+                            rights_port=args.rights_port,
+                            rights_key=local_path(args.rights_key) if args.rights_key else None,
+                        ),
+                    )
                 app = live_app(
                     assembly,
                     LocalAuth(local_path(args.auth)),

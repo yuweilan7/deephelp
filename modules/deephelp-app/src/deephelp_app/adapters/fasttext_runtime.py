@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.dense import atomic_json, load_json
 from deephelp_app.application.fasttext_preprocess import FastTextPreprocessor, digest
 from deephelp_app.domain.errors import ConfigurationError
@@ -78,7 +79,7 @@ class FastTextClassifier:
         import fasttext  # type: ignore[import-untyped]
 
         try:
-            self.manifest_path = manifest_path.resolve()
+            self.manifest_path = resolve_artifact(manifest_path)
             self.manifest = FastTextManifest.model_validate(load_json(self.manifest_path))
             self.preprocessor = FastTextPreprocessor()
             path = self.manifest_path.parent / self.manifest.model_file
@@ -206,7 +207,11 @@ def pointer_manifest(pointer: Path) -> Path:
         data = load_json(pointer)
         if data["format"] != "m13-pointer-v1" or not isinstance(data["active"], str):
             raise ValueError("Invalid pointer")
+        from pathlib import PureWindowsPath
+
         path = Path(data["active"])
+        if PureWindowsPath(data["active"]).is_absolute():
+            return resolve_artifact(path)
         if not path.is_absolute():
             path = pointer.parent / path
         return path.resolve()
