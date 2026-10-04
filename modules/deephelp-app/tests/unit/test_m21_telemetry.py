@@ -219,7 +219,10 @@ async def test_metrics_have_distinct_outcomes_technical_failures_and_unknown_usa
         await clarify()
         with pytest.raises(AppError), observation("permission"):
             raise AppError(ErrorCode.FORBIDDEN, "SECRET")
-        with pytest.raises(AppError), observation("model.attempt"):
+        with (
+            pytest.raises(AppError),
+            observation("model.attempt", attributes={"deephelp.retry": True}),
+        ):
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "SECRET")
     data = reader.get_metrics_data()
     metrics = {
@@ -233,9 +236,30 @@ async def test_metrics_have_distinct_outcomes_technical_failures_and_unknown_usa
         "model.attempt": "failed",
     }
     assert metrics["deephelp.model.usage_unknown"].data.data_points[0].value == 1
+    assert metrics["deephelp.model.retries"].data.data_points[0].value == 1
     assert (
         metrics["deephelp.request.outcomes"].data.data_points[0].attributes["outcome"] == "CLARIFY"
     )
     assert all(set(p.attributes) <= {"operation", "status"} for p in points)
     assert all(p.value == 0 for p in metrics["deephelp.inflight"].data.data_points)
     runtime.shutdown()
+
+
+@pytest.mark.parametrize("code,status", [("FORBIDDEN", "rejected"), ("TIMEOUT", "failed")])
+async def test_mcp_http200_semantic_status_is_not_always_permission_rejection(
+    telemetry, code, status
+):
+    runtime, exporter = telemetry
+
+    @server_call("mcp.business.call")
+    async def call(ctx, params):
+        return SimpleNamespace(
+            is_error=True, structured_content={"error": {"code": code, "message": "SECRET"}}
+        )
+
+    await call(SimpleNamespace(meta={}), SimpleNamespace(name="get_order_benefits"))
+    assert runtime.provider.force_flush(2000)
+    span = exporter.get_finished_spans()[0]
+    assert span.attributes["deephelp.status"] == status
+    assert span.attributes["deephelp.error_code"] == code
+    assert "SECRET" not in json.dumps(dict(span.attributes))

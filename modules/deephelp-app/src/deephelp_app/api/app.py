@@ -1,4 +1,5 @@
 import asyncio
+import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from deephelp_app.adapters.telemetry import ObservabilityMiddleware, annotate, environment
+from deephelp_app.adapters.tempo import TempoClient
 from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, TraceSink, request_context
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.conversation import Conversation
@@ -207,6 +209,8 @@ def create_app(
     ]
     | None = None,
     budget_factory: Callable[[], ExecutionBudget] | None = None,
+    tempo_endpoint: str | None = None,
+    grafana_url: str | None = None,
 ) -> FastAPI:
     config = Settings.from_env() if settings is None else settings
 
@@ -247,6 +251,11 @@ def create_app(
             gateway: ModelGateway | None = None
             repository: Repository | None = None
             app.state.resources = Resources(client, calls, gateway, repository, sink)
+            app.state.tempo = TempoClient(
+                client,
+                tempo_endpoint or os.environ.get("DEEPHELP_TEMPO_ENDPOINT"),
+                grafana_url or os.environ.get("DEEPHELP_GRAFANA_URL"),
+            )
             if conversation_factory is not None:
                 app.state.resources.conversation = await stack.enter_async_context(
                     conversation_factory(client, sink)
@@ -399,14 +408,11 @@ def create_app(
             identity_provider(request), operation_id, body, request.state.budget
         )
 
-    @app.get("/debug/runs/{run_id}/{view}")
-    async def debug_view(
+    async def scoped_snapshot(
         run_id: str,
-        view: DebugView,
         request: Request,
-        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
-        export: bool = False,
-    ) -> Response:
+        session_id: str,
+    ) -> tuple[DebugSnapshot, OperationRecord | None]:
         identity = identity_provider(request)
         sink = request.app.state.resources.trace
         reader, key = getattr(sink, "read_debug", None), getattr(sink, "debug_key", None)
@@ -420,12 +426,41 @@ def create_app(
             raise AppError(ErrorCode.INVALID_ARGUMENT, "追踪不可用、已过期或已丢弃。", 404)
         snapshot = DebugSnapshot.model_validate(snapshot)
         service = request.app.state.resources.conversation
+        op = None
         if service is not None and service.approvals is not None:
             op = await service.approvals.repo.by_run(run_id)
             if op is not None:
                 await service.approvals.repo.scoped(
                     identity, session_id, run_id, op.plan.operation_id
                 )
+        return snapshot, op
+
+    @app.get("/observability/runs/{run_id}")
+    async def observation_view(
+        run_id: str,
+        request: Request,
+        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
+        cursor: Annotated[int, Query(ge=0, le=20000)] = 0,
+        page_size: Annotated[int, Query(ge=1, le=200)] = 100,
+    ) -> Response:
+        snapshot, _ = await scoped_snapshot(run_id, request, session_id)
+        value = await request.app.state.tempo.read(snapshot.otel_trace_id, cursor, page_size)
+        return JSONResponse(value, headers={"Cache-Control": "no-store"})
+
+    @app.get("/debug/runs/{run_id}/{view}")
+    async def debug_view(
+        run_id: str,
+        view: DebugView,
+        request: Request,
+        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
+        export: bool = False,
+    ) -> Response:
+        snapshot, op = await scoped_snapshot(run_id, request, session_id)
+        sink = request.app.state.resources.trace
+        key = sink.debug_key
+        service = request.app.state.resources.conversation
+        if service is not None and service.approvals is not None:
+            if op is not None:
                 approval_view = sanitize(
                     {
                         "operation_id": op.plan.operation_id,

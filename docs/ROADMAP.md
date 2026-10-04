@@ -69,7 +69,7 @@ M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/
 
 用户追加协议/RPC学习目标：M20以独立Streamable HTTP Business/Retrieval MCP服务复用核心能力，分别观察schema/可信上下文/双端校验/数据库结果。事务账本、outbox和MySQLSaver不为拆服务而全部搬成MCP；不提供任意SQL/Redis/Milvus/etcd操作。现有MCP正式SDK/stdio本来真实，合成的是后端事实；M15实际审批图/checkpoint已有，整个13段主链不冒称全由LangGraph实现。
 
-观测已接入OpenTelemetry SDK/Collector，真实跨MCP/数据库与图恢复关联通过；Tempo单体/本地存储、Prometheus、Grafana待M21第2特性。Langfuse的LLM专项学习价值保留，首轮不共置另一套web/worker/数据库/对象存储。真实完整组合和索引/训练峰值仍须测量；不买资源或降低核心能力换通过。
+观测已接入OpenTelemetry SDK/Collector、Tempo单体/本地存储、Prometheus、私有Grafana；跨MCP/实库/图恢复、受保护查询、看板/重启与导出故障通过，见M21交接。Langfuse的LLM专项学习价值保留，首轮不共置另一套web/worker/数据库/对象存储。真实完整组合和索引/训练峰值仍须测量；不买资源或降低核心能力换通过。
 
 ### 顺序实施指令
 
@@ -81,7 +81,7 @@ M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/
 2. **M20业务服务：** 第1特性已完成，接口与最终证据见`handoffs/M20.md`：MySQL订单/券/活动、维护API、独立Business MCP及应用接入；新订单真实内容、更新后新消息、独立重启、越权与零调用重放已验收。
 3. **M20检索服务：** 第2特性已完成，证据见`handoffs/M20.md#独立检索服务`。正式Streamable HTTP、原检索Port远端适配器、双端schema/语义/归属与累计预算回执已接通；真实同向量Dense/BM25/Hybrid对照、断连/独立重启及跨两个MCP的客诉共11项通过。两项特性结束，不自动启动M21。
 4. **M21标准观测：** 第1特性已完成，实际SDK/Collector、13段与两MCP/实库、图/Saver、跨进程恢复Link及状态/脱敏/重放反例通过，见`handoffs/M21.md`；未建设前端。
-5. **M21观测平台：** 只实施M21第2特性，在明确验证目标接Collector/Tempo/Prometheus/Grafana；实测存储/查询/仪表盘、关联同一trace、重启/导出故障与实际资源。上现有云服务器先只读检查，不迁移应用或修改现有中间件，不以compose/截图代替通过。
+5. **M21观测平台：** 第2特性已完成，Tempo/Prometheus/私有Grafana真实存储/同trace查询、受保护分页、12面板、四组件独立重启及两类导出故障/资源已验，见`handoffs/M21.md`。只在隔离目录增量启动观测栈，应用未迁移，既有中间件未改变。M21结束，等待用户启动下一特性。
 6. **M22主工作台：** 只实施M22第1特性，交付登录、主对话/多轮/历史/事实证据/时间线及业务维护页；实际浏览器连后端验内容，不部署。
 7. **M22协议与工作流：** 只实施M22第2特性，交付MCP schema/两端校验实验、SOP/审批、实际LangGraph/checkpoint教程与观测；真实业务与合成权益明确标记，不从浏览器任意调用工具或改checkpoint。
 8. **M22意图检索记忆：** 只实施M22第3特性，补意图实体、Dense/BM25/Hybrid、多轮记忆和运行观测/专业平台关联；复用既有机制，浏览不调用模型，实际实验由明确动作启动。

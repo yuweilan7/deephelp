@@ -557,4 +557,4 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 ## M21标准观测
 
-显式配置DEEPHELP_OTLP_ENDPOINT后，原业务入口与两个MCP导出标准OTel链路和指标；三视图保留身份/session守卫并增加otel_trace_id。运行、计数/时钟/脱敏、固定动作和Collector边界见[观测入口](../../infra/observability/README.md)。审批/Saver已接实际Span Link；完整观测平台尚未交付，不能以当前JSONL/Collector称平台通过。
+显式配置DEEPHELP_OTLP_ENDPOINT后，原业务入口与两个MCP导出标准OTel链路和指标；三视图保留身份/session守卫并增加otel_trace_id。运行、计数/时钟/脱敏、固定动作和Collector边界见[观测入口](../../infra/observability/README.md)。审批/Saver已接实际Span Link；Tempo/Prometheus/私有Grafana已实测，受保护历史查询见观测入口；应用未迁移到云端。

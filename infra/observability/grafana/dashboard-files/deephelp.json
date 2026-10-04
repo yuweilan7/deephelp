@@ -1,0 +1,405 @@
+{
+  "uid": "deephelp-observation",
+  "title": "DeepHelp 实际执行观测",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "tags": [
+    "deephelp",
+    "m21"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "窗口内实际动作数",
+      "type": "timeseries",
+      "description": "SDK固定动作计数。模型调用只认model.attempt；阶段、MCP与数据库各自单列。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_operations_total[$__range])) by (operation,status)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 2,
+      "title": "业务结果与receipt重放",
+      "type": "timeseries",
+      "description": "澄清/人工交接不是技术故障，replayed单列；HTTP200不代表内容成功。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_request_outcomes_total[$__range])) by (outcome,replayed)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 3,
+      "title": "技术完成率",
+      "type": "timeseries",
+      "description": "分母为同一动作completed+failed。rejected/cancelled/interrupted另列，不当技术故障；没有连续可用性探测，不报告SLA。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_operations_total{status=\"completed\"}[$__range])) by (operation) / sum(increase(deephelp_operations_total{status=~\"completed|failed\"}[$__range])) by (operation)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "title": "正在执行",
+      "type": "timeseries",
+      "description": "独立进程instance计数重置；并发值不相加成耗时。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(deephelp_inflight) by (operation)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "title": "实际模型token",
+      "type": "timeseries",
+      "description": "只使用API实际input/output，reasoning已含output不再次相加。费用与预留在受保护预算中查看，未知不作零。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_model_tokens_total[$__range])) by (direction,model)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "title": "usage未知尝试与导出丢失",
+      "type": "timeseries",
+      "description": "未知/失败/满队列允许诊断缺失，不能触发业务重放。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_model_usage_unknown_total[$__range]))",
+          "legendFormat": "usage未知"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(deephelp_export_failed_spans_total[$__range]))",
+          "legendFormat": "导出失败"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(deephelp_export_dropped_spans_total[$__range]))",
+          "legendFormat": "满队列丢失"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 7,
+      "title": "耗时样本数",
+      "type": "timeseries",
+      "description": "样本来自SDK单调耗时。所有分位数为Prometheus桶插值；样本不足100时不显示分位数。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_duration_seconds_count[$__range])) by (operation)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "title": "P50耗时（窗口样本≥100）",
+      "type": "timeseries",
+      "description": "低于100样本显示无数据，请读样本数。P99稀疏数据仍无稳定性承诺，不报告SLA。父子与并发耗时不能直接累加。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum(increase(deephelp_duration_seconds_bucket[$__range])) by (le,operation)) and on(operation) (sum(increase(deephelp_duration_seconds_count[$__range])) by (operation) >= 100)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 9,
+      "title": "P95耗时（窗口样本≥100）",
+      "type": "timeseries",
+      "description": "低于100样本显示无数据，请读样本数。P99稀疏数据仍无稳定性承诺，不报告SLA。父子与并发耗时不能直接累加。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(increase(deephelp_duration_seconds_bucket[$__range])) by (le,operation)) and on(operation) (sum(increase(deephelp_duration_seconds_count[$__range])) by (operation) >= 100)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "title": "P99耗时（窗口样本≥100）",
+      "type": "timeseries",
+      "description": "低于100样本显示无数据，请读样本数。P99稀疏数据仍无稳定性承诺，不报告SLA。父子与并发耗时不能直接累加。",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum(increase(deephelp_duration_seconds_bucket[$__range])) by (le,operation)) and on(operation) (sum(increase(deephelp_duration_seconds_count[$__range])) by (operation) >= 100)",
+          "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "title": "实际模型重试",
+      "type": "timeseries",
+      "description": "仅供应商实际新尝试且预算记录retry=true时计数。缺失序列不冒充调用成功。",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(deephelp_model_retries_total[$__range]))",
+          "legendFormat": "retry"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 12,
+      "title": "Collector队列与观测组件采集",
+      "type": "timeseries",
+      "description": "Collector原生诊断；有界256批次/30秒重试，重启可丢队列。up是组件抓取状态，不是模型或长期业务可用率。",
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deephelp-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "otelcol_exporter_queue_size",
+          "legendFormat": "queued {{exporter}}"
+        },
+        {
+          "refId": "B",
+          "expr": "up",
+          "legendFormat": "scrape {{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    }
+  ],
+  "links": [
+    {
+      "title": "专业Trace探索（管理员）",
+      "type": "link",
+      "url": "/explore",
+      "targetBlank": true
+    }
+  ],
+  "templating": {
+    "list": []
+  }
+}
