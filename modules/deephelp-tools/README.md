@@ -2,7 +2,7 @@
 
 本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装两包，独立机器可只安装app wheel；需要演示/学习时再安装tools wheel。
 
-`learning/` 是fake、回放与故障实验；`demo/` 是正式MCP SDK的合成业务stdio服务及合成权益HTTP服务；`probes/` 是受控显式验收；`evaluation/` 是冻结集审计、训练、人工审核与发布准备。真实数据库订单后端将在M20实施，当前demo事实仍来自JSON。
+`learning/` 是fake、回放与故障实验；`demo/` 是正式MCP SDK的合成业务stdio服务及合成权益HTTP服务；`probes/` 是受控显式验收；`evaluation/` 是冻结集审计、训练、人工审核与发布准备。M20独立Business服务使用MySQL持久资料；本包demo事实仍来自JSON。
 
 从仓库根运行以下入口，帮助、预览和审计均不调用真实模型：
 
@@ -22,3 +22,11 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli --he
 仓库中冻结数据唯一来源为[ datasets ](../../datasets/README.md)，demo事实唯一来源为[demo/data](../../demo/README.md)。构建tools wheel时将同一份字节纳入包资源，安装后不依赖仓库路径。学习数据放在本包resources/learning。工作区中的路径与安装wheel中的资源选择顺序详见assets.py。
 
 学习路线见[机制导航](../../docs/learning/README.md)，各模块既有运行与验收参数继续见[应用README](../deephelp-app/README.md)。pytest的收集前网络守卫禁止远程DNS/TCP，允许loopback/受控stdio；它不声称覆盖任意子进程、代理或未来传输。demo子进程只加载合成服务和业务类型，模型执行仍由明确live入口及共享预算控制。
+
+## 浏览器学习扩展
+
+安装tools后，以 `python -m deephelp_tools.learning.workbench serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
+
+如需独立合成审批练习，先用 `python -m deephelp_tools.demo.approval_cli init` 准备专用key/合成SOP，再用 `python -m deephelp_tools.demo.synthetic_rights --port 8024 --key .local/m15/rights.key` 启动受控服务。启动学习扩展前设置本机 `DEEPHELP_LEARNING_RIGHTS_PORT=8024` 和 `DEEPHELP_LEARNING_RIGHTS_KEY=.local/m15/rights.key`。auth中需显式配置synthetic-tenant/synthetic-user-a的演示令牌；个人资料身份不能创建该固定fixture练习。示例key路径来自已有运行入口，不从浏览器接受路径/端口/密钥。
+
+协议页只允许四种固定动作，查询仍使用可信身份与原只读守卫；工作流页读取实际SOP及ApprovalService图。演示先实际MySQL落计划并interrupt，审批绑定operation/版本/参数hash/SOP快照，独立确认后再显式resume；重启后用原operation/session/run读取与恢复。UNKNOWN仍先对账，重复恢复不重复效果；synthetic_rights不改M20资料、不表示真实退款。页面不写checkpoint，也不暴露任意MCP、SQL或文件接口。

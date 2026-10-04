@@ -12,6 +12,7 @@ const state = {
   sessionsOffset: null,
   messagesOffset: null,
   businessOffset: null,
+  demo: null,
 };
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
@@ -69,6 +70,7 @@ function clearSession() {
     pending: null,
     last: null,
     record: null,
+    demo: null,
   });
   for (const id of [
     "sessions",
@@ -79,6 +81,11 @@ function clearSession() {
     "record-fields",
     "record-result",
     "execution",
+    "protocol-result",
+    "workflow-result",
+    "demo-result",
+    "demo-summary",
+    "workflow-graph",
   ])
     $(id).replaceChildren();
   $("text").value = "";
@@ -100,6 +107,11 @@ function clearSession() {
     $(id).hidden = true;
   $("send").disabled = false;
   $("text").disabled = false;
+  for (const n of document.querySelectorAll("[data-learning]")) n.hidden = true;
+  for (const id of ["demo-operation", "demo-session", "demo-run"])
+    $(id).value = "";
+  $("demo-confirm").checked = false;
+  demoButtons();
 }
 function showIdentity(data) {
   state.csrf = data.csrf;
@@ -115,6 +127,7 @@ function showIdentity(data) {
     ? "已连接Business服务。保存不调用模型。"
     : "当前后端未启用MySQL业务维护；请按启动说明选择Business服务。";
   $("save-record").disabled = !e.business_maintenance;
+  run(learningStatus);
 }
 function newSession() {
   state.session = crypto.randomUUID();
@@ -541,6 +554,7 @@ for (const b of document.querySelectorAll("[data-tab]"))
     for (const btn of document.querySelectorAll("[data-tab]"))
       btn.classList.toggle("selected", btn === b);
     if (b.dataset.tab === "business") run(() => business());
+    if (b.dataset.tab === "workflow") run(loadWorkflow);
   });
 $("kind").addEventListener("change", () => {
   state.kind = $("kind").value;
@@ -587,6 +601,144 @@ $("save-relations").addEventListener("click", () =>
     await loadRecord(id);
     await business();
     notify("活动关系已保存，订单版本已更新。");
+  }),
+);
+async function learningStatus() {
+  try {
+    const s = await api("/learning/status");
+    for (const n of document.querySelectorAll("[data-learning]"))
+      n.hidden = !s.installed;
+    $("demo-create").disabled = !s.demo_enabled;
+    $("demo-prerequisite").textContent = s.demo_enabled
+      ? "独立演示身份与权益执行口已启用。"
+      : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
+}
+async function loadWorkflow() {
+  const d = await api("/learning/workflow");
+  $("workflow-result").textContent = JSON.stringify(d, null, 2);
+  $("workflow-graph").replaceChildren();
+  if (d.approval_graph)
+    for (const edge of d.approval_graph.edges)
+      $("workflow-graph").append(
+        node("p", `${edge.source} → ${edge.target}`, "code"),
+      );
+  else
+    $("workflow-graph").append(
+      node("p", "合成执行口尚未配置；当前只读 SOP 已显示。"),
+    );
+}
+function demoButtons() {
+  const op = state.demo;
+  $("demo-approve").disabled = !op || op.approval_status !== "PENDING";
+  $("demo-reject").disabled = !op || op.approval_status !== "PENDING";
+  $("demo-revoke").disabled = !op || op.approval_status !== "APPROVED";
+  if (op && ["SUCCEEDED", "FAILED", "CANCELLED"].includes(op.status))
+    $("demo-revoke").disabled = true;
+  $("demo-resume").disabled = !op;
+}
+function bindDemo(op) {
+  state.demo = op;
+  $("demo-operation").value = op.plan.operation_id;
+  $("demo-session").value = op.session_id;
+  $("demo-run").value = op.run_id;
+  $("demo-confirm").checked = false;
+  demoButtons();
+}
+async function readDemo() {
+  const query = new URLSearchParams({
+    session_id: $("demo-session").value,
+    run_id: $("demo-run").value,
+  });
+  const d = await api(
+    `/learning/demo/${encodeURIComponent($("demo-operation").value)}?${query}`,
+  );
+  bindDemo(d.operation);
+  $("demo-result").textContent = JSON.stringify(d, null, 2);
+  $("demo-summary").replaceChildren(
+    node(
+      "h3",
+      `状态 ${d.operation.status} · 审批 ${d.operation.approval_status}`,
+    ),
+    node(
+      "p",
+      `持久效果 ${d.effects} · 执行 ${d.operation.dispatch_attempts} · 对账查询 ${d.operation.query_attempts} · checkpoint ${d.checkpoints.length} · 下一节点 ${d.next.join(", ") || "已结束"}`,
+    ),
+  );
+  notify("已按原绑定读取持久状态。浏览不调用模型。");
+}
+$("protocol-discover").addEventListener("click", () =>
+  run(async () => {
+    $("protocol-result").textContent = JSON.stringify(
+      await api("/learning/protocol"),
+      null,
+      2,
+    );
+  }),
+);
+$("protocol-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    $("protocol-result").textContent = JSON.stringify(
+      await api("/learning/protocol", "POST", {
+        action: $("protocol-action").value,
+        order_id: $("protocol-order").value,
+        coupon_id: $("protocol-coupon").value,
+      }),
+      null,
+      2,
+    );
+  });
+});
+$("workflow-load").addEventListener("click", () => run(loadWorkflow));
+$("demo-create").addEventListener("click", () =>
+  run(async () => {
+    $("demo-create").disabled = true;
+    try {
+      bindDemo(await api("/learning/demo", "POST"));
+      await readDemo();
+    } finally {
+      await learningStatus();
+    }
+  }),
+);
+$("demo-load-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(readDemo);
+});
+for (const decision of ["approve", "reject", "revoke"])
+  $("demo-" + decision).addEventListener("click", () =>
+    run(async () => {
+      if (!$("demo-confirm").checked)
+        throw new Error("请先核对显示的绑定并独立确认。");
+      const op = state.demo;
+      await api(
+        `/learning/demo/${encodeURIComponent(op.plan.operation_id)}/approval`,
+        "POST",
+        {
+          session_id: op.session_id,
+          run_id: op.run_id,
+          expected_question_version: op.question_version,
+          parameters_hash: op.plan.parameters_hash,
+          sop_version: op.plan.sop_version,
+          snapshot_hash: op.plan.snapshot_hash,
+          decision,
+        },
+      );
+      await readDemo();
+    }),
+  );
+$("demo-resume").addEventListener("click", () =>
+  run(async () => {
+    const op = state.demo;
+    await api(
+      `/learning/demo/${encodeURIComponent(op.plan.operation_id)}/resume`,
+      "POST",
+      { session_id: op.session_id, run_id: op.run_id },
+    );
+    await readDemo();
   }),
 );
 run(async () => {

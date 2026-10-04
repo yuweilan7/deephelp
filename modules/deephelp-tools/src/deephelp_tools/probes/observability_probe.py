@@ -32,13 +32,13 @@ from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
 from deephelp_app.domain.models import BusinessOrderInput, Money, OperationStatus, ToolStatus
+from deephelp_tools.demo.approval_prepare import prepare
 from deephelp_tools.evaluation.samples import load_corpus
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry
 from deephelp_tools.learning.mvp_replay import ReplayAssembly
 from deephelp_tools.probes.approval_probe import (
     counts,
     decision,
-    prepare,
     resume_command,
     spawn_worker,
 )

@@ -365,3 +365,31 @@ footer {
     overflow-wrap: anywhere;
   }
 }
+/* Learning pages share the existing visual and text-only output primitives. */
+input[type="checkbox"] {
+  width: auto;
+  display: inline-block;
+}
+nav {
+  flex-wrap: wrap;
+}
+.learning {
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr);
+  gap: 2rem;
+  padding: 2rem;
+}
+.learning pre {
+  max-height: 75vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.learning form {
+  margin-block: 1.5rem;
+}
+@media (max-width: 900px) {
+  .learning {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+}

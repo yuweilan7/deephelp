@@ -5,6 +5,7 @@ import asyncio
 import json
 import secrets
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -12,6 +13,7 @@ from uuid import uuid4
 
 import httpx
 import uvicorn
+from fastapi import FastAPI
 from mcp import StdioServerParameters
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
@@ -105,7 +107,7 @@ async def ask(args: argparse.Namespace) -> None:
         raise ConfigurationError("MVP HTTP request failed")
 
 
-def main() -> int:
+def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None) -> int:
     p = argparse.ArgumentParser(description="DeepHelp authenticated single-message MVP")
     p.add_argument("command", choices=["init", "migrate", "serve", "ask"])
     p.add_argument("--question-hint")
@@ -211,6 +213,8 @@ def main() -> int:
                     gate,
                     trace_path=str(local_path(args.trace_path)),
                 )
+                if configure_app is not None:
+                    configure_app(app, assembly)
                 uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
             finally:
                 gate.close()

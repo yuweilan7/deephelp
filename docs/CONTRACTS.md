@@ -317,3 +317,7 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 `POST /auth/login`仅接收`{token}`，通过原可信LocalAuth映射换取8小时随机HttpOnly/SameSite=strict会话及CSRF标记；无正文自报身份。cookie仅支持当前loopback同源，登录/退出拒绝外Origin/跨站，写请求需`X-CSRF-Token`；原Bearer协议兼容且优先，错误Bearer不能回退cookie。`GET /auth/session`返回当前身份及调用/维护模式，`POST /auth/logout`撤销服务会话，重启需重新登录。全部API返回no-store。
 
 `GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原MySQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。
+
+### M22 可选学习扩展：协议与工作流
+
+GET /learning/status、/protocol、/workflow复用BrowserAuth；POST /learning/protocol仅benefits/coupon/client_invalid/server_invalid，参数只含订单/券ID；内部固定无效输入不允许任意委托。GET协议实际执行tools/list/initialize，不请求模型。POST /learning/demo只允许显式fixture身份和本机合成执行口。GET /learning/demo/{operation}?session_id&run_id先原ApprovalRepository.scoped再读checkpoint/效果/审计；POST同路径/approval及/resume使用原ApprovalCommand/ResumeCommand，额外限制m22-demo会话及DEMO-D01。无任意线程/SQL/文件/工具名或checkpoint写API。图定义仅M15审批部分，不冒称整个13段是LangGraph。

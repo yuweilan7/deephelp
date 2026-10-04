@@ -38,6 +38,8 @@
       <nav aria-label="工作区">
         <button data-tab="conversation" class="selected">对话与全过程</button
         ><button data-tab="business">业务资料</button>
+        <button data-tab="protocol" data-learning hidden>MCP 协议实验</button>
+        <button data-tab="workflow" data-learning hidden>SOP 与工作流</button>
       </nav>
       <section id="conversation" class="tab">
         <aside>
@@ -144,6 +146,102 @@
               · BusinessRepository
             </p>
           </div>
+        </div>
+      </section>
+      <section id="protocol" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">PROTOCOL LAB · 0 MODEL CALLS</p>
+          <h1>从 schema 到真实事实</h1>
+          <p>
+            应用进程经 MCP SDK initialize / tools/list 连接独立 Business
+            进程。调用前核对输入、身份、问题和参数；服务端再校验 schema
+            与归属，查询 MySQL，返回事实和不可变证据。
+          </p>
+          <button id="protocol-discover">实际 initialize / tools/list</button>
+          <form id="protocol-form">
+            <label for="protocol-action">固定实验</label
+            ><select id="protocol-action">
+              <option value="benefits">查询订单优惠事实</option>
+              <option value="coupon">查询优惠券事实</option>
+              <option value="client_invalid">客户端拒绝数字订单号</option>
+              <option value="server_invalid">服务端拒绝数字订单号</option>
+            </select>
+            <label for="protocol-order">你的订单号</label
+            ><input id="protocol-order" value="90221004" required />
+            <label for="protocol-coupon">你的优惠券号</label
+            ><input id="protocol-coupon" value="90222004" required />
+            <button class="primary">明确执行协议实验</button>
+          </form>
+          <div class="lesson">
+            <h3>预期观察与反例</h3>
+            <p>
+              查询返回当前数据库金额、版本和证据。客户端错误不发送；服务端错误实际发送，但不能进入业务查询。陌生订单仍由服务端归属检查拒绝。网络错误和取消由原网关有限超时处理，不自动重试。
+            </p>
+            <p class="code">
+              adapters/mcp_protocol.py · validate_arguments<br />adapters/tool_gateway.py
+              · ToolGateway.execute<br />deephelp_services/business.py ·
+              build_server
+            </p>
+          </div>
+        </div>
+        <div>
+          <h2>本次握手、schema 与结果</h2>
+          <pre id="protocol-result">点击固定动作，查看本次实际观测。</pre>
+        </div>
+      </section>
+      <section id="workflow" class="tab learning" hidden>
+        <div>
+          <p class="eyebrow">SOP / LANGGRAPH / MYSQLSAVER</p>
+          <h1>把等待和恢复看清楚</h1>
+          <p>
+            SOP 产生绑定参数与快照的计划；只有 M15 审批部分使用实际
+            LangGraph。MySQL 操作账本是业务权威，checkpoint
+            记录图进度。普通聊天不能批准。
+          </p>
+          <button id="workflow-load">读取当前 SOP 与实际图</button>
+          <div id="workflow-graph"></div>
+          <div class="lesson">
+            <h3>独立合成权益演示</h3>
+            <p id="demo-prerequisite"></p>
+            <p>
+              固定 DEMO-D01、固定动作回放、真实 stdio MCP / MySQL / 独立权益
+              HTTP 服务；不调用远程模型，不表示真实退款。创建后应观察
+              approval_wait 的 interrupt，批准再恢复应只有一个持久效果。
+            </p>
+            <button id="demo-create" disabled>创建合成待审批练习</button>
+          </div>
+          <form id="demo-load-form">
+            <label for="demo-operation">操作编号</label
+            ><input id="demo-operation" required /><label for="demo-session"
+              >原会话编号</label
+            ><input id="demo-session" required /><label for="demo-run"
+              >原 run 编号</label
+            ><input id="demo-run" required /><button>
+              按原绑定读取 / 重启后恢复
+            </button>
+          </form>
+          <label
+            ><input
+              id="demo-confirm"
+              type="checkbox"
+            />我已核对下方操作、版本、参数和快照，确认本次独立审批</label
+          >
+          <div class="actions">
+            <button id="demo-approve" disabled>明确批准此合成操作</button
+            ><button id="demo-reject" disabled>拒绝此操作</button
+            ><button id="demo-revoke" disabled>撤销批准</button
+            ><button id="demo-resume" disabled>恢复 / 核对原操作</button>
+          </div>
+          <p class="code">
+            application/approval.py · ApprovalService.graph / decide / resume<br />adapters/checkpoints.py
+            · MySQLSaver.alist
+          </p>
+        </div>
+        <div>
+          <h2>原绑定、interrupt、parent 与 pending writes</h2>
+          <pre id="workflow-result"></pre>
+          <div id="demo-summary" class="lesson">尚未创建练习。</div>
+          <pre id="demo-result">尚未创建练习。</pre>
         </div>
       </section>
     </main>

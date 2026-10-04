@@ -23,36 +23,25 @@ from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.adapters.telemetry import environment
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.dense import atomic_json
-from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import RegistryStore
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, live_app
-from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ApprovalCommand,
     ApprovalStatus,
-    Entity,
-    EntityName,
-    EntitySource,
-    IntentCode,
-    ModelToolCall,
     OperationRecord,
     OperationStatus,
     Outcome,
-    QuestionStatus,
     ResponseEnvelope,
     ResumeCommand,
-    RunStatus,
-    VersionManifest,
 )
+from deephelp_tools.demo.approval_prepare import prepare
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
-from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.evaluation.mvp_acceptance import api_client
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry
 from deephelp_tools.learning.event_replay import envelope
-from deephelp_tools.learning.sop_replay import ReplayModel
 
 
 def decision(op: OperationRecord, kind: str = "approve") -> ApprovalCommand:
@@ -71,71 +60,6 @@ def decision(op: OperationRecord, kind: str = "approve") -> ApprovalCommand:
 
 def resume_command(op: OperationRecord) -> ResumeCommand:
     return ResumeCommand(session_id=op.session_id, run_id=op.run_id)
-
-
-async def prepare(repo: ApprovalRepository, session: str) -> OperationRecord:
-    request = envelope("订单 DEMO-D01 优惠未到账，请查询", session)
-    receipt = await repo.accept(request)
-    registry = proposal_registry()
-    q = receipt.question.model_copy(
-        update={
-            "active_intent": IntentCode.DISCOUNT_MISSING,
-            "versions": registry.pin(
-                VersionManifest(registry="complaints-v1"), IntentCode.DISCOUNT_MISSING
-            ),
-            "entities": (
-                Entity(
-                    name=EntityName.ORDER_ID,
-                    value="DEMO-D01",
-                    source=EntitySource(message_id=request.message_id, excerpt="DEMO-D01"),
-                ),
-            ),
-        }
-    )
-    budget = ExecutionBudget.start(60, 12, 0)
-    model = ReplayModel(
-        [
-            ModelToolCall(
-                call_id=uuid4().hex, name="get_order_benefits", arguments={"order_id": "DEMO-D01"}
-            )
-        ]
-    )
-    gateway = ToolGateway()
-    async with gateway.open():
-        result = await SOPExecutor(model, gateway, registry=registry).execute(
-            q,
-            budget,
-            context=request,
-            run_id=receipt.run_id,
-        )
-        ledger = await gateway.ledger()
-    assert result.plan and ledger[0].status == "succeeded"
-    response = response_from_sop(
-        request,
-        run_id=receipt.run_id,
-        question_id=q.question_id,
-        result=result,
-        reply="合成预检等待明确审批。",
-        versions=q.versions,
-        budget_used=budget.usage(),
-    ).model_copy(
-        update={
-            "outcome": Outcome.PENDING_APPROVAL,
-            "question_status": QuestionStatus.WAITING_APPROVAL,
-            "run_status": RunStatus.WAITING_APPROVAL,
-            "approval_operation_id": result.plan.operation_id,
-        }
-    )
-    q = q.model_copy(
-        update={
-            "status": QuestionStatus.WAITING_APPROVAL,
-            "version": q.version + 1,
-            "updated_at": datetime.now(UTC),
-            "approval_operation_id": result.plan.operation_id,
-        }
-    )
-    await repo.finish(receipt, q, ResponseEnvelope.model_validate(response.model_dump()))
-    return await repo.get(result.plan.operation_id)
 
 
 async def counts(repo: ApprovalRepository, operation_id: str) -> dict[str, int]:
