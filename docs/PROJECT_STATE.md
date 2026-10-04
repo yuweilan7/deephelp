@@ -28,16 +28,20 @@
 | M18 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M18.md) | 审核回流与完整ReleaseManifest/MySQL单一active已实现；运行绑定、审批资产保留、并发回退及进程中断真实通过；不提供每日自动训练/隐式文件删除 |
 | M19 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M19.md) | 运行分层、独立工具/demo安装、冻结数据字节和机制导航通过；模型0次，无新完整业务发布 |
 | M20 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M20.md) | Business特性22项实测；独立Retrieval、原Port接入、同向量三路对照、断连/重启与跨两个MCP业务11项实测通过；个人合成数据、loopback运行 |
-| M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接、独立重启与两类导出故障通过；应用未迁移 |
-| M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项主工作台、协议/schema与审批checkpoint、意图/三路检索/记忆/同run观测、评测与审核/受控任务/原发布门禁已浏览器闭环；合成业务与个人loopback，未部署 |
-| M23 | NOT_IMPLEMENTED | 个人云应用部署、浏览器闭环、隔离恢复/回滚；现有云中间件不是应用已部署 |
+| M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接及导出故障通过；平台由M23远端组合复用 |
+| M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项学习页面已完成；M23在云端提供同源工作台，业务仍为个人合成持久资料 |
+| M23 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M23.md) | Linux3.14.7三包/FastText、保签名路径绑定、新完整发布、浏览器四轮/同trace、独立重启、实际隔离恢复和安装回滚通过；私有SSH入口、短时低并发，不证明公网TLS/长期SLA/历史代码升级 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
 ## 当前运行与验收边界
 
 正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁、infra及MySQL事实源保持；Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游、任意RUNNING重领及M23未实现；M22四个学习特性已完成；M21观测平台已集成，DeepHelp应用仍本机运行。
+完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游与任意RUNNING重领未实现。M22四项学习页面、M21平台已接入M23个人云应用；本机只需浏览器与SSH传输，访问及恢复方法见LOCAL_SETUP和infra/deployment。
+
+M23复用原4核/约7.51GiB服务器及八个中间件/观测容器，运行一个应用、两个独立HTTP MCP和可选合成权益进程。显式state根与旧Windows工件根映射保留原JSON/签名，最小受引用闭包交付，未打包完整.local或来源原件。Linux根锁、三包sdist→wheel与121项适用回归通过；源码/安装wheel的runtime-v2指纹一致。新完整发布按原冻结内容门禁14行PASS，独立m23-personal channel实际激活；原channel/历史审批/UNKNOWN不改写。
+
+浏览器新订单实付219.87/优惠18.65，缺槽→补槽、更正和四条历史实际通过；同一次Tempo trace有81 span，包含应用、两个MCP、实际chat/Embedding/Milvus/MySQL。鉴权/越权/schema、独立重启、观测停止恢复与原receipt零调用重放通过。新隔离合成权益在应用重启后恢复原MySQL checkpoint，批准执行一次、再次resume仍一效果。实际受保护备份恢复到隔离新库/运行根，27表13847行完整checksum一致，隔离应用订单/券/活动关系查询及原receipt回读通过。安装v1→v2→v1实际通过，两安装版本使用同一已验业务wheel；不外推历史业务代码或跨schema回退。约46秒容量窗口包含12行隔离索引、10次混合检索和两组CPU训练，最低可用内存约4.83GiB、容器OOM为0；窗口包含计划内应用备份重启，不作长期稳定/高并发结论。
 
 2026-10-04路线规划后的M19交付：运行源码归domain/application/adapters/api/bootstrap/resources，工具/demo独立deephelp-tools；datasets与demo/data为单一数据源，wheel安装后读取工具包资源。该特性时业务仍为显式合成JSON后端，一个领域和引擎，没有学习/正式双份实现。全量924 passed/1 skipped及后增安装/发布59项通过，927项最终收集；两包各83文件逐字节一致，无工具/无Git检出的独立运行安装与追加工具stdio通过。该特性模型0次，无云检查、部署或新完整发布；旧清单不能套到新运行字节。
 

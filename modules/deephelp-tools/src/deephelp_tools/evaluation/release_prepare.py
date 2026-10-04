@@ -30,7 +30,9 @@ def prepare_manifest(
     dense = read_data(Path(data["dense_pointer"]))
     classifier = FastTextClassifier(pointer_manifest(Path(data["fasttext_pointer"])))
     package = PACKAGE
-    prompts = {str(p.relative_to(package)): file_digest(p) for p in sorted(package.rglob("*.txt"))}
+    prompts = {
+        p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
+    }
     code = provenance()
     if not code["git_commit"] or code["dirty_worktree"] is None:
         raise ConfigurationError("Complete release preparation requires source Git provenance")

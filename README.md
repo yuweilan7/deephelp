@@ -12,7 +12,7 @@
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
-| 个人学习工作台的下一步 | M19结构与[M20业务/检索](handoffs/M20.md)已完成；M21观测→M22前端→M23云运行待逐特性启动 |
+| 个人学习工作台与云运行 | M19–M23已完成；[私有云运行入口](infra/deployment/README.md)、[部署/恢复交接](handoffs/M23.md) |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

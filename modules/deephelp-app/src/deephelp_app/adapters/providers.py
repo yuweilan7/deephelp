@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
 from deephelp_app.domain.models import DecimalValue, EmbeddingSignature
@@ -61,7 +62,7 @@ class ProviderConfig(BaseModel):
     @classmethod
     def load(cls, path: Path) -> ProviderConfig:
         try:
-            config = cls.model_validate_json(path.read_text(encoding="utf-8-sig"))
+            config = cls.model_validate_json(resolve_artifact(path).read_text(encoding="utf-8-sig"))
             config.signature()
             if config.allow_zero_embedding_indices and (
                 config.provider != "qianwen"
