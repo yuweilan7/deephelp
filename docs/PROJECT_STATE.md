@@ -38,7 +38,7 @@
 | M29 | LIVE_VERIFIED；[交接](../handoffs/M29.md) | 全部特性已交付：原历史29行映射/恢复及工作台0模型；不可变Prompt版本→本地hash工件→原完整发布，11会话14消息内容PASS；平台annotation经显式审核/CAS回流，实际v1→v2→v1与平台故障下原请求通过；两版本文本等价，不宣称质量提升 |
 | M30 | LIVE_VERIFIED；[交接](../handoffs/M30.md) | 两特性完成：直接指标/新安装，最终源快照/官方历史转换/PG单写、新代码A/B各完整内容门禁及实际回滚、云浏览器四轮/同trace120观测/审批一效果、独立故障恢复、180秒容量及隔离全存储恢复通过；旧MySQL/Collector/Tempo及旧指标栈已停用且取消自启，原数据/冷备/bak保留。合成单机短窗口，不声明长期SLA |
 | M31 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M31.md) | 专用端口、同候选dev/test、真实会话/独立MCP/四路学习与新完整发布已验；N6/default/fail_closed、最终K3。test总体持平且一条退化，拒识6/6；正式默认关闭，开启版保留显式试用；不证明企业泛化 |
-| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
+| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05通用Chat/归属判断切qwen3.7-flash，三项接口及11会话14消息内容通过；云PG订单/同run Langfuse/零调用重放通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 现代路线实施与规划
 
@@ -52,7 +52,9 @@
 
 正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m31-rerank-v1`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision5，active为M31关闭版`7b4c12337c2b5404bbedee80063b225a496ad79cf895b98b1396d174be0b3134`，previous为M30退役代码B。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；切换开启需同时重建应用/检索profile。两版各通过11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision6，active为Flash配置版`5d1ac428b714e2913877532300a33f0686def101f25f361d6b945d92929f94a7`，previous为M31关闭版`7b4c12337c2b5404bbedee80063b225a496ad79cf895b98b1396d174be0b3134`。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；切换开启需同时重建应用/检索profile。两版各通过11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+
+2026-10-05按用户要求切换通用Chat与归属判断至qwen3.7-flash，复用现行安装和不变的运行字节。三项真实接口、修复后的11会话14消息完整内容与云PG订单173.45/12.30、同run Langfuse实际Flash generation、历史/原receipt零调用及外身份拒绝均通过。初验物流被误判优惠，采用原M29不可变本地Prompt机制强化当前诉求与召回样例的范围边界，再验3个相邻样本及全部受影响内容通过。当前默认发布为qwen37-flash-default-v1；原M31开启版及旧版本保持各自历史模型/资产绑定，未伪造改成Flash已验。恢复闭包已保留；证据见[模型切换交接](../handoffs/M03.md#qwen37-flash切换2026-10-05)。
 
 M31开启版通过三个实际进程的PG订单主链，实付173.45/优惠12.30；一次Embedding/一次Rerank/原600一次Chat，Langfuse三次generation与调用数一致。显式学习比较四路共享同一向量/原候选，实际模型2次；签名usage仅结算一次。重复消息、登录后页面/历史/三视图和越权守卫通过，读取0模型。安装后正式MCP version/profile/签名health/schema与页面/历史检查通过，亦0模型；未把HTTP健康当内容证据。离线全量在来源metadata修复前1216 passed/2 skipped，修复后192项相关回归及格式/类型检查通过。M31全部特性收尾，不启动下一M。
 

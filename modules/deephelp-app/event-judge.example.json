@@ -1,5 +1,5 @@
 {
-  "model": "qwen3.8-max",
+  "model": "qwen3.7-flash",
   "base_url_env": "DEEPHELP_MODEL_BASE_URL",
   "api_key_env": "DEEPHELP_MODEL_API_KEY",
   "input_cny_per_million": "8",
