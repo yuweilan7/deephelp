@@ -18,6 +18,7 @@ from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
+from deephelp_app.adapters.retrieval_mcp import RemoteRetriever
 from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.adapters.tool_gateway import ToolGateway
 from deephelp_app.adapters.trace import TraceSink
@@ -196,6 +197,7 @@ class LiveAssembly:
         *,
         tool_server: StdioServerParameters | None = None,
         business_mcp: HTTPMCPConfig | None = None,
+        retrieval_mcp: HTTPMCPConfig | None = None,
         corpus_path: Path | None = None,
         cascade_policy: Path | None = None,
         event_collection: str | None = None,
@@ -247,31 +249,18 @@ class LiveAssembly:
             verify_release(release_manifest)
             self.sop_registry = SOPRegistry.model_validate(release_manifest.sop_registry)
             self.sop_snapshots = (self.sop_registry,)
-        if isinstance(self.scope, HybridScope):
-            from deephelp_app.application.corpus import read_corpus
-            from deephelp_app.application.retrieval_policy import validate_published_selection
+        from deephelp_app.adapters.retrieval_protocol import load_binding
 
-            if corpus_path is None:
+        self.retrieval_binding = load_binding(self.pointer, self.config, corpus_path)
+        self.scope, self.top_k = self.retrieval_binding.scope, self.retrieval_binding.top_k
+        self.retrieval_mcp = retrieval_mcp
+        self.retrieval: RemoteRetriever | None = None
+        if retrieval_mcp:
+            if retrieval_mcp.audience != "retrieval" or corpus_path is None:
                 raise ConfigurationError(
-                    "Hybrid runtime requires the explicit published corpus path"
+                    "Remote retrieval requires explicit corpus and credentials"
                 )
-            corpus = read_corpus(corpus_path)
-            corpus.require_valid()
-            selection = self.pointer.get("selection")
-            if not isinstance(selection, dict) or self.pointer.get("format") != "m09-pointer-v1":
-                raise ConfigurationError("Hybrid pointer requires a frozen retrieval policy")
-            top_k = selection.get("candidate_budget")
-            if not isinstance(top_k, int) or isinstance(top_k, bool) or not 1 <= top_k <= 20:
-                raise ConfigurationError("Hybrid candidate budget must be an integer 1..20")
-            validate_published_selection(selection, self.scope, corpus.index_digest, top_k)
-            self.top_k = top_k
-            if (
-                self.pointer.get("corpus_digest") != corpus.index_digest
-                or self.pointer.get("dense_weight") != selection["dense_weight"]
-            ):
-                raise ConfigurationError("Hybrid pointer corpus/weight mismatch")
-        if self.scope.signature != self.config.signature():
-            raise ConfigurationError("Active collection embedding signature differs")
+            retrieval_mcp.credentials()
         if tool_server is not None and business_mcp is not None:
             raise ConfigurationError("Choose one explicit business MCP source")
         if business_mcp:
@@ -324,9 +313,10 @@ class LiveAssembly:
             store_type = (
                 MilvusHybridStore if isinstance(self.scope, HybridScope) else MilvusDenseStore
             )
-            await store_type(milvus, startup).validate(
-                self.scope, str(self.pointer["corpus_digest"])
-            )
+            if self.retrieval_mcp is None:
+                await store_type(milvus, startup).validate(
+                    self.scope, str(self.pointer["corpus_digest"])
+                )
             event_index = MilvusEventIndex(
                 milvus, model, self.config.signature(), self.event_collection
             )
@@ -352,11 +342,27 @@ class LiveAssembly:
             await stack.enter_async_context(tools.open())
             assembly = self
 
+            if self.retrieval_mcp:
+                from deephelp_app.application.conversation import current_run
+
+                def record_retrieval(record: dict[str, Any]) -> None:
+                    if stats := current_run.get():
+                        stats.model_calls += record.get("model_calls") or 0
+                        stats.retrievals.append(record)
+
+                self.retrieval = await stack.enter_async_context(
+                    RemoteRetriever(
+                        self.retrieval_mcp, self.retrieval_binding, on_record=record_retrieval
+                    ).open()
+                )
+
             class RequestDense:
                 async def retrieve(
                     self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
                 ) -> DenseResult:
                     # The store receives the caller's budget, never the startup budget.
+                    if assembly.retrieval is not None:
+                        return await assembly.retrieval.retrieve(text, scope, budget, top_k=top_k)
                     if isinstance(scope, HybridScope):
                         weight = float(str(assembly.pointer.get("dense_weight", 0.5)))
                         return await HybridRetriever(

@@ -108,6 +108,7 @@ def project(snapshot: DebugSnapshot, view: DebugView, *, dropped: int = 0) -> di
         "flow": (
             "stages",
             "tools",
+            "retrievals",
             "sop",
             "sop_nodes",
             "response",

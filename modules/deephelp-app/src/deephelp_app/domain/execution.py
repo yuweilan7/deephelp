@@ -3,13 +3,18 @@
 import asyncio
 import random
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from decimal import Decimal
 
 import httpx
 
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import BudgetSnapshot, BudgetUsed, ErrorCode
+from deephelp_app.domain.models import BudgetSnapshot, BudgetUsed, ErrorCode, RequestEnvelope
+
+request_execution: ContextVar[RequestEnvelope | None] = ContextVar(
+    "request_execution", default=None
+)
 
 
 @dataclass
@@ -65,10 +70,13 @@ class ExecutionBudget:
         retry: bool,
         tokens: int = 0,
         cost: Decimal = Decimal("0"),
+        attempts: int = 1,
     ) -> None:
         # No await between the check and decrement: concurrent tasks share the same counters.
         self.remaining_seconds()
-        if self.remaining_attempts <= 0 or (retry and self.retry_remaining <= 0):
+        if type(attempts) is not int or attempts < 1 or (retry and attempts != 1):
+            raise ValueError("Invalid attempt reservation")
+        if self.remaining_attempts < attempts or (retry and self.retry_remaining <= 0):
             raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Request call budget exhausted", 503)
         if tokens < 0 or not cost.is_finite() or cost < 0:
             raise ValueError("Invalid model reservation")
@@ -76,8 +84,8 @@ class ExecutionBudget:
             self.token_limit is not None and self.token_upper_bound + tokens > self.token_limit
         ) or (self.cost_limit is not None and self.cost_upper_bound + cost > self.cost_limit):
             raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Model token or cost budget exhausted")
-        self.remaining_attempts -= 1
-        self.attempts_used += 1
+        self.remaining_attempts -= attempts
+        self.attempts_used += attempts
         self.token_upper_bound += tokens
         self.cost_upper_bound += cost
         if tokens:
@@ -85,6 +93,32 @@ class ExecutionBudget:
         if retry:
             self.retry_remaining -= 1
             self.retries_used += 1
+        if self.on_change:
+            self.on_change()
+
+    def settle_remote(self, attempts: int, tokens: int, cost: Decimal, used: BudgetUsed) -> None:
+        """Only a verified bounded receipt releases an application's remote reservation."""
+        if (
+            used.tokens is None
+            or used.cost is None
+            or used.token_upper_bound is None
+            or used.cost_upper_bound is None
+            or not 0 <= used.attempts <= attempts
+            or used.retries != 0
+            or used.tool_steps != 0
+            or not 0 <= used.tokens <= used.token_upper_bound <= tokens
+            or not 0 <= used.cost <= used.cost_upper_bound <= cost
+            or used.uncertain_attempts > 1
+        ):
+            raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Remote usage exceeds reservation")
+        refund = attempts - used.attempts
+        self.remaining_attempts += refund
+        self.attempts_used -= refund
+        self.tokens_used += used.tokens
+        self.cost_used += used.cost
+        self.token_upper_bound += used.token_upper_bound - tokens
+        self.cost_upper_bound += used.cost_upper_bound - cost
+        self.uncertain_attempts += used.uncertain_attempts - 1
         if self.on_change:
             self.on_change()
 

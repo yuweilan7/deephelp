@@ -19,4 +19,4 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.evaluation_cli a
 
 领域类型与确定性安全规则在domain；会话/级联/SOP/审批在application；供应商、MySQL/Redis/Milvus、MCP和trace在adapters；HTTP在api；配置、生命周期和CLI在bootstrap；运行策略、SOP/Prompt与SQL在resources。审批客户端与合成服务已经分开，查看一个HTTP请求时可以沿客户端、协议值、独立demo服务和审批账本追踪。
 
-真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。M20业务服务的运行/schema/维护学习见[服务包](../../modules/deephelp-services/README.md)；前端、Retrieval MCP、M21观测平台与部署按后续特性实施。整个13段主链也不宣称全部由LangGraph实现。
+真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。M20独立Business/Retrieval服务的运行、schema、委托、预算回执及维护学习见[服务包](../../modules/deephelp-services/README.md)；前端、M21观测平台与部署按后续特性实施。整个13段主链也不宣称全部由LangGraph实现。

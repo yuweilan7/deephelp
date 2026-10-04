@@ -3,10 +3,7 @@
 import argparse
 import asyncio
 import hashlib
-import hmac
-import json
 import os
-import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,8 +14,6 @@ from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from mcp.server import Server, ServerRequestContext
-from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import (
     CallToolRequestParams,
     CallToolResult,
@@ -30,7 +25,6 @@ from mcp.types import (
     TextResourceContents,
 )
 from pydantic import ValidationError
-from starlette.types import Receive, Scope, Send
 
 from deephelp_app.adapters.mcp_protocol import (
     HEALTH_URI,
@@ -55,6 +49,11 @@ from deephelp_app.domain.models import (
     VerifiedIdentity,
 )
 from deephelp_services.business_store import BusinessRepository, Kind
+from deephelp_services.http_transport import (
+    initialize_credentials,
+    protect_and_mount,
+    session_manager,
+)
 
 
 def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[str, Any]]:
@@ -158,18 +157,7 @@ def create_business_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store = repository or await BusinessRepository.open(root)
         app.state.repository = store
-        manager = StreamableHTTPSessionManager(
-            make_server(store, verifier),
-            # SDK 2.2 modern HTTP watches disconnect only on its streaming response path.
-            json_response=False,
-            stateless=False,
-            session_idle_timeout=120,
-            security_settings=TransportSecuritySettings(
-                allowed_hosts=["127.0.0.1:*", "localhost:*"],
-                allowed_origins=["http://127.0.0.1:*", "http://localhost:*"],
-            ),
-            max_request_body_size=65536,
-        )
+        manager = session_manager(make_server(store, verifier))
         app.state.mcp_manager = manager
         try:
             async with manager.run():
@@ -179,25 +167,6 @@ def create_business_app(
                 await store.aclose()
 
     app.router.lifespan_context = lifespan
-
-    @app.middleware("http")
-    async def service_guard(request: Request, call_next: Any) -> Any:
-        token = request.headers.get("authorization", "")
-        expected = "Bearer " + credentials.bearer.get_secret_value()
-        host = request.headers.get("host", "").split(":")[0]
-        origin = request.headers.get("origin")
-        from urllib.parse import urlsplit
-
-        if host not in {"127.0.0.1", "localhost"}:
-            return JSONResponse({"error": {"code": "FORBIDDEN"}}, status_code=403)
-        if origin and (
-            urlsplit(origin).scheme != "http"
-            or urlsplit(origin).hostname not in {"127.0.0.1", "localhost"}
-        ):
-            return JSONResponse({"error": {"code": "FORBIDDEN"}}, status_code=403)
-        if not token.isascii() or not hmac.compare_digest(token, expected):
-            return JSONResponse({"error": {"code": "UNAUTHENTICATED"}}, status_code=401)
-        return await call_next(request)
 
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
@@ -282,14 +251,7 @@ def create_business_app(
             kind, await identity(request, await request.json()), body.data, body.expected_version
         )
 
-    # Mount exact /mcp using an ASGI endpoint, without redirecting POST or faking JSON-RPC.
-    from starlette.routing import Route
-
-    class Endpoint:
-        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-            await app.state.mcp_manager.handle_request(scope, receive, send)
-
-    app.router.routes.append(Route("/mcp", endpoint=Endpoint(), methods=["GET", "POST", "DELETE"]))
+    protect_and_mount(app, credentials)
     return app
 
 
@@ -301,12 +263,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8011)
     args = parser.parse_args()
     if args.command == "init":
-        args.credentials.parent.mkdir(parents=True, exist_ok=True)
-        with args.credentials.open("x", encoding="utf-8") as output:
-            json.dump(
-                {"bearer": secrets.token_urlsafe(32), "delegation_key": secrets.token_urlsafe(32)},
-                output,
-            )
+        initialize_credentials(args.credentials)
         print("Service credentials initialized; values are only in the credentials file")
         return 0
     credentials = ServiceCredentials.load(args.credentials)

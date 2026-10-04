@@ -36,7 +36,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve -
 py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --text "订单 000031 未享受优惠，请查一下"
 ```
 
-`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；MySQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取MySQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
+`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；MySQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。可另传成对的`--retrieval-mcp-url`与`--retrieval-credentials`选择[独立Retrieval服务](../deephelp-services/README.md#独立检索服务)，复用同一Dense/Hybrid Port；省略时用原本地检索，远端失败关闭、不自动回退。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取MySQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
 
 直接 `uvicorn deephelp_app.api.app:create_app --factory` 是M01离线骨架，`/converse`保持501，用于学习生命周期。它不能作为三类业务启动命令。学习入口 `python -m deephelp_tools.learning.experiments`；受控能力验收 `python -m deephelp_tools.probes.live_probe --help`；冻结评测 `python -m deephelp_tools.evaluation.evaluation_cli --help`。
 

@@ -1,6 +1,6 @@
 # DeepHelp
 
-运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)。M20第1特性已提供[MySQL业务记录与独立Business MCP](modules/deephelp-services/README.md)，显式demo入口继续保留；Retrieval MCP是下一顺序特性。
+运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)。M20已提供[MySQL业务记录、独立Business与Retrieval MCP](modules/deephelp-services/README.md)，显式demo入口继续保留；应用可选择两个独立服务复用同一引擎。
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 
@@ -12,7 +12,7 @@
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
-| 个人学习工作台的下一步 | [M19结构交接](handoffs/M19.md)已完成；M20业务→M21观测→M22前端→M23云运行尚未实施，逐特性启动 |
+| 个人学习工作台的下一步 | M19结构与[M20业务/检索](handoffs/M20.md)已完成；M21观测→M22前端→M23云运行待逐特性启动 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

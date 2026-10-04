@@ -18,7 +18,19 @@ Business服务独立包为deephelp-services，app不导入services；唯一输�
 
 数据库工具证据version为business-mysql-v1，demo仍为business-fixtures-v1。显式装配向Gateway/SOP注入证据来源，ToolResult实际call_id、record_id、事实hash与双端语义守卫保持。查询将订单/券/活动完整版本和当时结果保存为不可变、主体隔离的evidence快照，GET可回查。新message_id读取新提交数据，旧message_id沿用原receipt/事实/证据及本次零预算；不改旧回复。
 
-维护是用户手工资料操作，模型目录没有维护命令；synthetic_rights仍为合成效果，并未接入本次业务表。Retrieval MCP未实施，检索仍用原真实直接适配器；完整发布仍须精确绑定/内容验收，未产生新发布或远端部署。
+维护是用户手工资料操作，模型目录没有维护命令；synthetic_rights仍为合成效果，并未接入本次业务表。完整发布仍须精确绑定/内容验收，未产生新发布或远端部署。
+
+### M20独立检索MCP
+
+Retrieval独立进程复用原DenseRetriever/HybridRetriever、Embedding网关及Milvus适配器；应用以RemoteRetriever满足原Port，业务引擎不复制。服务只拥有显式发布scope、语料reference/train记录、Embedding签名、K、weight与冻结策略，不导入/重建索引。profile_id绑定这些资产及现行Embedding请求配置。私有事件记忆与事实校验仍在应用，事务、outbox及checkpoint不搬到检索服务。
+
+唯一DTO为RetrievalQuery/Context/Allowance/Delegation/Action/Reply/Wire。两个只读工具`retrieve_intents`及`compare_intents`输入只含query（非空、≤2000字符）、top_k（1–20）和scope_id（完整指纹），拒绝额外字段与任意集合/路径/连接。普通检索返回发布模式；Hybrid对照返回同查询Dense/BM25/Hybrid三组DenseResult，保留policy_version、candidate_budget、weight、候选ID/排序、score_kind、原始分数及融合来源。cosine、BM25与融合分数不是概率。纯Dense发布不提供BM25对照，返回VERSION_CONFLICT。
+
+使用正式Streamable HTTP及实际initialize 2025-11-25；Bearer和委托key与Business分开，audience=retrieval。短期签名绑定允许的tenant/user、关联ID、工具名、query_hash、profile_id和有限Allowance；正文/session/trace不授权。服务把允许主体映射到自身固定发布scope，查询scope须完全相同；启动健康资源和双端语义校验核对语料、签名、版本、ID/内容、每意图最大证据、融合公式和来源。
+
+原ExecutionBudget不跨网络。应用在派发前原子预留本次全部尝试、Embedding输入上界及费用上界并持久化；服务重建零重试、有截止时间的子预算，复用原网关/数据库RPC计数。服务回执记录真实MCP、Embedding、Milvus验证、Dense、BM25及fusion动作、延迟、provider_request_ids、实际usage与未知预留；签名绑定整个Reply。调用端回验签名、关联上下文、schema、候选语义与有限用量，再结算原累计预算。未知/断连/取消/无效回执不释放预留；服务重启不归零预算、不自动重放。SDK取消需实际notification，断开连接不能推断服务已经取消。
+
+`/debug/runs/{run_id}/flow`增加同源、主体/session受限且脱敏的retrievals，包含回执、服务PID及双端校验；未知模型用量标incomplete，超大诊断按原大小边界裁剪。实际usage、charged上界和费用估算分开。真实迁移对照必须用同一次实际Embedding向量，避免供应商两次响应波动混入传输一致性结论；专项探针的观测仅记录原网关返回，正式运行不读取测试向量。省略远端配置保留本地端口，选择远端后失败关闭。
 
 ## 哪个阶段实现什么
 
