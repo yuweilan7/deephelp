@@ -34,13 +34,14 @@
 | M25 | LIVE_VERIFIED；[交接](../handoffs/M25.md) | 两特性完成；新源码关系仓储统一PG，26表13846行原值迁移/续跑/冲突守卫、Windows/Linux仓储、实际dump→另库恢复与代表查询通过；现行MySQL未切 |
 | M26 | LIVE_VERIFIED；[交接](../handoffs/M26.md) | 两特性完成；官方3.1.2双平台独立进程/593旧checkpoint/1137待写原ID转换、正式装配/学习HTTP同图、8故障/7闭合/并发/取消互斥通过；130旧操作原计划/版本/79效果保持。源待审批1条缺绑定拒绝保留，4条UNKNOWN过期查询后保留；现网未切 |
 | M31 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M31.md) | 专用RerankPort/httpx原生协议、共享预算/取消已接入；3 query×同12条reference实际映射/usage通过；Hybrid/会话/MCP/学习页/正式发布尚未接入 |
+| M27 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M27.md) | 固定Langfuse4.50/SDK4.16、独立PG/CH/队列Redis/SeaweedFS已隔离启动；双平台SDK、同trace API/浏览器/S3、对象容器重建通过；恢复/完整组合容量待同会话继续，未接业务 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
 ## 现代路线实施与规划
 
 2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成qwen3.7-text-rerank专用端口/协议首特性，同链/MCP/学习页及效果对照待后续实施。规格是工程目标，不是当前运行事实。
 
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；M26两特性已完成官方saver转换/正式装配/完整历史逐状态恢复验收。新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M27–M30尚无实施handoff。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
+用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；M26两特性已完成官方saver转换/正式装配/完整历史逐状态恢复验收。新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M27平台首特性已交付，恢复/容量继续；M28–M30尚无实施handoff。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
 
 2026-10-04用户明确调整实施范围：“完成Mxx”由同一会话、同一主写者从未完成项续做该M全部特性，逐项验收与分支交付后继续，全部完成后停止；同模块下一特性无需逐项另启。该条为范围规则调整的历史说明；随后M25完整实施按此规则交付，未启动M26/M31后续特性或改变调度配置。
 

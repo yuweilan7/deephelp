@@ -1,6 +1,6 @@
 # M27｜Langfuse 自托管平台与容量关卡
 
-**状态：** PLANNED；依赖 M25/M26 隔离持久方案。对象存储采用单机自托管SeaweedFS，不购买托管存储；先验证它与锁定 SDK/服务版本的兼容，再做隔离最小接入与组合容量试验。
+**状态：** FIRST_FEATURE_LIVE_VERIFIED；[交接](../../handoffs/M27.md)。存入/读回已完成，继续平台恢复与组合容量特性。对象存储采用单机自托管SeaweedFS，不购买托管存储。
 
 **前置：** M23 当前拓扑/恢复材料和 M25 实例配置；运行或检查真实依赖前读 LOCAL_SETUP/.local/DEPENDENCIES。见 [计划](../../planning/M27/PLAN.md)。
 
