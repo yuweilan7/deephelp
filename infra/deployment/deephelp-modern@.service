@@ -1,0 +1,23 @@
+[Unit]
+Description=DeepHelp PostgreSQL and Langfuse %i
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+UMask=0077
+EnvironmentFile=/srv/deephelp-modern/config/runtime.env
+ExecStart=/opt/deephelp-app/modern/start.sh %i
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+KillSignal=SIGINT
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

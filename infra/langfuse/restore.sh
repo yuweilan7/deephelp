@@ -20,6 +20,10 @@ sudo chown "$(id -u):$(id -g)" "$destination" "$destination/runtime.env" "$desti
 sudo chown -R "$(id -u):$(id -g)" "$destination/config"
 sudo chown -R 101:101 "$destination/data/clickhouse" "$destination/data/clickhouse-logs"
 sudo chown -R 999:999 "$destination/data/postgres"
+sudo chown -R 1000:1000 "$destination/data/seaweedfs"
+# The image drops to uid 1000; tar's data filter deliberately discards ownership.
+# Keep its credential file private but readable by the actual container user.
+sudo chown 1000:1000 "$destination/config/s3.json"
 cd "$destination"
 python3 - "$destination" <<'PY'
 import json,sys

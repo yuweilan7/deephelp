@@ -2,11 +2,11 @@
   "uid": "deephelp-observation",
   "title": "DeepHelp 实际执行观测",
   "schemaVersion": 41,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "tags": [
     "deephelp",
-    "m21"
+    "m30"
   ],
   "timezone": "browser",
   "time": {
@@ -93,7 +93,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(deephelp_operations_total{status=\"completed\"}[$__range])) by (operation) / sum(increase(deephelp_operations_total{status=~\"completed|failed\"}[$__range])) by (operation)",
+          "expr": "sum(increase(deephelp_operations_total{status=\"completed\"}[$__range])) by (operation) / sum(increase(deephelp_operations_total{status=~\"completed|failed\"}[$__range])) by (operation) and on(operation) (sum(increase(deephelp_operations_total{status=~\"completed|failed\"}[$__range])) by (operation) > 0)",
           "legendFormat": "{{operation}} {{status}} {{outcome}} {{direction}}"
         }
       ],
@@ -169,7 +169,7 @@
       "id": 6,
       "title": "usage未知尝试与导出丢失",
       "type": "timeseries",
-      "description": "未知/失败/满队列允许诊断缺失，不能触发业务重放。",
+      "description": "同attempt缺usage单列未知；Langfuse导出可用性须通过实际内容读回。",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -188,12 +188,12 @@
         },
         {
           "refId": "B",
-          "expr": "sum(increase(deephelp_export_failed_spans_total[$__range]))",
+          "expr": "up{job=~\"deephelp-app|deephelp-business|deephelp-retrieval\"}",
           "legendFormat": "导出失败"
         },
         {
           "refId": "C",
-          "expr": "sum(increase(deephelp_export_dropped_spans_total[$__range]))",
+          "expr": "up{job=~\"deephelp-app|deephelp-business|deephelp-retrieval\"}",
           "legendFormat": "满队列丢失"
         }
       ],
@@ -357,9 +357,9 @@
     },
     {
       "id": 12,
-      "title": "Collector队列与观测组件采集",
+      "title": "进程资源与抓取状态",
       "type": "timeseries",
-      "description": "Collector原生诊断；有界256批次/30秒重试，重启可丢队列。up是组件抓取状态，不是模型或长期业务可用率。",
+      "description": "独立进程度量/Prometheus抓取，不推断Langfuse导出队列或零丢失。",
       "gridPos": {
         "x": 12,
         "y": 40,
@@ -373,7 +373,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "otelcol_exporter_queue_size",
+          "expr": "sum(process_resident_memory_bytes) by (service_name,job)",
           "legendFormat": "queued {{exporter}}"
         },
         {
