@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+import httpx
 from fastapi import APIRouter, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import Field
@@ -19,6 +20,7 @@ from deephelp_app.adapters.release_store import ReleaseStore
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.artifact_paths import resolve_artifact, state_root
 from deephelp_app.application.dense import atomic_json
+from deephelp_app.application.intent_prompt import read_prompt
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LiveAssembly
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
@@ -29,7 +31,8 @@ from deephelp_tools.evaluation.evaluation_cli import run as evaluate
 from deephelp_tools.evaluation.flywheel_assets import build, exports, verify_files
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore
 from deephelp_tools.evaluation.flywheel_validation import validate, validation_cases
-from deephelp_tools.evaluation.langfuse_mapping import plan_import
+from deephelp_tools.evaluation.langfuse_mapping import Platform, plan_import
+from deephelp_tools.evaluation.langfuse_prompt_review import annotations, require_annotation
 from deephelp_tools.evaluation.release_prepare import prepare_manifest
 from deephelp_tools.learning.workbench_jobs import LearningJobs
 
@@ -59,6 +62,7 @@ class EvaluationCatalog(DTO):
     redaction_key: Path
     platform_config: Path | None = None
     imports: dict[Key, HistoricalImport] = Field(default_factory=dict, max_length=16)
+    prompt_artifact: Path | None = None
 
 
 class Capture(DTO):
@@ -71,13 +75,17 @@ class Review(DTO):
     review: RouteReview | None
     reason: Annotated[str, Field(min_length=1, max_length=1000)]
     confirmed: Literal[True]
+    platform_score_id: Key | None = None
 
 
 class JobInput(DTO):
-    action: Literal["audit", "offline", "build", "validate", "prepare", "platform_upload"]
+    action: Literal[
+        "audit", "offline", "build", "validate", "prepare", "platform_upload", "platform_candidate"
+    ]
     candidate_ids: tuple[Hash, ...] = Field(default=(), max_length=10)
     asset_id: Key | None = None
     import_id: Key | None = None
+    candidate_revision: Annotated[int, Field(strict=True, ge=0)] | None = None
     confirmed: Literal[True]
 
 
@@ -213,22 +221,45 @@ def evaluation_router(
         output.mkdir(parents=True, exist_ok=False)  # noqa: ASYNC240 -- bounded durable job path
         options, action = row["options"], row["options"]["action"]
         gate = SharedGate(factory)
-        if action == "platform_upload":
-            source = config.imports[options["import_id"]]
+        if action in {"platform_upload", "platform_candidate"}:
             assert config.platform_config is not None
-            path = root / "imports" / (options["import_id"] + ".json")
-            import_args = [sys.executable, "-m", "deephelp_tools.evaluation.langfuse_cli", "--live"]
-            for key, value in {
-                "report": source.report,
-                "data": source.data,
-                "manifest": source.manifest,
-                "config": config.platform_config,
-                "state": path,
-            }.items():
-                import_args.extend(["--" + key, str(value)])
-            for key, values in (("case", source.cases), ("mode", source.modes)):
-                for value in values:
-                    import_args.extend(["--" + key, value])
+            if action == "platform_upload":
+                source = config.imports[options["import_id"]]
+                path = root / "imports" / (options["import_id"] + ".json")
+                import_args = [
+                    sys.executable,
+                    "-m",
+                    "deephelp_tools.evaluation.langfuse_cli",
+                    "--live",
+                ]
+                for key, value in {
+                    "report": source.report,
+                    "data": source.data,
+                    "manifest": source.manifest,
+                    "config": config.platform_config,
+                    "state": path,
+                }.items():
+                    import_args.extend(["--" + key, str(value)])
+                for key, values in (("case", source.cases), ("mode", source.modes)):
+                    for value in values:
+                        import_args.extend(["--" + key, value])
+            else:
+                path = output / "candidate.json"
+                import_args = [
+                    sys.executable,
+                    "-m",
+                    "deephelp_tools.evaluation.langfuse_prompt_review",
+                    "candidate",
+                    "--live",
+                    "--config",
+                    str(config.platform_config),
+                    "--candidate-id",
+                    options["candidate_ids"][0],
+                    "--revision",
+                    str(options["candidate_revision"]),
+                    "--output",
+                    str(path),
+                ]
             # SDK resources are keyed by project public key. A child owns its queues
             # so shutting them down cannot close the application's native observer.
             child = await asyncio.create_subprocess_exec(
@@ -253,6 +284,14 @@ def evaluation_router(
                     atomic_json(path, partial)
                 raise
             state = json.loads(path.read_text(encoding="utf-8"))
+            if action == "platform_candidate":
+                return dict(
+                    evidence_status=state["status"],
+                    model_calls=0,
+                    url=state["url"],
+                    candidate_id=state["binding"]["metadata"]["candidate_id"],
+                    revision=state["binding"]["metadata"]["revision"],
+                )
             return dict(
                 evidence_status=state["status"],
                 model_calls=0,
@@ -324,18 +363,41 @@ def evaluation_router(
                 config.providers,
                 config.auth,
                 registry=assembly.sop_registry,
+                prompt_artifact=config.prompt_artifact,
+                persist_assets_validation=False,
             )
             return dict(
                 evidence_status=validation_report["status"],
                 checks=validation_report["checks"],
                 active_changed=False,
             )
+        validations = sorted(
+            (
+                task
+                for task in jobs.rows.values()
+                if task["options"]["action"] == "validate"
+                and task["options"]["asset_id"] == options["asset_id"]
+            ),
+            key=lambda task: (task["updated_at"], task["id"]),
+            reverse=True,
+        )
+        validation_path = None
+        if validations:
+            latest = validations[0]
+            if (
+                latest["state"] != "SUCCEEDED"
+                or (latest.get("result") or {}).get("evidence_status") != "PASS"
+            ):
+                raise ConfigurationError("Latest validation task is not PASS; cannot prepare")
+            validation_path = jobs.output(latest) / "validation.json"
         manifest = await asyncio.to_thread(
             prepare_manifest,
             assets,
             config.providers,
             assembly.sop_registry,
-            "m22-" + file_digest(assets)[:24],
+            "m22-" + row["id"],
+            prompt_artifact=config.prompt_artifact,
+            validation_path=validation_path,
         )
         # This registers an immutable full release only after the original M18 exact gate.
         identity = await release().register(manifest)
@@ -385,6 +447,10 @@ def evaluation_router(
             dataset=dataset,
             reports=list(config.reports),
             platform_imports=list(config.imports) if config.platform_config else [],
+            platform_review_enabled=config.platform_config is not None,
+            prompt=read_prompt(config.prompt_artifact).model_dump(mode="json")
+            if config.prompt_artifact
+            else None,
             assets=list(config.assets)
             + [
                 "task-" + r["id"]
@@ -466,6 +532,26 @@ def evaluation_router(
             note="Historical mapping; platform scores do not publish or approve",
         )
 
+    async def platform_evidence(identity: str) -> tuple[Any, dict[str, Any]]:
+        from deephelp_app.adapters.native_observation import configuration
+
+        if config.platform_config is None:
+            raise AppError(ErrorCode.NOT_FOUND, "Platform review is not configured", 404)
+        current_candidate = await feedback().get(identity)
+        async with httpx.AsyncClient() as client:
+            evidence = await annotations(
+                Platform(client, configuration(str(config.platform_config))), current_candidate
+            )
+        return current_candidate, evidence
+
+    @router.get("/candidates/{identity}/platform")
+    async def platform_candidate(request: Request, identity: Hash) -> dict[str, Any]:
+        owner(request)
+        current_candidate, evidence = await platform_evidence(identity)
+        return dict(
+            candidate_id=identity, revision=current_candidate.revision, **evidence, model_calls=0
+        )
+
     @router.post("/capture")
     async def capture(request: Request, body: Capture) -> dict[str, Any]:
         owner(request)
@@ -480,6 +566,34 @@ def evaluation_router(
     @router.post("/candidates/{identity}/review")
     async def review(request: Request, identity: Hash, body: Review) -> dict[str, Any]:
         owner(request)
+        reason = body.reason
+        if body.platform_score_id:
+            if not body.review or not body.route:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Platform evidence requires an explicit route review",
+                    422,
+                )
+            current_candidate, evidence = await platform_evidence(identity)
+            score = require_annotation(
+                current_candidate,
+                body.revision,
+                evidence,
+                body.platform_score_id,
+                body.review.label,
+            )
+            from deephelp_app.application.corpus import digest
+
+            reason += (
+                f"\nLangfuse annotation {score['id']} sha256={digest(score)} "
+                f"candidate r{body.revision}"
+            )
+            if len(reason) > 1000:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Review reason plus platform evidence exceeds 1000 characters",
+                    422,
+                )
         if (body.route is None) != (body.review is None):
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Review route and value must agree", 422)
         if body.review and body.review.method != "human":
@@ -493,13 +607,13 @@ def evaluation_router(
             body.review.model_copy(
                 update={
                     "reviewer": f"{config.owner.tenant_id}/{config.owner.user_id}",
-                    "reason": body.reason,
+                    "reason": reason,
                 }
             )
             if body.review
             else None,
             reviewer=f"{config.owner.tenant_id}/{config.owner.user_id}",
-            reason=body.reason,
+            reason=reason,
         )
         return row.model_dump(mode="json")
 
@@ -557,6 +671,22 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
+        if body.action == "platform_candidate":
+            if config.platform_config is None:
+                raise AppError(ErrorCode.NOT_FOUND, "Platform review is not configured", 404)
+            if len(body.candidate_ids) != 1 or body.candidate_revision is None:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT, "Export one exact candidate revision", 422
+                )
+            selected = await feedback().get(body.candidate_ids[0])
+            if selected.revision != body.candidate_revision:
+                raise AppError(
+                    ErrorCode.VERSION_CONFLICT, "Candidate revision changed before export", 409
+                )
+        elif body.candidate_revision is not None:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Only candidate export binds a candidate revision", 422
+            )
         if body.action == "platform_upload":
             if body.import_id not in config.imports or config.platform_config is None:
                 raise AppError(ErrorCode.NOT_FOUND, "Historical import unavailable", 404)
@@ -568,7 +698,7 @@ def evaluation_router(
             asset_path(body.asset_id)
         elif body.asset_id is not None:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "This action does not consume an asset", 422)
-        if body.action != "build" and body.candidate_ids:
+        if body.action not in {"build", "platform_candidate"} and body.candidate_ids:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT, "Only build consumes reviewed candidates", 422
             )

@@ -32,14 +32,15 @@ async def run(args: argparse.Namespace) -> int:
             registry,
             args.version,
             validation_path=local_path(args.validation) if args.validation else None,
+            prompt_artifact=local_path(args.prompt_artifact) if args.prompt_artifact else None,
         )
         atomic_json(output, manifest.model_dump(mode="json"))
         print(json.dumps(dict(release_hash=release_hash(manifest), output=str(output))))
         return 0
     if not args.live:
         raise ConfigurationError("Content validation requires --live and a shared budget")
-    store = await ReleaseStore.open(Path.cwd())
     gate = BudgetSession(local_path(args.budget_state))
+    store = await ReleaseStore.open(Path.cwd())
     try:
         gate.open()
         registry = (
@@ -58,6 +59,7 @@ async def run(args: argparse.Namespace) -> int:
             local_path(args.auth),
             registry=registry,
             persist_assets_validation=False,
+            prompt_artifact=local_path(args.prompt_artifact) if args.prompt_artifact else None,
         )
         print(json.dumps(dict(status=report["status"], output=args.output)))
         return 0 if report["status"] == "PASS" else 1
@@ -75,6 +77,7 @@ def main() -> None:
     parser.add_argument("--version", default="m18-complete-v1")
     parser.add_argument("--sop")
     parser.add_argument("--validation")
+    parser.add_argument("--prompt-artifact")
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument("--budget-state", default=".local/m18-release/budget.json")
     parser.add_argument("--auth", default=".local/m17/auth.json")

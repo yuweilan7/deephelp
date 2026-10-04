@@ -42,9 +42,9 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 
 进入页面先读取计划与共享剩余预约数。冻结审计和四路离线回归为0远程模型；离线计数中的模型适配动作不等于远程API调用。构建基线12条语料、最多10个批准来源，默认每8条一批，预计2–3次Embedding（重试受原门禁）；FastText只在相应路由获批时训练。验证使用原M17/M18固定11会话/14消息、真实服务/模型，预计1–113次远程调用，实际依规则/检索/SOP路径；token范围是计划估计，API usage和预算预留另计，推理沿供应商配置，不关闭或裁剪有效上下文。预算不足会停止并保留诊断；已知不足以完成构建批次时在启动前拒绝。
 
-显式任务为`audit/offline/build/validate/prepare/platform_upload`，不接收命令、模型配置或任意路径；同一进程一个重任务、1800秒总上限、最多3次尝试、最多100份持久任务记录。取消等待原适配器退出再释放槽位；硬中断重启标`INTERRUPTED`，仅显式恢复才另建不可变尝试目录。已经完成或未知提交的资产/验证/版本登记先对账，原M18队列lease/尝试仍有效，不盲重放。任务`SUCCEEDED`只表示入口返回；`evidence_status`才是实际PASS/REJECTED/PREPARED/READY。任务目录保留状态和仍需恢复/浏览的产物，不作临时目录清空。
+显式任务为`audit/offline/build/validate/prepare/platform_upload/platform_candidate`，不接收命令、模型配置或任意路径；同一进程一个重任务、1800秒总上限、最多3次尝试、最多100份持久任务记录。取消等待原适配器退出再释放槽位；硬中断重启标`INTERRUPTED`，仅显式恢复才另建不可变尝试目录。已经完成或未知提交的资产/验证/版本登记先对账，原M18队列lease/尝试仍有效，不盲重放。任务`SUCCEEDED`只表示入口返回；`evidence_status`才是实际PASS/REJECTED/PREPARED/READY。任务目录保留状态和仍需恢复/浏览的产物，不作临时目录清空。
 
-候选不修改active。`prepare`复用`prepare_manifest`及`ReleaseStore.register`，完整发布和回退复用`ReleaseStore.switch`、目标hash与revision CAS；回退还绑定当前previous。代码/工具/供应商/SOP/审核或绑定资产失效时旧报告PASS也不可发布。页面不自动执行训练、全量live或切换版本；本轮UI验收没有新质量发布。
+候选不修改active。`prepare`复用`prepare_manifest`及`ReleaseStore.register`，完整发布和回退复用`ReleaseStore.switch`、目标hash与revision CAS；回退还绑定当前previous。代码/工具/供应商/SOP/审核或绑定资产失效时旧报告PASS也不可发布。页面不自动执行训练、全量live或切换版本；浏览与审核本身不证明模型质量。
 
 学习页按原operation/session/run读取本主体的官方checkpoint和实际审批图；显式配置合成权益服务并使用专用演示身份后，可创建固定练习、批准/拒绝/撤销及恢复同一原操作。普通消息仍不能批准旧操作，UNKNOWN先对账；synthetic_rights不改M20资料、不表示真实退款。页面不允许直接写checkpoint，也不暴露任意MCP、SQL或文件接口。旧reader仅供迁移资格验证，正式app不包含旧自建codec；转换与历史逐状态恢复见[M26交接](../../handoffs/M26.md)。
 
@@ -87,4 +87,30 @@ py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_engineering
 
 M22受控catalog可增加`platform_config`（私有配置路径）与`imports`映射；每个条目含`report/data/manifest/cases/modes`，最多16个。owner在原评测页选择条目、明确确认后启动`platform_upload`；网页不能传路径、key或命令。工作台独立子进程拥有SDK队列，660秒外层上限，取消确认子进程退出后保留部分状态，原串行任务与最多3次显式恢复保持。只读状态不初始化SDK；其他主体所有入口404。已完成任务、最终状态和验收报告保留，临时诊断可在核对后清理。
 
-实际来源与限制见[M29交接](../../handoffs/M29.md)。Prompt版本/人工annotation发布链为同模块下一特性。
+实际来源与限制见[M29交接](../../handoffs/M29.md)。
+
+## M29 Prompt版本与标注审核
+
+`langfuse_prompt_review create`将现有M12主意图兜底system文本及静态契约保存为平台版本；不改变模型或schema。`export`只接受确切正整数版本，不读取latest/production label作为发布文本。原输入JSON完整保留当前文本、已确认事件上下文与检索结果；模板引擎为none，无插值变量，文本不能包含平台模板占位符。模型/参数/schema/tools约束随本地工件一起核对。首次创建版本为非幂等请求，网络结果未知时先查询平台版本，不自动再POST。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review create --live --config .local/m28/native.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review export --live --config .local/m28/native.json --name deephelp-intent-fallback --version 1 --output .local/m29/prompt-v1.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review score-config --live --config .local/m28/native.json
+```
+
+导出的`m29-prompt-v1`工件具有name/version/text/contract/request_digest，路径使用OS锁且不可覆盖。模型内容验证使用原入口的`--prompt-artifact`，准备完整版本同时传该工件及本次验证报告；相同最终请求可复用仍适用的内容证据，版本/hash仍分别绑定。不同文本、契约、runtime/tooling、模型、SOP或资产不能拿旧PASS发布。
+
+```powershell
+# 使用本轮新建且不重置的累计预算；先核对已有资产的当前审核来源与远端完整性。
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.release_cli validate --live --assets .local/m18/current/assets.json --output .local/m29/content-new.json --budget-state .local/m29/budget.json --auth .local/m17/auth.json --prompt-artifact .local/m29/prompt-v1.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli prepare --assets .local/m18/current/assets.json --validation .local/m29/content-new.json --version m29-prompt-a --prompt-artifact .local/m29/prompt-v1.json --output .local/m29/release-a.json
+```
+
+后续登记、发布与回退沿用[完整版本入口](../deephelp-app/README.md#m18-完整版本发布)。`ReleaseManifest.prompts`的保留键`langfuse:intent-fallback`指向工件SHA256，`files`绑定唯一完整路径/hash，工件记录不可变平台版本；原模型、SOP、审核、代码、完整资产和CAS门禁保持。运行从清单读取本地工件，不访问平台Prompt API，不随平台label改变，不因平台不可用切换未经验证文本。当前静态搬运不宣称质量提升。
+
+工作台验证只写本次不可变任务目录，不覆盖保留版本引用的资产验证文件；准备使用所选资产最近验证任务的明确PASS，失败/取消/中断不能退到更早报告。每个准备任务拥有稳定且独立的版本名，显式恢复仍登记同一版本；原prepare_manifest继续核对报告、当前代码/工具、Prompt与资产，不因任务PASS绕过门禁。
+
+catalog可配置`prompt_artifact`用于原`validate/prepare`任务，以及`platform_config`启用候选导出/标注读取。`platform_candidate`为新增受控任务，只提交一个服务端已存在的候选ID和当前revision；0模型调用，独立子进程负责SDK写入，120秒子进程/660秒外层上限，取消等待子进程退出。CLI也可使用`candidate --candidate-id <hash> --revision <整数> --output <新路径>`；所有平台操作都须`--live --config`。
+
+候选导出将整份候选revision摘要、原文本及原观察绑定到确定性trace/observation；读回核对内容、结束状态和范围。只选择原生v3 Score的`ANNOTATION`来源、明确作者、具体observation、`m29_intent_label`分类及支持标签。API评分、数值高分、trace级/其他观察评分不进入可选审核依据。选择平台score后仍须独立标签、理由、目标路由、留出隔离与显式人工确认；原审核事务再核对revision CAS。审核记录保留score ID/摘要及原candidate revision，读取标注不会批准、构建或切换active。修改候选后旧标注不再适用，需重新导出和审核。

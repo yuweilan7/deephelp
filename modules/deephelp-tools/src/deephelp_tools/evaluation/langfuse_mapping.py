@@ -214,8 +214,11 @@ class Platform:
     def __init__(self, client: httpx.AsyncClient, config: dict[str, Any]) -> None:
         self.client, self.config = client, config
 
-    async def request(self, method: str, path: str, **kwargs: Any) -> Any:
-        for attempt in range(3):
+    async def request(
+        self, method: str, path: str, *, idempotent: bool = True, **kwargs: Any
+    ) -> Any:
+        attempts = 3 if idempotent else 1
+        for attempt in range(attempts):
             try:
                 reply = await self.client.request(
                     method,
@@ -226,13 +229,13 @@ class Platform:
                 )
                 if reply.status_code == 404:
                     return None
-                if reply.status_code in {429, 500, 502, 503, 504} and attempt < 2:
+                if reply.status_code in {429, 500, 502, 503, 504} and attempt < attempts - 1:
                     await asyncio.sleep(0.2 * (attempt + 1))
                     continue
                 reply.raise_for_status()
                 return reply.json()
             except httpx.TransportError:
-                if attempt == 2:
+                if attempt == attempts - 1:
                     raise
                 await asyncio.sleep(0.2 * (attempt + 1))
         raise ConfigurationError("Platform retry exhausted")

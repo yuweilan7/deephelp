@@ -14,6 +14,7 @@ from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import atomic_json
+from deephelp_app.application.intent_prompt import default_system, fallback_contract, read_prompt
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth
 from deephelp_app.bootstrap.settings import Settings
@@ -83,6 +84,7 @@ async def validate(
     baseline: Path | None = None,
     registry: SOPRegistry | None = None,
     persist_assets_validation: bool = True,
+    prompt_artifact: Path | None = None,
 ) -> dict[str, Any]:
     if await asyncio.to_thread(output.exists):
         raise ConfigurationError("Use a new immutable validation report")
@@ -92,6 +94,8 @@ async def validate(
     nonce = uuid4().hex[:16]
     collection = "dh_m10_events_m18_" + nonce
     runtime = assembly(data, providers, collection)
+    if prompt_artifact:
+        runtime.intent_prompt = read_prompt(prompt_artifact)
     if registry:
         runtime.sop_registry, runtime.sop_snapshots = registry, (registry,)
     from deephelp_tools.integrity import evaluation_provenance as provenance
@@ -120,6 +124,11 @@ async def validate(
         code_digest=code["package_digest"],
         code_integrity_scope=code["integrity_scope"],
         tooling_digest=code["tooling_digest"],
+        intent_prompt_request_digest=(
+            runtime.intent_prompt.request_digest
+            if runtime.intent_prompt
+            else digest([default_system(), fallback_contract()])
+        ),
         rows=[],
         checks={},
         synthetic=True,

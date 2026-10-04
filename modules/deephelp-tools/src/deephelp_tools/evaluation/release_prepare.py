@@ -5,6 +5,12 @@ from pathlib import Path
 from deephelp_app.adapters.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.application.corpus import digest
+from deephelp_app.application.intent_prompt import (
+    ROLE,
+    default_system,
+    fallback_contract,
+    read_prompt,
+)
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models import ReleaseManifest
@@ -19,6 +25,7 @@ def prepare_manifest(
     version: str,
     *,
     validation_path: Path | None = None,
+    prompt_artifact: Path | None = None,
 ) -> ReleaseManifest:
     data = verify_files(assets, validation_inputs=True)
     validation_path = validation_path or assets.parent / "validation.json"
@@ -50,6 +57,18 @@ def prepare_manifest(
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)
+    if prompt_artifact:
+        prompt = read_prompt(prompt_artifact)
+        if validation.get("intent_prompt_request_digest") != prompt.request_digest:
+            raise ConfigurationError("Prompt request changed since the exact content gate")
+        fingerprint = file_digest(prompt_artifact)
+        prompts[ROLE] = fingerprint
+        files[str(prompt_artifact.resolve())] = fingerprint
+    elif validation.get("intent_prompt_request_digest") not in {
+        None,
+        digest([default_system(), fallback_contract()]),
+    }:
+        raise ConfigurationError("Validated custom Prompt requires its immutable artifact")
     return ReleaseManifest(
         version=version,
         assets_path=str(assets.resolve()),

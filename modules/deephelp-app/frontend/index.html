@@ -406,6 +406,7 @@
             确认上传受控历史子集（0 模型调用）</label>
           <button id="evaluation-import-upload">上传或核对原映射</button>
           <div id="evaluation-import-summary"></div>
+          <p id="evaluation-prompt-summary"></p>
           <details>
             <summary>报告范围、指标与差例明细</summary>
             <pre id="evaluation-report-result"></pre>
@@ -441,6 +442,15 @@
           <label for="evaluation-candidate">反馈候选</label
           ><select id="evaluation-candidate"></select>
           <button id="evaluation-candidate-read">读取审核与派生</button>
+          <div id="evaluation-platform-review">
+            <label><input type="checkbox" id="evaluation-platform-confirm" />确认导出当前候选 revision（0 模型调用）</label>
+            <button id="evaluation-platform-export" type="button">导出当前候选到平台</button>
+            <button id="evaluation-platform-read" type="button">读取当前 revision 的平台标注</button>
+            <div id="evaluation-platform-summary"></div>
+            <label for="evaluation-platform-score">本次审核的平台依据</label>
+            <select id="evaluation-platform-score"><option value="">无平台依据，使用原独立审核</option></select>
+            <p>平台标注只作依据；独立标签、留出隔离、明确确认与原 revision 冲突检查仍须通过。数值高分不会批准候选。</p>
+          </div>
           <form id="evaluation-review-form">
             <label for="evaluation-review-route">目标路由</label
             ><select id="evaluation-review-route">

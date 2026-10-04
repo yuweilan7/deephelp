@@ -76,7 +76,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) | 两特性均交付；官方保存器/原ID转换、正式装配/学习HTTP、全历史逐状态恢复与保留守卫（[交接](../handoffs/M26.md)） | M25前置完成；现网切换/旧服务退役留M30，不冒称旧无效绑定已恢复执行 |
 | [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [交接](../handoffs/M27.md) | 全部完成：固定平台/自托管SeaweedFS存入读回、180.61秒组合容量、实际冷备恢复 | M25/M26；无需付费对象存储 |
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [交接](../handoffs/M28.md) | 两特性完成：跨MCP/官方图及暂停恢复前序、实际业务13段/脱敏generation/usage与原工作台替换 | M26/M27；SDK无公开Span Link参数，使用持久显式前序；旧服务留M30 |
-| [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [交接](../handoffs/M29.md) · [剩余计划](../planning/M29/PLAN.md) | 历史报告29行及恢复/原工作台已交付；继续Prompt版本/审核映射 | M28；模块可选，启动则完成全部特性，不替换M18 active |
+| [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [交接](../handoffs/M29.md) | 历史报告映射/恢复、不可变Prompt、原审核回流与完整发布回退 | M28；模块可选，启动则完成全部特性，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标/新部署/隔离恢复演练→最后快照/单写切换/旧服务退役 | M25–M28；每项真实验收后继续，M29可跳过 |
 | [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口/内容已交付（[交接](../handoffs/M31.md)）→同链质量对照→Retrieval MCP/学习页/正式发布 | 后两项尚未实施；不依赖迁库完成 |
 

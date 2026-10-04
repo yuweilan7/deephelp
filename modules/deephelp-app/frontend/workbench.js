@@ -117,6 +117,8 @@ function clearSession() {
     "evaluation-release-result",
     "evaluation-release-summary",
     "evaluation-import-summary",
+    "evaluation-prompt-summary",
+    "evaluation-platform-summary",
   ])
     $(id).replaceChildren();
   $("text").value = "";
@@ -148,6 +150,7 @@ function clearSession() {
     "evaluation-task",
     "evaluation-release",
     "evaluation-import",
+    "evaluation-platform-score",
   ])
     $(id).replaceChildren();
   for (const id of [
@@ -167,6 +170,7 @@ function clearSession() {
     "evaluation-task-confirm",
     "evaluation-release-confirm",
     "evaluation-import-confirm",
+    "evaluation-platform-confirm",
   ])
     $(id).checked = false;
   for (const id of [
@@ -976,6 +980,10 @@ async function loadEvaluation() {
   state.evaluation = d;
   choices("evaluation-import", d.platform_imports || [], (r) => r, (r) => r);
   $("evaluation-import-upload").disabled = !(d.platform_imports || []).length;
+  $("evaluation-platform-review").hidden = !d.platform_review_enabled;
+  $("evaluation-prompt-summary").textContent = d.prompt
+    ? `本地 Prompt 候选：${d.prompt.name} v${d.prompt.version} · 请求 ${d.prompt.request_digest}。运行只消费已发布完整版本；准备与验证使用此工件。`
+    : "当前目录未配置平台 Prompt 工件；原完整版本和本地内置文本仍按发布绑定。";
   choices(
     "evaluation-report",
     d.reports,
@@ -1092,6 +1100,9 @@ async function evaluationReport(offset = 0) {
   );
 }
 async function evaluationCandidate() {
+  $("evaluation-platform-summary").replaceChildren();
+  choices("evaluation-platform-score", [{id:"", label:"无平台依据，使用原独立审核"}], r=>r.id, r=>r.label);
+  $("evaluation-platform-confirm").checked = false;
   const d = await api(
     `/learning/evaluation/candidates/${encodeURIComponent($("evaluation-candidate").value)}`,
   );
@@ -1187,6 +1198,7 @@ $("evaluation-review-form").addEventListener("submit", (e) => {
       "POST",
       {
         revision: c.revision,
+        platform_score_id: $("evaluation-platform-score").value || null,
         route: route === "withdraw" ? null : route,
         review:
           route === "withdraw"
@@ -1303,3 +1315,27 @@ run(async () => {
     );
   }
 });
+
+$("evaluation-platform-read").addEventListener("click", () => run(async () => {
+  const c = state.candidate;
+  if (!c || c.candidate_id !== $("evaluation-candidate").value) throw new Error("先读取当前候选及 revision。");
+  const d = await api(`/learning/evaluation/candidates/${encodeURIComponent(c.candidate_id)}/platform`);
+  if (d.revision !== c.revision) throw new Error("revision 已改变，请重新读取候选。");
+  const box = $("evaluation-platform-summary");
+  box.replaceChildren(node("p", `${d.status} · revision ${d.revision} · 可选人工标注 ${d.scores.length} · 新增模型调用 0`));
+  if (d.url) {
+    const link = node("a", "打开 Langfuse 当前候选");
+    link.href = d.url; link.target = "_blank"; link.rel = "noopener"; box.append(link);
+  }
+  choices("evaluation-platform-score", [{id:"", label:"无平台依据，使用原独立审核"},
+    ...d.scores.map(r=>({id:r.id, label:`${r.stringValue} · ${r.id} · ${r.comment || "无附言"}`}))], r=>r.id, r=>r.label);
+}));
+$("evaluation-platform-export").addEventListener("click", () => run(async () => {
+  const c = state.candidate;
+  if (!c || c.candidate_id !== $("evaluation-candidate").value) throw new Error("先读取当前候选及 revision。");
+  if (!$("evaluation-platform-confirm").checked) throw new Error("请确认导出当前 revision。");
+  const d = await api("/learning/evaluation/tasks", "POST", {action:"platform_candidate",
+    candidate_ids:[c.candidate_id], candidate_revision:c.revision, confirmed:true});
+  $("evaluation-platform-confirm").checked = false;
+  await loadEvaluation(); $("evaluation-task").value = d.id; await evaluationTask();
+}));
