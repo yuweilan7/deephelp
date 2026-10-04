@@ -34,6 +34,7 @@
 | M25 | LIVE_VERIFIED；[交接](../handoffs/M25.md) | 两特性完成；新源码关系仓储统一PG，26表13846行原值迁移/续跑/冲突守卫、Windows/Linux仓储、实际dump→另库恢复与代表查询通过；现行MySQL未切 |
 | M26 | LIVE_VERIFIED；[交接](../handoffs/M26.md) | 两特性完成；官方3.1.2双平台独立进程/593旧checkpoint/1137待写原ID转换、正式装配/学习HTTP同图、8故障/7闭合/并发/取消互斥通过；130旧操作原计划/版本/79效果保持。源待审批1条缺绑定拒绝保留，4条UNKNOWN过期查询后保留；现网未切 |
 | M27 | LIVE_VERIFIED；[交接](../handoffs/M27.md) | 两特性完成；固定Langfuse/SDK、独立PG/CH/队列/SeaweedFS，双平台存入及同ID浏览器/API、取消/故障/71条读回、实际冷备→隔离恢复均通过；180.61秒15容器+三服务/索引训练/模型等待容量通过。低负载短窗口，未接M28业务 |
+| M28 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M28.md) | 原生SDK/官方callback、两MCP跨进程、暂停/新进程恢复的持久前序及v2分页读回通过；首项模型0次，业务内容/工作台替换继续实施 |
 | M31 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M31.md) | 专用RerankPort/httpx原生协议、共享预算/取消已接入；3 query×同12条reference实际映射/usage通过；Hybrid/会话/MCP/学习页/正式发布尚未接入 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 

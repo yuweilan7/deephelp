@@ -257,6 +257,11 @@ def create_app(
                 tempo_endpoint or os.environ.get("DEEPHELP_TEMPO_ENDPOINT"),
                 grafana_url or os.environ.get("DEEPHELP_GRAFANA_URL"),
             )
+            app.state.native_observations = None
+            if path := os.environ.get("DEEPHELP_LANGFUSE_CONFIG"):
+                from deephelp_app.adapters.langfuse_query import LangfuseRunClient
+
+                app.state.native_observations = LangfuseRunClient(client, path, app.state.tempo)
             if conversation_factory is not None:
                 app.state.resources.conversation = await stack.enter_async_context(
                     conversation_factory(client, sink)
@@ -463,7 +468,13 @@ def create_app(
         page_size: Annotated[int, Query(ge=1, le=200)] = 100,
     ) -> Response:
         snapshot, _ = await scoped_snapshot(run_id, request, session_id)
-        value = await request.app.state.tempo.read(snapshot.otel_trace_id, cursor, page_size)
+        service = request.app.state.resources.conversation
+        native = request.app.state.native_observations
+        pool = getattr(getattr(service, "ledger", None), "pool", None)
+        if native is not None and pool is not None:
+            value = await native.read(pool, run_id, snapshot.otel_trace_id, cursor, page_size)
+        else:
+            value = await request.app.state.tempo.read(snapshot.otel_trace_id, cursor, page_size)
         return JSONResponse(value, headers={"Cache-Control": "no-store"})
 
     @app.get("/debug/runs/{run_id}/{view}")

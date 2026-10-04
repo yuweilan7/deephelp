@@ -15,6 +15,9 @@ async def migrate_m15(pool: Any) -> None:
     sql += "\n;" + files("deephelp_app").joinpath(
         "resources/migrations/021_observation.sql"
     ).read_text(encoding="utf-8")
+    sql += "\n;" + files("deephelp_app").joinpath(
+        "resources/migrations/028_observation.sql"
+    ).read_text(encoding="utf-8")
     async with pool.acquire() as conn, conn.cursor() as cursor:
         for statement in sql.split(";"):
             if statement.strip():

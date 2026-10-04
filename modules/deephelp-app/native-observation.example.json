@@ -1,0 +1,7 @@
+{
+  "host": "http://127.0.0.1:13300",
+  "public_key": "REPLACE_WITH_SERVER_PUBLIC_KEY",
+  "secret_key": "REPLACE_WITH_SERVER_SECRET_KEY",
+  "redaction_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "enabled": true
+}
