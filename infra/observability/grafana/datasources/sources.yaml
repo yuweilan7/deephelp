@@ -1,18 +1,12 @@
 apiVersion: 1
+deleteDatasources:
+  - name: DeepHelp Tempo
+    orgId: 1
 datasources:
   - name: DeepHelp Prometheus
     uid: deephelp-prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: http://127.0.0.1:19092
     isDefault: true
     editable: false
-  - name: DeepHelp Tempo
-    uid: deephelp-tempo
-    type: tempo
-    access: proxy
-    url: http://tempo:3200
-    editable: false
-    jsonData:
-      httpMethod: GET
-      nodeGraph: {enabled: true}

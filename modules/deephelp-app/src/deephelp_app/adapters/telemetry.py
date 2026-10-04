@@ -7,9 +7,7 @@ messages, SQL parameters, prompts and hidden reasoning are never inspected.
 import asyncio
 import functools
 import os
-import queue
 import re
-import threading
 import time
 from collections.abc import Callable, Coroutine, Iterator, Mapping
 from contextlib import contextmanager
@@ -17,13 +15,11 @@ from contextvars import ContextVar
 from typing import Any, ParamSpec, TypeVar
 
 from opentelemetry import context, trace
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import MetricReader, PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics.export import MetricReader
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import ReadableSpan, SpanLimits, SpanProcessor, TracerProvider
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+from opentelemetry.sdk.trace import SpanLimits, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 from opentelemetry.trace import Link, Span, SpanContext, SpanKind, Status, StatusCode
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
@@ -144,74 +140,12 @@ class GuardedExporter(SpanExporter):
         self.exporter.shutdown()
 
 
-class BoundedProcessor(SpanProcessor):
-    """A standard SDK processor with exact queue-loss accounting and bounded shutdown."""
-
-    def __init__(self, exporter: GuardedExporter, size: int = 512) -> None:
-        self.exporter = exporter
-        self.queue: queue.Queue[ReadableSpan] = queue.Queue(size)
-        self.dropped = 0
-        self.stopping = threading.Event()
-        self.worker = threading.Thread(target=self._run, name="deephelp-otlp", daemon=True)
-        self.worker.start()
-
-    def on_start(self, span: Span, parent_context: context.Context | None = None) -> None:
-        pass
-
-    def on_end(self, span: ReadableSpan) -> None:
-        if self.stopping.is_set():
-            self.dropped += 1
-            return
-        try:
-            self.queue.put_nowait(span)
-        except queue.Full:
-            self.dropped += 1
-
-    def _run(self) -> None:
-        while not self.stopping.is_set() or not self.queue.empty():
-            try:
-                batch = [self.queue.get(timeout=0.1)]
-            except queue.Empty:
-                continue
-            while len(batch) < 64:
-                try:
-                    batch.append(self.queue.get_nowait())
-                except queue.Empty:
-                    break
-            try:
-                self.exporter.export(batch)
-            finally:
-                for _ in batch:
-                    self.queue.task_done()
-
-    def force_flush(self, timeout_millis: int = 30000) -> bool:
-        deadline = time.monotonic() + timeout_millis / 1000
-        while self.queue.unfinished_tasks and time.monotonic() < deadline:
-            self.stopping.wait(0.01)
-        return self.queue.unfinished_tasks == 0
-
-    def shutdown(self) -> None:
-        self.stopping.set()
-        self.worker.join(timeout=3)
-        if self.worker.is_alive():
-            # Remove and count only actually discarded records.
-            while True:
-                try:
-                    self.queue.get_nowait()
-                except queue.Empty:
-                    break
-                self.queue.task_done()
-                self.dropped += 1
-        self.exporter.shutdown()
-
-
 class Telemetry:
     def __init__(
         self,
         service: str,
         exporter: SpanExporter,
         *,
-        endpoint: str | None = None,
         reader: MetricReader | None = None,
     ) -> None:
         resource = Resource(
@@ -228,37 +162,23 @@ class Telemetry:
             sampler=ALWAYS_ON,
             span_limits=SpanLimits(max_attributes=64, max_events=64, max_attribute_length=160),
         )
-        self.processor = BoundedProcessor(self.exporter)
+        self.processor = SimpleSpanProcessor(self.exporter)
         self.provider.add_span_processor(self.processor)
         self.tracer = self.provider.get_tracer("deephelp.explicit", "m21-v1")
-        self.setup_metrics(resource, endpoint, reader)
+        self.setup_metrics(resource, reader)
 
-    def setup_metrics(
-        self, resource: Resource, endpoint: str | None, reader: MetricReader | None
-    ) -> None:
+    def setup_metrics(self, resource: Resource, reader: MetricReader | None) -> None:
         self.metrics_endpoint = None
         if port := os.getenv("DEEPHELP_METRICS_PORT"):
-            if endpoint or reader:
-                raise ValueError("Direct metrics require a single exporter; remove OTLP metrics")
+            if reader:
+                raise ValueError("Direct metrics require a single exporter; duplicate reader")
             if not port.isdecimal() or not 1 <= int(port) <= 65535:
                 raise ValueError("DEEPHELP_METRICS_PORT must be a valid loopback port")
             from deephelp_app.adapters.prometheus import MetricsEndpoint
 
             self.metrics_endpoint = MetricsEndpoint(int(port))
             reader = self.metrics_endpoint.reader
-        readers = (
-            [
-                PeriodicExportingMetricReader(
-                    OTLPMetricExporter(endpoint=endpoint + "/v1/metrics", timeout=2),
-                    export_interval_millis=5000,
-                    export_timeout_millis=3000,
-                )
-            ]
-            if endpoint
-            else [reader]
-            if reader
-            else []
-        )
+        readers = [reader] if reader else []
         self.metrics = MeterProvider(resource=resource, metric_readers=readers)
         meter = self.metrics.get_meter("deephelp.explicit", "m21-v1")
         self.operations = meter.create_counter("deephelp.operations", unit="{operation}")
@@ -289,17 +209,11 @@ class Telemetry:
         self.retries = meter.create_counter("deephelp.model.retries", unit="{attempt}")
         if hasattr(self, "exporter"):
             meter.create_observable_counter("deephelp.export.failed_spans", [self._failures])
-            meter.create_observable_counter("deephelp.export.dropped_spans", [self._dropped])
 
     def _failures(self, options: Any) -> Any:
         from opentelemetry.metrics import Observation
 
         return [Observation(self.exporter.failures)]
-
-    def _dropped(self, options: Any) -> Any:
-        from opentelemetry.metrics import Observation
-
-        return [Observation(self.processor.dropped)]
 
     def shutdown(self) -> None:
         self.provider.shutdown()
@@ -324,6 +238,8 @@ def using(runtime: Telemetry) -> Iterator[Telemetry]:
 def environment(service: str) -> Iterator[Telemetry | None]:
     global _default
     runtime: Telemetry
+    if os.getenv("DEEPHELP_OTLP_ENDPOINT"):
+        raise ValueError("Legacy OTLP configuration is retired; select native Langfuse")
     native_config = os.getenv("DEEPHELP_LANGFUSE_CONFIG")
     if native_config:
         from deephelp_app.adapters.native_observation import NativeTelemetry
@@ -339,24 +255,7 @@ def environment(service: str) -> Iterator[Telemetry | None]:
             _default = old
             runtime.shutdown()
         return
-    endpoint = os.getenv("DEEPHELP_OTLP_ENDPOINT", "").rstrip("/")
-    if not endpoint:
-        yield None
-        return
-    from urllib.parse import urlsplit
-
-    target = urlsplit(endpoint)
-    if target.scheme not in {"http", "https"} or target.username or target.password:
-        raise ValueError("OTLP requires an explicit HTTP(S) endpoint without credentials")
-    runtime = Telemetry(
-        service, OTLPSpanExporter(endpoint=endpoint + "/v1/traces", timeout=2), endpoint=endpoint
-    )
-    old, _default = _default, runtime
-    try:
-        yield runtime
-    finally:
-        _default = old
-        runtime.shutdown()
+    yield None
 
 
 @contextmanager

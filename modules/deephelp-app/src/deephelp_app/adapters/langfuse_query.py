@@ -10,13 +10,29 @@ import httpx
 
 from deephelp_app.adapters.native_observation import configuration
 from deephelp_app.adapters.telemetry import safe_attributes
-from deephelp_app.adapters.tempo import LIMIT, TempoClient
 from deephelp_app.application.debug import sanitize
+
+LIMIT = 2 * 1024 * 1024
+
+
+def retired_observation(trace_id: str | None) -> dict[str, Any]:
+    """Archived diagnostics stay explicit; no query is sent to the retired backend."""
+    return dict(
+        source="legacy-tempo",
+        status="retired",
+        otel_trace_id=trace_id,
+        spans=[],
+        total=0,
+        next_cursor=None,
+        grafana_url=None,
+        langfuse_url=None,
+        associations=[],
+    )
 
 
 class LangfuseRunClient:
-    def __init__(self, client: httpx.AsyncClient, path: str, legacy: TempoClient) -> None:
-        self.client, self.config, self.legacy = client, configuration(path), legacy
+    def __init__(self, client: httpx.AsyncClient, path: str) -> None:
+        self.client, self.config = client, configuration(path)
 
     async def trace(self, trace_id: str) -> tuple[str, list[dict[str, Any]]]:
         if not re.fullmatch(r"[0-9a-f]{32}", trace_id):
@@ -96,10 +112,7 @@ class LangfuseRunClient:
         except Exception:
             return base
         if not bindings:
-            return {
-                **await self.legacy.read(legacy_id, cursor, page_size),
-                "source": "legacy-tempo",
-            }
+            return retired_observation(legacy_id)
         if len(bindings) > 100:
             return {**base, "status": "truncated"}
         spans: list[dict[str, Any]] = []

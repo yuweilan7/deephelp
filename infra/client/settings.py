@@ -9,10 +9,6 @@ def settings(admin=False):
     secret=pathlib.Path(os.getenv('DEEPHELP_SECRET_FILE',str(pathlib.Path.home()/'.deephelp/.env.secret')))
     d.update(read_env(secret))
     return d
-def mysql_connect():
-    import pymysql
-    d=settings()
-    return pymysql.connect(host=d['MYSQL_HOST'],port=int(d['MYSQL_PORT']),user=d['MYSQL_USER'],password=d['MYSQL_PASSWORD'],database=d['MYSQL_DATABASE'],charset='utf8mb4',connect_timeout=10,read_timeout=30,write_timeout=30)
 def redis_connect(admin=False):
     import redis
     d=settings()

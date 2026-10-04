@@ -1,6 +1,6 @@
 # M30 PostgreSQL/Langfuse 个人云运行
 
-正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程；关系事实与官方checkpoint在应用PG，原生trace进入Langfuse。Prometheus/Grafana保留，三个应用进程各自暴露loopback指标。旧M23源码/脚本由`bak/mysql-otel`保留；旧安装和数据在切换验收前保留。当前交付状态以PROJECT_STATE和M30 handoff为准。
+正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程；关系事实与官方checkpoint在应用PG，原生trace进入Langfuse。Prometheus/Grafana保留，三个应用进程各自暴露loopback指标。M30已完成正式单写与旧服务退役；旧M23源码/脚本由`bak/mysql-otel`保留，旧安装/源数据/冷备继续作为恢复资料。当前交付状态以PROJECT_STATE和M30 handoff为准。
 
 ## 安装与控制
 
@@ -39,7 +39,7 @@ sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL
   deephelp_m25_m30_restore_NEWNAME /srv/deephelp-modern-restore-NEWNAME
 ```
 
-备份先停所有modern单元并拒绝未登记PG连接；再custom-format dump应用全schema（含官方checkpoint/发布/关系/观测登记）。M29独立学习数据库另存learning.dump，不合并不同演示的审批/效果状态。随后冷停Langfuse六组件、保存元PG/CH/Redis AOF/SeaweedFS对象/master/filer及身份密钥。保存运行根、受引用工件、任务/M29状态与当前安装材料（依赖hash清单、三wheel、启动文件）；EXIT恢复已停服务，失败保留必要现场/锁。进行备份前须结束SDK/平台人工写者；业务与平台之间没有跨库事务。
+备份先停所有modern单元并拒绝未登记PG连接；再custom-format dump应用全schema（含官方checkpoint/发布/关系/观测登记）。M29独立学习数据库另存learning.dump，不合并不同演示的审批/效果状态。随后冷停Langfuse六组件、保存元PG/CH/Redis AOF/SeaweedFS对象/master/filer及身份密钥，并冷备新Prometheus/Grafana目录。保存运行根、受引用工件、任务/M29状态与当前/保留A/B安装材料（依赖hash清单、三wheel、启动文件）；EXIT恢复已停服务，失败保留必要现场/锁。进行备份前须结束SDK/平台人工写者；业务与平台之间没有跨库事务。
 
 恢复只允许新命名库与新绝对运行根，校验SHA256SUMS、pg_restore单事务和Python tar data filter；只调整部署配置/映射target，原签名资产不改。按备用端口启动恢复副本，核对所有表行hash、历史/关系/官方图与同run平台内容。Langfuse归档通过infra/langfuse/restore.sh另恢复到新根，在容量允许前先停止源平台，验后恢复源；不双挂数据目录。learning.dump同样恢复到独立新库以验证M29记录，禁止把它作为第二活动业务写入口。
 
@@ -52,3 +52,31 @@ sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL
 运行字节变化必须新的完整内容门禁及manifest，保留旧PASS原样；不改旧hash换通过。新库未写前可恢复旧入口与快照；新库已写后只回滚兼容当前PG schema且其对应manifest已验的应用安装，不能直接回切陈旧MySQL。跨路线回退缺反向迁移/对账证据时停止。
 
 只有新发布、云浏览器业务/历史/审批/同trace、幂等/越权、故障重启、隔离恢复与容量通过后才退役旧MySQL/Collector/Tempo容器及自启；数据卷、旧安装、源快照、Tempo/Grafana必要资料及bak分支保留。退役与删除恢复资料分别处理，不默认删卷或采购资源。
+
+当前已验兼容PG安装为A `m30-deployment-v1`、B `m30-retirement-v2`；两版代码不同且各有完整内容发布，实际B→A→B已通过。当前B active/A previous、channel `m30-personal` revision4。回滚须先停止全部写者，用目标安装的CLI核对实际revision并激活它对应的已验manifest，再切安装；下面REV是status现场读取的值，不能沿用历史revision：
+
+```bash
+sudo -i
+bash /opt/deephelp-app/bin/control.sh stop
+cd /srv/deephelp-modern
+set -a; source config/runtime.env; set +a
+/opt/deephelp-app/releases/m30-deployment-v1/.venv/bin/python \
+  -m deephelp_app.bootstrap.release_cli status --live --channel m30-personal
+/opt/deephelp-app/releases/m30-deployment-v1/.venv/bin/python \
+  -m deephelp_app.bootstrap.release_cli activate --live --channel m30-personal \
+  --release eec3f952d3c188b0381dfd8066fb420033f52ca20eb11bc9c2677a5ec6ef8c52 \
+  --expected-revision REV --budget-state /srv/deephelp-modern/state/budget.json
+bash /opt/deephelp-app/bin/switch.sh m30-deployment-v1
+```
+
+恢复B时同样停写、由B安装CLI读取新revision，activate B hash
+`2f07f93212fed925c4f975cc43343313dca549e75eac97863c00b5f80ddfc5b5`，再switch B。
+任何守卫/启动失败保留停写现场，核对同库的状态和manifest；不重新启用旧MySQL。
+
+最终一致备份是`/srv/deephelp-backup/modern-cutover-final`，含独立learning.dump、
+metrics.tar.gz、retained-installations.tar.gz及整体SHA256SUMS；对应Langfuse冷归档在
+`/srv/deephelp-langfuse/backups`。旧配置/秘密/容器镜像元数据及MySQL/观测冷备在
+`/srv/deephelp-modern/recovery/legacy-controls`，原数据目录及安装继续保留。旧恢复材料
+只用于隔离读取/恢复或另有完整反向迁移方案的操作，不能直接恢复成第二活动写入口。
+新副本恢复按上面新库/新根协议，先停源平台以满足单机容量，再实际比较内容、指标旧
+时间点及审批/历史；校验通过后删除本次独立副本，受保护归档保持。

@@ -18,10 +18,9 @@ from deephelp_app.adapters.langfuse_query import LangfuseRunClient
 from deephelp_app.adapters.native_observation import NativeTelemetry, configuration
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient
 from deephelp_app.adapters.telemetry import environment, observation, trace_id
-from deephelp_app.adapters.tempo import TempoClient
 from deephelp_app.application.dense import atomic_json
+from deephelp_tools.probes.approval_probe import native_approval as approval
 from deephelp_tools.probes.business_probe import Processes, port, reclaim_owned_lock
-from deephelp_tools.probes.observability_probe import approval
 
 
 def cleanup(directory: Path) -> None:
@@ -382,9 +381,7 @@ async def run(args: argparse.Namespace) -> int:
                 # Stop gracefully exporting child observations before querying.
                 await processes.close()
                 async with httpx.AsyncClient(trust_env=False) as http:
-                    reader = LangfuseRunClient(
-                        http, os.environ["DEEPHELP_LANGFUSE_CONFIG"], TempoClient(http, None)
-                    )
+                    reader = LangfuseRunClient(http, os.environ["DEEPHELP_LANGFUSE_CONFIG"])
                     for kind in ("business", "retrieval"):
                         for _ in range(45):
                             state, rows = await reader.trace(report[kind + "_trace_id"])

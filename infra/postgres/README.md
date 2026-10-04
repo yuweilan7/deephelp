@@ -1,8 +1,8 @@
 # M25 隔离 PostgreSQL 运行入口
 
-此目录提供M25隔离应用库、只读源导出、可续跑导入及实际备份恢复入口。新源码所有关系仓储统一PostgreSQL；现行云端MySQL安装保持，M30另切换。完成证据见PROJECT_STATE/M25 handoff。
+此目录提供M25协议库、只读源导出、可续跑导入及实际备份恢复入口。新源码所有关系仓储统一PostgreSQL，M30正式部署与一致备份见[deployment](../deployment/README.md)；MySQL仅保留退役源恢复材料。历史M25资格与当前切换证据分别见PROJECT_STATE、M25/M30 handoff。
 
-`compose.yaml`仅增加一台隔离PG18.6，固定镜像digest，服务器loopback15432、独立数据目录与配置。默认数据库`deephelp_m25_protocol`；应用用户为单人学习环境的完整权限用户，不添加企业式角色/配额。应用事实库、Langfuse元数据库、官方checkpoint的配置/迁移责任仍分开；这个协议库不承担现行账本或审批。
+`compose.yaml`提供PG18.6实例，固定镜像digest，服务器loopback15432、独立数据目录与配置。默认数据库`deephelp_m25_protocol`只用于协议资格；正式事实库与学习/恢复库使用各自显式dbname。应用用户为单人学习环境的完整权限用户，不添加企业式角色/配额。应用事实库、Langfuse元数据库、官方checkpoint的配置/迁移责任仍分开。
 
 复制compose到明确的服务器隔离根（本机受保护定位见`.local/DEPENDENCIES.md`）。创建`config/postgres-pass`，随机密码且文件0600、父目录0700，不提交Git；镜像从该文件初始化，不能以后更换文件就假装数据库密码已改。PG18镜像数据卷挂载`/var/lib/postgresql`。在该隔离根运行：
 

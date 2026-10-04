@@ -22,7 +22,7 @@ import httpx
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
 from deephelp_app.adapters.synthetic_rights import RightsClient
-from deephelp_app.adapters.telemetry import environment
+from deephelp_app.adapters.telemetry import environment, observation
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.application.sop_governance import RegistryStore
@@ -44,6 +44,7 @@ from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.mvp_acceptance import api_client
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry
 from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.probes.business_probe import Processes, port
 
 SUBPROCESS_FLAGS = 0
 if sys.platform == "win32":
@@ -936,6 +937,85 @@ async def learning(args: argparse.Namespace) -> None:
         atomic_json(args.output, report)
         gate.close()
         await stop(server)
+
+
+async def native_approval(
+    args: argparse.Namespace, report: dict[str, Any], processes: Processes
+) -> None:
+    args.port = port()
+    args.key = args.output.parent / "synthetic-rights.key"
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    await processes.start(
+        "rights",
+        [
+            "-m",
+            "deephelp_tools.demo.synthetic_rights",
+            "--port",
+            str(args.port),
+            "--key",
+            str(args.key),
+        ],
+        f"http://127.0.0.1:{args.port}/health",
+    )
+    repo = await ApprovalRepository.open(Path.cwd())
+    try:
+        await repo.migrate()
+        with observation("probe.approval_prepare"):
+            op = await prepare(repo, "native-observation-" + uuid4().hex)
+        # Each actual worker is a separate process/trace; ledger controls the action.
+        assert await spawn_worker(args, op.plan.operation_id, "pause") == 0
+        assert await spawn_worker(args, op.plan.operation_id, "approve") == 0
+        assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+        before = await counts(repo, op.plan.operation_id)
+        assert before == {"effects": 1, "execute_calls": 1, "query_calls": 0}
+        assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+        assert await counts(repo, op.plan.operation_id) == before
+        final = await repo.get(op.plan.operation_id)
+        assert final.status == OperationStatus.SUCCEEDED
+        report["checks"]["approval_process_interrupt_resume_replay"] = True
+        report["operation_id"] = op.plan.operation_id
+        # Reconcile UNKNOWN with a lost reply, using fixed actions and no model.
+        with observation("probe.approval_unknown"):
+            unknown = await prepare(repo, "native-unknown-" + uuid4().hex)
+            async with (
+                httpx.AsyncClient(trust_env=False, timeout=20) as http,
+                AsyncExitStack() as approval_stack,
+            ):
+
+                def lost_response(stage: str) -> None:
+                    if stage == "after_tool":
+                        raise OSError("Synthetic lost observation")
+
+                service = await approval_stack.enter_async_context(
+                    ApprovalService.open(
+                        repo,
+                        RightsClient(http, args.port, args.key.read_bytes()),
+                        proposal_registry().snapshot_hash,
+                        fault=lost_response,
+                    )
+                )
+                await service.pause(unknown.plan.operation_id, ExecutionBudget.start(60, 10, 0))
+                await service.decide(
+                    unknown.plan.identity, unknown.plan.operation_id, decision(unknown)
+                )
+                observed = await service.resume(
+                    unknown.plan.identity,
+                    unknown.plan.operation_id,
+                    resume_command(unknown),
+                    ExecutionBudget.start(60, 10, 0),
+                )
+                assert observed.status == OperationStatus.UNKNOWN
+            assert await spawn_worker(args, unknown.plan.operation_id, "resume") == 0
+            assert await counts(repo, unknown.plan.operation_id) == {
+                "effects": 1,
+                "execute_calls": 1,
+                "query_calls": 1,
+            }
+            report["checks"]["unknown_reconciled_without_redispatch"] = True
+            report["unknown_operation_id"] = unknown.plan.operation_id
+    finally:
+        await repo.aclose()
 
 
 def main() -> None:

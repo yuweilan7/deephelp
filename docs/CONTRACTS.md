@@ -50,7 +50,7 @@ Retrieval独立进程复用原DenseRetriever/HybridRetriever、Embedding网关�
 
 审批首个实际pause引用保存在增量dh_m21_observation_links，恢复在原归属校验后创建Span Link；它是可丢失诊断，不改checkpoint或业务账本。隐藏推理、正文、凭据和SQL参数不导出；时钟、并发和指标分母见[观测入口](../infra/observability/README.md)。
 
-GET /observability/runs/{run_id}?session_id=...&cursor=0&page_size=100先沿debug原身份/scope及审批归属授权，再只查询已保存otel_trace_id；不接收任意trace/search。2MiB/3秒、200条单页与20000偏移有界；返回结构化span/parent/link、total/next_cursor、私有Grafana traceId深链接、available/unavailable/truncated。失效诊断不改变receipt，不重试业务，no-store；外主体/session和不存在同为404，未授权时不请求Tempo。
+GET /observability/runs/{run_id}?session_id=...&cursor=0&page_size=100先沿debug原身份/scope及审批归属授权，再只查询PG登记的原生Langfuse观察；不接收任意trace/search。2MiB/有界超时、200条单页与20000偏移保持；返回结构化span/parent/link、total/next_cursor、私有Langfuse链接、available/unavailable/truncated/incomplete。未登记旧run返回source=legacy-tempo、status=retired、空观察及原otel_trace_id，不查询退役后端。诊断失效不改变receipt、不重试业务，no-store；外主体/session和不存在同为404，未授权不请求平台。
 
 ## 哪个阶段实现什么
 

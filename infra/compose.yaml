@@ -3,34 +3,6 @@ x-logging: &bounded-log
   driver: json-file
   options: {max-size: 10m, max-file: '3'}
 services:
-  mysql:
-    image: ${MYSQL_IMAGE:?Run pull-images.sh first}
-    container_name: deephelp-mysql
-    mem_limit: 512m
-    memswap_limit: 512m
-    cpus: 0.5
-    restart: unless-stopped
-    ports: ['127.0.0.1:3306:3306']
-    environment:
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql-root
-      MYSQL_PASSWORD_FILE: /run/secrets/mysql-app
-      MYSQL_DATABASE: deephelp
-      MYSQL_USER: deephelp_app
-      TZ: UTC
-    volumes:
-      - /srv/deephelp-data/mysql:/var/lib/mysql
-      - ./config/mysql.cnf:/etc/mysql/conf.d/deephelp.cnf:ro
-      - ./.secrets/mysql-init.sql:/docker-entrypoint-initdb.d/01-app.sql:ro
-      - ./.secrets/mysql-root:/run/secrets/mysql-root:ro
-      - ./.secrets/mysql-app:/run/secrets/mysql-app:ro
-    healthcheck:
-      test: [CMD-SHELL, 'MYSQL_PWD=$$(cat /run/secrets/mysql-app) mysql -h127.0.0.1 -udeephelp_app -Ddeephelp -Nse "SELECT 1"']
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-    logging: *bounded-log
-    networks: [middleware]
   redis:
     image: ${REDIS_IMAGE:?Run pull-images.sh first}
     container_name: deephelp-redis

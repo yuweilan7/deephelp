@@ -33,9 +33,7 @@ def message(text, session="s", **changes):
 
 
 @asynccontextmanager
-async def client(
-    tmp_path, *, trace=None, tweak=None, mock=None, transport=None, tempo_endpoint=None
-):
+async def client(tmp_path, *, trace=None, tweak=None, mock=None, transport=None):
     path = tmp_path / "auth.json"
     path.write_text(
         json.dumps(
@@ -81,8 +79,6 @@ async def client(
         identity_provider=LocalAuth(path),
         conversation_factory=factory,
         transport=transport,
-        tempo_endpoint=tempo_endpoint,
-        grafana_url="http://127.0.0.1:13000" if tempo_endpoint else None,
     )
     async with (
         app.router.lifespan_context(app),
@@ -151,7 +147,7 @@ async def test_otel_real_stage_context_history_scope_and_zero_new_replay(tmp_pat
         runtime.shutdown()
 
 
-async def test_tempo_queries_only_after_identity_and_session_authorization(tmp_path):
+async def test_retired_observation_preserves_identity_session_and_pagination_guards(tmp_path):
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
     from deephelp_app.adapters.telemetry import Telemetry, using
@@ -165,9 +161,13 @@ async def test_tempo_queries_only_after_identity_and_session_authorization(tmp_p
     runtime = Telemetry("deephelp-app", InMemorySpanExporter())
     try:
         with using(runtime):
-            async with client(
-                tmp_path, transport=httpx.MockTransport(tempo), tempo_endpoint="http://tempo"
-            ) as (api, repo, judge, sink, assembly):
+            async with client(tmp_path, transport=httpx.MockTransport(tempo)) as (
+                api,
+                repo,
+                judge,
+                sink,
+                assembly,
+            ):
                 receipt = (
                     await api.post("/converse", json=message("订单 000031 优惠未到账", "s"))
                 ).json()
@@ -181,10 +181,11 @@ async def test_tempo_queries_only_after_identity_and_session_authorization(tmp_p
                     assert response.status_code == 404
                 assert queried == []
                 response = await api.get(url, params={"session_id": "s"})
-                assert response.status_code == 200 and response.json()["status"] == "unavailable"
-                assert queried == ["/api/traces/" + response.json()["otel_trace_id"]]
+                assert response.status_code == 200 and response.json()["status"] == "retired"
+                assert queried == []
+                assert response.headers["cache-control"] == "no-store"
                 invalid = await api.get(url, params={"session_id": "s", "page_size": 201})
-                assert invalid.status_code == 422 and len(queried) == 1
+                assert invalid.status_code == 422 and queried == []
     finally:
         runtime.shutdown()
 

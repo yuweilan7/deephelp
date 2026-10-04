@@ -86,9 +86,17 @@ def test_registry_lifecycle_isolated_and_duplicate_metrics_export_rejected(monke
         monkeypatch.setenv("DEEPHELP_METRICS_PORT", "9464")
         # Fail before starting another endpoint or metric writer.
         with pytest.raises(ValueError, match="single exporter"):
-            one.setup_metrics(None, "http://127.0.0.1:4318", None)
+            one.setup_metrics(None, first.reader)
     finally:
         one.shutdown()
         two.shutdown()
         first.close()
         second.close()
+
+
+def test_retired_otlp_configuration_fails_before_dispatch(monkeypatch):
+    from deephelp_app.adapters.telemetry import environment
+
+    monkeypatch.setenv("DEEPHELP_OTLP_ENDPOINT", "http://127.0.0.1:4318")
+    with pytest.raises(ValueError, match="retired"), environment("app"):
+        pytest.fail("Retired configuration must not start a second exporter")
