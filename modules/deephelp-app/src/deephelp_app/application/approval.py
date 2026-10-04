@@ -1,4 +1,4 @@
-"""Explicit human decisions and restartable approval graph; MySQL ledger is authority."""
+"""Explicit human decisions and restartable approval graph; PostgreSQL ledger is authority."""
 
 import asyncio
 from collections.abc import Callable
@@ -8,7 +8,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from deephelp_app.adapters.approval_store import TERMINAL, ApprovalRepository
-from deephelp_app.adapters.checkpoints import MySQLSaver
+from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
 from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect, binding_hash
 from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
 from deephelp_app.domain.errors import AppError
@@ -99,8 +99,14 @@ class ApprovalService:
         *,
         fault: Callable[[str], None] | None = None,
     ) -> None:
+        if getattr(repo.pool, "backend", None) == "postgresql":
+            raise AppError(
+                ErrorCode.NOT_IMPLEMENTED,
+                "PostgreSQL approval execution/resume requires the qualified M26 saver",
+                501,
+            )
         self.repo, self.rights, self.snapshot, self.fault = repo, rights, snapshot, fault
-        self.saver = MySQLSaver(repo.pool)
+        self.saver = LegacyCheckpointArchive(repo.pool)
 
     def inject(self, stage: str) -> None:
         if self.fault:

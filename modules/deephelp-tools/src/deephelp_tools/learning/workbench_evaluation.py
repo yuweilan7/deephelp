@@ -175,7 +175,7 @@ def evaluation_router(
         if auth(request) != config.owner:
             raise AppError(ErrorCode.NOT_FOUND, "Learning catalog unavailable", 404)
         if assembly.ledger is None:
-            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL runtime unavailable", 503)
+            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL runtime unavailable", 503)
 
     def feedback() -> FeedbackStore:
         assert assembly.ledger is not None
@@ -316,7 +316,7 @@ def evaluation_router(
             "SELECT r.run_id FROM dh_m08_runs r JOIN dh_m08_messages m ON m.run_id=r.run_id "
             "LEFT JOIN dh_m18_candidates c ON c.run_id=r.run_id "
             "WHERE m.tenant_id='synthetic-tenant' AND m.user_id='synthetic-user-a' "
-            "AND JSON_UNQUOTE(JSON_EXTRACT(m.body,'$.channel'))='m18-collect' "
+            "AND (m.body->>'channel')='m18-collect' "
             "AND r.response IS NOT NULL AND r.status<>'RUNNING' "
             "AND c.candidate_id IS NULL LIMIT 20",
             (),

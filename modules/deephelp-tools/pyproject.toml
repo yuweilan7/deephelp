@@ -3,10 +3,11 @@ name = "deephelp-tools"
 version = "0.1.0"
 description = "Explicit DeepHelp learning, demo, probes and frozen evaluation tools"
 requires-python = ">=3.14.7,<3.15"
-dependencies = ["deephelp-app==0.1.0"]
+dependencies = ["deephelp-app==0.1.0", "deephelp-services==0.1.0", "aiomysql==0.3.2"]
 
 [tool.uv.sources]
 deephelp-app = { workspace = true }
+deephelp-services = { workspace = true }
 
 [build-system]
 requires = ["hatchling>=1.27,<2"]

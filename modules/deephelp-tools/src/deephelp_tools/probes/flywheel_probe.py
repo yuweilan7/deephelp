@@ -108,7 +108,7 @@ async def collect(
                         method="deterministic_evidence",
                         reason="Logistics is outside the three supported intents",
                     )
-                    # Two real MySQL writers use one observed revision; exactly one may commit.
+                    # Two real PostgreSQL writers use one observed revision; exactly one may commit.
                     attempts = await asyncio.gather(
                         store.review(candidate.candidate_id, candidate.revision, "corpus", review),
                         store.review(candidate.candidate_id, candidate.revision, "corpus", review),

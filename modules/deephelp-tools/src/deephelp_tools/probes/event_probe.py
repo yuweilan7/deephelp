@@ -1,4 +1,4 @@
-"""Real model/Milvus/MySQL/Redis acceptance on frozen M11 synthetic sequences."""
+"""Real model/Milvus/PostgreSQL/Redis acceptance on frozen M11 synthetic sequences."""
 
 import argparse
 import asyncio
@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig
 from deephelp_app.application.event_cluster import PersistentEventAggregation
 from deephelp_app.bootstrap.event_runtime import live_events
@@ -26,7 +26,7 @@ from deephelp_tools.learning.event_replay import envelope, sequences
 
 async def storage_checks(
     events: PersistentEventAggregation,
-    repo: MySQLCaseRepository,
+    repo: PostgresCaseRepository,
     gate: BudgetSession,
     checks: dict[str, bool],
     nonce: str,
@@ -227,7 +227,7 @@ async def run(args: argparse.Namespace) -> int:
                             message="M11 sequence content check failed",
                         )
                 print(json.dumps({"sequence": sequence["id"], "checks": len(checks)}), flush=True)
-            # Actual old ACTIVE vector remains; MySQL must veto it after closure.
+            # Actual old ACTIVE vector remains; PostgreSQL must veto it after closure.
             await storage_checks(events, repo, gate, checks, nonce)
             session = report["sessions"][-2]
             request = envelope("补充订单000007优惠问题", session)
@@ -250,7 +250,8 @@ async def run(args: argparse.Namespace) -> int:
                 checks["isolation:" + str(changes)] = (
                     not isolated.candidates and isolated.target_question_id is None
                 )
-            # Rebuild one latest event after deletion; membership is read from a fresh MySQL pool.
+            # Rebuild one latest event after deletion; membership is read from a fresh
+            # PostgreSQL pool.
             qid = report["turns"][2]["response"]["question_id"]
             session = report["sessions"][0]
             identity = envelope("x", session).identity
@@ -262,7 +263,7 @@ async def run(args: argparse.Namespace) -> int:
             candidates = await index.candidates(
                 identity, session, "优惠券不能用", gate.request(), top_k=5
             )
-            checks["delete_rebuild_from_mysql"] = any(
+            checks["delete_rebuild_from_postgresql"] = any(
                 c.question_id == qid and c.version == question.version for c in candidates
             )
             report["diagnostics"] = getattr(model, "diagnostics", [])
@@ -284,9 +285,9 @@ async def run(args: argparse.Namespace) -> int:
                     for t in report["turns"]
                 ),
             }
-            # Keep MySQL audit; only the dedicated vector collection is removed.
+            # Keep PostgreSQL audit; only the dedicated vector collection is removed.
             await index.rpc(lambda: index.client.drop_collection(collection, timeout=None))
-        fresh = await MySQLCaseRepository.open(Path.cwd())
+        fresh = await PostgresCaseRepository.open(Path.cwd())
         try:
             original = report["turns"][2]["request"]
             receipt = await fresh.lookup(RequestEnvelope.model_validate(original))

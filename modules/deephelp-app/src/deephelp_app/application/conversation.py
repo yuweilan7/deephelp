@@ -918,7 +918,7 @@ class Conversation:
             else None,
             "memory": window.model_dump(mode="json") if window else None,
             "memory_activity": {
-                "fact_source": "mysql" if self.cases else "configured_ledger",
+                "fact_source": "postgresql" if self.cases else "configured_ledger",
                 "read_generation": window.generation if window else None,
                 "terminal_question_version": question.version,
                 "outbox": "queued_by_terminal_commit" if self.cases else "not_configured",

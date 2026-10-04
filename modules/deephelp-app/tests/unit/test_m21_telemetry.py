@@ -132,7 +132,7 @@ async def test_sql_parameters_and_unapproved_attributes_are_never_exported(telem
             == 3
         )
     spans = exported(telemetry)
-    query = next(s for s in spans if s.name == "mysql.execute")
+    query = next(s for s in spans if s.name == "postgresql.execute")
     assert query.attributes["db.collection.name"] == "dh_m20_orders"
     assert query.attributes["db.operation.name"] == "SELECT"
     assert "SECRET" not in " ".join(s.to_json() for s in spans)

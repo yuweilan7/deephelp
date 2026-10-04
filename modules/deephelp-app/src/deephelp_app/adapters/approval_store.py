@@ -1,6 +1,6 @@
 """Business approval/operation authority. Session, case and operation lock in that order.
 
-All locks are short MySQL transactions. HTTP, graph persistence and human waits
+All locks are short PostgreSQL transactions. HTTP, graph persistence and human waits
 take place after commit. The checkpoint can be reconstructed from these records.
 """
 
@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.checkpoints import migrate_m15
 from deephelp_app.adapters.ledger import Receipt
 from deephelp_app.domain.errors import AppError
@@ -52,7 +52,7 @@ def validate_binding(op: OperationRecord, q: Question, snapshot: str) -> None:
         raise AppError(ErrorCode.VERSION_CONFLICT, "Approval binding is no longer current", 409)
 
 
-class ApprovalRepository(MySQLCaseRepository):
+class ApprovalRepository(PostgresCaseRepository):
     approval_ttl_seconds = 900
     lease_seconds = 120
 
@@ -104,7 +104,7 @@ class ApprovalRepository(MySQLCaseRepository):
                 question.question_id,
                 op.status,
                 op.approval_status,
-                op.expires_at.replace(tzinfo=None),
+                op.expires_at,
                 op.model_dump_json(),
             ),
         )
@@ -184,7 +184,7 @@ class ApprovalRepository(MySQLCaseRepository):
                 await conn.rollback()
                 raise
             except BaseException:
-                conn.close()
+                await conn.rollback()
                 raise
 
     async def audit(self, cursor: Any, op: OperationRecord, kind: str) -> None:
@@ -239,7 +239,7 @@ class ApprovalRepository(MySQLCaseRepository):
         if cursor.rowcount != 1:
             raise AppError(ErrorCode.VERSION_CONFLICT, "Question changed during operation", 409)
         await cursor.execute(
-            "UPDATE dh_m08_runs SET status=%s,response=%s,finished_at=CURRENT_TIMESTAMP(6) "
+            "UPDATE dh_m08_runs SET status=%s,response=%s,finished_at=CURRENT_TIMESTAMP "
             "WHERE run_id=%s AND status='WAITING_APPROVAL'",
             (response.run_status, response.model_dump_json(), op.run_id),
         )
@@ -314,7 +314,7 @@ class ApprovalRepository(MySQLCaseRepository):
                 raise AppError(
                     ErrorCode.VERSION_CONFLICT, "Operation cannot accept this decision", 409
                 )
-            if lease[0] and lease[1] > datetime.now(UTC).replace(tzinfo=None):
+            if lease[0] and lease[1] > datetime.now(UTC):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Operation is being resumed", 409)
             # Closing the old plan needs its unchanged case binding, not the newly
             # published SOP. A stale plan still cannot gain execution approval.
@@ -334,7 +334,7 @@ class ApprovalRepository(MySQLCaseRepository):
         async with self.locked(operation_id) as (cursor, op, q, lease):
             if op.status in TERMINAL:
                 return op, None
-            if lease[0] and lease[1] > datetime.now(UTC).replace(tzinfo=None):
+            if lease[0] and lease[1] > datetime.now(UTC):
                 raise AppError(ErrorCode.VERSION_CONFLICT, "Operation resume already owned", 409)
             if op.status == OperationStatus.PREPARED:
                 validate_binding(op, q, op.plan.snapshot_hash)
@@ -349,9 +349,7 @@ class ApprovalRepository(MySQLCaseRepository):
                 "UPDATE dh_m15_operations SET lease_token=%s,lease_until=%s WHERE operation_id=%s",
                 (
                     token,
-                    (datetime.now(UTC) + timedelta(seconds=self.lease_seconds)).replace(
-                        tzinfo=None
-                    ),
+                    datetime.now(UTC) + timedelta(seconds=self.lease_seconds),
                     operation_id,
                 ),
             )
@@ -359,7 +357,7 @@ class ApprovalRepository(MySQLCaseRepository):
 
     @staticmethod
     def own(lease: Any, token: str) -> None:
-        if lease[0] != token or lease[1] <= datetime.now(UTC).replace(tzinfo=None):
+        if lease[0] != token or lease[1] <= datetime.now(UTC):
             raise AppError(ErrorCode.VERSION_CONFLICT, "Operation execution lease changed", 409)
 
     async def dispatch(self, operation_id: str, token: str, snapshot: str) -> OperationRecord:

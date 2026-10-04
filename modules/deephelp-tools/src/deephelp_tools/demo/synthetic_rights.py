@@ -115,7 +115,7 @@ def create_rights_app(root: Path, key: bytes, fault_path: Path | None = None) ->
                 await cursor.execute(
                     "INSERT INTO dh_m15_synthetic_effects (operation_id,binding_hash,body) "
                     "VALUES (%s,%s,%s) "
-                    "ON DUPLICATE KEY UPDATE operation_id=operation_id",
+                    "ON CONFLICT (operation_id) DO NOTHING",
                     (body.operation_id, body.binding_hash, effect.model_dump_json()),
                 )
                 await cursor.execute(

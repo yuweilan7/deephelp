@@ -1,5 +1,7 @@
 # DeepHelp 业务运行、验收与学习
 
+M25新源码关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。现行旧安装未切换。审批执行/恢复需M26，当前只读历史；旧完整发布不能当作新字节通过的证据。
+
 Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。
 
 ## 按改动选择验收
@@ -54,7 +56,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve -
 py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --text "订单 000031 未享受优惠，请查一下"
 ```
 
-`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；MySQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。可另传成对的`--retrieval-mcp-url`与`--retrieval-credentials`选择[独立Retrieval服务](../deephelp-services/README.md#独立检索服务)，复用同一Dense/Hybrid Port；省略时用原本地检索，远端失败关闭、不自动回退。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取MySQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
+`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；PostgreSQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。可另传成对的`--retrieval-mcp-url`与`--retrieval-credentials`选择[独立Retrieval服务](../deephelp-services/README.md#独立检索服务)，复用同一Dense/Hybrid Port；省略时用原本地检索，远端失败关闭、不自动回退。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取PostgreSQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
 
 直接 `uvicorn deephelp_app.api.app:create_app --factory` 是M01离线骨架，`/converse`保持501，用于学习生命周期。它不能作为三类业务启动命令。学习入口 `python -m deephelp_tools.learning.experiments`；受控能力验收 `python -m deephelp_tools.probes.live_probe --help`；冻结评测 `python -m deephelp_tools.evaluation.evaluation_cli --help`。
 
@@ -74,7 +76,7 @@ M01使用loopback/testclient本地测试身份，M08本机令牌映射为固定�
 |---|---|
 | `domain/` | 唯一DTO/Port、身份/事实守卫、病例生命周期、审核值和共享预算；不导入外层 |
 | `application/` | Conversation、13段级联、意图/实体、SOP、审批、记忆、检索与回复；复用同一引擎 |
-| `adapters/` | 供应商、MySQL/Redis/Milvus、MCP schema/网关、审批HTTP客户端与trace；保留现有安全校验 |
+| `adapters/` | 供应商、PostgreSQL/Redis/Milvus、MCP schema/网关、审批HTTP客户端与trace；保留现有安全校验 |
 | `api/` | ASGI路由、身份入口、取消、lifespan及debug.html |
 | `bootstrap/` | 配置、装配、资源生命周期与正式CLI；不导入工具或demo |
 | `resources/` | runtime策略/词典、SOP/Prompt/schema、增量SQL；运行wheel独立包含 |
@@ -210,11 +212,11 @@ py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli ask --auth 
 
 主流程沿M00的13段，500明确单消息passthrough；600是唯一主意图服务，规则确定单类时选择，否则Dense召回加一次schema分类确认。余弦分数不当概率，不设置未经校准的接管阈值；无规则的长输入转人工，不截掉尾部后猜意图。原文/前导零/来源/更正沿用M04，缺乏明确字段语义的裸编号可以澄清。
 
-缺槽位返回CLARIFY/WAITING_SLOT/run SUCCEEDED，要求用新消息重发完整问题；未知/多个诉求/否定查询不调用工具，无SOP/模型不可用形成正常契约。1100只输出核验事实和本地SOP结论。1200准备状态/版本，1300校验完整响应；MySQL终态事务提交后才返回，提交耗时另记ledger_committed trace。
+缺槽位返回CLARIFY/WAITING_SLOT/run SUCCEEDED，要求用新消息重发完整问题；未知/多个诉求/否定查询不调用工具，无SOP/模型不可用形成正常契约。1100只输出核验事实和本地SOP结论。1200准备状态/版本，1300校验完整响应；PostgreSQL终态事务提交后才返回，提交耗时另记ledger_committed trace。
 
 迁移只创建`dh_m08_messages/runs/questions`。同(tenant,user,channel,message_id)唯一接收；相同hash回放终态或返回RUNNING引用，不新增问题/工具；hash不同返回IDEMPOTENCY_CONFLICT。终结事务更新run及Question版本，重复终结拒绝。应用资源重建可回放，取消保留已发送工具ID并落CANCELLED；失败ID不构成成功证据。进程硬中断的RUNNING不自动领取或重放。
 
-每请求共享90秒总预算，模型子时限30秒，SOP/工具仍可收紧。存储收尾最多5秒，不延长业务调用。累计文件独占写、发送前持久预留，未知计费不退款；控制文件及其锁/临时文件要用不同路径。无--live的mvp_probe用36条M02标签/槽位回放验证串联，不证明模型质量；--live消费模型/MySQL/Milvus，--http使用真实HTTP，--samples选12条原始固定样本。验收入口见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m08闭环启动与验收)。
+每请求共享90秒总预算，模型子时限30秒，SOP/工具仍可收紧。存储收尾最多5秒，不延长业务调用。累计文件独占写、发送前持久预留，未知计费不退款；控制文件及其锁/临时文件要用不同路径。无--live的mvp_probe用36条M02标签/槽位回放验证串联，不证明模型质量；--live消费模型/PostgreSQL/Milvus，--http使用真实HTTP，--samples选12条原始固定样本。验收入口见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md#m08闭环启动与验收)。
 
 | 尚未启用 | 用户边界 |
 |---|---|
@@ -246,7 +248,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 集合名绑定scope/signature/analyzer版本；迁移使用新dataset-version/manifest/selection。每次导入做现有数据占用与新版本峰值容量门禁，最多保留两个M09版本。`delete --allow-delete-synthetic --doc-id`只删当前scope既有合成记录，随后对照核对检索缺失；原记录/向量或同语料新manifest用于恢复，不能覆盖原验证证据。`rollback`恢复上一已验证语料和完整策略，不查询旧集合中的样本。
 
-M08的serve/ask/probe追加`--pointer .local/m09/active.json`即可接入同一600服务，响应intent_decision.retrieval保留真实候选与版本；规则先行、缺槽位禁工具、MySQL账本、事实回复不变。更换指针后重建应用资源；默认Dense入口保留。M11可复用返回类型，但需自己的隔离scope/查询端口，不能把事件/用户历史装入本意图集合。
+M08的serve/ask/probe追加`--pointer .local/m09/active.json`即可接入同一600服务，响应intent_decision.retrieval保留真实候选与版本；规则先行、缺槽位禁工具、PostgreSQL账本、事实回复不变。更换指针后重建应用资源；默认Dense入口保留。M11可复用返回类型，但需自己的隔离scope/查询端口，不能把事件/用户历史装入本意图集合。
 
 ## M10多问题记忆
 
@@ -259,7 +261,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstr
 
 调试页刷新当前会话的开放问题，选择后补充编号；选择“新问题”则独立新建。API仍为`POST /converse`，可带`question_hint`和`expected_question_version`；`GET /memory`提供窗口，状态操作见[CONTRACTS](../../docs/CONTRACTS.md#m10-多问题记忆契约)。CLI的`ask --question-hint <id> --question-version <version>`也支持续接。自动交错归属留M11，不会把无hint的补充偷偷并入旧问题。
 
-投影单独运行，默认处理最多50个事件，累计预算沿用现有文件；遇到失败退出，按报告恢复依赖后再运行。每次远程投影有自己的子时限，MySQL事务已在调用前提交。事件集合与Embedding签名绑定。删除集合或更换签名后，用`rebuild --session`将该主体/session的最新问题从MySQL重新投影；超出limit会明确退出，需调整运行上限。
+投影单独运行，默认处理最多50个事件，累计预算沿用现有文件；遇到失败退出，按报告恢复依赖后再运行。每次远程投影有自己的子时限，PostgreSQL事务已在调用前提交。事件集合与Embedding签名绑定。删除集合或更换签名后，用`rebuild --session`将该主体/session的最新问题从PostgreSQL重新投影；超出limit会明确退出，需调整运行上限。
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.memory_cli project --budget-state .local/m10/session-budget.json --limit 50
@@ -268,7 +270,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstr
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.memory_probe --live --stage feature --auth .local/m10/auth.json --output .local/m10/feature.json
 ```
 
-probe使用随机session、专用缓存前缀与独立事件集合，实际验HTTP补充/更正/事实、MySQL并发、Redis断连与缓存删除恢复、真实向量陈旧命中回查、lease/乱序/重试、新进程回读和长历史裁剪。合成事实/outbox留MySQL供回放，验证完成清理本次派生集合/键。恢复验收使用新的output，累计预算不清零；main不复验。默认pytest保持离线。
+probe使用随机session、专用缓存前缀与独立事件集合，实际验HTTP补充/更正/事实、PostgreSQL并发、Redis断连与缓存删除恢复、真实向量陈旧命中回查、lease/乱序/重试、新进程回读和长历史裁剪。合成事实/outbox留PostgreSQL供回放，验证完成清理本次派生集合/键。恢复验收使用新的output，累计预算不清零；main不复验。默认pytest保持离线。
 ## M11 自动事件归属
 
 独立入口只聚合和保存事件上下文，不调用主意图分类器或SOP。`converse`仍使用M10显式hint；M12再把聚合接入同一主流程。输入主体为本机CLI固定合成身份，未新增网络端点或企业登录。
@@ -293,7 +295,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 输出含`event_cluster`的当前事件、分组列表、原始消息引用、候选cosine/实体依据、排除原因、结构化裁决及图文本。自动判断不确定时，消息保存为独立待澄清问题且不作为后续自动候选；用其问题编号显式补充可解除待澄清。多个独立主诉先分成虚拟上下文并要求分条发送，不伪称一条消息已绑定多个持久问题。`--question-hint/--expected-version`可显式指定归属；重复消息须同时复用`--message-id`及`--occurred-at`，正文/session/hint变化仍拒绝。
 
-MySQL成员、终态响应及outbox保留事实。派生事件摘要通过既有`memory_cli project`异步投影；读取不依赖Redis，索引失败不编造相似边。集合沿用M10签名隔离，M11 probe单独创建集合、只领取自己的终态outbox，删除/重建核验后清理该集合。普通有状态请求数据库失败即停止；只有显式preview可使用当前消息。黄金样本见`assets/learning/event_sequences.json`，其小合成效果不代表企业效果或完整自然语言覆盖。
+PostgreSQL成员、终态响应及outbox保留事实。派生事件摘要通过既有`memory_cli project`异步投影；读取不依赖Redis，索引失败不编造相似边。集合沿用M10签名隔离，M11 probe单独创建集合、只领取自己的终态outbox，删除/重建核验后清理该集合。普通有状态请求数据库失败即停止；只有显式preview可使用当前消息。黄金样本见`assets/learning/event_sequences.json`，其小合成效果不代表企业效果或完整自然语言覆盖。
 
 ## M12 完整聚合与意图级联
 
@@ -330,7 +332,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m12_cascade.py modules/deephelp-app/tests/integration/test_m12_pipeline.py
 ```
 
-probe使用专用session/事件集合，只删除自己的派生集合；MySQL合成事实和outbox保留，Redis缓存按TTL失效。当前原意图集合与语料、凭据、来源原件不修改，不运行P00 full。真实MCP协议与真实云服务使用合成业务；小样本不代表企业效果，审批/写操作仍需M15。
+probe使用专用session/事件集合，只删除自己的派生集合；PostgreSQL合成事实和outbox保留，Redis缓存按TTL失效。当前原意图集合与语料、凭据、来源原件不修改，不运行P00 full。真实MCP协议与真实云服务使用合成业务；小样本不代表企业效果，审批/写操作仍需M15。
 
 ## M13 FastText训练量化与可选兜底
 
@@ -363,7 +365,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m13_fasttext.py
 ```
 
-探针对同20条冻结test运行关闭/原模型/量化模型，分别报告最终意图与unknown/multiple原因、FastText覆盖/错误接管、真实API调用/token/成本及墙钟时间；仅测试FallbackPort，不冒充全业务时延。另在同一真实HTTP主链对比三模式的合成事实、缺槽位/未知、实际接管、MySQL终态/重放及MCP退出，清理各自事件集合。API调用由原累计预算计量；本地FastText毫秒不算模型API次数，原始概率保留softmax的1e-5偏移。模型/manifest及原始报告只留.local，无云端上传或新库迁移；更换数据/预处理必须新版本，任何失败保留旧指针。
+探针对同20条冻结test运行关闭/原模型/量化模型，分别报告最终意图与unknown/multiple原因、FastText覆盖/错误接管、真实API调用/token/成本及墙钟时间；仅测试FallbackPort，不冒充全业务时延。另在同一真实HTTP主链对比三模式的合成事实、缺槽位/未知、实际接管、PostgreSQL终态/重放及MCP退出，清理各自事件集合。API调用由原累计预算计量；本地FastText毫秒不算模型API次数，原始概率保留softmax的1e-5偏移。模型/manifest及原始报告只留.local，无云端上传或新库迁移；更换数据/预处理必须新版本，任何失败保留旧指针。
 
 ## M14 SOP治理与场景验收
 
@@ -395,7 +397,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 # 特性分支验收通过后直接合并/推送main，不再main复验
 ```
 
-真实入口验19情境的模型动作/事实/ledger，再经实际HTTP验三流程、双来源、发布后旧问题补槽与新问题计划、MySQL新池回读、零调用重放及回退。整体timeout默认1200秒，各请求共享既有预算；transport重试0，固定故障情境关闭重试，执行器的有限重试另有回归。探针只清理自己创建的派生事件集合，保留MySQL合成事实/outbox、配置与恢复证据；不跑P00 full、云服务重启或企业写接口。
+真实入口验19情境的模型动作/事实/ledger，再经实际HTTP验三流程、双来源、发布后旧问题补槽与新问题计划、PostgreSQL新池回读、零调用重放及回退。整体timeout默认1200秒，各请求共享既有预算；transport重试0，固定故障情境关闭重试，执行器的有限重试另有回归。探针只清理自己创建的派生事件集合，保留PostgreSQL合成事实/outbox、配置与恢复证据；不跑P00 full、云服务重启或企业写接口。
 
 完整业务扩展使用独立v2[目录](../../datasets/business-catalog-v2.json)、[合成事实](../../demo/data/business-fixtures-v2.json)及[注册表](src/deephelp_app/resources/sop_data/business-registry-v2.json)。22个实际业务情境包含17个正常结果和5个记录/归属边界，三类意图复用原执行器；券增加已用/未开始/适用范围/冻结/撤销分支，双来源覆盖门槛低于/等于/高于/零门槛，活动覆盖单/多/无。探针显式加载v2，默认流程及旧19情境兼容：
 
@@ -411,7 +413,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli publish --s
 
 运行同一只读主链，在页面查看意图、多轮和流程三个视图。金额、编号、业务结论由事实模板输出；`--reply-polish`可选，模型只选固定语气，新增事实/坏结构/失败直接回退。M14的计划回复明确尚未申请/批准/执行。机制见[M16规格](../../docs/MODULES/M16_OUTPUT_DEBUG.md)，接口见[契约](../../docs/CONTRACTS.md#m16-事实回复与调试契约)。
 
-已有任务预算/身份可复用；新任务先按前文mvp_cli init创建并设本次足够运行上限。serve会调用真实模型/MySQL/Milvus及合成只读MCP；默认不开可选润色。浏览器地址为http://127.0.0.1:8000，令牌只从本机auth文件取出填入页面，不保存到浏览器存储。
+已有任务预算/身份可复用；新任务先按前文mvp_cli init创建并设本次足够运行上限。serve会调用真实模型/PostgreSQL/Milvus及合成只读MCP；默认不开可选润色。浏览器地址为http://127.0.0.1:8000，令牌只从本机auth文件取出填入页面，不保存到浏览器存储。
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m16/auth.json --budget-state .local/m16/session-budget.json --trace-path .local/m16/demo.trace.jsonl --reply-polish
@@ -421,7 +423,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.debug_cli turns --r
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.debug_cli flow --run-id $runId --session $sessionId --auth .local/m16/auth.json --output .local/m16/flow-export-new.json
 ```
 
-三个鉴权API为`GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`，追加`export=true`下载脱敏JSON。同一run复用同一原始trace；重投不是新执行。编号是稳定替代ID，span偏移仍指向脱敏前原文。缺失段/丢弃数明确显示；404也可能表示非关键追踪已过期，业务结果仍从MySQL回放。trace及其`.jsonl.key`仅留本机，保留key才能在重新装配后识别原scope；不要手动删业务账本来清日志。
+三个鉴权API为`GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`，追加`export=true`下载脱敏JSON。同一run复用同一原始trace；重投不是新执行。编号是稳定替代ID，span偏移仍指向脱敏前原文。缺失段/丢弃数明确显示；404也可能表示非关键追踪已过期，业务结果仍从PostgreSQL回放。trace及其`.jsonl.key`仅留本机，保留key才能在重新装配后识别原scope；不要手动删业务账本来清日志。
 
 默认详细追踪最多4个2MiB文件、7天期限、128项非阻塞队列；单快照过大省略段并标注incomplete。磁盘失败不撤销已提交事实，关键业务记录不参与日志轮转。一个trace路径只供一个写进程；不同服务实例使用不同路径。三个视图记录显式决策/证据，不展示隐藏推理；审批/恢复仍留M15。
 
@@ -433,7 +435,7 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m16_outp
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.debug_probe --live --stage feature --output .local/m16/feature-new.json
 ```
 
-探针可显式指定--auth/--budget-state/--pointer/--providers，默认使用M16累计预算和M09检索指针；恢复继续同一预算，不重置。实际三类事实、自动补充、未知及正式SDK工具超时、四次真实受限润色、鉴权/脱敏、零调用重放、新追踪资源与MySQL新池回读逐项检查。工具超时通过专用合成对象延迟和真实child timeout触发，不冒充企业故障。清理自己创建的事件集合，保留MySQL合成事实/outbox；不跑P00 full或企业写接口。报告须新路径，原始内容/诊断与任务预算只留.local。
+探针可显式指定--auth/--budget-state/--pointer/--providers，默认使用M16累计预算和M09检索指针；恢复继续同一预算，不重置。实际三类事实、自动补充、未知及正式SDK工具超时、四次真实受限润色、鉴权/脱敏、零调用重放、新追踪资源与PostgreSQL新池回读逐项检查。工具超时通过专用合成对象延迟和真实child timeout触发，不冒充企业故障。清理自己创建的事件集合，保留PostgreSQL合成事实/outbox；不跑P00 full或企业写接口。报告须新路径，原始内容/诊断与任务预算只留.local。
 
 ## M17 冻结评测与增量对照
 
@@ -457,7 +459,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 报告包含代码文件hash和Git状态、数据/模型/索引/Prompt/SOP/词典/策略签名、逐消息结果、实体来源和实际工具ledger；test/regression分别统计。Recall@K只统计实际发生的有标签检索，规则命中不虚构召回；额外memory query分别计入观测。费用是配置单价估算，非最终账单；离线真实调用/token/费用为null。会话完成要求每条业务检查与同/异事件关系都正确，单条正确不抵消错拆分。非关键日志不承担账本。
 
-缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留MySQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。扩量数据/运行入口如下，实际验证结果见PROJECT_STATE。
+缺槽位工具调用、跨归属事实、无成功证据回答、错误工具对象、已确认regression退步或未完成抽样会拒绝交付。--baseline只接受相同代码/模型配置/数据选择/预算的成功报告，检查覆盖与完成率不退；真实模型不承诺逐字一致。每组保留PostgreSQL合成事实/outbox，删除自己新建的事件集合并检查MCP退出；不修改原索引或训练模型。离线FastText列明确not_run_offline。扩量数据/运行入口如下，实际验证结果见PROJECT_STATE。
 
 ```powershell
 $scaleData = 'datasets/m17_scale_cases.json'
@@ -472,7 +474,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 v2自动加载上述M14目录/注册表/合成工具数据，548个编号中立后不同会话序列覆盖22种实际业务情境；消息复用、模板组与合成比例分别报告。无事件组的自动续接/multi分段只作诊断，明确hint续接仍严格核验，原始错例与所有安全门禁保留。扩量报告逐行journal保存实际观察，长报告上限256MiB；test/regression分别统计。500+离线编排覆盖及固定真实抽样都不能解释成企业泛化或500+全量真实模型。
 
-M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。仅明确启动审批协议/完整发布评测时，下方入口新跑M15真实MySQL/HTTP/进程矩阵；普通改动按影响选择离线或固定动作，key保留，恢复沿用同一审批累计预算，新报告不能覆盖已有证据：
+M17审批范围由独立冻结数据驱动，同一报告格式保存每个操作的真实效果/execute/query次数；普通pytest不连接云依赖。仅明确启动审批协议/完整发布评测时，下方入口新跑M15真实PostgreSQL/HTTP/进程矩阵；普通改动按影响选择离线或固定动作，key保留，恢复沿用同一审批累计预算，新报告不能覆盖已有证据：
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.evaluation_cli approval --live --stage feature --output .local/m17-approval/feature-new.json
@@ -485,7 +487,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 ## M18 审核后的反馈闭环
 
-输入专用合成客诉的真实MySQL run，输出脱敏候选、独立路线审核和可追踪的新语料/FastText/字面规则。重复采集同一run不倍增；高分、成功、澄清或人工转接都只是候选观察。审核标签独立于原系统判断；自动证据方式只接受包内已审查的三条合成来源，其他输入由操作者明确确认。这个入口演示人工触发机制，自动发布加固见[M18规格](../../docs/MODULES/M18_DATA_FLYWHEEL.md)。
+输入专用合成客诉的真实PostgreSQL run，输出脱敏候选、独立路线审核和可追踪的新语料/FastText/字面规则。重复采集同一run不倍增；高分、成功、澄清或人工转接都只是候选观察。审核标签独立于原系统判断；自动证据方式只接受包内已审查的三条合成来源，其他输入由操作者明确确认。这个入口演示人工触发机制，自动发布加固见[M18规格](../../docs/MODULES/M18_DATA_FLYWHEEL.md)。
 
 ```powershell
 # 新任务先给足上限；已有累计预算和稳定脱敏key不能重置
@@ -509,15 +511,15 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 首次演示需要原M09真实集合、M13模型及M17本机鉴权；可覆盖--dense-pointer/--fasttext-pointer/--auth/--providers/--budget-state/--redaction-key。采集用原资产；构建用原1024维Embedding签名的新集合，并按实际双版本容量检查。FastText只扩展train，原dev/test不参与回流；数据按编号中立文本及来源/变体组隔离。规则仅2–80字字面短语，有限个数，不执行生成代码或正则。
 
-validate对M17固定8案例11消息及另3条未见发布输入，检查事实、实体来源、工具成功证据、重放和新MySQL池。报告PASS与文件/模型/全文向量hash回读一致、审核快照仍有效才允许切换。显式演示指针`.local/m18/active.json`绑定三路文件，不替换默认M09指针；`flywheel_cli serve --live`加载它。演示完成回退到无新增反馈的完整版本，再更正/撤回一条来源以验证旧版不能重启用；旧工件仍在，可用show定位全部派生路径。未通过的报告不能替换已通过门禁。
+validate对M17固定8案例11消息及另3条未见发布输入，检查事实、实体来源、工具成功证据、重放和新PostgreSQL池。报告PASS与文件/模型/全文向量hash回读一致、审核快照仍有效才允许切换。显式演示指针`.local/m18/active.json`绑定三路文件，不替换默认M09指针；`flywheel_cli serve --live`加载它。演示完成回退到无新增反馈的完整版本，再更正/撤回一条来源以验证旧版不能重启用；旧工件仍在，可用show定位全部派生路径。未通过的报告不能替换已通过门禁。
 
-演示指针是本机控制文件，MySQL保存候选/审核/任务/来源事实；完整发布使用下方独立入口，MySQL active是其唯一发布事实源。
+演示指针是本机控制文件，PostgreSQL保存候选/审核/任务/来源事实；完整发布使用下方独立入口，PostgreSQL active是其唯一发布事实源。
 
 双版本构建、全工程回归和真实验收在本机依次执行，给训练保留可用内存。同路径/签名的FastText分词词典在进程内复用只读词频；词典内容变化生成独立实例，既有实例和预处理签名保持原版本，预测结果不缓存。
 
 ## M18 完整版本发布
 
-先用反馈入口构建并通过固定回归，再prepare完整清单；绑定三路工件、SOP/Prompt、两路模型配置和代码。register回读远端完整向量，activate/rollback只切换MySQL中的完整版本，必须传入刚观察到的revision。已有运行、补槽、审批/待对账保留原完整版本，新运行读取最新active。
+先用反馈入口构建并通过固定回归，再prepare完整清单；绑定三路工件、SOP/Prompt、两路模型配置和代码。register回读远端完整向量，activate/rollback只切换PostgreSQL中的完整版本，必须传入刚观察到的revision。已有运行、补槽、审批/待对账保留原完整版本，新运行读取最新active。
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.release_cli migrate --live
@@ -540,7 +542,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 ## M15 持久审批与恢复
 
-输入 M14 的绑定计划，输出 `PENDING_APPROVAL / WAITING_APPROVAL`。专用批准端点核验原 run、操作、主体、问题版本、参数和 SOP 快照；`resume` 才领取执行权。只对合成权益服务登记调整效果，默认只读装配仍保持原行为。普通“好的”或问题更正不会批准；待审批问题需先拒绝/撤销，再显式重开规划。流程/多轮调试视图附加当前 MySQL 操作、审批决定、领取/查询记录与最终事实。
+输入 M14 的绑定计划，输出 `PENDING_APPROVAL / WAITING_APPROVAL`。专用批准端点核验原 run、操作、主体、问题版本、参数和 SOP 快照；`resume` 才领取执行权。只对合成权益服务登记调整效果，默认只读装配仍保持原行为。普通“好的”或问题更正不会批准；待审批问题需先拒绝/撤销，再显式重开规划。流程/多轮调试视图附加当前 PostgreSQL 操作、审批决定、领取/查询记录与最终事实。
 
 ```powershell
 # 先按 LOCAL_SETUP 检查隧道；这一步只增加项目表，不重建环境
@@ -548,7 +550,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli migrate
 # 本机演示准备：保留既有32-byte服务key，发布独立审批版SOP
 py -3.14 -m uv run --locked python -m deephelp_tools.demo.approval_cli init
-# 在一个终端运行合成下游；它使用现有MySQL保存效果，重启不清零
+# 在一个终端运行合成下游；它使用现有PostgreSQL保存效果，重启不清零
 py -3.14 -m uv run --locked python -m deephelp_app.adapters.synthetic_rights --port 8015 --key .local/m15/rights.key
 # 另一个终端运行原应用；auth与累计预算先用M08 init准备，已有文件不重置
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --sop-directory .local/m15/demo-sop --rights-port 8015 --rights-key .local/m15/rights.key
@@ -565,11 +567,11 @@ py -3.14 -m uv run --locked python -m deephelp_tools.demo.approval_cli resume --
 # 最小saver门禁：两个命令必须在不同进程执行，使用新的thread和报告路径
 py -3.14 -m uv run --locked python -m deephelp_tools.probes.checkpoint_probe pause --thread $newThread --output .local/m15/gate-pause-new.json
 py -3.14 -m uv run --locked python -m deephelp_tools.probes.checkpoint_probe resume --thread $newThread --output .local/m15/gate-resume-new.json
-# 全矩阵含真实模型HTTP、真实MySQL/Redis/Milvus与自建stdio、实际应用/下游进程退出和恢复
+# 全矩阵含真实模型HTTP、真实PostgreSQL/Redis/Milvus与自建stdio、实际应用/下游进程退出和恢复
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.approval_probe --live --stage feature --output .local/m15/feature-new.json
 ```
 
-探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留MySQL事实、key和恢复配置。MySQL saver是应用自建适配，锁定LangGraph版本的兼容试验不等于官方MySQL支持；未接企业支付、退款、补偿或通用13段RUNNING自动重领。
+探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留PostgreSQL事实、key和恢复配置。PostgreSQL saver是应用自建适配，锁定LangGraph版本的兼容试验不等于官方PostgreSQL支持；未接企业支付、退款、补偿或通用13段RUNNING自动重领。
 
 任务过程输出与收尾见[AGENTS](../../AGENTS.md#临时产物与任务收尾)。M17成功完整报告包含全部逐行证据，保存后自动删除等价rows.jsonl；失败/中断保留行日志。发布绑定报告不可裁剪，累计预算和恢复状态不得重置；旧模块完整命令仅在明确启动该范围时使用。
 
@@ -581,8 +583,8 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 原业务serve命令无需增加前端进程；启动后访问 `http://127.0.0.1:8000/`，使用该次 `--auth` 配置中的个人令牌登录。令牌仅用于换取短期HttpOnly会话，页面不写入浏览器存储；服务重启后重新登录。原三视图页面在 `/debug`，已有Bearer客户端保持兼容。当前仅支持loopback，远端TLS/应用部署属于M23。
 
-选择MySQL业务资料时，先启动M20 Business服务；可同时选择Retrieval服务，参数见[服务README](../deephelp-services/README.md#启动与凭据)。个人auth与Retrieval允许身份映射应一致。工作台复用原累计预算，显示调用模式/事实来源/剩余额度，点击“明确执行真实对话”才调用模型。浏览历史、事实/追踪与手工维护不请求模型。
+选择PostgreSQL业务资料时，先启动M20 Business服务；可同时选择Retrieval服务，参数见[服务README](../deephelp-services/README.md#启动与凭据)。个人auth与Retrieval允许身份映射应一致。工作台复用原累计预算，显示调用模式/事实来源/剩余额度，点击“明确执行真实对话”才调用模型。浏览历史、事实/追踪与手工维护不请求模型。
 
-可以先在业务资料创建订单，再提问“我的订单没有享受优惠”，在缺槽位结果点“补充此问题”填订单号；续接绑定question/version。刷新页面后从左侧打开持久会话；点击结果读取事实/不可变Business证据/13段及同run诊断。诊断轮转丢失会明确显示，持久历史仍来自MySQL。网络失败用“重试原消息”，沿用原ID/正文/时间；新问题另建message_id。重放的本次计数与历史阶段计数分开显示。
+可以先在业务资料创建订单，再提问“我的订单没有享受优惠”，在缺槽位结果点“补充此问题”填订单号；续接绑定question/version。刷新页面后从左侧打开持久会话；点击结果读取事实/不可变Business证据/13段及同run诊断。诊断轮转丢失会明确显示，持久历史仍来自PostgreSQL。网络失败用“重试原消息”，沿用原ID/正文/时间；新问题另建message_id。重放的本次计数与历史阶段计数分开显示。
 
 资料页支持订单/券/活动及订单活动关系。完整更新使用当前expected_version，冲突后重新读取；金额输入十进制字符串。更新后新消息读取新资料，重投旧消息返回旧事实与证据。维护不属于会话退款/发券，两个MCP工具仍只读。M22四个顺序特性已验收；协议、工作流、意图/检索/记忆/观测以及评测飞轮使用[可选学习扩展](../deephelp-tools/README.md#浏览器学习扩展)。源码位于`frontend/`，直接同源运行并随app包打包，不需要Node或npm构建；详情见[M22交接](../../handoffs/M22.md)。

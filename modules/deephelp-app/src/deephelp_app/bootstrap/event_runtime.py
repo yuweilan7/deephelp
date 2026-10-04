@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.milvus_dense import create_client
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
@@ -31,7 +31,7 @@ async def live_events(
     judge_endpoint: EndpointConfig | None = None,
 ) -> AsyncIterator[tuple[PersistentEventAggregation, ProjectionWorker, MilvusEventIndex, ChatPort]]:
     async with AsyncExitStack() as stack:
-        repository = await MySQLCaseRepository.open(root)
+        repository = await PostgresCaseRepository.open(root)
         stack.push_async_callback(repository.aclose)
         cache = RedisMemory.open(root, namespace=namespace)
         stack.push_async_callback(cache.aclose)

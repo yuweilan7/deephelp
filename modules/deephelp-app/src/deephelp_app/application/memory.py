@@ -1,11 +1,11 @@
-"""Bounded memory; MySQL authorizes every read, Redis/Milvus are disposable projections."""
+"""Bounded memory; PostgreSQL authorizes every read, Redis/Milvus are disposable projections."""
 
 import asyncio
 from typing import Protocol
 
 from redis.exceptions import RedisError
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.redis_memory import RedisMemory as RedisMemory
 from deephelp_app.adapters.redis_memory import scope_key as scope_key
 from deephelp_app.adapters.telemetry import observed
@@ -62,14 +62,15 @@ class MemoryService:
                 await self.cache.put(identity, session, window)
                 self.last_cache_error = None
             except RedisError, TimeoutError:
-                # Reportable degradation; original facts and request acceptance remain MySQL owned.
+                # Reportable degradation; original facts and request acceptance remain
+                # PostgreSQL owned.
                 self.last_cache_error = "redis_unavailable"
         return window
 
 
 class ProjectionWorker:
     def __init__(
-        self, repository: MySQLCaseRepository, memory: MemoryService, index: EventIndex
+        self, repository: PostgresCaseRepository, memory: MemoryService, index: EventIndex
     ) -> None:
         self.repository, self.memory, self.index = repository, memory, index
 

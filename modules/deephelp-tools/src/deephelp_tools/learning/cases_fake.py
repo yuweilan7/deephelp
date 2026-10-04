@@ -1,4 +1,4 @@
-"""Explicit offline case adapter. Tests of this adapter do not prove MySQL durability."""
+"""Explicit offline case adapter. Tests of this adapter do not prove PostgreSQL durability."""
 
 from datetime import UTC, datetime, timedelta
 

@@ -57,7 +57,7 @@ class SOPExecutor:
         history: tuple[SOPRegistry, ...] = (),
         evidence_version: str = "business-fixtures-v1",
     ) -> None:
-        if evidence_version not in {"business-fixtures-v1", "business-mysql-v1"}:
+        if evidence_version not in {"business-fixtures-v1", "business-postgres-v1"}:
             raise ValueError("Unknown business evidence source")
         self.evidence_version = evidence_version
         self.model = model

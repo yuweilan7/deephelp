@@ -1,10 +1,12 @@
 # DeepHelp
 
-运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)。M20已提供[MySQL业务记录、独立Business与Retrieval MCP](modules/deephelp-services/README.md)，显式demo入口继续保留；应用可选择两个独立服务复用同一引擎。
+运行源码按domain/application/adapters/api/bootstrap/resources分层，学习/demo/验收工具独立安装。开始读[机制学习导航](docs/learning/README.md)，包边界与离线命令见[工具包](modules/deephelp-tools/README.md)。M20提供独立服务，M25将新源码的关系事实统一到[PostgreSQL业务记录、Business与Retrieval MCP](modules/deephelp-services/README.md)，显式demo入口继续保留；应用可选择两个独立服务复用同一引擎。
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 
-从仓库根用 `py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json` 启动现有业务链；先按 LOCAL_SETUP 核对身份、累计预算和真实依赖。`python -m deephelp_app --help` 列出 init/migrate/serve/ask。正式业务通过真实模型、MySQL/Redis/Milvus及本机合成业务MCP；业务事实为合成值，服务绑定127.0.0.1。完整发布按应用文档的 release_cli 入口选取MySQL登记版本。
+先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG`；M26前审批执行/恢复关闭，旧发布证据不能用于新运行。现行云端安装仍保留MySQL，M30另切换。
+
+从仓库根用 `py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json` 启动现有业务链；先按 LOCAL_SETUP 核对身份、累计预算和真实依赖。`python -m deephelp_app --help` 列出 init/migrate/serve/ask。正式业务通过真实模型、PostgreSQL/Redis/Milvus及本机合成业务MCP；业务事实为合成值，服务绑定127.0.0.1。完整发布按应用文档的 release_cli 入口选取PostgreSQL登记版本。
 
 学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行资源在包内 `assets/runtime`、`assets/demo` 和 `sop_data`；冻结数据与学习数据分别在 `assets/evaluation`、`assets/learning`。业务启动不导入这些工具或读取冻结评测集。
 

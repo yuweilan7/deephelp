@@ -253,7 +253,7 @@ async def business(
                     stored = await assembly.ledger.question(
                         identity, body["session_id"], result.question_id or "none"
                     )
-                    checks[key + ":mysql"] = bool(
+                    checks[key + ":postgresql"] = bool(
                         stored and stored.status == result.question_status
                     )
                     if name == "missing":

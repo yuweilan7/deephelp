@@ -1,4 +1,4 @@
-"""M15 real MySQL/HTTP/process failure matrix and one real model conversation.
+"""M15 real PostgreSQL/HTTP/process failure matrix and one real model conversation.
 
 Requires --live. Fixed-action MCP preparations test the recovery protocol, while
 the separately reported HTTP conversation uses the configured real model.
@@ -484,7 +484,7 @@ async def matrix(args: argparse.Namespace) -> dict[str, Any]:
                         await repo.save(cursor, current, "probe_expiry")
                         await cursor.execute(
                             "UPDATE dh_m15_operations SET expires_at=%s WHERE operation_id=%s",
-                            (current.expires_at.replace(tzinfo=None), current.plan.operation_id),
+                            (current.expires_at, current.plan.operation_id),
                         )
                 if kind == "expired_resume_sop_changed":
                     final = await closing_service.resume(

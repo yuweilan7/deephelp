@@ -1,10 +1,12 @@
-"""MySQL is the sole active-release authority; switches and run pins use short transactions."""
+"""PostgreSQL is the sole active-release authority; switches and run pins use short transactions."""
 
 import json
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
+
+from pydantic import ValidationError
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
 from deephelp_app.adapters.feedback_store import FeedbackReader
@@ -41,8 +43,8 @@ class ReleaseStore(FeedbackReader):
                 async with conn.cursor() as cursor:
                     await self.check_source(cursor, manifest)
                     await cursor.execute(
-                        "INSERT IGNORE INTO dh_m18_releases(release_hash,version,body) "
-                        "VALUES (%s,%s,%s)",
+                        "INSERT INTO dh_m18_releases(release_hash,version,body) "
+                        "VALUES (%s,%s,%s) ON CONFLICT DO NOTHING",
                         (identity, manifest.version, manifest.model_dump_json()),
                     )
                     await cursor.execute(
@@ -72,7 +74,12 @@ class ReleaseStore(FeedbackReader):
         )
         if not rows or (ready and rows[0][1] != "READY"):
             raise ConfigurationError("Complete release is unavailable or retired")
-        manifest = ReleaseManifest.model_validate_json(rows[0][0])
+        try:
+            manifest = ReleaseManifest.model_validate_json(rows[0][0])
+        except ValidationError:
+            raise ConfigurationError(
+                "Historical release requires its original runtime schema"
+            ) from None
         if release_hash(manifest) != identity:
             raise ConfigurationError("Stored immutable release identity differs")
         return manifest
@@ -109,12 +116,26 @@ class ReleaseStore(FeedbackReader):
     ) -> ReleasePointer:
         manifest = await self.manifest(target)
         verify_release(manifest)
+        return await self._commit_switch(channel, target, expected, manifest, fault=fault)
+
+    async def _commit_switch(
+        self,
+        channel: str,
+        target: str,
+        expected: int,
+        manifest: ReleaseManifest,
+        *,
+        fault: Callable[[str], None] | None = None,
+    ) -> ReleasePointer:
+        """Short database commit after public switch has verified the complete runtime."""
         async with self.pool.acquire() as conn:
             await conn.begin()
             try:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
-                        "INSERT IGNORE INTO dh_m18_active(channel) VALUES (%s)", (channel,)
+                        "INSERT INTO dh_m18_active(channel) VALUES (%s) ON CONFLICT "
+                        "(channel) DO NOTHING",
+                        (channel,),
                     )
                     await cursor.execute(
                         "SELECT revision,active_hash,previous_hash FROM dh_m18_active "

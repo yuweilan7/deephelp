@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from deephelp_app.adapters.asset_integrity import provenance
-from deephelp_app.adapters.history import MySQLHistory
+from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.api.workbench import COOKIE, BrowserAuth, workbench_router
@@ -145,7 +145,7 @@ class Connection(Cursor):
         self.rollbacks += 1
 
 
-async def test_mysql_history_scope_pagination_and_original_receipt():
+async def test_postgresql_history_scope_pagination_and_original_receipt():
     request = RequestEnvelope(
         identity=OWNER,
         channel="browser",
@@ -188,7 +188,7 @@ async def test_mysql_history_scope_pagination_and_original_receipt():
         ]
         * 2
     )
-    reader = MySQLHistory(SimpleNamespace(acquire=lambda: conn))
+    reader = PostgresHistory(SimpleNamespace(acquire=lambda: conn))
     page = await reader.messages(OWNER, "s", 3, 1)
     assert page.next_offset == 4 and len(page.items) == 1
     assert page.items[0].response == response and page.items[0].input.message_id == "m"

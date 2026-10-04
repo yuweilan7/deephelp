@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.adapters.trace import JsonlTrace
 from deephelp_app.api.app import create_app
@@ -286,7 +286,7 @@ async def run(args: argparse.Namespace) -> int:
                 value.status_code == 200 and value.json()["trace_id"] == stored["trace_id"]
             )
         if gate:
-            repository = await MySQLCaseRepository.open(Path.cwd())
+            repository = await PostgresCaseRepository.open(Path.cwd())
             try:
                 receipt = await repository.lookup(
                     RequestEnvelope.model_validate(
@@ -299,7 +299,7 @@ async def run(args: argparse.Namespace) -> int:
                         }
                     )
                 )
-                checks["mysql:new_pool"] = bool(
+                checks["postgresql:new_pool"] = bool(
                     receipt
                     and receipt.response
                     and receipt.response.reply == stored["reply"]

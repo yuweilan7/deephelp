@@ -6,9 +6,17 @@
 
 M19保持HTTP/工具DTO和wire版本不变，Python入口按职责迁移：Port在domain/ports.py，会话/SOP/审批在application，具体外部实现/发布读侧在adapters，装配CLI在bootstrap。学习、demo、冻结评测与发布prepare/validate只由deephelp-tools消费；运行包无反向依赖。ToolGateway通过显式StdioServerParameters选择现有协议进程，serve须明确MCP模块，Hybrid提供已发布语料；不隐式启用demo或回退数据库。现行路径与安装边界见[M19交接](../handoffs/M19.md)。
 
+## M25 PostgreSQL装配
+
+新源码所有关系事实由同一PostgreSQL应用库承载；连接必须显式 `DEEPHELP_POSTGRES_CONFIG`，不回退MySQL/demo。唯一DTO、HTTP/MCP wire保持；新工具证据来源为`business-postgres-v1`，历史`business-mysql-v1`结果/清单/签名字节原样读取，不重新执行。`PostgresLedger/PostgresCaseRepository/PostgresHistory`保留接收/终态/身份契约；原MySQL只由tools的专门只读快照入口访问，现行旧部署保留。
+
+`m25_legacy`保存typed checkpoint、parent/pending writes与迁移进度；`LegacyCheckpointArchive`在PG池只读。PG `ApprovalService`构造与rights运行装配明确拒绝创建/批准/恢复图，学习页只读旧历史；下方M15图机制为历史契约，M26实测官方saver后再接入。业务写效果仍由操作账本与下游对账证明。旧schema不适用的release返回明确配置错误，不补字段后冒充原签名。
+
+短写事务使用Read Committed+唯一约束/显式锁/CAS；记忆多表窗口和业务事实+不可变证据使用局部Repeatable Read，避免拼接不同时间的版本；导出/全表校验为独立read-only一致快照。JSON保留原文本、bytea原bytes、金额numeric(20,2)/Decimal、UTC微秒和前导零文本。Windows PG池独立持有Selector线程，调用入口保留Proactor子进程能力；不改全局policy。
+
 ## M20业务数据与网络MCP
 
-Business服务独立包为deephelp-services，app不导入services；唯一输入/记录DTO仍在domain/models.py，Money/VerifiedIdentity/ToolRequest/ToolResult不复制。服务拥有`dh_m20_orders/coupons/activities/order_activities/evidence`事务，消息/问题/操作账本、outbox和MySQLSaver继续由原应用直接维护。业务来源由显式stdio或`--business-mcp-url`互斥选择，数据库失败关闭，无demo回退。
+Business服务独立包为deephelp-services，app不导入services；唯一输入/记录DTO仍在domain/models.py，Money/VerifiedIdentity/ToolRequest/ToolResult不复制。服务拥有`dh_m20_orders/coupons/activities/order_activities/evidence`事务，消息/问题/操作账本、outbox由原应用直接维护，checkpoint历史在M25仅只读。业务来源由显式stdio或`--business-mcp-url`互斥选择，数据库失败关闭，无demo回退。
 
 应用身份入口的维护API为`POST/GET /business/{orders,coupons,activities}`、`GET/PUT /business/{kind}/{id}`、`GET/PUT /business/orders/{id}/activities`及`GET /business/evidence/{evidence_id}`。服务内部同一资源在`/records`下；请求需服务Bearer及签名委托的完整tenant/user、method、target、body_hash、nonce、audience=business和60秒expires_at。正文没有归属字段；过期/篡改/重放拒绝。返回记录包含identity、正整数version、typed data；调用端回验身份和结构。分页offset/limit，limit 1–100，返回items/next_offset；PUT完整data加expected_version，ID与路径须一致，旧版409。创建同主体/ID/内容重复返回原记录，不同内容409；无删除，停用使用status。活动关系替换与订单版本递增在同一短事务内，关联订单/券/活动必须同主体。
 
@@ -16,7 +24,7 @@ Business服务独立包为deephelp-services，app不导入services；唯一输�
 
 网络工具仍为两项m06-readonly-v1 wire/原inputSchema/outputSchema；版本表示已有工具契约，不表示使用demo数据。身份和关联ID在受保护元数据，工具参数只含订单/券。正式MCP2.2.0的实际HTTP initialize/list/call、structuredContent、schema/语义和取消各有独立验证；stdio签名使用父子进程临时key，网络另用持久Bearer+委托key，两者不混用。服务限制Host/Origin且目前仅loopback；MCP session/trace不等于业务身份。网络客户端每个有界请求初始化SDK会话，重启后新调用重新连接，未知旧调用不自动重放。
 
-数据库工具证据version为business-mysql-v1，demo仍为business-fixtures-v1。显式装配向Gateway/SOP注入证据来源，ToolResult实际call_id、record_id、事实hash与双端语义守卫保持。查询将订单/券/活动完整版本和当时结果保存为不可变、主体隔离的evidence快照，GET可回查。新message_id读取新提交数据，旧message_id沿用原receipt/事实/证据及本次零预算；不改旧回复。
+数据库工具证据version为business-postgres-v1，demo仍为business-fixtures-v1。显式装配向Gateway/SOP注入证据来源，ToolResult实际call_id、record_id、事实hash与双端语义守卫保持。查询将订单/券/活动完整版本和当时结果保存为不可变、主体隔离的evidence快照，GET可回查。新message_id读取新提交数据，旧message_id沿用原receipt/事实/证据及本次零预算；不改旧回复。
 
 维护是用户手工资料操作，模型目录没有维护命令；synthetic_rights仍为合成效果，并未接入本次业务表。完整发布仍须精确绑定/内容验收，未产生新发布或远端部署。
 
@@ -65,7 +73,7 @@ M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/Reran
 | 阶段 | 当前要落地 | 只作未来约束 |
 |---|---|---|
 | M02 | 请求/响应、实体来源、最小Question、IntentDecision、工具/证据结果、当前版本/预算摘要、目录与fixture | DB语义可以设计，不能称已验证数据库；审批恢复/outbox领取不实现 |
-| M06–M08 | 工具协议/SOP实际消费字段；MySQL消息/run/question账本、请求幂等 | MCP工具保持只读；合成写操作通过M15专用执行口 |
+| M06–M08 | 工具协议/SOP实际消费字段；PostgreSQL消息/run/question账本、请求幂等 | MCP工具保持只读；合成写操作通过M15专用执行口 |
 | M10–M12 | 生命周期、缓存/向量投影、事件上下文与增量版本 | 只读装配不启用审批；普通消息不恢复WAITING_APPROVAL |
 | M15（另选） | 持久审批、操作领取、checkpoint恢复与对账 | 未验证前所有业务写工具继续拒绝 |
 
@@ -94,7 +102,7 @@ RequestEnvelope：schema_version、经验证身份、channel/session/message/req
 
 Question：question_id、归属、status、version、实体及每项provenance、active_intent、固定registry/SOP版本、创建/更新时刻。实体更正保存新旧值和消息来源，不能last-write-wins抹掉证据。
 
-EventContext：current_message_id、member_message_ids、candidate_question_ids、selected_question_id、cleaned/contextual_text、entities、conflicts、assignment_decision和证据。跨明确订单的相似传递边不自动合并；明确更正走有版本的替换事件。上下文候选为ACTIVE、WAITING_SLOT，WAITING_APPROVAL仅允许授权读取；结束状态默认不参加活动合并。命中后回查MySQL归属、状态和version，不只信向量投影。
+EventContext：current_message_id、member_message_ids、candidate_question_ids、selected_question_id、cleaned/contextual_text、entities、conflicts、assignment_decision和证据。跨明确订单的相似传递边不自动合并；明确更正走有版本的替换事件。上下文候选为ACTIVE、WAITING_SLOT，WAITING_APPROVAL仅允许授权读取；结束状态默认不参加活动合并。命中后回查PostgreSQL归属、状态和version，不只信向量投影。
 
 IntentDecision：decision=accept/clarify/handoff/reject、final_code可空、candidates、stage_evidence、reason_code、registry_version、policy_version。候选保存原始score和score_kind（cosine/BM25/fusion/classifier_probability等），不能统一叫confidence。非top1选择须含可校验的override_rule_id、理由和证据；任意自然语言解释不算豁免。
 
@@ -137,9 +145,9 @@ Approval：PENDING / APPROVED / REJECTED / EXPIRED / REVOKED。批准必须绑�
 
 `ApprovalRepository.before_finish` 在原终态事务中登记 PREPARED/PENDING、WAITING_APPROVAL run/question 与 M10 outbox；等待不写 finished_at。操作ID主键、run唯一键及 session→question→operation 的短事务锁保证决定/领取串行。dispatch 在同一事务核验主体、问题状态/版本、参数、当前SOP快照、审批/期限、lease并登记IN_FLIGHT；不跨HTTP/人类等待持锁。普通消息不能改待审批问题；拒绝/撤销/过期变为 CANCELLED，问题转人工，后续可重新规划。SOP切版后可在原主体/问题/版本/参数绑定下关闭旧计划，但新批准与dispatch仍须匹配当前SOP；关闭不改写已批准计划。已发送操作不能撤销为“无效果”。
 
-LangGraph使用独立 `dh_m15_checkpoints/dh_m15_checkpoint_writes`，thread=`m15-approval-v1:{run_id}`；只保存操作引用、游标及必要结果。等待、执行、对账分节点，恢复先核对MySQL审批事实，客户端resume值不会授权。checkpoint缺失可从已提交计划重建；业务已完成但checkpoint滞后时按ledger推进终点。
+LangGraph使用独立 `dh_m15_checkpoints/dh_m15_checkpoint_writes`，thread=`m15-approval-v1:{run_id}`；只保存操作引用、游标及必要结果。等待、执行、对账分节点，恢复先核对PostgreSQL审批事实，客户端resume值不会授权。checkpoint缺失可从已提交计划重建；业务已完成但checkpoint滞后时按ledger推进终点。
 
-合成下游只接受服务签名和当前APPROVED/IN_FLIGHT操作，再核对合成订单归属/可调整状态；独立短事务保存网络调用与唯一效果，进程重启不丢。UNKNOWN/IN_FLIGHT先按operation_id查询，未知查询不写；明确ABSENT才允许按当前绑定和最多两次dispatch重试。效果绑定摘要、实际成功call_id形成受校验事实；不依赖Redis/Milvus或checkpoint证明业务效果。M16多轮/流程视图从同一MySQL操作与历史附加审批状态，详细trace轮转不删除账本。
+合成下游只接受服务签名和当前APPROVED/IN_FLIGHT操作，再核对合成订单归属/可调整状态；独立短事务保存网络调用与唯一效果，进程重启不丢。UNKNOWN/IN_FLIGHT先按operation_id查询，未知查询不写；明确ABSENT才允许按当前绑定和最多两次dispatch重试。效果绑定摘要、实际成功call_id形成受校验事实；不依赖Redis/Milvus或checkpoint证明业务效果。M16多轮/流程视图从同一PostgreSQL操作与历史附加审批状态，详细trace轮转不删除账本。
 
 响应outcome：ANSWERED / CLARIFY / PENDING_APPROVAL / HANDOFF / REJECTED / ERROR。问槽位用CLARIFY+WAITING_SLOT，不用HTTP500或审批interrupt；业务拒识/无SOP可以HANDOFF，不等于基础设施故障。
 
@@ -169,7 +177,7 @@ LangGraph使用独立 `dh_m15_checkpoints/dh_m15_checkpoint_writes`，thread=`m1
 
 上述是语义分类，不新增业务状态枚举。相同消息幂等回放仍返回关联 run/结果；未知主意图和缺槽位不等于非法 HTTP 请求。HTTP 默认映射见 `errors.HTTP_STATUS`：身份 401/403、幂等/版本冲突 409、输入 422、限流 429、超时 504；UNKNOWN_INTENT/MISSING_SLOT/NO_SOP 是 HTTP 200 的正常人工/澄清收口。总 deadline 可明确映射 504。审批/操作未知错误的映射是未来边界，不表示审批可用。
 
-FakeRepository 的内存用例按 tenant/user/channel/message 作用域保留首次结果；同逻辑消息换 request/trace/received_at 不替换 run，正文/session/occurred_at/question_hint/schema 变化返回 IDEMPOTENCY_CONFLICT。它没有事务、持久化或进程崩溃保证，M08 仍须验证 MySQL 唯一约束。兼容及后续业务验收责任见 `ACCEPTANCE.md`。
+FakeRepository 的内存用例按 tenant/user/channel/message 作用域保留首次结果；同逻辑消息换 request/trace/received_at 不替换 run，正文/session/occurred_at/question_hint/schema 变化返回 IDEMPOTENCY_CONFLICT。它没有事务、持久化或进程崩溃保证，M08 仍须验证 PostgreSQL 唯一约束。兼容及后续业务验收责任见 `ACCEPTANCE.md`。
 
 审批记录必须绑定operation_id、参数hash、SOP版本、question_version、主体和期限，并以版本条件更新确保PENDING→APPROVED最多一次。批准后由执行领取事务再次核验绑定与授权，将PREPARED→IN_FLIGHT并标识唯一执行者；批准记录本身不触发第二次工具调用。领取前的实体更正撤销旧审批并取消未发送操作/等待run；已经IN_FLIGHT或UNKNOWN的操作不得伪标CANCELLED，应冻结原参数并对账。
 
@@ -197,7 +205,7 @@ SOPResult与ResponseEnvelope的tool_call_ids语义细化为所有已发送尝试
 
 M08复用`0.2.0-m02`，ResponseEnvelope新增可选`stages=()`、`intent_decision=null`、`disabled_features=()`、`replayed=false`。StageReport记录stage/status/elapsed_ms/model_calls/tool_calls/error_code；模型尝试计入300/600/1000，实际工具尝试计入1000。score_kind新增`model_choice`，score=1只表示schema分类选中项，不是校准概率；Dense原始余弦保留为候选及数据证据，不跨打分种类比较。
 
-`Conversation.run(request,budget)`处理当前完整消息，只有600进入IntentService。`MessageLedger.accept`返回新领取或原run/Question/结果，`finish`以原Question version+1及RUNNING条件更新run/Question；同消息payload内容范围沿用既有契约，传输ID不进入hash。MySQL三表的唯一接收与终结事务已由M08消费；相同消息回放使用本次request/trace ID、原run/question与事实结果、当前预算0。RUNNING仅返回进行中引用，不抢占或恢复；不承诺硬中断后的自动恢复。
+`Conversation.run(request,budget)`处理当前完整消息，只有600进入IntentService。`MessageLedger.accept`返回新领取或原run/Question/结果，`finish`以原Question version+1及RUNNING条件更新run/Question；同消息payload内容范围沿用既有契约，传输ID不进入hash。PostgreSQL三表的唯一接收与终结事务已由M08消费；相同消息回放使用本次request/trace ID、原run/question与事实结果、当前预算0。RUNNING仅返回进行中引用，不抢占或恢复；不承诺硬中断后的自动恢复。
 
 M08缺槽位提示新消息完整重发，跨消息entities/事件/记忆未启用；question_hint先按主体/session回查，再以INVALID_ARGUMENT拒绝恢复，未授权hint为FORBIDDEN。取消终态保留已发送调用ID，但无成功事实；提交失败不返回ANSWERED。唯一事实模板只消费经M06/M07核验的Fact与配置结论。本机Bearer令牌映射可信合成身份，正文无身份/批准字段；不等于企业登录系统。M01未组装业务端口时的离线501行为保持兼容。
 
@@ -215,12 +223,12 @@ IntentDecision增加可选`retrieval=null`，保存600实际候选/分数/版本
 
 Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段进入工具；`conflicts`保留更正链及消息来源。300复用M04合并，600保留显式问题的已绑定意图，话题不符需新建；自动归属留M11。关闭由SOP事实/流程结果或有证据的用户确认决定，TTL不改变业务状态。
 
-`CaseRepository`读取有界snapshot、归属内question和CAS transition；`MemoryPort.load`返回`MemoryWindow`，包括有channel/message/question引用的历史、开放Question和已结`CaseSummary`。MySQL始终核验事实；向量候选必须同时匹配主体/session、当前status和version，过期ACTIVE不能恢复问题，摘要不写回实体。
+`CaseRepository`读取有界snapshot、归属内question和CAS transition；`MemoryPort.load`返回`MemoryWindow`，包括有channel/message/question引用的历史、开放Question和已结`CaseSummary`。PostgreSQL始终核验事实；向量候选必须同时匹配主体/session、当前status和version，过期ACTIVE不能恢复问题，摘要不写回实体。
 
 `GET /memory?session_id=...`读取当前身份的窗口。`POST /questions/{question_id}/state`接收`LifecycleCommand(session_id,expected_version,target,reason,evidence_source,evidence_ref)`；同主体/session校验、版本冲突409，禁止修改RUNNING问题。RESOLVED要求user_confirmation/process_result，CANCELLED要求operator_cancel，HANDED_OFF要求operator_handoff，开放状态切换要求slot_check；关闭后只允许explicit_reopen→ACTIVE。WAITING_APPROVAL仍禁用至M15。这些是问题状态操作，未接入业务写工具。
 ## M11 事件归属契约
 
-复用唯一领域DTO，新增`EventMessage/EventCandidate/ClusterJudgement/EventContext/ClusterEdge/EventClusterResult`和`ClusterJudgePort`。`EventAggregationService.aggregate(request,budget)`返回聚合结果，不拥有主意图或SOP。窗口来自同主体/session MySQL事实；开放问题含WAITING_SLOT，已结及待澄清事件不参与自动归属；WAITING_APPROVAL仍由既有M15禁用校验拒绝，不恢复审批。
+复用唯一领域DTO，新增`EventMessage/EventCandidate/ClusterJudgement/EventContext/ClusterEdge/EventClusterResult`和`ClusterJudgePort`。`EventAggregationService.aggregate(request,budget)`返回聚合结果，不拥有主意图或SOP。窗口来自同主体/session PostgreSQL事实；开放问题含WAITING_SLOT，已结及待澄清事件不参与自动归属；WAITING_APPROVAL仍由既有M15禁用校验拒绝，不恢复审批。
 
 `ClusterJudgePort.judge(current,candidates,messages,budget)`至多调用一次，返回attach/new/uncertain、候选ID、把握等级、关系和原文引用。只有候选中的目标、高把握及当前/目标两侧精确引用可attach；代码检查scope/status/version、实体冲突、簇级订单和独立问题约束。cosine是候选证据，不是概率；低相似门禁只作保守排除，不据小样本宣称校准接管阈值。明确实体更正是成员更新，图中不作订单等价union。
 
@@ -232,7 +240,7 @@ Question新增`unresolved_fields`，保留已确认实体并阻止冲突字段�
 
 明确补充订单/券号且只有一个相容开放事件、确实补其缺失槽位时，500按已确认绑定确定性关联，仍检查整簇和接收CAS；不调用归属模型。多个相容事件、更正或一般语义归属继续使用受控裁决。此守卫只消费既有事实，不进行主分类。
 
-同一`Conversation.run`装配`EventAggregationService`后，300提取当前原文一次，400读取MySQL事实窗口，500复用两者归属，再以原始请求payload及可信attribution原子接收。预接收的阶段trace缓冲到真实run/question确定后发布，不产生伪业务ID。已有终态先lookup直接回放；并发接收仍由原账本唯一键/CAS决定，不抢占RUNNING。未授权hint在写业务数据前拒绝。
+同一`Conversation.run`装配`EventAggregationService`后，300提取当前原文一次，400读取PostgreSQL事实窗口，500复用两者归属，再以原始请求payload及可信attribution原子接收。预接收的阶段trace缓冲到真实run/question确定后发布，不产生伪业务ID。已有终态先lookup直接回放；并发接收仍由原账本唯一键/CAS决定，不抢占RUNNING。未授权hint在写业务数据前拒绝。
 
 500只消费已绑定`active_intent`的槽位相容性，不调用分类器：自动券号补充排除不需要券号的事件。`EventCandidate.active_intent=null`为兼容字段。多诉求/未知补充单独保存为待澄清事件，600及SOP跳过；无实际缺槽位的归属澄清保持ACTIVE，实际缺/冲突槽位才WAITING_SLOT，避免伪造missing_slots。独立M11仍保持原入口语义。
 
@@ -282,13 +290,13 @@ manifest记录三split摘要、实际seed/config、门限、模型bytes/hash和�
 
 `GET /debug/runs/{run_id}/{intent|turns|flow}?session_id=...`按与converse相同身份源鉴权，再匹配tenant/user/session。三个视图投影同一快照；重放run指向原执行trace，新请求计数仍0。跨主体/session与过期/丢弃/不存在均404且不泄露存在性；返回no-store。`export=true`生成JSON附件，危险公式字符串加单引号；CLI仅调用鉴权loopback API，不直接打开追踪文件。
 
-订单/券/消息及主体/session编号用同一本地key生成稳定替代ID，标准凭据键、Bearer/sk及隐藏推理字段遮盖；证据引用保持可关联。span偏移指向脱敏前原文，不能按替代ID长度重新解释。保留`.jsonl.key`以跨资源维持同scope与替代ID；其与auth/budget/pointer/provider不得重合。默认JsonlTrace单写者、128项非阻塞队列、2MiB×4文件和7天期限；超限/磁盘故障只丢非关键诊断，读取返回dropped_events/incomplete或404。MySQL消息/问题/终态及工具审计独立保留，不能随trace轮转删除。MemoryTrace供测试及隔离评测进程使用，不作为服务持久trace。
+订单/券/消息及主体/session编号用同一本地key生成稳定替代ID，标准凭据键、Bearer/sk及隐藏推理字段遮盖；证据引用保持可关联。span偏移指向脱敏前原文，不能按替代ID长度重新解释。保留`.jsonl.key`以跨资源维持同scope与替代ID；其与auth/budget/pointer/provider不得重合。默认JsonlTrace单写者、128项非阻塞队列、2MiB×4文件和7天期限；超限/磁盘故障只丢非关键诊断，读取返回dropped_events/incomplete或404。PostgreSQL消息/问题/终态及工具审计独立保留，不能随trace轮转删除。MemoryTrace供测试及隔离评测进程使用，不作为服务持久trace。
 
 ## M17 评测契约
 
 EvalCase/EvalTurn只描述公开合成gold、split/来源/模板组和同/异事件关系，复用IntentCode/Outcome及DTO；运行仍返回原ResponseEnvelope，不增加业务HTTP字段或修改默认装配。gold标签需确定性语义支持，槽位需同事件原文/前置消息依据，事实需business.json固定hash；训练/索引/开发输入不能伪装新test，regression中的编号变体不算新增独立case。
 
-m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、MySQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
+m17-evaluation-v1报告绑定完整包内容hash与Git状态、数据/模型/检索/策略指纹、固定选择和调用上限。每行保存实际响应、PostgreSQL确认实体/来源、检索及正式MCP ledger，按实际call_id/成功evidence_id核验；缺槽位调用、跨对象、无成功证据回答单列硬失败。五类overall与三支持类指标、消息/会话完成、实体值/来源、实际工具参数/gold工具行为分别统计，空分母保留null和原因。FastText离线未运行不产生真实效果/费用。
 
 同一实验baseline必须PASS；覆盖、消息/会话完成、硬门禁分别比较。行中expectation由冻结数据决定；关闭events的Dense/Hybrid组中自动followup及multi分段依赖未启用的事件上下文，只作诊断，不参与消息完成基线/已知回归门禁。明确hint续接与独立query不能排除。原始意图/完成指标、全部行覆盖/硬失败、会话指标继续保留并检查；启用事件组全部续接/分段严格比较。报告comparison_scope逐组列出实际比较及诊断行，能力配置/行集合变化拒绝比较。真实采样未跑全不称全量，模型随机性不承诺逐字复现。评测不把checkpoint/debug当账本，不更新模型/索引/生产阈值；审批仅在显式approval范围启用。
 
@@ -298,9 +306,9 @@ M17审批扩展沿用`m17-evaluation-v1`，新增`approvals`：冻结数据diges
 
 ## M18 反馈契约
 
-FeedbackCandidate复用DTO/IntentCode，只接收专用合成身份与m18-collect的MySQL已完成run；run_id唯一采集，candidate_id稳定，文本/实体/出处先脱敏。observation记录原决策、结果、工具证据和trace，不能证明标签。RouteReview按corpus/fasttext/rule独立记录审核者、理由、方法、标签及拒绝/争议/撤回；独立于heldout的确认必需。确定性晋级只接受已登记的合成来源、组/编号中立文本/语义标签一致，不接受置信分或SOP成功作为证据。
+FeedbackCandidate复用DTO/IntentCode，只接收专用合成身份与m18-collect的PostgreSQL已完成run；run_id唯一采集，candidate_id稳定，文本/实体/出处先脱敏。observation记录原决策、结果、工具证据和trace，不能证明标签。RouteReview按corpus/fasttext/rule独立记录审核者、理由、方法、标签及拒绝/争议/撤回；独立于heldout的确认必需。确定性晋级只接受已登记的合成来源、组/编号中立文本/语义标签一致，不接受置信分或SOP成功作为证据。
 
-MySQL候选revision做短事务CAS，每修订保留历史、撤销旧未完成任务，为仍获准路线生成candidate/revision/route唯一任务。领取有限尝试/租约，完成需持有未过期令牌；外部导入/CPU训练在事务外。派生路径与实际文件hash逐路线保留，包括语料、向量manifest、训练输入、原/量化模型与规则；更正或撤回使旧审核快照失效，不盲目删除引用工件。
+PostgreSQL候选revision做短事务CAS，每修订保留历史、撤销旧未完成任务，为仍获准路线生成candidate/revision/route唯一任务。领取有限尝试/租约，完成需持有未过期令牌；外部导入/CPU训练在事务外。派生路径与实际文件hash逐路线保留，包括语料、向量manifest、训练输入、原/量化模型与规则；更正或撤回使旧审核快照失效，不盲目删除引用工件。
 
 exports只使用获准路线；FastText回流只进train，保留原dev/test；known train/index/dev/test/M17、编号变体及声明来源/近义组不能进入。另三条发布输入与采集组分开固定，程序能检查声明/重叠，不能证明自然语言语义独立。规则为有界字面AND/排除数据，保留原文span与版本，不热执行生成代码/正则。
 
@@ -310,15 +318,15 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 
 运行/学习边界重整保持上述DTO格式；成功评测报告新增`code_integrity_scope=runtime-v2`与`tooling_digest`。准备发布同时核对运行内容指纹与当前完整评测工具/冻结输入指纹；运行装配核对绑定报告、运行工件及runtime-v2指纹，不加载评测器或dev/test。旧清单/无范围标记的报告不能用于新代码；目录或运行字节变化须新完整清单与内容验收。
 
-`ReleasePointer`由MySQL active表给出channel/revision/active/previous；文件不再决定完整发布入口的active。switch以显式expected revision短事务锁定并CAS，来源行在同一事务核验；相同目标与当前revision幂等，旧revision返回409。发布事件与active同事务提交。prepared工件/远端验证不占用发布事务。
+`ReleasePointer`由PostgreSQL active表给出channel/revision/active/previous；文件不再决定完整发布入口的active。switch以显式expected revision短事务锁定并CAS，来源行在同一事务核验；相同目标与当前revision幂等，旧revision返回409。发布事件与active同事务提交。prepared工件/远端验证不占用发布事务。
 
-`VersionManifest.release_manifest`默认null兼容旧只读入口；完整发布的receipt事务将问题绑定及run引用一起提交。运行及续接只消费其完整版本，新请求选择当时active。跨版本自动归属在原接收事务回滚后一次返回原版本；终态receipt回放零模型/工具。旧审批按原版本查询/恢复，批准和再次dispatch从当前MySQL active读取SOP核验，UNKNOWN先对账不改原计划。retire只标记无引用版本；active/previous和全部run引用都阻止退休，保留终态审计及共享文件，不提供隐式文件删除。
+`VersionManifest.release_manifest`默认null兼容旧只读入口；完整发布的receipt事务将问题绑定及run引用一起提交。运行及续接只消费其完整版本，新请求选择当时active。跨版本自动归属在原接收事务回滚后一次返回原版本；终态receipt回放零模型/工具。旧审批按原版本查询/恢复，批准和再次dispatch从当前PostgreSQL active读取SOP核验，UNKNOWN先对账不改原计划。retire只标记无引用版本；active/previous和全部run引用都阻止退休，保留终态审计及共享文件，不提供隐式文件删除。
 
 ## M22浏览器会话与历史
 
 `POST /auth/login`仅接收`{token}`，通过原可信LocalAuth映射换取8小时随机HttpOnly/SameSite=strict会话及CSRF标记；无正文自报身份。cookie仅支持当前loopback同源，登录/退出拒绝外Origin/跨站，写请求需`X-CSRF-Token`；原Bearer协议兼容且优先，错误Bearer不能回退cookie。`GET /auth/session`返回当前身份及调用/维护模式，`POST /auth/logout`撤销服务会话，重启需重新登录。全部API返回no-store。
 
-`GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原MySQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。
+`GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原PostgreSQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。
 
 ### M22 可选学习扩展：协议与工作流
 
@@ -326,7 +334,7 @@ GET /learning/status、/protocol、/workflow复用BrowserAuth；POST /learning/p
 
 ### M22 学习扩展：实体、三路与记忆
 
-POST /learning/rules只收非空text（最多2000字符），原规则输出带原文范围/否定/更正，模型0次、不表示600决策。POST /learning/retrieval相同输入边界，仅使用装配的Retrieval MCP和scope，固定top3、原同向量compare、持久budget_factory及request_execution；返回原候选、签名回执、动作/耗时和实际usage，不能传scope/模型/路径。GET /learning/memory?session_id先MySQLHistory.messages主体验证再只读权威窗口/本generation Redis/outbox末50条；缺失投影不重建，外身份404。意图、归属、运行观测页继续原/debug/runs/{run}/intent|turns|flow及/observability/runs/{run}，同session/run守卫，不另分类或任意trace搜索。
+POST /learning/rules只收非空text（最多2000字符），原规则输出带原文范围/否定/更正，模型0次、不表示600决策。POST /learning/retrieval相同输入边界，仅使用装配的Retrieval MCP和scope，固定top3、原同向量compare、持久budget_factory及request_execution；返回原候选、签名回执、动作/耗时和实际usage，不能传scope/模型/路径。GET /learning/memory?session_id先PostgresHistory.messages主体验证再只读权威窗口/本generation Redis/outbox末50条；缺失投影不重建，外身份404。意图、归属、运行观测页继续原/debug/runs/{run}/intent|turns|flow及/observability/runs/{run}，同session/run守卫，不另分类或任意trace搜索。
 
 ### M22 学习扩展：评测与飞轮
 

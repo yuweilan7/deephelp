@@ -452,9 +452,9 @@ async def run(args: argparse.Namespace) -> int:
                                     == 0
                                 )
                         if live:
-                            from deephelp_app.adapters.cases import MySQLCaseRepository
+                            from deephelp_app.adapters.cases import PostgresCaseRepository
 
-                            reader = await MySQLCaseRepository.open(Path.cwd())
+                            reader = await PostgresCaseRepository.open(Path.cwd())
                             try:
                                 assert last_body and last_response
                                 stored = await reader.question(
@@ -462,7 +462,7 @@ async def run(args: argparse.Namespace) -> int:
                                     last_body["session_id"],
                                     last_response.question_id or "none",
                                 )
-                                route["checks"]["new_mysql_pool_readback"] = bool(
+                                route["checks"]["new_postgresql_pool_readback"] = bool(
                                     stored and stored.status == last_response.question_status
                                 )
                             finally:

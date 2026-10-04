@@ -1,6 +1,6 @@
 # M26 实施计划
 
-判断：`PROBE_FIRST`。就绪：`BLOCKED`（M25正式持久适配与隔离恢复未交付）。规格见 [M26](../../docs/MODULES/M26_OFFICIAL_CHECKPOINTS.md)。
+判断：`PROBE_FIRST`。就绪：`READY`（M25全部持久适配与隔离恢复已交付；本M尚未启动）。规格见 [M26](../../docs/MODULES/M26_OFFICIAL_CHECKPOINTS.md)。
 
 1. **这次做成什么：** 完成M26全部特性：先用锁定官方AsyncPostgresSaver证明pause/resume/parent/pending writes与隔离旧状态转换；首项验收交付后依据结果更新本PLAN，继续正式装配与完整历史恢复特性。13段引擎、批准权和operation事实不重写。
 2. **从哪里改：** M15/M18/M21/M23及M25 handoff；approval.py、checkpoints.py、approval_store及发布运行守卫/合成权益服务。根锁增官方postgres保存器，薄连接装配；旧reader只在迁移工具。`feature/m26-postgres-saver-proof`从同步main建立。

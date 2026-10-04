@@ -1,9 +1,9 @@
-"""Read existing MySQL facts, never debug logs or model calls."""
+"""Read existing PostgreSQL facts, never debug logs or model calls."""
 
 from datetime import UTC
 from typing import Any
 
-from pymysql.err import MySQLError  # type: ignore[import-untyped]
+from psycopg import Error as PostgreSQLError
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.history import HistoryMessage, MessagePage, SessionPage, SessionSummary
@@ -17,7 +17,7 @@ from deephelp_app.domain.models import (
 )
 
 
-class MySQLHistory:
+class PostgresHistory:
     def __init__(self, pool: Any) -> None:
         self.pool = pool
 
@@ -30,7 +30,7 @@ class MySQLHistory:
                         return await cursor.fetchall()
                 finally:
                     await conn.rollback()
-        except MySQLError, OSError:
+        except PostgreSQLError, OSError:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "持久历史暂不可用。", 503) from None
 
     async def sessions(self, identity: VerifiedIdentity, offset: int, limit: int) -> SessionPage:
@@ -45,9 +45,7 @@ class MySQLHistory:
         )
         return SessionPage(
             items=tuple(
-                SessionSummary(
-                    session_id=sid, message_count=count, updated_at=when.replace(tzinfo=UTC)
-                )
+                SessionSummary(session_id=sid, message_count=count, updated_at=when.astimezone(UTC))
                 for sid, count, when in rows[:limit]
             ),
             next_offset=offset + limit if len(rows) > limit else None,

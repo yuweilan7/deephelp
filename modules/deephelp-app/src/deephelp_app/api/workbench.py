@@ -14,7 +14,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import Field
 
-from deephelp_app.adapters.history import MySQLHistory
+from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import DTO, ErrorCode, VerifiedIdentity
 
@@ -142,12 +142,12 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
         response.delete_cookie(COOKIE, path="/", httponly=True, samesite="strict")
         return response
 
-    def history(request: Request) -> MySQLHistory:
+    def history(request: Request) -> PostgresHistory:
         service = request.app.state.resources.conversation
         ledger = service.ledger if service else None
         if ledger is None or not hasattr(ledger, "pool"):
-            raise AppError(ErrorCode.NOT_IMPLEMENTED, "未配置MySQL持久历史。", 501)
-        return MySQLHistory(ledger.pool)
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "未配置PostgreSQL持久历史。", 501)
+        return PostgresHistory(ledger.pool)
 
     @router.get("/history/sessions")
     async def sessions(

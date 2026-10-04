@@ -1,8 +1,8 @@
 # M25｜PostgreSQL 业务事实与迁移闭环
 
-**状态：** 全业务迁移待实施；首特性与实际证据见 [M25交接](../../handoffs/M25.md)。旧路线已保存在bak/mysql-otel，运行入口见 [PostgreSQL](../../infra/postgres/README.md)。
+**状态：** 全持久迁移与隔离备份恢复已完成；两项实际证据见 [M25交接](../../handoffs/M25.md)。旧路线已保存在bak/mysql-otel，运行入口见 [PostgreSQL](../../infra/postgres/README.md)。
 
-**前置：** 核对bak/mysql-otel仍指向旧快照；M08/M10/M15/M18/M20/M22/M23 的实际持久接口及直接 handoff。分支交付沿用AGENTS的main流程。见 [计划](../../planning/M25/PLAN.md)。
+**前置：** 核对bak/mysql-otel仍指向旧快照；M08/M10/M15/M18/M20/M22/M23 的实际持久接口及直接 handoff。分支交付沿用AGENTS的main流程。剩余实施事项为空，交付证据与下游边界见交接。
 
 **目标：** 新路线最终只使用 PostgreSQL 承载所有应用关系数据；不长期保留“业务 MySQL + Agent PostgreSQL”两个事实后端。M26 单独处理官方 checkpoint 保存器。
 
@@ -71,4 +71,4 @@
 | 驱动JSON/事务/异常 | PyMySQL JSON读取为文本，psycopg默认解为dict；原model_validate_json/签名消费者须显式`::text`或逐项适配，不能只改SQL关键词。两者均可用%s参数但参数类型/错误类/rowcount不同；池connection上下文自动commit/rollback，不能残留旧SELECT事务后复用 |
 | 默认Repeatable Read | PG Read Committed用于短事务；唯一接收/CAS/锁序和FOR UPDATE重检守卫，outbox SKIP LOCKED、lease/version token确认；多表导出采用独立REPEATABLE READ READ ONLY快照，不将所有业务统一升隔离 |
 
-异步池显式open/close、连接归还事务结束；Windows使用`asyncio.Runner(loop_factory=asyncio.SelectorEventLoop)`，不改变全局事件循环policy。未来Uvicorn/子进程入口须使用兼容loop装配并实测，不能只把一个探针的loop策略当所有入口已适配。驱动依据见[官方异步说明](https://www.psycopg.org/psycopg3/docs/advanced/async.html)、[官方池](https://www.psycopg.org/psycopg3/docs/advanced/pool.html)。
+异步池显式open/close、连接归还事务结束；Windows直接协议探针使用Selector Runner；应用池独立拥有Selector线程，正常Uvicorn/CLI保留Proactor对子进程的支持，不改变全局policy；启动前/服务端观察后取消与池关闭均已实测。驱动依据见[官方异步说明](https://www.psycopg.org/psycopg3/docs/advanced/async.html)、[官方池](https://www.psycopg.org/psycopg3/docs/advanced/pool.html)。

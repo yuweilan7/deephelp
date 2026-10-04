@@ -29,9 +29,9 @@ def require_isolated(config: PostgresConfig) -> None:
 
 async def mysql_inventory(root: Path) -> dict[str, Any]:
     """Schema and exact counts only, all source reads in one read-only snapshot."""
-    from deephelp_app.adapters.ledger import MySQLLedger
+    from deephelp_tools.evaluation.mysql_source import MySQLSource
 
-    source = await MySQLLedger.open(root)
+    source = await MySQLSource.open(root)
     try:
         async with source.pool.acquire() as conn, conn.cursor() as cur:
             try:

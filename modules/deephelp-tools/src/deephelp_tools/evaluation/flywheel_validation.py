@@ -220,7 +220,7 @@ async def validate(
                 report["metrics"] = metrics(report["rows"], live=True, event_enabled=True)
                 reader = await FeedbackStore.open(Path.cwd())
                 try:
-                    report["checks"]["new_mysql_pool"] = bool(
+                    report["checks"]["new_postgresql_pool"] = bool(
                         await reader.question(identity, session, response.question_id or "none")
                     )
                 finally:

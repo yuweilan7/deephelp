@@ -51,7 +51,7 @@ M02类型/fixture等纯离线特性不调用模型或远程库。真实MCP+合�
 
 ## 工程边界与交接
 
-- 保留Python3.14.7、根uv workspace、单一uv.lock、modules/deephelp-app和现有infra。MySQL是业务事实源，Redis/Milvus可重建，checkpoint不是账本。
+- 保留Python3.14.7、根uv workspace、单一uv.lock、modules/deephelp-app和现有infra。新源码PostgreSQL是业务事实源，Redis/Milvus可重建，checkpoint不是账本；旧MySQL部署/源数据在M30切换与退役前保留。
 - 同一套领域类型，DTO不含客户端/连接/锁。只有600 INTENT_RECOGNIZE调用主意图服务；权限、归属、幂等、版本、预算、超时、工具白名单和结果事实由代码与测试保证。
 - 核心路线只读，业务写工具前必须M15。普通新消息不批准/恢复旧操作；副作用结果未知先对账，不盲目重放。
 - 每M一份handoffs/Mxx.md，记录成果、实际命令/退出码、真实验证、未执行项与下游接口。主写者集成，凭证据更新PROJECT_STATE。

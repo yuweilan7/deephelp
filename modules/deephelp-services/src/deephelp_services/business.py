@@ -94,7 +94,7 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
                 min(req.budget.remaining_seconds, req.timeout_seconds or 30, 30)
             ):
                 result = await repository.query(envelope)
-            validate_observation(req, result, evidence_version="business-mysql-v1")
+            validate_observation(req, result, evidence_version="business-postgres-v1")
             data = result.model_dump(mode="json")
             return CallToolResult(
                 content=[TextContent(text=canonical(data).decode())], structured_content=data
@@ -135,7 +135,7 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
                 TextResourceContents(
                     uri=HEALTH_URI,
                     mime_type="application/json",
-                    text=canonical({"pid": os.getpid(), "source": "business-mysql-v1"}).decode(),
+                    text=canonical({"pid": os.getpid(), "source": "business-postgres-v1"}).decode(),
                 )
             ]
         )
@@ -259,7 +259,9 @@ def create_business_app(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Independent MySQL Business MCP and maintenance")
+    parser = argparse.ArgumentParser(
+        description="Independent PostgreSQL Business MCP and maintenance"
+    )
     parser.add_argument("command", choices=["init", "migrate", "serve"])
     parser.add_argument("--credentials", type=Path, required=True)
     parser.add_argument("--root", type=Path, default=Path.cwd())

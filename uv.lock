@@ -268,7 +268,6 @@ name = "deephelp-app"
 version = "0.1.0"
 source = { editable = "modules/deephelp-app" }
 dependencies = [
-    { name = "aiomysql" },
     { name = "fastapi" },
     { name = "fasttext-community" },
     { name = "httpx" },
@@ -289,7 +288,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiomysql", specifier = "==0.3.2" },
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "fasttext-community", specifier = "==0.11.8" },
     { name = "httpx", specifier = ">=0.28,<0.29" },
@@ -324,11 +322,17 @@ name = "deephelp-tools"
 version = "0.1.0"
 source = { editable = "modules/deephelp-tools" }
 dependencies = [
+    { name = "aiomysql" },
     { name = "deephelp-app" },
+    { name = "deephelp-services" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "deephelp-app", editable = "modules/deephelp-app" }]
+requires-dist = [
+    { name = "aiomysql", specifier = "==0.3.2" },
+    { name = "deephelp-app", editable = "modules/deephelp-app" },
+    { name = "deephelp-services", editable = "modules/deephelp-services" },
+]
 
 [[package]]
 name = "deephelp-workspace"

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import threading
 from unittest.mock import AsyncMock
 
 import psycopg
@@ -9,6 +10,59 @@ import pytest
 
 from deephelp_app.adapters import postgres
 from deephelp_app.adapters.postgres import PostgresConfig, postgres_pool, run_postgres
+
+
+async def test_owned_selector_cancellation_settles_before_close():
+    owner = postgres.PoolLoop()
+    started, cleaned = threading.Event(), threading.Event()
+
+    async def operation():
+        started.set()
+        try:
+            await asyncio.sleep(30)
+        finally:
+            await asyncio.sleep(0.02)
+            cleaned.set()
+
+    task = asyncio.create_task(owner.call(operation()))
+    try:
+        assert await asyncio.to_thread(started.wait, 2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert cleaned.is_set()
+    finally:
+        await owner.close()
+    assert not owner.thread.is_alive() and owner.loop.is_closed()
+
+
+def test_application_has_no_implicit_backend_fallback(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEEPHELP_POSTGRES_CONFIG", raising=False)
+    with pytest.raises(ValueError, match="explicitly"):
+        postgres.application_config(tmp_path)
+
+
+async def test_owned_loop_cancel_before_operation_starts():
+    owner = postgres.PoolLoop()
+    unblock, entered = threading.Event(), threading.Event()
+    owner.loop.call_soon_threadsafe(lambda: unblock.wait(1))
+
+    async def operation():
+        entered.set()
+
+    task = asyncio.create_task(owner.call(operation()))
+    try:
+        await asyncio.sleep(0)
+        task.cancel()
+        await asyncio.sleep(0)
+        unblock.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert not entered.is_set()
+    finally:
+        unblock.set()
+        await owner.close()
+    assert owner.loop.is_closed()
 
 
 def config() -> PostgresConfig:
@@ -48,7 +102,7 @@ def test_config_is_explicit_and_secret_repr_hidden(tmp_path):
     path.write_text(json.dumps(values), encoding="utf-8")
     assert PostgresConfig.read(path) == config()
     assert "secret-value" not in repr(config())
-    values["mysql_fallback"] = True
+    values["postgresql_fallback"] = True
     path.write_text(json.dumps(values), encoding="utf-8")
     with pytest.raises(ValueError, match="exactly"):
         PostgresConfig.read(path)

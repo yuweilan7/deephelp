@@ -1,7 +1,6 @@
-"""Async LangGraph saver on existing MySQL; independent from the business ledger.
+"""Read historical typed checkpoints in m25_legacy; M26 owns future execution.
 
-Stores full typed checkpoints, including channel values and pending writes. It is
-an application adapter tested against the locked SDK, not an official MySQL backend.
+The old codec remains available to offline mechanism fixtures only.
 """
 
 from collections.abc import AsyncIterator, Sequence
@@ -43,10 +42,17 @@ def configuration(thread: str, ns: str, checkpoint: str) -> RunnableConfig:
     return {"configurable": {"thread_id": thread, "checkpoint_ns": ns, "checkpoint_id": checkpoint}}
 
 
-class MySQLSaver(BaseCheckpointSaver[int]):
+class LegacyCheckpointArchive(BaseCheckpointSaver[int]):
     def __init__(self, pool: Any) -> None:
         super().__init__()
         self.pool = pool
+
+    def require_writable(self) -> None:
+        if getattr(self.pool, "backend", None) == "postgresql":
+            from deephelp_app.domain.errors import AppError
+            from deephelp_app.domain.models import ErrorCode
+
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Legacy checkpoint archive is read-only", 501)
 
     @observed("checkpoint.read")
     async def aget_tuple(self, config: RunnableConfig) -> CheckpointTuple | None:
@@ -57,7 +63,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                 await cursor.execute(
                     "SELECT checkpoint_id,parent_id,checkpoint_type,checkpoint,"
                     "metadata_type,metadata "
-                    "FROM dh_m15_checkpoints WHERE thread_id=%s AND checkpoint_ns=%s "
+                    "FROM m25_legacy.dh_m15_checkpoints WHERE thread_id=%s AND checkpoint_ns=%s "
                     + ("AND checkpoint_id=%s" if cid else "ORDER BY checkpoint_id DESC LIMIT 1"),
                     (thread, ns, cid) if cid else (thread, ns),
                 )
@@ -66,7 +72,8 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                     return None
                 cid, parent, ct, cp, mt, md = row
                 await cursor.execute(
-                    "SELECT task_id,channel,value_type,value FROM dh_m15_checkpoint_writes "
+                    "SELECT task_id,channel,value_type,value FROM "
+                    "m25_legacy.dh_m15_checkpoint_writes "
                     "WHERE thread_id=%s AND checkpoint_ns=%s AND checkpoint_id=%s "
                     "ORDER BY task_id,write_index",
                     (thread, ns, cid),
@@ -99,6 +106,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         metadata: CheckpointMetadata,
         new_versions: ChannelVersions,
     ) -> RunnableConfig:
+        self.require_writable()
         c = config["configurable"]
         annotate(
             **{
@@ -114,23 +122,23 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             try:
                 await cursor.execute(
-                    "INSERT INTO dh_m15_checkpoints VALUES (%s,%s,%s,%s,%s,UNHEX(%s),%s,UNHEX(%s)) "
-                    "ON DUPLICATE KEY UPDATE checkpoint=VALUES(checkpoint),"
-                    "metadata=VALUES(metadata)",
+                    "INSERT INTO m25_legacy.dh_m15_checkpoints VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+                    "ON CONFLICT (thread_id,checkpoint_ns,checkpoint_id) DO UPDATE SET "
+                    "checkpoint=EXCLUDED.checkpoint,metadata=EXCLUDED.metadata",
                     (
                         thread,
                         ns,
                         checkpoint["id"],
                         c.get("checkpoint_id"),
                         ct,
-                        cp.hex(),
+                        cp,
                         mt,
-                        md.hex(),
+                        md,
                     ),
                 )
                 await conn.commit()
             except BaseException:
-                conn.close()
+                await conn.rollback()
                 raise
         return configuration(thread, ns, checkpoint["id"])
 
@@ -142,6 +150,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
         task_id: str,
         task_path: str = "",
     ) -> None:
+        self.require_writable()
         c = config["configurable"]
         annotate(
             **{"deephelp.checkpoint_id": c["checkpoint_id"], "deephelp.pending_writes": len(writes)}
@@ -152,13 +161,14 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                     index = WRITES_IDX_MAP.get(channel, index)
                     vt, data = self.serde.dumps_typed(value)
                     sql = (
-                        "INSERT INTO dh_m15_checkpoint_writes VALUES "
-                        "(%s,%s,%s,%s,%s,%s,%s,UNHEX(%s),%s)"
+                        "INSERT INTO m25_legacy.dh_m15_checkpoint_writes VALUES "
+                        "(%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                     )
                     sql += (
-                        " ON DUPLICATE KEY UPDATE value_type=VALUES(value_type),value=VALUES(value)"
+                        " ON CONFLICT (thread_id,checkpoint_ns,checkpoint_id,task_id,write_index) "
+                        "DO UPDATE SET value_type=EXCLUDED.value_type,value=EXCLUDED.value"
                         if index < 0
-                        else " ON DUPLICATE KEY UPDATE task_id=task_id"
+                        else " ON CONFLICT DO NOTHING"
                     )
                     await cursor.execute(
                         sql,
@@ -170,13 +180,13 @@ class MySQLSaver(BaseCheckpointSaver[int]):
                             index,
                             channel,
                             vt,
-                            data.hex(),
+                            data,
                             task_path,
                         ),
                     )
                 await conn.commit()
             except BaseException:
-                conn.close()
+                await conn.rollback()
                 raise
 
     async def alist(
@@ -201,7 +211,7 @@ class MySQLSaver(BaseCheckpointSaver[int]):
             args.append(get_checkpoint_id(before))
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             await cursor.execute(
-                "SELECT thread_id,checkpoint_ns,checkpoint_id FROM dh_m15_checkpoints "
+                "SELECT thread_id,checkpoint_ns,checkpoint_id FROM m25_legacy.dh_m15_checkpoints "
                 + ("WHERE " + " AND ".join(terms) if terms else "")
                 + " ORDER BY checkpoint_id DESC",
                 args,
@@ -219,11 +229,15 @@ class MySQLSaver(BaseCheckpointSaver[int]):
 
     @observed("checkpoint.delete")
     async def adelete_thread(self, thread_id: str) -> None:
+        self.require_writable()
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             try:
-                for table in ("dh_m15_checkpoint_writes", "dh_m15_checkpoints"):
+                for table in (
+                    "m25_legacy.dh_m15_checkpoint_writes",
+                    "m25_legacy.dh_m15_checkpoints",
+                ):
                     await cursor.execute(f"DELETE FROM {table} WHERE thread_id=%s", (thread_id,))
                 await conn.commit()
             except BaseException:
-                conn.close()
+                await conn.rollback()
                 raise

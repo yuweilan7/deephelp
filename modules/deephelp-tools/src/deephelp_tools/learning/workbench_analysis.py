@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from redis.exceptions import RedisError
 
-from deephelp_app.adapters.history import MySQLHistory
+from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.text_entity import (
     TextPolicy,
@@ -109,7 +109,9 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
         if assembly.ledger is None:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Memory runtime unavailable", 503)
         # An absent/foreign session must fail before reading projections.
-        await MySQLHistory(assembly.ledger.pool).messages(identity, session_id, offset=0, limit=1)
+        await PostgresHistory(assembly.ledger.pool).messages(
+            identity, session_id, offset=0, limit=1
+        )
         window = await assembly.ledger.snapshot(identity, session_id)
         memory_service = request.app.state.resources.conversation.memory
         cache = memory_service.cache
@@ -140,7 +142,7 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
             rows = await cursor.fetchall()
             await conn.rollback()
         return {
-            "authority": "MySQL",
+            "authority": "PostgreSQL",
             "window": window.model_dump(mode="json"),
             "redis": projection,
             "outbox": [
@@ -160,7 +162,7 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
             "model_calls": 0,
             "code": [
                 "application/memory.py:MemoryService.load",
-                "adapters/cases.py:MySQLCaseRepository.snapshot",
+                "adapters/cases.py:PostgresCaseRepository.snapshot",
                 "application/memory.py:ProjectionWorker.once",
             ],
         }

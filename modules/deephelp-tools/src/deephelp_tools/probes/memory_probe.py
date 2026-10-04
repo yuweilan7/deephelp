@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import httpx
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.ledger import Receipt
 from deephelp_app.adapters.milvus_dense import create_client
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
@@ -58,7 +58,7 @@ def envelope(identity: VerifiedIdentity, session: str, **changes: Any) -> Reques
 
 
 async def terminal(
-    repo: MySQLCaseRepository, receipt: Receipt, request: RequestEnvelope
+    repo: PostgresCaseRepository, receipt: Receipt, request: RequestEnvelope
 ) -> Question:
     q = receipt.question.model_copy(
         update={"version": receipt.question.version + 1, "status": QuestionStatus.ACTIVE}
@@ -95,7 +95,7 @@ async def restarted(path: Path) -> dict[str, Any]:
     state = json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8"))
     identity = VerifiedIdentity.model_validate(state["identity"])
     async with AsyncExitStack() as stack:
-        repo = await MySQLCaseRepository.open(Path.cwd())
+        repo = await PostgresCaseRepository.open(Path.cwd())
         stack.push_async_callback(repo.aclose)
         cache = RedisMemory.open(Path.cwd(), namespace=state["namespace"])
         stack.push_async_callback(cache.aclose)
@@ -155,7 +155,7 @@ async def run(args: argparse.Namespace) -> int:
     report["collection"] = collection
     try:
         async with asyncio.timeout(900), AsyncExitStack() as stack:
-            repo = await MySQLCaseRepository.open(Path.cwd())
+            repo = await PostgresCaseRepository.open(Path.cwd())
             stack.push_async_callback(repo.aclose)
             await repo.migrate()
             cache = RedisMemory.open(Path.cwd(), namespace=namespace)
@@ -170,7 +170,7 @@ async def run(args: argparse.Namespace) -> int:
             memory = MemoryService(repo, cache)
             worker = ProjectionWorker(repo, memory, index)
 
-            # The same public HTTP pipeline uses real models, MySQL and native MCP protocol.
+            # The same public HTTP pipeline uses real models, PostgreSQL and native MCP protocol.
             assembly = LiveAssembly(Path.cwd(), Path(args.providers), local_path(args.pointer))
             app = live_app(assembly, auth, gate, str(output.with_suffix(".trace.jsonl")))
             async with app.router.lifespan_context(app), api_client(app, http=True) as api:
@@ -320,7 +320,7 @@ async def run(args: argparse.Namespace) -> int:
             except AppError as exc:
                 checks["running_not_resumed"] = exc.code == "VERSION_CONFLICT"
             q = await terminal(repo, owner, pending)
-            checkpoint("mysql_concurrency")
+            checkpoint("postgresql_concurrency")
 
             # A deliberately real refused Redis connection cannot lose the committed outbox.
             async with repo.pool.acquire() as conn, conn.cursor() as cursor:
@@ -364,7 +364,7 @@ async def run(args: argparse.Namespace) -> int:
             )
             checkpoint("outbox")
 
-            # Vector ACTIVE payload is actually present, but current MySQL state rejects it.
+            # Vector ACTIVE payload is actually present, but current PostgreSQL state rejects it.
             current = await repo.question(identity, session, q.question_id)
             assert current is not None
             q = current
@@ -381,7 +381,7 @@ async def run(args: argparse.Namespace) -> int:
                 hit.question_id == q.question_id and hit.status == QuestionStatus.ACTIVE
                 for hit in raw_hits
             )
-            checks["stale_active_rechecked_in_mysql"] = all(
+            checks["stale_active_rechecked_in_postgresql"] = all(
                 hit.question_id != q.question_id for hit in filtered.closed_summaries
             )
             await index.put(closed_q, gate.request())
@@ -450,8 +450,8 @@ async def run(args: argparse.Namespace) -> int:
             assert first_claim
             async with repo.pool.acquire() as conn, conn.cursor() as cursor:
                 await cursor.execute(
-                    "UPDATE dh_m10_outbox SET lease_until=DATE_SUB(CURRENT_TIMESTAMP(6),"
-                    "INTERVAL 1 SECOND) WHERE event_id=%s AND lease_token=%s",
+                    "UPDATE dh_m10_outbox SET lease_until=CURRENT_TIMESTAMP-INTERVAL "
+                    "'1 second' WHERE event_id=%s AND lease_token=%s",
                     (lease_event, first_claim[1]),
                 )
                 await conn.commit()
@@ -559,7 +559,7 @@ async def run(args: argparse.Namespace) -> int:
                 async with asyncio.timeout(30):
                     stdout, stderr = await process.communicate()
                 restart = json.loads(stdout)
-                checks["new_process_mysql_and_redis"] = (
+                checks["new_process_postgresql_and_redis"] = (
                     process.returncode == 0 and restart["status"] == "PASS"
                 )
                 report["restart"] = restart
@@ -570,12 +570,12 @@ async def run(args: argparse.Namespace) -> int:
             async with repo.pool.acquire() as conn, conn.cursor() as cursor:
                 await cursor.execute(
                     "SELECT COUNT(*) FROM dh_m10_outbox WHERE question_id=%s "
-                    "AND JSON_UNQUOTE(JSON_EXTRACT(reason,'$.evidence_source'))='explicit_reopen'",
+                    "AND (reason->>'evidence_source')='explicit_reopen'",
                     (reopened.question_id,),
                 )
                 checks["reopen_evidence_in_outbox"] = (await cursor.fetchone())[0] == 1
                 await conn.rollback()
-            # Retain synthetic MySQL facts/events for replay; remove this probe's projections.
+            # Retain synthetic PostgreSQL facts/events for replay; remove this probe's projections.
             await index.rpc(lambda: milvus.drop_collection(collection, timeout=None, retry_times=0))
             keys = [key async for key in cache.client.scan_iter(match=namespace + ":*")]
             if keys:

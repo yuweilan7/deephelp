@@ -99,7 +99,7 @@ class TraceSink(Protocol):
 
 
 class JsonlTrace:
-    """Bounded best-effort diagnostics. MySQL remains the business audit source."""
+    """Bounded best-effort diagnostics. PostgreSQL remains the business audit source."""
 
     def __init__(
         self,

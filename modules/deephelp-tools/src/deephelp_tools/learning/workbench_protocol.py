@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
+from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
 from deephelp_app.adapters.mcp_protocol import TOOL_VERSION, validate_arguments
 from deephelp_app.adapters.network_mcp import NetworkMCPClient
 from deephelp_app.adapters.synthetic_rights import RightsClient
@@ -82,13 +83,19 @@ def learning_router(
     @router.get("/status")
     async def status(request: Request) -> dict[str, Any]:
         identity = auth(request)
+        backend = getattr(getattr(assembly.ledger, "pool", None), "backend", None)
         return {
             "installed": True,
             "protocol": True,
             "workflow": True,
             "analysis": True,
-            "demo_enabled": rights_port is not None and identity == DEMO_IDENTITY,
+            "demo_enabled": rights_port is not None
+            and identity == DEMO_IDENTITY
+            and backend != "postgresql"
+            if assembly.ledger is not None
+            else False,
             "demo_identity_required": "synthetic-tenant / synthetic-user-a",
+            "execution_gate": "M26" if backend == "postgresql" else None,
             "model_calls": 0,
         }
 
@@ -226,7 +233,8 @@ def learning_router(
         return {
             **result,
             "input": params.model_dump(mode="json", exclude_none=True),
-            "boundary": "client schema → identity/context → server schema → MySQL → output schema",
+            "boundary": "client schema → identity/context → server schema → "
+            "PostgreSQL → output schema",
             "dispatched": reply.call_id is not None,
             "result": reply.model_dump(mode="json"),
         }
@@ -235,20 +243,21 @@ def learning_router(
     async def workflow(request: Request) -> dict[str, Any]:
         auth(request)
         ready()
+        assert assembly.ledger is not None
         graph = (
             approval(request).graph(request.state.budget).get_graph().to_json()
-            if rights_port
+            if rights_port and getattr(assembly.ledger.pool, "backend", None) != "postgresql"
             else None
         )
         return {
             "sop": assembly.sop_registry.model_dump(mode="json"),
             "approval_graph": graph,
             "synthetic": True,
-            "checkpoint": "MySQLSaver; ledger is business authority",
+            "checkpoint": "历史检查点只读；工作流执行尚未启用",
             "code": [
                 "application/sop.py:SOPExecutor.execute",
                 "application/approval.py:ApprovalService.graph",
-                "adapters/checkpoints.py:MySQLSaver",
+                "adapters/checkpoints.py:LegacyCheckpointArchive",
             ],
             "model_calls": 0,
         }
@@ -264,15 +273,28 @@ def learning_router(
 
     @router.get("/demo/{operation_id}")
     async def demo_status(operation_id: str, request: Request, session_id: str, run_id: str) -> Any:
-        service, op = await scoped(request, operation_id, session_id, run_id)
+        ready()
+        assert assembly.ledger is not None
+        archived = getattr(assembly.ledger.pool, "backend", None) == "postgresql"
+        service = None
+        if archived:
+            repo = ApprovalRepository(assembly.ledger.pool)
+            op = await repo.scoped(auth(request), session_id, run_id, operation_id)
+            if not session_id.startswith("m22-demo-") or op.plan.parameters.order_id != "DEMO-D01":
+                raise AppError(ErrorCode.NOT_FOUND, "Learning demo operation not found", 404)
+            saver = LegacyCheckpointArchive(repo.pool)
+        else:
+            service, op = await scoped(request, operation_id, session_id, run_id)
+            repo, saver = service.repo, service.saver
+        config = ApprovalService.config(op)
         checkpoints = []
-        async for item in service.saver.alist(service.config(op), limit=10):
+        async for item in saver.alist(config, limit=10):
             checkpoints.append(
                 {
                     "id": item.checkpoint["id"],
                     "parent": item.parent_config,
                     "metadata": {
-                        k: item.metadata[k]
+                        k: dict(item.metadata)[k]
                         for k in ("source", "step", "parents")
                         if k in item.metadata
                     },
@@ -282,8 +304,8 @@ def learning_router(
                     ],
                 }
             )
-        state = await service.graph(request.state.budget).aget_state(service.config(op))
-        async with service.repo.pool.acquire() as conn, conn.cursor() as cursor:
+        state = await service.graph(request.state.budget).aget_state(config) if service else None
+        async with repo.pool.acquire() as conn, conn.cursor() as cursor:
             await cursor.execute(
                 "SELECT COUNT(*) FROM dh_m15_synthetic_effects WHERE operation_id=%s",
                 (operation_id,),
@@ -293,10 +315,11 @@ def learning_router(
         return {
             "operation": op.model_dump(mode="json"),
             "checkpoints": checkpoints,
-            "next": state.next,
-            "interrupts": [i.value for t in state.tasks for i in t.interrupts],
+            "next": state.next if state else (),
+            "interrupts": [i.value for t in state.tasks for i in t.interrupts] if state else [],
+            "execution_enabled": not archived,
             "effects": effects,
-            "history": await service.repo.history(operation_id),
+            "history": await repo.history(operation_id),
             "model_calls": 0,
         }
 

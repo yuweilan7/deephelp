@@ -79,7 +79,7 @@ class ToolGateway:
             raise ConfigurationError("Choose exactly one MCP transport")
         self.server, self.http = server, http
         self.credentials: ServiceCredentials | None = http.credentials() if http else None
-        self.evidence_version = "business-mysql-v1" if http else "business-fixtures-v1"
+        self.evidence_version = "business-postgres-v1" if http else "business-fixtures-v1"
         self.max_invocations = max_invocations
         self.calls = AsyncCalls(concurrency, child_timeout)
         self.max_result_bytes = max_result_bytes

@@ -72,7 +72,7 @@ def approval_metrics(report: dict[str, Any]) -> dict[str, Any]:
         "dataset_digest": digest(frozen),
         "selected_case_ids": [row["case"] for row in frozen["operations"]],
         "interpretation": (
-            "fresh real MySQL/HTTP/process recovery; fixed-action fault cases "
+            "fresh real PostgreSQL/HTTP/process recovery; fixed-action fault cases "
             "and separately real-model HTTP"
         ),
         "metrics": {
