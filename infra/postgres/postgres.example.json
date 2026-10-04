@@ -1,0 +1,7 @@
+{
+  "host": "127.0.0.1",
+  "port": 15432,
+  "dbname": "deephelp_m25_facts",
+  "user": "deephelp_app",
+  "password": "REPLACE_WITH_EXISTING_PG_PASSWORD"
+}

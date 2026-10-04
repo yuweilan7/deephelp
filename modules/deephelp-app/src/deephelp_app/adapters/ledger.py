@@ -1,6 +1,5 @@
 """Durable message acceptance. RUNNING receipts are never automatically reclaimed."""
 
-import asyncio
 import hashlib
 import json
 from dataclasses import dataclass
@@ -9,10 +8,11 @@ from pathlib import Path
 from typing import Any, Protocol, Self
 from uuid import uuid4
 
-import aiomysql  # type: ignore[import-untyped]
-from pymysql.err import IntegrityError, MySQLError  # type: ignore[import-untyped]
+from psycopg import Error as PostgreSQLError
+from psycopg import IntegrityError
+from psycopg_pool import PoolTimeout
 
-from deephelp_app.adapters.milvus_dense import local_connection
+from deephelp_app.adapters.postgres import PostgresPool, application_config
 from deephelp_app.adapters.telemetry import ObservedPool
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
@@ -165,7 +165,7 @@ def validate_terminal(receipt: Receipt, question: Question, response: ResponseEn
         raise AppError(ErrorCode.VERSION_CONFLICT, "Terminal ledger binding differs")
 
 
-class MySQLLedger:
+class PostgresLedger:
     supports_continuation = False
 
     def __init__(self, pool: Any) -> None:
@@ -173,34 +173,16 @@ class MySQLLedger:
 
     @classmethod
     async def open(cls, root: Path) -> Self:
-        c = local_connection(root)
         try:
-            pool = await aiomysql.create_pool(
-                host=c["MYSQL_HOST"],
-                port=int(c["MYSQL_PORT"]),
-                user=c["MYSQL_USER"],
-                password=c["MYSQL_PASSWORD"],
-                db=c["MYSQL_DATABASE"],
-                charset="utf8mb4",
-                autocommit=False,
-                minsize=1,
-                maxsize=4,
-                pool_recycle=300,
-                connect_timeout=5,
-            )
+            pool = await PostgresPool.open(application_config(root))
             return cls(ObservedPool(pool))
-        except MySQLError, OSError:
-            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL connection unavailable") from None
+        except PostgreSQLError, OSError, ValueError, PoolTimeout:
+            raise AppError(
+                ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL connection unavailable"
+            ) from None
 
     async def aclose(self) -> None:
-        self.pool.close()
-        try:
-            async with asyncio.timeout(5):
-                await self.pool.wait_closed()
-        except TimeoutError:
-            self.pool.terminate()
-            async with asyncio.timeout(5):
-                await self.pool.wait_closed()
+        await self.pool.aclose()
 
     async def migrate(self) -> None:
         from importlib.resources import files
@@ -238,8 +220,10 @@ class MySQLLedger:
                 Question.model_validate_json(row[2]),
                 ResponseEnvelope.model_validate_json(row[3]) if row[3] else None,
             )
-        except MySQLError, OSError:
-            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL lookup unavailable") from None
+        except PostgreSQLError, OSError:
+            raise AppError(
+                ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL lookup unavailable"
+            ) from None
 
     async def accept(
         self, request: RequestEnvelope, *, attribution: tuple[str, int] | None = None
@@ -285,11 +269,14 @@ class MySQLLedger:
                     await conn.rollback()
                     raise
                 except BaseException:
-                    conn.close()  # disconnect rolls back uncommitted work, including cancellation
+                    # Settle rollback before pooled reuse, including cancellation.
+                    await conn.rollback()
                     raise
         except IntegrityError as exc:
-            if exc.args[0] != 1062:
-                raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL acceptance failed") from None
+            if exc.sqlstate != "23505":
+                raise AppError(
+                    ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL acceptance failed"
+                ) from None
             async with self.pool.acquire() as conn, conn.cursor() as cursor:
                 await cursor.execute(
                     "SELECT m.payload_hash,r.run_id,q.body,r.response FROM dh_m08_messages m "
@@ -314,8 +301,10 @@ class MySQLLedger:
                 Question.model_validate_json(row[2]),
                 ResponseEnvelope.model_validate_json(row[3]) if row[3] else None,
             )
-        except MySQLError, OSError:
-            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL acceptance unavailable") from None
+        except PostgreSQLError, OSError:
+            raise AppError(
+                ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL acceptance unavailable"
+            ) from None
 
     async def finish(
         self, receipt: Receipt, question: Question, response: ResponseEnvelope
@@ -328,7 +317,8 @@ class MySQLLedger:
                         await self.before_finish(cursor, receipt, question, response)
                         await cursor.execute(
                             "UPDATE dh_m08_runs SET status=%s,response=%s,"
-                            "finished_at=IF(%s='WAITING_APPROVAL',NULL,CURRENT_TIMESTAMP(6)) "
+                            "finished_at=CASE WHEN %s='WAITING_APPROVAL' THEN NULL "
+                            "ELSE CURRENT_TIMESTAMP END "
                             "WHERE run_id=%s AND question_id=%s AND status='RUNNING'",
                             (
                                 response.run_status,
@@ -361,11 +351,11 @@ class MySQLLedger:
                     await conn.rollback()
                     raise
                 except BaseException:
-                    conn.close()
+                    await conn.rollback()
                     raise
-        except MySQLError, OSError:
+        except PostgreSQLError, OSError:
             raise AppError(
-                ErrorCode.UPSTREAM_UNAVAILABLE, "MySQL terminal write unavailable"
+                ErrorCode.UPSTREAM_UNAVAILABLE, "PostgreSQL terminal write unavailable"
             ) from None
 
     async def question(

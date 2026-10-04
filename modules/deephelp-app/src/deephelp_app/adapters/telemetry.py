@@ -572,9 +572,9 @@ class ObservedCursor:
         match = re.search(r"\b(?:FROM|INTO|UPDATE|TABLE)\s+(dh_[a-z0-9_]+)", sql, re.I)
         command = sql.lstrip().split(" ", 1)[0].upper()
         with observation(
-            "mysql.execute",
+            "postgresql.execute",
             attributes={
-                "db.system.name": "mysql",
+                "db.system.name": "postgresql",
                 "db.operation.name": command
                 if command in {"SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER"}
                 else "OTHER",
@@ -594,7 +594,7 @@ class ObservedConnection:
     def cursor(self, *args: Any, **kwargs: Any) -> ObservedContext:
         return ObservedContext(self.connection.cursor(*args, **kwargs), ObservedCursor)
 
-    @observed("mysql.commit")
+    @observed("postgresql.commit")
     async def commit(self) -> Any:
         return await self.connection.commit()
 
@@ -620,8 +620,9 @@ async def operation_link(pool: Any, operation_id: str, *, save: bool = False) ->
                 ctx = trace.get_current_span().get_span_context()
                 if ctx.is_valid:
                     await cursor.execute(
-                        "INSERT IGNORE INTO dh_m21_observation_links "
-                        "(operation_id,trace_id,span_id) VALUES (%s,%s,%s)",
+                        "INSERT INTO dh_m21_observation_links "
+                        "(operation_id,trace_id,span_id) VALUES (%s,%s,%s) ON CONFLICT "
+                        "(operation_id) DO NOTHING",
                         (operation_id, format(ctx.trace_id, "032x"), format(ctx.span_id, "016x")),
                     )
                     await conn.commit()

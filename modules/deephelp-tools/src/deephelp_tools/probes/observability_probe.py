@@ -1,4 +1,4 @@
-"""M21 fixed real MCP/MySQL/Collector actions; model quality is a separate boundary."""
+"""M21 fixed real MCP/PostgreSQL/Collector actions; model quality is a separate boundary."""
 
 import argparse
 import asyncio

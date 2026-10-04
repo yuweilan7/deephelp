@@ -1,4 +1,4 @@
-"""MySQL question facts and transactional outbox. Remote projections never hold row locks."""
+"""PostgreSQL question facts and transactional outbox. Remote projections never hold row locks."""
 
 import json
 from datetime import UTC, datetime, timedelta
@@ -6,7 +6,7 @@ from importlib.resources import files
 from typing import Any
 from uuid import uuid4
 
-from deephelp_app.adapters.ledger import MySQLLedger, Receipt
+from deephelp_app.adapters.ledger import PostgresLedger, Receipt
 from deephelp_app.domain.cases import CLOSED as CLOSED
 from deephelp_app.domain.cases import OPEN as OPEN
 from deephelp_app.domain.cases import bounded_history as bounded_history
@@ -24,7 +24,7 @@ from deephelp_app.domain.models import (
 )
 
 
-class MySQLCaseRepository(MySQLLedger):
+class PostgresCaseRepository(PostgresLedger):
     supports_continuation = True
 
     async def migrate(self) -> None:
@@ -38,12 +38,6 @@ class MySQLCaseRepository(MySQLLedger):
             for statement in sql.split(";"):
                 if statement.strip():
                     await cursor.execute(statement)
-            await cursor.execute("SHOW INDEX FROM dh_m08_runs WHERE Key_name='uq_m08_run_question'")
-            if await cursor.fetchone():
-                await cursor.execute(
-                    "ALTER TABLE dh_m08_runs DROP INDEX uq_m08_run_question, ADD INDEX "
-                    "ix_m10_run_question (question_id,status)"
-                )
             # Incremental M08 backfill preserves bodies/receipts and makes old facts rebuildable.
             while True:
                 await cursor.execute(
@@ -68,7 +62,7 @@ class MySQLCaseRepository(MySQLLedger):
                             request.channel,
                             request.message_id,
                             qid,
-                            request.occurred_at.astimezone(UTC).replace(tzinfo=None),
+                            request.occurred_at.astimezone(UTC),
                         )
                     )
                 await cursor.executemany(
@@ -84,7 +78,7 @@ class MySQLCaseRepository(MySQLLedger):
             )
             await cursor.execute(
                 "INSERT INTO dh_m10_outbox (question_id,version,body,reason) SELECT "
-                "q.question_id,q.version,q.body,JSON_OBJECT('kind','m08_backfill') "
+                "q.question_id,q.version,q.body,json_build_object('kind','m08_backfill') "
                 "FROM dh_m08_questions q LEFT JOIN dh_m10_outbox e ON e.question_id=q.question_id "
                 "AND e.version=q.version WHERE e.event_id IS NULL"
             )
@@ -94,7 +88,7 @@ class MySQLCaseRepository(MySQLLedger):
         key = (identity.tenant_id, identity.user_id, session)
         await cursor.execute(
             "INSERT INTO dh_m10_sessions (tenant_id,user_id,session_id) VALUES (%s,%s,%s) "
-            "ON DUPLICATE KEY UPDATE generation=generation",
+            "ON CONFLICT (tenant_id,user_id,session_id) DO NOTHING",
             key,
         )
         await cursor.execute(
@@ -145,7 +139,7 @@ class MySQLCaseRepository(MySQLLedger):
             "SELECT MAX(occurred_at) FROM dh_m10_members WHERE question_id=%s", (q.question_id,)
         )
         latest = (await cursor.fetchone())[0]
-        if latest and request.occurred_at.astimezone(UTC).replace(tzinfo=None) < latest:
+        if latest and request.occurred_at.astimezone(UTC) < latest:
             raise AppError(
                 ErrorCode.VERSION_CONFLICT, "Out-of-order continuation requires review", 409
             )
@@ -176,7 +170,7 @@ class MySQLCaseRepository(MySQLLedger):
                 request.channel,
                 request.message_id,
                 receipt.question.question_id,
-                request.occurred_at.astimezone(UTC).replace(tzinfo=None),
+                request.occurred_at.astimezone(UTC),
             ),
         )
         await self.changed(cursor, receipt.question, "message_accepted")
@@ -251,7 +245,7 @@ class MySQLCaseRepository(MySQLLedger):
                 await conn.rollback()
                 raise
             except BaseException:
-                conn.close()
+                await conn.rollback()
                 raise
 
     async def snapshot(
@@ -269,6 +263,7 @@ class MySQLCaseRepository(MySQLLedger):
         key = (identity.tenant_id, identity.user_id, session)
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             try:
+                await cursor.execute("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY")
                 await cursor.execute(
                     "SELECT generation FROM dh_m10_sessions WHERE tenant_id=%s AND user_id=%s "
                     "AND session_id=%s",
@@ -279,7 +274,7 @@ class MySQLCaseRepository(MySQLLedger):
                 await cursor.execute(
                     "SELECT body FROM dh_m08_questions WHERE tenant_id=%s AND user_id=%s AND "
                     "session_id=%s AND status IN ('ACTIVE','WAITING_SLOT') ORDER BY "
-                    "JSON_UNQUOTE(JSON_EXTRACT(body,'$.updated_at')) DESC,question_id LIMIT %s",
+                    "(body->>'updated_at') DESC,question_id LIMIT %s",
                     (*key, case_limit + 1),
                 )
                 active = [Question.model_validate_json(row[0]) for row in await cursor.fetchall()]
@@ -290,11 +285,11 @@ class MySQLCaseRepository(MySQLLedger):
                     (*key, case_limit + 1),
                 )
                 closed = [Question.model_validate_json(row[0]) for row in await cursor.fetchall()]
-                cutoff = (datetime.now(UTC) - timedelta(seconds=age_seconds)).replace(tzinfo=None)
+                cutoff = datetime.now(UTC) - timedelta(seconds=age_seconds)
                 await cursor.execute(
                     "SELECT "
-                    "n.channel,n.message_id,n.question_id,n.occurred_at,JSON_UNQUOTE(JSON_EXTRA"
-                    "CT(m.body,'$.raw_text')) FROM dh_m10_members n JOIN dh_m08_messages m ON "
+                    "n.channel,n.message_id,n.question_id,n.occurred_at,(m.body->>'raw_text') "
+                    "FROM dh_m10_members n JOIN dh_m08_messages m ON "
                     "m.tenant_id=n.tenant_id AND m.user_id=n.user_id AND m.channel=n.channel "
                     "AND m.message_id=n.message_id WHERE n.tenant_id=%s AND n.user_id=%s AND "
                     "n.session_id=%s AND n.occurred_at>=%s ORDER BY n.occurred_at "
@@ -306,7 +301,7 @@ class MySQLCaseRepository(MySQLLedger):
                         channel=r[0],
                         message_id=r[1],
                         question_id=r[2],
-                        occurred_at=r[3].replace(tzinfo=UTC),
+                        occurred_at=r[3].astimezone(UTC),
                         text=r[4],
                     )
                     for r in await cursor.fetchall()
@@ -344,7 +339,7 @@ class MySQLCaseRepository(MySQLLedger):
         async with self.pool.acquire() as conn, conn.cursor() as cursor:
             await cursor.execute(
                 "SELECT event_id,body FROM dh_m10_outbox WHERE done=FALSE AND attempts<%s AND "
-                "(lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP(6))"
+                "(lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)"
                 + (" AND event_id=%s" if event_id is not None else "")
                 + " ORDER BY event_id LIMIT 1 FOR UPDATE SKIP LOCKED",
                 (max_attempts, event_id) if event_id is not None else (max_attempts,),
@@ -353,8 +348,8 @@ class MySQLCaseRepository(MySQLLedger):
             if row:
                 await cursor.execute(
                     "UPDATE dh_m10_outbox SET "
-                    "attempts=attempts+1,lease_token=%s,lease_until=DATE_ADD(CURRENT_TIMESTAMP("
-                    "6),INTERVAL 120 SECOND) WHERE event_id=%s",
+                    "attempts=attempts+1,lease_token=%s,"
+                    "lease_until=CURRENT_TIMESTAMP+INTERVAL '120 seconds' WHERE event_id=%s",
                     (token, row[0]),
                 )
             await conn.commit()
@@ -365,7 +360,7 @@ class MySQLCaseRepository(MySQLLedger):
             await cursor.execute(
                 "UPDATE dh_m10_outbox SET "
                 "done=%s,last_error=%s,lease_token=NULL,lease_until=NULL WHERE event_id=%s AND "
-                "lease_token=%s AND lease_until>CURRENT_TIMESTAMP(6)",
+                "lease_token=%s AND lease_until>CURRENT_TIMESTAMP",
                 (error is None, error, event_id, token),
             )
             owned = bool(cursor.rowcount == 1)

@@ -66,7 +66,7 @@ class ProtocolRepository:
             result = result.model_copy(
                 update={
                     "evidence_refs": tuple(
-                        ref.model_copy(update={"version": "business-mysql-v1"})
+                        ref.model_copy(update={"version": "business-postgres-v1"})
                         for ref in result.evidence_refs
                     )
                 }
@@ -95,7 +95,7 @@ async def test_real_http_initialize_discovery_call_both_validators_and_one_budge
             req, question, context = synthetic_request(budget)
             result = await gateway.execute(req, question, budget, context=context)
             assert result.status == ToolStatus.SUCCEEDED
-            assert result.evidence_refs[0].version == "business-mysql-v1"
+            assert result.evidence_refs[0].version == "business-postgres-v1"
             assert next(f.value.amount for f in result.facts if f.name == "paid") == Decimal(
                 "99.90"
             )

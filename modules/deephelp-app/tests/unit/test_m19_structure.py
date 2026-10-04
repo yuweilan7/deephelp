@@ -57,7 +57,7 @@ async def test_unselected_runtime_rejects_before_any_dependency_is_opened(monkey
         side_effect=AssertionError("Database opened before backend selection")
     )
     monkeypatch.setattr(
-        "deephelp_app.bootstrap.mvp_runtime.MySQLCaseRepository.open", open_database
+        "deephelp_app.bootstrap.mvp_runtime.PostgresCaseRepository.open", open_database
     )
     with pytest.raises(ConfigurationError, match="explicit MCP"):
         async with assembly.open(None, None):

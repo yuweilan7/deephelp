@@ -3,12 +3,12 @@
 from pathlib import Path
 from typing import Any
 
-from deephelp_app.adapters.ledger import MySQLLedger
+from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.feedback import FeedbackCandidate
 
 
-class FeedbackReader(MySQLLedger):
+class FeedbackReader(PostgresLedger):
     async def fresh_rows(self, query: str, values: tuple[Any, ...]) -> list[Any]:
         # A pooled REPEATABLE READ connection may retain a prior SELECT snapshot.
         async with self.pool.acquire() as conn:
@@ -27,12 +27,6 @@ class FeedbackReader(MySQLLedger):
                 if statement.strip():
                     await cursor.execute(statement)
             # Keep early local demonstration rows when upgrading their lineage index.
-            await cursor.execute("SHOW INDEX FROM dh_m18_derivatives WHERE Key_name='PRIMARY'")
-            if len(await cursor.fetchall()) == 4:
-                await cursor.execute(
-                    "ALTER TABLE dh_m18_derivatives DROP PRIMARY KEY, ADD PRIMARY KEY "
-                    "(candidate_id,revision,route,artifact_sha256,artifact_path)"
-                )
             await conn.commit()
 
     async def get(self, candidate_id: str) -> FeedbackCandidate:

@@ -1,4 +1,4 @@
-"""M20 explicit real-content acceptance: independent processes, MySQL records and HTTP MCP."""
+"""M20 explicit real-content acceptance: independent processes, PostgreSQL records and HTTP MCP."""
 
 import argparse
 import asyncio
@@ -282,7 +282,7 @@ async def run(args: argparse.Namespace) -> int:
             record = BusinessRecord.model_validate(await maintain("GET", f"orders/{order_id}"))
             assert isinstance(record.data, BusinessOrderInput)
             check(
-                "mysql_record_money_and_relation",
+                "postgresql_record_money_and_relation",
                 record.version == 2
                 and str(record.data.paid.amount) == "173.45"
                 and (await maintain("GET", f"orders/{order_id}/activities"))["activity_ids"]
@@ -561,7 +561,7 @@ async def run(args: argparse.Namespace) -> int:
 
 async def resume_restart(args: argparse.Namespace) -> int:
     """Recheck restart actions, reusing receipts and the original cumulative budget."""
-    from deephelp_app.adapters.ledger import MySQLLedger
+    from deephelp_app.adapters.ledger import PostgresLedger
     from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient
     from deephelp_app.adapters.tool_gateway import ToolGateway
     from deephelp_app.domain.execution import ExecutionBudget
@@ -582,7 +582,7 @@ async def resume_restart(args: argparse.Namespace) -> int:
     token, owner = auth.rows[0]
     first = next(row["response"] for row in report["responses"] if row["label"] == "discount")
     old = ResponseEnvelope.model_validate(first)
-    ledger = await MySQLLedger.open(Path.cwd())
+    ledger = await PostgresLedger.open(Path.cwd())
     try:
         async with ledger.pool.acquire() as conn, conn.cursor() as cursor:
             await cursor.execute(
@@ -686,7 +686,7 @@ async def resume_restart(args: argparse.Namespace) -> int:
                 check(
                     "initialize_both_tools_content_and_schema",
                     tool_result.status.value == "SUCCEEDED"
-                    and tool_result.evidence_refs[0].version == "business-mysql-v1",
+                    and tool_result.evidence_refs[0].version == "business-postgres-v1",
                 )
             network = gateway._connected()
             assert isinstance(network, NetworkMCPClient)
@@ -822,7 +822,7 @@ def initialize(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Explicit M20 MySQL/independent HTTP MCP acceptance"
+        description="Explicit M20 PostgreSQL/independent HTTP MCP acceptance"
     )
     parser.add_argument("command", choices=["init", "run"])
     parser.add_argument("--live", action="store_true")

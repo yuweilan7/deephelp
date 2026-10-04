@@ -1,4 +1,4 @@
-"""Feedback facts in MySQL; M10-style short leases never cover external transactions."""
+"""Feedback facts in PostgreSQL; M10-style short leases never cover external transactions."""
 
 import json
 from typing import Any
@@ -40,7 +40,7 @@ class FeedbackStore(FeedbackReader):
                 variant_group=variant,
             )
             await cursor.execute(
-                "INSERT IGNORE INTO dh_m18_candidates VALUES (%s,%s,0,%s)",
+                "INSERT INTO dh_m18_candidates VALUES (%s,%s,0,%s) ON CONFLICT DO NOTHING",
                 (candidate.candidate_id, run_id, candidate.model_dump_json()),
             )
             await conn.commit()
@@ -141,9 +141,9 @@ class FeedbackStore(FeedbackReader):
                             await cursor.execute(
                                 "UPDATE dh_m18_tasks SET "
                                 "state='RUNNING',attempts=attempts+1,lease_token=%s,"
-                                "lease_until=DATE_ADD(CURRENT_TIMESTAMP(6),INTERVAL "
-                                "600 SECOND) WHERE job_id=%s AND (lease_until IS NULL OR "
-                                "lease_until<CURRENT_TIMESTAMP(6))",
+                                "lease_until=CURRENT_TIMESTAMP+INTERVAL '600 seconds' WHERE "
+                                "job_id=%s AND (lease_until IS NULL OR "
+                                "lease_until<CURRENT_TIMESTAMP)",
                                 (token, row[0]),
                             )
                             if cursor.rowcount != 1:
@@ -168,7 +168,7 @@ class FeedbackStore(FeedbackReader):
                         await cursor.execute(
                             "UPDATE dh_m18_tasks SET state=%s,lease_token=NULL,lease_until=NULL "
                             "WHERE job_id=%s AND lease_token=%s "
-                            "AND lease_until>CURRENT_TIMESTAMP(6)",
+                            "AND lease_until>CURRENT_TIMESTAMP",
                             ("DONE", job, token),
                         )
                         if cursor.rowcount != 1:
@@ -177,7 +177,8 @@ class FeedbackStore(FeedbackReader):
                             )
                     for item in derivatives:
                         await cursor.execute(
-                            "INSERT IGNORE INTO dh_m18_derivatives VALUES (%s,%s,%s,%s,%s)",
+                            "INSERT INTO dh_m18_derivatives VALUES (%s,%s,%s,%s,%s) ON "
+                            "CONFLICT DO NOTHING",
                             tuple(
                                 item[k]
                                 for k in (

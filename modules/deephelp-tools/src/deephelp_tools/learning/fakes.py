@@ -39,7 +39,7 @@ class FakeModelGateway:
 
 
 class FakeRepository:
-    """Process-local message replay semantics, not MySQL uniqueness or durable acceptance."""
+    """Process-local message replay semantics, not PostgreSQL uniqueness or durable acceptance."""
 
     def __init__(self) -> None:
         self._values: dict[tuple[str, str, str, str], ResponseEnvelope] = {}

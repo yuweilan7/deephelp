@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import httpx
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.providers import ProviderConfig, create_gateway
 from deephelp_app.adapters.tool_gateway import ToolGateway as RuntimeToolGateway
 from deephelp_app.adapters.tool_gateway import process_alive
@@ -186,7 +186,7 @@ async def business(
                     text: str,
                     session: str,
                     epoch: str = epoch,
-                    repository: MySQLCaseRepository = ledger_repo,
+                    repository: PostgresCaseRepository = ledger_repo,
                     tools: RuntimeToolGateway = tool_gateway,
                     **extra: Any,
                 ) -> ResponseEnvelope:
@@ -216,7 +216,7 @@ async def business(
                         tuple(s.stage for s in row.stages) == STAGES
                     )
                     q = await repository.question(identity, session, row.question_id or "none")
-                    checks[epoch + ":" + name + ":mysql"] = bool(
+                    checks[epoch + ":" + name + ":postgresql"] = bool(
                         q and q.versions == row.versions and q.status == row.question_status
                     )
                     actual = [r for r in await tools.ledger() if r.run_id == row.run_id]
@@ -296,7 +296,7 @@ async def business(
                         and replay.sop_plan == stored.sop_plan
                         and replay.call_counts.model_calls == replay.call_counts.tool_calls == 0
                     )
-                    new_pool = await MySQLCaseRepository.open(Path.cwd())
+                    new_pool = await PostgresCaseRepository.open(Path.cwd())
                     try:
                         replayed = await new_pool.lookup(
                             envelope(
@@ -308,7 +308,7 @@ async def business(
                                 occurred_at=datetime.fromisoformat(body["occurred_at"]),
                             )
                         )
-                        checks["new_mysql_pool_retains_plan"] = bool(
+                        checks["new_postgresql_pool_retains_plan"] = bool(
                             replayed
                             and replayed.response
                             and replayed.response.sop_plan == fresh.sop_plan

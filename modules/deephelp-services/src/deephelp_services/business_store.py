@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
+from psycopg import Error as PostgreSQLError
 from pydantic import ValidationError
-from pymysql.err import MySQLError  # type: ignore[import-untyped]
 
-from deephelp_app.adapters.ledger import MySQLLedger
+from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.adapters.mcp_protocol import TOOL_VERSION, canonical
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
@@ -55,22 +55,25 @@ def checked_kind(kind: str) -> str:
 
 
 class BusinessRepository:
-    def __init__(self, connection: MySQLLedger) -> None:
+    def __init__(self, connection: PostgresLedger) -> None:
         self.connection, self.pool = connection, connection.pool
 
     @classmethod
     async def open(cls, root: Path) -> BusinessRepository:
-        return cls(await MySQLLedger.open(root))
+        return cls(await PostgresLedger.open(root))
 
     async def aclose(self) -> None:
         await self.connection.aclose()
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[Any]:
+    async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[Any]:
         try:
             async with asyncio.timeout(10), self.pool.acquire() as conn:
                 await conn.rollback()
-                await conn.begin()
+                if snapshot:
+                    await conn.execute("BEGIN ISOLATION LEVEL REPEATABLE READ")
+                else:
+                    await conn.begin()
                 try:
                     async with conn.cursor() as cursor:
                         yield cursor
@@ -78,8 +81,8 @@ class BusinessRepository:
                 except BaseException:
                     await conn.rollback()
                     raise
-        except MySQLError as exc:
-            if exc.args and exc.args[0] in {1062, 1205, 1213}:
+        except PostgreSQLError as exc:
+            if exc.sqlstate in {"23505", "55P03", "40P01", "40001"}:
                 raise AppError(
                     ErrorCode.VERSION_CONFLICT, "Concurrent business record changed"
                 ) from None
@@ -275,7 +278,8 @@ class BusinessRepository:
 
     async def query(self, envelope: ToolInvocationEnvelope) -> ToolResult:
         req = envelope.request
-        async with self.transaction() as cursor:
+        # Facts plus their immutable evidence must come from one consistent view.
+        async with self.transaction(snapshot=True) as cursor:
             order = await self._get(cursor, "orders", req.identity, req.parameters.order_id)
             assert isinstance(order.data, BusinessOrderInput)
             snapshots = [order.model_dump(mode="json")]
@@ -362,10 +366,10 @@ class BusinessRepository:
                         evidence_id=evidence_id,
                         source=EvidenceSource.TOOL,
                         record_id=envelope.call_id,
-                        version="business-mysql-v1",
+                        version="business-postgres-v1",
                         locator=order.data.order_id,
                         content_hash=hashlib.sha256(canonical(fact_values)).hexdigest(),
-                        summary="MySQL已提交业务记录；记录版本与原始快照可按evidence_id回查。",
+                        summary="PostgreSQL已提交业务记录；记录版本与原始快照可按evidence_id回查。",
                     ),
                 ),
             )

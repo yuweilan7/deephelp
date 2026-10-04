@@ -83,7 +83,7 @@ async def migrate() -> None:
             await ledger.migrate()
     finally:
         await ledger.aclose()
-    print("M08/M10/M15 MySQL project tables ready")
+    print("M08/M10/M15 PostgreSQL project tables ready")
 
 
 async def ask(args: argparse.Namespace) -> None:
@@ -116,7 +116,7 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
     p.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     p.add_argument("--pointer", default=".local/m05/active.json")
     p.add_argument("--fasttext-pointer", help="Explicitly enable a dev-calibrated M13 artifact")
-    p.add_argument("--release-channel", help="Serve the authoritative complete MySQL release")
+    p.add_argument("--release-channel", help="Serve the authoritative complete PostgreSQL release")
     p.add_argument(
         "--reply-polish", action="store_true", help="Optional closed-vocabulary M16 wording"
     )

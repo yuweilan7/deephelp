@@ -104,7 +104,9 @@ async def run(args: argparse.Namespace) -> int:
                         row.event_cluster and row.event_cluster.persisted
                     )
                     q = await ledger_repo.question(identity, session, row.question_id or "none")
-                    checks[name + ":mysql_terminal"] = bool(q and q.status == row.question_status)
+                    checks[name + ":postgresql_terminal"] = bool(
+                        q and q.status == row.question_status
+                    )
                     if row.missing_slots or row.outcome in {Outcome.CLARIFY, Outcome.HANDOFF}:
                         checks[name + ":no_unsafe_tools"] = not row.tool_call_ids or bool(row.facts)
                     requests.append((body, row))
@@ -284,9 +286,9 @@ async def run(args: argparse.Namespace) -> int:
         )
 
         # New pools/client processes re-read terminal events without model or tool execution.
-        from deephelp_app.adapters.cases import MySQLCaseRepository
+        from deephelp_app.adapters.cases import PostgresCaseRepository
 
-        repo = await MySQLCaseRepository.open(Path.cwd())
+        repo = await PostgresCaseRepository.open(Path.cwd())
         try:
             for body, original in requests:
                 q = await repo.question(

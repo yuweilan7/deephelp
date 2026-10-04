@@ -29,7 +29,7 @@ def store_with_cursor():
     store = object.__new__(BusinessRepository)
 
     @asynccontextmanager
-    async def transaction():
+    async def transaction(**kwargs):
         yield cursor
 
     store.transaction = transaction

@@ -72,7 +72,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 
 | 模块 | 模块内顺序特性 | 前置与边界 |
 |---|---|---|
-| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 协议/盘点已交付（[交接](../handoffs/M25.md)）→全持久迁移/导入/隔离恢复 | 全持久范围尚未实施；完成前M26前置仍未满足 |
+| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) | 协议/盘点与全持久迁移/导入/隔离恢复均交付（[交接](../handoffs/M25.md)） | M26的持久前置满足；旧部署未切换，PG审批图需M26 |
 | [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换/独立进程试验→正式装配/完整历史恢复 | M25全持久特性；依试验结果更新同一PLAN继续 |
 | [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS/Web与Worker存入读回→组合容量/平台恢复 | M25/M26；无需付费对象存储 |
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP/官方图/pause与resume关联→业务覆盖/工作台查询替换 | M26/M27；依API/SDK实际能力继续 |
@@ -80,9 +80,9 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标/新部署/隔离恢复演练→最后快照/单写切换/旧服务退役 | M25–M28；每项真实验收后继续，M29可跳过 |
 | [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口/内容已交付（[交接](../handoffs/M31.md)）→同链质量对照→Retrieval MCP/学习页/正式发布 | 后两项尚未实施；不依赖迁库完成 |
 
-“完成Mxx”授权同一实施会话、同一主写者顺序完成当前M的全部规格特性；每项独立建分支、验收、合入main并同步后继续下一项，无需逐项另启。已有交付从未完成项续做；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不预写后续实现细节，结果出来后更新同一PLAN并继续。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS；首试验通过不等于全库迁移或Rerank主链已交付。当前可从M25全持久迁移或独立M31剩余特性续做，不并行写共享网关/根锁。全部特性交付后才报告当前M完成并停止；跨M推进须由用户或已授权的顺序调度启动，阻塞不能冒充模块交付。
+“完成Mxx”授权同一实施会话、同一主写者顺序完成当前M的全部规格特性；每项独立建分支、验收、合入main并同步后继续下一项，无需逐项另启。已有交付从未完成项续做；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不预写后续实现细节，结果出来后更新同一PLAN并继续。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS；首试验通过不等于全库迁移或Rerank主链已交付。M25已全部交付，M26持久前置已满足；后续M或独立M31剩余特性须按用户启动范围推进，不并行写共享网关/根锁。全部特性交付后才报告当前M完成并停止；跨M推进须由用户或已授权的顺序调度启动，阻塞不能冒充模块交付。
 
-实施Prompt可直接使用：“完成M25。按docs/MODULES/M25_POSTGRES_FACTS.md、planning/M25/PLAN.md和handoffs/M25.md，从已交付的协议/盘点成果续做全部剩余特性，完成全持久适配、只读快照导入/续跑与隔离PG实际备份恢复；旧路线保留在bak/mysql-otel。一个主写者，各特性按AGENTS独立验收/中文提交/推送/合并/同步后继续；M25全部特性交付后停止，不切现网、不卸载、不购买资源，不自行启动M26。”其他M同样使用“完成Mxx”，核对实际前置后完成其全部特性。
+通用实施Prompt：“完成Mxx。按当前模块规格、现有适用PLAN和直接handoff，从已交付成果续做全部剩余特性；核对实际前置，保留旧路线备份。一个主写者，各特性按AGENTS独立验收/中文提交/推送/合并/同步后继续；当前M全部特性交付后停止，不自行启动下一M。”已完成的M25不再作为待实施入口。
 
 补检索能力可使用：“完成M31。按docs/MODULES/M31_RERANK_INTEGRATION.md、planning/M31/PLAN.md和handoffs/M31.md，从已验RerankPort续做全部剩余特性：先完成召回后、意图归并前的同链接入与受控对照，固定同候选/同向量，dev确定instruct/预算/失败策略，独立test验收排序与拒识；验收交付后继续真实会话/Retrieval MCP/学习页及正式发布接入。发布门禁前保留active，一个主写者，各特性按AGENTS分别验收/中文提交/推送/合并/同步；M31全部特性交付后停止，不同时迁数据库或部署Langfuse。”
 
@@ -98,7 +98,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 
 M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/说明不消耗模型调用，明确点击真实执行才进入现有预算。观测只解释实际结构化决策/证据，不采集隐藏推理。M20维护资料不等于会话业务写工具，synthetic_rights不代表实际订单/券变更。
 
-用户追加协议/RPC学习目标：M20以独立Streamable HTTP Business/Retrieval MCP服务复用核心能力，分别观察schema/可信上下文/双端校验/数据库结果。事务账本、outbox和MySQLSaver不为拆服务而全部搬成MCP；不提供任意SQL/Redis/Milvus/etcd操作。现有MCP正式SDK/stdio本来真实，合成的是后端事实；M15实际审批图/checkpoint已有，整个13段主链不冒称全由LangGraph实现。
+用户追加协议/RPC学习目标：M20以独立Streamable HTTP Business/Retrieval MCP服务复用核心能力，分别观察schema/可信上下文/双端校验/数据库结果。事务账本、outbox和checkpoint不为拆服务而全部搬成MCP（M25新PG历史只读，M26另接官方saver）；不提供任意SQL/Redis/Milvus/etcd操作。现有MCP正式SDK/stdio本来真实，合成的是后端事实；M15实际审批图/checkpoint已有，整个13段主链不冒称全由LangGraph实现。
 
 观测已接入OpenTelemetry SDK/Collector、Tempo单体/本地存储、Prometheus、私有Grafana；跨MCP/实库/图恢复、受保护查询、看板/重启与导出故障通过，见M21交接。Langfuse的LLM专项学习价值保留，首轮不共置另一套web/worker/数据库/对象存储。真实完整组合和索引/训练峰值仍须测量；不买资源或降低核心能力换通过。
 

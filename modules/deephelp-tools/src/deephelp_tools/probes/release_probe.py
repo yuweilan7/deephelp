@@ -366,7 +366,7 @@ async def probe(args: argparse.Namespace) -> int:
             await store.switch(channel, b, 5)
             reader = await ReleaseStore.open(Path.cwd())
             try:
-                report["checks"]["fresh_mysql_pool_single_authority"] = (
+                report["checks"]["fresh_postgresql_pool_single_authority"] = (
                     await reader.active(channel)
                 ).active == b
             finally:

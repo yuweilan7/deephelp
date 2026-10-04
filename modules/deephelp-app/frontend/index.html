@@ -68,7 +68,7 @@
             </p>
             <p class="code">
               入口：application/conversation.py · Conversation.run<br />adapters/history.py
-              · MySQLHistory
+              · PostgresHistory
             </p>
           </div>
         </aside>
@@ -111,7 +111,7 @@
         <div class="business-list">
           <p class="eyebrow">MANUAL RECORDS</p>
           <h1>可维护的业务事实</h1>
-          <p>这里直接维护个人 MySQL 资料。模型只通过两项只读 MCP 工具查询。</p>
+          <p>这里直接维护个人 PostgreSQL 资料。模型只通过两项只读 MCP 工具查询。</p>
           <label for="kind">资料类型</label
           ><select id="kind">
             <option value="orders">订单</option>
@@ -160,7 +160,7 @@
           <p>
             应用进程经 MCP SDK initialize / tools/list 连接独立 Business
             进程。调用前核对输入、身份、问题和参数；服务端再校验 schema
-            与归属，查询 MySQL，返回事实和不可变证据。
+            与归属，查询 PostgreSQL，返回事实和不可变证据。
           </p>
           <button id="protocol-discover">实际 initialize / tools/list</button>
           <form id="protocol-form">
@@ -196,12 +196,12 @@
       </section>
       <section id="workflow" class="tab learning" hidden>
         <div>
-          <p class="eyebrow">SOP / LANGGRAPH / MYSQLSAVER</p>
+          <p class="eyebrow">SOP / 审批历史</p>
           <h1>把等待和恢复看清楚</h1>
           <p>
             SOP 产生绑定参数与快照的计划；只有 M15 审批部分使用实际
-            LangGraph。MySQL 操作账本是业务权威，checkpoint
-            记录图进度。普通聊天不能批准。
+            LangGraph。PostgreSQL 操作账本是业务权威，checkpoint
+            记录历史图进度。当前仅能读取旧历史，执行和恢复等待M26。
           </p>
           <button id="workflow-load">读取当前 SOP 与实际图</button>
           <div id="workflow-graph"></div>
@@ -209,9 +209,9 @@
             <h3>独立合成权益演示</h3>
             <p id="demo-prerequisite"></p>
             <p>
-              固定 DEMO-D01、固定动作回放、真实 stdio MCP / MySQL / 独立权益
+              固定 DEMO-D01、固定动作回放、真实 stdio MCP / PostgreSQL / 独立权益
               HTTP 服务；不调用远程模型，不表示真实退款。创建后应观察
-              approval_wait 的 interrupt，批准再恢复应只有一个持久效果。
+              历史审批与checkpoint；M26通过前创建、批准和恢复关闭。
             </p>
             <button id="demo-create" disabled>创建合成待审批练习</button>
           </div>
@@ -222,7 +222,7 @@
             ><input id="demo-session" required /><label for="demo-run"
               >原 run 编号</label
             ><input id="demo-run" required /><button>
-              按原绑定读取 / 重启后恢复
+              按原绑定读取历史
             </button>
           </form>
           <label
@@ -239,7 +239,7 @@
           </div>
           <p class="code">
             application/approval.py · ApprovalService.graph / decide / resume<br />adapters/checkpoints.py
-            · MySQLSaver.alist
+            · LegacyCheckpointArchive.alist
           </p>
         </div>
         <div>
@@ -326,7 +326,7 @@
           <p class="eyebrow">AUTHORITATIVE HISTORY / PROJECTIONS</p>
           <h1>同一句补充，归到哪个问题</h1>
           <p>
-            问题归属、当前槽位、版本和消息成员由MySQL裁决。Redis缓存与Milvus投影可重建；checkpoint也不能替代业务账本。
+            问题归属、当前槽位、版本和消息成员由PostgreSQL裁决。Redis缓存与Milvus投影可重建；checkpoint也不能替代业务账本。
           </p>
           <form id="memory-form">
             <label for="memory-session">要查看的会话编号</label
@@ -344,7 +344,7 @@
             <p class="code">
               application/event_cluster.py · EventAggregationService<br />application/memory.py
               · MemoryService / ProjectionWorker<br />adapters/cases.py ·
-              MySQLCaseRepository.snapshot
+              PostgreSQLCaseRepository.snapshot
             </p>
           </div>
         </div>

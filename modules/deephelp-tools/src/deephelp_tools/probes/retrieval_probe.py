@@ -486,7 +486,7 @@ async def run(args: argparse.Namespace) -> int:
                 )
                 facts = {f.name: f.value for f in coupon.facts}
                 check(
-                    "new_coupon_message_reads_current_mysql_fact",
+                    "new_coupon_message_reads_current_postgresql_fact",
                     facts.get("coupon_status") == "threshold_not_met"
                     and str(facts["minimum_spend"].amount) == "200.00"
                     and bool(coupon.tool_call_ids),

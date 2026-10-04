@@ -1,4 +1,4 @@
-"""Minimal real MySQL/locked LangGraph compatibility gate; run each phase in a new process."""
+"""Minimal real PostgreSQL/locked LangGraph compatibility gate; run each phase in a new process."""
 
 import argparse
 import asyncio
@@ -8,8 +8,8 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from deephelp_app.adapters.checkpoints import MySQLSaver, migrate_m15
-from deephelp_app.adapters.ledger import MySQLLedger
+from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive, migrate_m15
+from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.application.dense import atomic_json
 
 
@@ -25,10 +25,10 @@ def waiting(state: ProbeState) -> dict[str, int]:
 
 
 async def run(args: argparse.Namespace) -> None:
-    ledger = await MySQLLedger.open(Path.cwd())
+    ledger = await PostgresLedger.open(Path.cwd())
     try:
         await migrate_m15(ledger.pool)
-        saver = MySQLSaver(ledger.pool)
+        saver = LegacyCheckpointArchive(ledger.pool)
         graph = StateGraph(ProbeState).add_node("wait", waiting)
         graph.add_edge(START, "wait").add_edge("wait", END)
         workflow = graph.compile(checkpointer=saver)

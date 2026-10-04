@@ -32,7 +32,7 @@ from deephelp_app.domain.models import (
 )
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
-from deephelp_tools.evaluation.mvp_acceptance import api_client, mysql_claim_checks
+from deephelp_tools.evaluation.mvp_acceptance import api_client, postgresql_claim_checks
 from deephelp_tools.evaluation.samples import CaseExpectation, load_corpus
 from deephelp_tools.learning.mvp_replay import ReplayAssembly
 
@@ -281,10 +281,12 @@ async def run(args: argparse.Namespace) -> int:
                             and receipt.question.status == receipt.response.question_status
                             and receipt.question.version == 2
                         )
-                    report["mysql_terminal_rows"] = persisted
+                    report["postgresql_terminal_rows"] = persisted
                     checks.extend(persisted)
-                    report["mysql_claim_checks"] = await mysql_claim_checks(assembly.ledger)
-                    checks.extend(report["mysql_claim_checks"].values())
+                    report["postgresql_claim_checks"] = await postgresql_claim_checks(
+                        assembly.ledger
+                    )
+                    checks.extend(report["postgresql_claim_checks"].values())
         if args.live:
             # Fresh resources and a new MCP process prove durable replay across app restarts.
             assert isinstance(assembly, LiveAssembly) and gate is not None

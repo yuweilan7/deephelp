@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.milvus_dense import create_client
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
 from deephelp_app.adapters.providers import ProviderConfig, create_gateway
@@ -25,7 +25,7 @@ async def run(args: argparse.Namespace) -> None:
     gate.open()
     try:
         async with asyncio.timeout(300), AsyncExitStack() as stack:
-            repository = await MySQLCaseRepository.open(Path.cwd())
+            repository = await PostgresCaseRepository.open(Path.cwd())
             stack.push_async_callback(repository.aclose)
             cache = RedisMemory.open(Path.cwd())
             stack.push_async_callback(cache.aclose)

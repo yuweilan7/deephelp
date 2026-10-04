@@ -1,5 +1,7 @@
 # DeepHelp 架构章程
 
+M25之后新源码全部关系事实使用PostgreSQL；下方MySQL为PDF/旧路线的原机制名称，现行旧部署仍保留。领域/权限/幂等/事务权威不变，当前替换、隔离恢复和M26图门禁见[M25](MODULES/M25_POSTGRES_FACTS.md)及PROJECT_STATE。
+
 版本：`design-v1.3`；语义契约：`0.1.3-draft`。这是 M00 工程设计基线，不是运行中系统描述。验收场景见 `ACCEPTANCE.md`，来源裁决见 `DECISIONS.md`，当前实现状态见 `PROJECT_STATE.md`。
 
 ## 1. 目标与边界

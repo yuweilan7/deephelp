@@ -1,4 +1,4 @@
-"""Dedicated MySQL isolation checks and a real loopback server for explicit live probes."""
+"""Dedicated PostgreSQL isolation checks and a real loopback server for explicit live probes."""
 
 import asyncio
 import socket
@@ -12,7 +12,7 @@ import httpx
 import uvicorn
 from fastapi import FastAPI
 
-from deephelp_app.adapters.ledger import MySQLLedger
+from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
     ErrorCode,
@@ -63,7 +63,7 @@ async def api_client(app: FastAPI, *, http: bool) -> AsyncIterator[httpx.AsyncCl
         listener.close()
 
 
-async def mysql_claim_checks(ledger: MySQLLedger) -> dict[str, bool]:
+async def postgresql_claim_checks(ledger: PostgresLedger) -> dict[str, bool]:
     nonce = "m08-claim-" + uuid4().hex
     identity = VerifiedIdentity(tenant_id="synthetic-tenant", user_id="synthetic-user-a")
     now = datetime.now(UTC)
@@ -86,7 +86,7 @@ async def mysql_claim_checks(ledger: MySQLLedger) -> dict[str, bool]:
         "pending_has_no_response": all(r.response is None for r in receipts),
     }
     # A new connection pool cannot acquire/execute the existing RUNNING receipt.
-    reader = await MySQLLedger.open(Path.cwd())
+    reader = await PostgresLedger.open(Path.cwd())
     try:
         existing = await reader.accept(request)
         result["new_pool_pending_not_reclaimed"] = (

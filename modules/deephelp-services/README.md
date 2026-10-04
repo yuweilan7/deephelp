@@ -1,6 +1,8 @@
 # DeepHelp独立业务与检索服务
 
-M20复用应用的唯一DTO、只读工具schema与会话引擎。Business服务拥有订单/券/活动的MySQL维护事务及查询快照；Retrieval服务复用既有Embedding/Milvus/BM25适配器与Dense/Hybrid排序。两个服务不依赖deephelp-tools，不提供任意SQL或中间件命令。
+M25新源码关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。现行旧安装未切换。审批执行/恢复需M26，当前只读历史；旧完整发布不能当作新字节通过的证据。
+
+M20复用应用的唯一DTO、只读工具schema与会话引擎。Business服务拥有订单/券/活动的PostgreSQL维护事务及查询快照；Retrieval服务复用既有Embedding/Milvus/BM25适配器与Dense/Hybrid排序。两个服务不依赖deephelp-tools，不提供任意SQL或中间件命令。
 
 ## 启动与凭据
 

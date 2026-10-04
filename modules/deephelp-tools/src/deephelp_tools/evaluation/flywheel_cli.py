@@ -53,7 +53,7 @@ async def run(args: argparse.Namespace) -> int:
         print("Initialized independent feedback budget and stable redaction key")
         return 0
     if not args.live:
-        raise ConfigurationError("MySQL/assets/model operations require explicit --live")
+        raise ConfigurationError("PostgreSQL/assets/model operations require explicit --live")
     store = await FeedbackStore.open(Path.cwd())
     result: dict[str, object] = {}
     gate = None

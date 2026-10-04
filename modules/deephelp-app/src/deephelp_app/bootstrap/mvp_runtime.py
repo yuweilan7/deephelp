@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from mcp import StdioServerParameters
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
-from deephelp_app.adapters.cases import MySQLCaseRepository
+from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
@@ -271,7 +271,7 @@ class LiveAssembly:
         self.judge_gateway: Any = None
         self.event_index: MilvusEventIndex | None = None
         self.tools: ToolGateway | None = None
-        self.ledger: MySQLCaseRepository | None = None
+        self.ledger: PostgresCaseRepository | None = None
 
     @asynccontextmanager
     async def open(
@@ -282,11 +282,13 @@ class LiveAssembly:
                 "Select an explicit MCP server before opening runtime dependencies"
             )
         async with AsyncExitStack() as stack:
-            repository = ApprovalRepository if self.rights_port else MySQLCaseRepository
+            repository = ApprovalRepository if self.rights_port else PostgresCaseRepository
             if self.release_manifest:
                 from deephelp_app.adapters.release_store import ReleaseRepository
 
                 repository = ReleaseRepository
+            if self.rights_port or self.rights_key:
+                raise ConfigurationError("PostgreSQL approval execution requires M26")
             ledger = await repository.open(self.root)
             if self.release_manifest:
                 assert isinstance(ledger, ReleaseRepository)
@@ -471,7 +473,9 @@ def live_app(
             browser_auth,
             lambda: {
                 "mode": "live",
-                "business_source": "mysql" if getattr(assembly, "business_mcp", None) else "demo",
+                "business_source": "postgresql"
+                if getattr(assembly, "business_mcp", None)
+                else "demo",
                 "remaining_calls": max(0, budget.state["max_calls"] - budget.state["attempts"]),
                 "max_tokens": budget.state["max_tokens"],
                 "charged_tokens": budget.state["charged_tokens"],

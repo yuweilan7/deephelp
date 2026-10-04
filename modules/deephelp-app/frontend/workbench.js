@@ -190,10 +190,10 @@ function showIdentity(data) {
   $("logout").hidden = false;
   const e = data.execution;
   $("execution").textContent =
-    `模式：${e.mode} · 事实来源：${e.business_source === "mysql" ? "MySQL个人持久资料" : "显式demo"} · 单条预计${e.expected_calls_per_message} · 剩余调用${e.remaining_calls} · 共享token上限${e.max_tokens} / 已计${e.charged_tokens} · 超时${e.request_timeout_seconds}秒。点击执行才调用模型。`;
+    `模式：${e.mode} · 事实来源：${e.business_source === "postgresql" ? "PostgreSQL个人持久资料" : "显式demo"} · 单条预计${e.expected_calls_per_message} · 剩余调用${e.remaining_calls} · 共享token上限${e.max_tokens} / 已计${e.charged_tokens} · 超时${e.request_timeout_seconds}秒。点击执行才调用模型。`;
   $("business-mode").textContent = e.business_maintenance
     ? "已连接Business服务。保存不调用模型。"
-    : "当前后端未启用MySQL业务维护；请按启动说明选择Business服务。";
+    : "当前后端未启用PostgreSQL业务维护；请按启动说明选择Business服务。";
   $("save-record").disabled = !e.business_maintenance;
   run(learningStatus);
   $("retrieval-budget").textContent =
@@ -612,7 +612,7 @@ $("reload-sessions").addEventListener("click", () =>
   run(async () => {
     await sessions();
     if (state.last) await messages();
-    notify("已从MySQL重载，未请求模型。");
+    notify("已从PostgreSQL重载，未请求模型。");
   }),
 );
 $("more-sessions").addEventListener("click", () =>
@@ -686,7 +686,9 @@ async function learningStatus() {
     $("demo-create").disabled = !s.demo_enabled;
     $("demo-prerequisite").textContent = s.demo_enabled
       ? "独立演示身份与权益执行口已启用。"
-      : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
+      : s.execution_gate === "M26"
+        ? "当前仅可读取审批历史；M26验证保存器后才能创建、批准和恢复。"
+        : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
     try {
       await loadEvaluation();
       document.querySelector("[data-evaluation]").hidden = false;
@@ -1002,7 +1004,7 @@ async function loadEvaluation() {
     `当前工具冻结集 ${a.cases}个合成会话 / ${a.turns}条消息 · 独立审计${a.independent_cases} · 来源组${a.declared_source_groups} · ${JSON.stringify(a.split_counts)} · 浏览新增调用0。历史报告范围另见各报告。`;
   $("evaluation-code").textContent = d.code.join("\n");
   $("evaluation-pointer").textContent =
-    `MySQL ${d.pointer.channel} · revision ${d.pointer.revision} · active ${d.pointer.active || "无"} · previous ${d.pointer.previous || "无"}`;
+    `PostgreSQL ${d.pointer.channel} · revision ${d.pointer.revision} · active ${d.pointer.active || "无"} · previous ${d.pointer.previous || "无"}`;
   $("evaluation-rollback").disabled = !d.pointer.previous;
   $("evaluation-task-start").disabled = d.tasks.some((r) =>
     ["RUNNING", "CANCELLING"].includes(r.state),

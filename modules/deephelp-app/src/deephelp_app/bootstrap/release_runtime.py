@@ -1,4 +1,4 @@
-"""Select a complete MySQL release once per request; retain independent runtime instances."""
+"""Select a complete PostgreSQL release once per request; retain independent runtime instances."""
 
 import asyncio
 from contextlib import AsyncExitStack, asynccontextmanager
