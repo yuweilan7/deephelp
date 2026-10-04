@@ -162,7 +162,7 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
     from deephelp_app.adapters.tool_gateway import process_alive
     from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 
-    owners, gateways = [], []
+    owners, gateways, configurations = [], [], []
 
     class Store:
         @classmethod
@@ -182,6 +182,7 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
         def __init__(self, *args, **kwargs):
             self.tools = ToolGateway()
             gateways.append(self.tools)
+            configurations.append(kwargs)
 
         @asynccontextmanager
         async def open(self, client, trace):
@@ -197,11 +198,21 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
         "verify_release",
         lambda manifest: dict(dense_pointer="unused", fasttext_pointer="unused", rules="unused"),
     )
-    runtime = module.ReleaseRuntime("unit")
+    from deephelp_app.adapters.network_mcp import HTTPMCPConfig
+
+    business = HTTPMCPConfig(url="http://127.0.0.1:8011/mcp", credentials_path=Path("business"))
+    retrieval = HTTPMCPConfig(
+        url="http://127.0.0.1:8012/mcp", credentials_path=Path("retrieval"), audience="retrieval"
+    )
+    runtime = module.ReleaseRuntime("unit", business_mcp=business, retrieval_mcp=retrieval)
     async with runtime.open(None, None) as router:
         await asyncio.create_task(router.entry("new-from-request-task"))
     assert len(owners) == 2 and all(enter is exit for enter, exit in owners)
     assert all(tool.pid and not process_alive(tool.pid) for tool in gateways)
+    assert all(
+        c["business_mcp"] is business and c["retrieval_mcp"] is retrieval for c in configurations
+    )
+    assert runtime.tools is gateways[0]
 
 
 async def test_continuation_cannot_accept_a_half_new_release(release, monkeypatch):

@@ -93,6 +93,9 @@ def atomic_json(path: Path, data: object) -> None:
 
 def load_json(path: Path) -> dict[str, object]:
     """Bounded local state; synchronous saves cannot outlive a cancelled writer."""
+    from deephelp_app.application.artifact_paths import resolve_artifact
+
+    path = resolve_artifact(path)
     if path.stat().st_size > 2 * 1024**2:
         raise ValueError("Manifest size limit exceeded")
     value = json.loads(path.read_text(encoding="utf-8"))

@@ -6,6 +6,7 @@ from typing import Any
 from deephelp_app.adapters.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_manifest
 from deephelp_app.adapters.runtime_assets import read_data, verify_files, verify_remote
+from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
@@ -26,7 +27,9 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     registry = SOPRegistry.model_validate(manifest.sop_registry)
     package = PACKAGE
     validation = read_data(Path(manifest.validation_path))
-    prompts = {str(p.relative_to(package)): file_digest(p) for p in sorted(package.rglob("*.txt"))}
+    prompts = {
+        p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
+    }
     if (
         digest(data) != manifest.assets_digest
         or dense["corpus_digest"] != manifest.corpus_digest
@@ -50,14 +53,14 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     ):
         raise ConfigurationError("Complete release versions/configuration do not match")
     required = {
-        str(Path(data[key]).resolve()) for key in ("dense_pointer", "fasttext_pointer", "rules")
+        str(resolve_artifact(data[key])) for key in ("dense_pointer", "fasttext_pointer", "rules")
     } | {
-        manifest.providers_path,
-        manifest.judge_providers_path,
-        manifest.assets_path,
-        manifest.validation_path,
+        str(resolve_artifact(manifest.providers_path)),
+        str(resolve_artifact(manifest.judge_providers_path)),
+        str(resolve_artifact(manifest.assets_path)),
+        str(resolve_artifact(manifest.validation_path)),
     }
-    if not required.issubset(manifest.files):
+    if not required.issubset({str(resolve_artifact(p)) for p in manifest.files}):
         raise ConfigurationError("A consumed release artifact has no fingerprint")
     return data
 
