@@ -30,6 +30,6 @@ Langfuse SDK 内部仍基于 OpenTelemetry。新运行保留它需要的 OTel �
 
 首试验模型0次，用固定动作证明应用→两MCP跨进程、官方图/保存器、pause→新进程resume可关联、API分页、内容脱敏及观测关闭；失败先修接缝，不批量重写所有 decorators。后续通过一个代表客诉检索路径及一个工具选择/回复路径，按实际影响选择必要真实模型内容；固定故障/审批不重复经过模型。
 
-实际 Langfuse 页面读回输入输出/模型/usage/版本、流程与检索来源；重复 receipt不产生新 generation，导出失败不重复业务、无限重试或拖住取消。原三视图/学习页/越权守卫及业务效果计数回归通过后才具备退役旧管线条件。完成后停止。
+实际 Langfuse 页面读回输入输出/模型/usage/版本、流程与检索来源；重复 receipt不产生新 generation，导出失败不重复业务、无限重试或拖住取消。原三视图/学习页/越权守卫及业务效果计数回归通过后才具备退役旧管线条件。“完成M28”在关联首试验验收交付后继续业务全覆盖与工作台替换，无需用户另启；本M全部特性交付后停止。
 
 依据：[原生 SDK](https://langfuse.com/docs/observability/sdk/instrumentation)、[LangChain/LangGraph 回调](https://langfuse.com/integrations/frameworks/langchain)。接入方式不同于传输标准，不能把 SDK 与 OTel 视为互斥选项。
