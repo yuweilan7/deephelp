@@ -168,6 +168,7 @@ async def test_catalog_owner_all_routes_and_no_browser_paths(tmp_path, monkeypat
         paths = [
             "",
             "/reports/trusted",
+            "/imports/trusted",
             "/assets/trusted",
             "/plan",
             "/tasks/task",
@@ -179,6 +180,7 @@ async def test_catalog_owner_all_routes_and_no_browser_paths(tmp_path, monkeypat
         for path, body in [
             ("/capture", {"run_id": "a" * 32}),
             ("/tasks", {"action": "offline", "confirmed": True}),
+            ("/tasks", {"action": "platform_upload", "import_id": "trusted", "confirmed": True}),
             ("/tasks/task/resume", None),
             (
                 "/release",
@@ -281,3 +283,72 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
                 assert row["state"] == "FAILED"
                 assert row["diagnostic"]["message"] == "Exact current byte gate rejected"
         assert seen == ["build", "validate", "prepare"]
+
+
+async def test_platform_worker_cancel_closes_child_before_partial_state(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    key = tmp_path / "key"
+    key.write_bytes(b"k" * 32)
+    identity = VerifiedIdentity(tenant_id="owner", user_id="a")
+    config = EvaluationCatalog(
+        owner=identity,
+        task_root=Path(".local/jobs"),
+        channel="learning",
+        redaction_key=key,
+        providers=key,
+        auth=key,
+        budget_state=key,
+        pointer=key,
+        fasttext_pointer=key,
+        platform_config=key,
+        imports={
+            "trusted": dict(report=key, data=key, manifest=key, cases=["x"], modes=["hybrid"])
+        },
+    )
+    started, closed = asyncio.Event(), asyncio.Event()
+    child = SimpleNamespace(returncode=None)
+
+    async def wait():
+        await closed.wait()
+        child.returncode = -1
+        return -1
+
+    def kill():
+        closed.set()
+
+    child.wait, child.kill = wait, kill
+
+    async def spawn(*args, **kwargs):
+        assert args[1:4] == ("-m", "deephelp_tools.evaluation.langfuse_cli", "--live")
+        path = Path(args[args.index("--state") + 1])
+        path.parent.mkdir(parents=True)
+        await asyncio.to_thread(
+            path.write_text, json.dumps(dict(status="RUNNING", rows={"one": "VERIFIED"}))
+        )
+        started.set()
+        return child
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
+    app = create_app(Settings(mode="test"), trace=MemoryTrace())
+    app.include_router(
+        evaluation_router(
+            SimpleNamespace(ledger=object()), lambda r: identity, config, lambda: None
+        )
+    )
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1"
+        ) as client,
+    ):
+        response = await client.post(
+            "/learning/evaluation/tasks",
+            json=dict(action="platform_upload", import_id="trusted", confirmed=True),
+        )
+        assert response.status_code == 200
+        row = response.json()
+        await started.wait()
+        cancelled = await client.post(f"/learning/evaluation/tasks/{row['id']}/cancel")
+        assert cancelled.json()["state"] == "CANCELLED" and closed.is_set()
+        state = json.loads((tmp_path / ".local/jobs/imports/trusted.json").read_text())
+        assert state["status"] == "CANCELLED" and len(state["rows"]) == 1

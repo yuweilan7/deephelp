@@ -42,7 +42,7 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 
 进入页面先读取计划与共享剩余预约数。冻结审计和四路离线回归为0远程模型；离线计数中的模型适配动作不等于远程API调用。构建基线12条语料、最多10个批准来源，默认每8条一批，预计2–3次Embedding（重试受原门禁）；FastText只在相应路由获批时训练。验证使用原M17/M18固定11会话/14消息、真实服务/模型，预计1–113次远程调用，实际依规则/检索/SOP路径；token范围是计划估计，API usage和预算预留另计，推理沿供应商配置，不关闭或裁剪有效上下文。预算不足会停止并保留诊断；已知不足以完成构建批次时在启动前拒绝。
 
-显式任务仅`audit/offline/build/validate/prepare`，不接收命令、模型配置或任意路径；同一进程一个重任务、1800秒总上限、最多3次尝试、最多100份持久任务记录。取消等待原适配器退出再释放槽位；硬中断重启标`INTERRUPTED`，仅显式恢复才另建不可变尝试目录。已经完成或未知提交的资产/验证/版本登记先对账，原M18队列lease/尝试仍有效，不盲重放。任务`SUCCEEDED`只表示入口返回；`evidence_status`才是实际PASS/REJECTED/PREPARED/READY。任务目录保留状态和仍需恢复/浏览的产物，不作临时目录清空。
+显式任务为`audit/offline/build/validate/prepare/platform_upload`，不接收命令、模型配置或任意路径；同一进程一个重任务、1800秒总上限、最多3次尝试、最多100份持久任务记录。取消等待原适配器退出再释放槽位；硬中断重启标`INTERRUPTED`，仅显式恢复才另建不可变尝试目录。已经完成或未知提交的资产/验证/版本登记先对账，原M18队列lease/尝试仍有效，不盲重放。任务`SUCCEEDED`只表示入口返回；`evidence_status`才是实际PASS/REJECTED/PREPARED/READY。任务目录保留状态和仍需恢复/浏览的产物，不作临时目录清空。
 
 候选不修改active。`prepare`复用`prepare_manifest`及`ReleaseStore.register`，完整发布和回退复用`ReleaseStore.switch`、目标hash与revision CAS；回退还绑定当前previous。代码/工具/供应商/SOP/审核或绑定资产失效时旧报告PASS也不可发布。页面不自动执行训练、全量live或切换版本；本轮UI验收没有新质量发布。
 
@@ -72,3 +72,19 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 `--fault-checks`另开停用导出/不可用端点的应用进程，原预算锁仅在本入口拥有的进程退出后回收。
 报告区分本轮实际模型调用与读回generation数；同一历史generation不会因重放再计费。
 实际交付与适用范围见[M28交接](../../handoffs/M28.md)。
+
+
+## M29 历史评测映射
+
+平台使用锁定的v4原生Experiment。只接受原冻结集/manifest与报告来源一致的完整会话子集；不运行评测器、模型或业务。原逐行检查/失败、原报告门禁、空分母、未启用能力以及全部审批/越权/effects计数保持。原结果以JSON文本保存，避免平台数字序列化改变浮点精度。历史导入不证明当前模型质量或企业泛化。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_cli --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state .local/m29/import-state.json
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_engineering_probe --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state-root .local/tmp/m29-proof-new --output .local/m29/proof-new.json
+```
+
+导入器的状态文件与OS锁绑定来源/选择/平台project；重投相同命令读回相同Dataset item、Experiment observation和Score ID后才记COMPLETE。单次最多20会话/100行，每请求最多3次、5秒；每行读回60秒、导入600秒。probe需新状态目录/新报告，模拟实际不可用端点与取消，不新执行业务。
+
+M22受控catalog可增加`platform_config`（私有配置路径）与`imports`映射；每个条目含`report/data/manifest/cases/modes`，最多16个。owner在原评测页选择条目、明确确认后启动`platform_upload`；网页不能传路径、key或命令。工作台独立子进程拥有SDK队列，660秒外层上限，取消确认子进程退出后保留部分状态，原串行任务与最多3次显式恢复保持。只读状态不初始化SDK；其他主体所有入口404。已完成任务、最终状态和验收报告保留，临时诊断可在核对后清理。
+
+实际来源与限制见[M29交接](../../handoffs/M29.md)。Prompt版本/人工annotation发布链为同模块下一特性。
