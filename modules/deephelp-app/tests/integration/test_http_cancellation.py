@@ -4,10 +4,10 @@ import httpx
 import pytest
 from fastapi import Request
 
-from deephelp_app.app import create_app
-from deephelp_app.execution import ExecutionBudget, read_json
-from deephelp_app.settings import Settings
-from deephelp_app.trace import MemoryTrace, request_context
+from deephelp_app.adapters.trace import MemoryTrace, request_context
+from deephelp_app.api.app import create_app
+from deephelp_app.bootstrap.settings import Settings
+from deephelp_app.domain.execution import ExecutionBudget, read_json
 
 pytestmark = pytest.mark.integration
 

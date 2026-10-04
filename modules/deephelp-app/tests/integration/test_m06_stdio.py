@@ -6,12 +6,13 @@ from uuid import uuid4
 import pytest
 from mcp.shared.exceptions import MCPError
 
-from deephelp_app.demo.tool_config import FaultSpec, MockConfig
+from deephelp_app.adapters.mcp_protocol import LEDGER_URI, sign_metadata
+from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope, ToolStatus
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.mcp_protocol import LEDGER_URI, sign_metadata
-from deephelp_app.probes.mcp_smoke import accept, invoke, synthetic_request, wait_record
-from deephelp_app.tool_gateway import ToolGateway, process_alive
+from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
+from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
+from deephelp_tools.probes.mcp_smoke import accept, invoke, synthetic_request, wait_record
 
 pytestmark = pytest.mark.integration
 
@@ -185,12 +186,12 @@ async def test_gateway_rejects_second_lifespan_without_spawning():
     assert not process_alive(gateway.pid)
 
 
-async def test_startup_handshake_timeout_reaps_unresponsive_child(tmp_path, monkeypatch):
+async def test_startup_handshake_timeout_reaps_unresponsive_child(tmp_path):
     import sys
 
     from mcp import StdioServerParameters
 
-    import deephelp_app.tool_gateway as module
+    import deephelp_app.adapters.tool_gateway as module
 
     pid_path = tmp_path / "stalled.pid"
     code = (
@@ -198,21 +199,20 @@ async def test_startup_handshake_timeout_reaps_unresponsive_child(tmp_path, monk
         + repr(str(pid_path))
         + ").write_text(str(os.getpid())); time.sleep(30)"
     )
-    monkeypatch.setattr(
-        module,
-        "StdioServerParameters",
-        lambda **kwargs: StdioServerParameters(command=sys.executable, args=["-c", code]),
+    gateway = module.ToolGateway(
+        server=StdioServerParameters(command=sys.executable, args=["-c", code]),
+        startup_timeout=0.5,
     )
     async with asyncio.timeout(10):
         with pytest.raises(TimeoutError):
-            async with ToolGateway(startup_timeout=0.5).open():
+            async with gateway.open():
                 raise AssertionError("Unresponsive server became ready")
     pid = int(pid_path.read_text())
     assert not process_alive(pid)
 
 
 async def test_startup_registry_failure_reaps_child(tmp_path, monkeypatch):
-    from deephelp_app.errors import AppError
+    from deephelp_app.domain.errors import AppError
 
     ledger_path = tmp_path / "startup.json"
     gateway = ToolGateway(ledger_path=ledger_path)

@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import SecretStr, ValidationError
 
+from deephelp_app.bootstrap.settings import Settings
+from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models import (
     ConverseInput,
     EvidenceRef,
@@ -11,9 +13,7 @@ from deephelp_app.domain.models import (
     ResponseEnvelope,
     VerifiedIdentity,
 )
-from deephelp_app.errors import ConfigurationError
-from deephelp_app.learning.fakes import FakeRepository
-from deephelp_app.settings import Settings
+from deephelp_tools.learning.fakes import FakeRepository
 
 pytestmark = pytest.mark.unit
 

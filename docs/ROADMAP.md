@@ -53,7 +53,7 @@
 | M16 | 意图/多轮/流程视图和事实回复；只读版不依赖M15 |
 | M17 | 独立冻结评测、增量对照；evaluation_cli audit/run，500+规模另列状态 |
 | M18 | 采集→审核→三路更新→回归/回退；发布加固单做 |
-| [M19](MODULES/M19_STRUCTURE_LEARNING.md) | 运行源码分层、工具独立安装、demo/冻结集边界与离线学习导航；[首个短计划](../planning/M19/PLAN.md) |
+| [M19](MODULES/M19_STRUCTURE_LEARNING.md) | 已完成运行源码分层、独立工具/demo安装与离线机制导航；[安装/离线交接](../handoffs/M19.md) |
 | [M20](MODULES/M20_BUSINESS_SOURCE.md) | MySQL记录/维护API与Business MCP，然后Retrieval MCP；两个独立服务/顺序特性，保留事务边界 |
 | [M21](MODULES/M21_OBSERVABILITY.md) | 标准OTel/跨MCP/LangGraph/Saver观测，然后Collector/Tempo/Prometheus/Grafana集成；两个顺序特性 |
 | [M22](MODULES/M22_LEARNING_WORKBENCH.md) | 主工作台、MCP/工作流学习、意图/检索/记忆实验、评测飞轮；四个顺序特性 |
@@ -77,7 +77,7 @@ M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/
 
 这是依赖与推荐顺序，不要求等待M22所有页面才可远端使用：M20/M21和M22主工作台通过后，可由用户单独启动M23的首个远端版本，未实现tab明确标注；其余学习页面随后逐特性迭代。不会因前置满足自动启动部署。
 
-1. **M19结构：** 按`planning/M19/PLAN.md`完成工程分层、运行/工具/demo安装边界和离线学习导航；不实施业务数据、前端或部署。
+1. **M19结构：** 已完成，现行接口与证据见`handoffs/M19.md`；不重复实施，未启动M20。
 2. **M20业务服务：** 只实施M20第1特性，交付MySQL订单/券/活动、维护API、独立Business MCP及应用接入；固定验收新订单、真实内容、更新后新消息、独立重启、越权与零调用重放；检索沿用现有实际适配器，完成后停止。
 3. **M20检索服务：** 只实施M20第2特性，通过正式Streamable HTTP拆出Retrieval MCP与原检索Port远端适配器；验证实际候选/排序/签名、schema、scope/归属、取消/断连/重启、共享预算及一条跨两个MCP的客诉内容；不搬事务/checkpoint或建前端。
 4. **M21标准观测：** 只实施M21第1特性，接OTel SDK/Collector与13段/模型/检索/MCP/MySQL明细，补LangGraph节点、MySQLSaver、interrupt/resume与跨恢复Span Link；口径/脱敏/隔离实际验证，不建设前端或同时启动完整平台。
@@ -108,11 +108,11 @@ M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/
 
 Windows从根使用本机已验证的py -3.14 -m uv，应用仍为3.14.7；其他机器核对根pyproject要求。以下检查和适用的真实验收只在特性分支执行：
 
-业务启动用 `python -m deephelp_app serve`，参数见[业务入口](../modules/deephelp-app/README.md#业务启动入口)。学习实验/fake在learning，显式探针在probes，冻结评测/训练选参在evaluation；`evaluation.evaluation_cli audit/run`使用冻结数据。包内运行策略、SOP/模板、合成业务事实、冻结集和学习数据分别按[资源职责](../modules/deephelp-app/src/deephelp_app/assets/README.md)读取。默认业务启动不依赖探针、学习工具或dev/test数据；完整发布准备时仍需要精确内容评测，不能用移目录绕过hash门禁。
+业务启动用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`，参数见[业务入口](../modules/deephelp-app/README.md#业务启动入口)。学习实验/fake在learning，显式探针在probes，冻结评测/训练选参在evaluation；`evaluation.evaluation_cli audit/run`使用冻结数据。包内运行策略、SOP/模板、合成业务事实、冻结集和学习数据分别按[资源职责](../datasets/README.md)读取。默认业务启动不依赖探针、学习工具或dev/test数据；完整发布准备时仍需要精确内容评测，不能用移目录绕过hash门禁。
 
 ```powershell
-py -3.14 -m uv run --locked ruff check conftest.py modules/deephelp-app
-py -3.14 -m uv run --locked ruff format --check conftest.py modules/deephelp-app
+py -3.14 -m uv run --locked ruff check conftest.py modules
+py -3.14 -m uv run --locked ruff format --check conftest.py modules
 py -3.14 -m uv run --locked mypy
 py -3.14 -m uv run --locked pytest <本次相关测试路径> --tb=short -q
 git diff --check

@@ -1,5 +1,6 @@
 """Pure contract guards; downstream services still need authenticated, durable reads."""
 
+from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models import (
     BudgetUsed,
     Entity,
@@ -20,7 +21,6 @@ from deephelp_app.domain.models import (
     VerifiedIdentity,
     VersionManifest,
 )
-from deephelp_app.errors import AppError
 
 
 def require_owner(identity: VerifiedIdentity, owner: VerifiedIdentity) -> None:

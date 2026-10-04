@@ -17,30 +17,30 @@ with (
         side_effect=AssertionError('pool on import')
     ) as pool,
 ):
-    import deephelp_app.settings
+    import deephelp_app.bootstrap.settings
     with patch.object(
-        deephelp_app.settings.Settings, 'from_env',
+        deephelp_app.bootstrap.settings.Settings, 'from_env',
         side_effect=AssertionError('env on import')
     ):
-        import deephelp_app.app
-        import deephelp_app.learning.experiments
-        import deephelp_app.learning.fakes
-        import deephelp_app.trace
+        import deephelp_app.api.app
+        import deephelp_tools.learning.experiments
+        import deephelp_tools.learning.fakes
+        import deephelp_app.adapters.trace
         import deephelp_app.domain.checks
         import deephelp_app.domain.registry
-        import deephelp_app.evaluation.samples
-        import deephelp_app.corpus
-        import deephelp_app.dense
-        import deephelp_app.milvus_dense
-        import deephelp_app.dense_cli
-        import deephelp_app.mcp_protocol
-        import deephelp_app.demo.mcp_server
-        import deephelp_app.tool_gateway
-        import deephelp_app.probes.mcp_smoke
-        import deephelp_app.sop_config
-        import deephelp_app.sop
-        import deephelp_app.learning.sop_replay
-        import deephelp_app.probes.sop_probe
+        import deephelp_tools.evaluation.samples
+        import deephelp_app.application.corpus
+        import deephelp_app.application.dense
+        import deephelp_app.adapters.milvus_dense
+        import deephelp_tools.evaluation.dense_cli
+        import deephelp_app.adapters.mcp_protocol
+        import deephelp_tools.demo.mcp_server
+        import deephelp_app.adapters.tool_gateway
+        import deephelp_tools.probes.mcp_smoke
+        import deephelp_app.application.sop_config
+        import deephelp_app.application.sop
+        import deephelp_tools.learning.sop_replay
+        import deephelp_tools.probes.sop_probe
     assert not client.called
     assert not pool.called
 """

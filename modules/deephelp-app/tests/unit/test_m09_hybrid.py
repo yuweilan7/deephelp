@@ -7,8 +7,14 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.corpus import digest
-from deephelp_app.dense import atomic_json, load_json
+from deephelp_app.adapters.milvus_dense import FIELDS
+from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore, publish_hybrid
+from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.application.corpus import digest
+from deephelp_app.application.dense import atomic_json, load_json
+from deephelp_app.application.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ChatResult,
     DenseHit,
@@ -21,9 +27,8 @@ from deephelp_app.domain.models import (
     IntentCode,
     ModelUsage,
 )
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.evaluation.hybrid_cli import validate_selection
-from deephelp_app.evaluation.hybrid_eval import (
+from deephelp_tools.evaluation.hybrid_cli import validate_selection
+from deephelp_tools.evaluation.hybrid_eval import (
     choose_weight,
     classify,
     dataset,
@@ -31,11 +36,6 @@ from deephelp_app.evaluation.hybrid_eval import (
     query_text,
     ranking,
 )
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
-from deephelp_app.milvus_dense import FIELDS
-from deephelp_app.milvus_hybrid import MilvusHybridStore, publish_hybrid
-from deephelp_app.providers import ProviderConfig
 
 pytestmark = pytest.mark.unit
 SIG = EmbeddingSignature(provider="synthetic", model="offline-only", dimension=3)

@@ -3,7 +3,11 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.cascade import CascadePolicy, ScoreGate, StructuredFallback
+from deephelp_app.application.cascade import CascadePolicy, ScoreGate, StructuredFallback
+from deephelp_app.application.intent import IntentService
+from deephelp_app.application.text_entity import TextEntityProcessor
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ChatResult,
     Decision,
@@ -16,13 +20,9 @@ from deephelp_app.domain.models import (
     IntentCode,
     ModelUsage,
 )
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.evaluation.cascade_tune import select_gate
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.intent import IntentService
-from deephelp_app.learning.event_replay import envelope
-from deephelp_app.learning.mvp_replay import REPLAY_SCOPE
-from deephelp_app.text_entity import TextEntityProcessor
+from deephelp_tools.evaluation.cascade_tune import select_gate
+from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.learning.mvp_replay import REPLAY_SCOPE
 
 pytestmark = pytest.mark.unit
 

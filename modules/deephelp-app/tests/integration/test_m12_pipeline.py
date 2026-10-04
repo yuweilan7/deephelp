@@ -4,14 +4,14 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 
-from deephelp_app.cascade import CascadePolicy
-from deephelp_app.conversation import STAGES
+from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.application.cascade import CascadePolicy
+from deephelp_app.application.conversation import STAGES
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import IntentCode, Outcome, QuestionStatus
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.cases_fake import MemoryCaseRepository
-from deephelp_app.learning.event_replay import ReplayJudge, envelope
-from deephelp_app.learning.mvp_replay import ReplayAssembly
-from deephelp_app.trace import MemoryTrace
+from deephelp_tools.learning.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.event_replay import ReplayJudge, envelope
+from deephelp_tools.learning.mvp_replay import ReplayAssembly
 
 pytestmark = pytest.mark.integration
 
@@ -136,7 +136,7 @@ async def test_preparation_deadline_still_saves_terminal_after_acceptance():
 
 async def test_explicit_foreign_hint_does_not_write_business_data():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.errors import AppError
+        from deephelp_app.domain.errors import AppError
 
         request = envelope("订单000031", "m12", question_hint="foreign")
         with pytest.raises(AppError):
@@ -191,7 +191,7 @@ async def test_coupon_supplement_cannot_pollute_an_open_discount_question():
 
 async def test_unclassified_predecessor_event_can_reach_memory_cascade():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.event_cluster import PersistentEventAggregation
+        from deephelp_app.application.event_cluster import PersistentEventAggregation
 
         seeded = await PersistentEventAggregation(repo, conversation.events).process(
             envelope("SKU-C9 订单000053 免息活动名称查询", "m12"), ExecutionBudget.start(20, 40, 0)
@@ -290,8 +290,8 @@ async def test_cancellation_after_dispatch_preserves_call_id_and_terminal():
 
 async def test_preparation_service_failure_saves_error_without_running_business_nodes():
     async with service() as (conversation, repo, judge, assembly, trace):
+        from deephelp_app.domain.errors import AppError
         from deephelp_app.domain.models import ErrorCode
-        from deephelp_app.errors import AppError
 
         class FailedMemory:
             async def load(self, *args, **kwargs):

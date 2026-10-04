@@ -7,22 +7,38 @@ from types import SimpleNamespace
 
 import pytest
 
-from deephelp_app.corpus import digest
+from deephelp_app.adapters.ledger import new_receipt
+from deephelp_app.adapters.release_assets import release_hash, verify_release
+from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseRepository
+from deephelp_app.application.corpus import digest
+from deephelp_app.application.sop_governance import bundled_registry
+from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models import ReleaseManifest, ResponseEnvelope, VersionManifest
-from deephelp_app.errors import ConfigurationError
-from deephelp_app.evaluation.core import file_digest
-from deephelp_app.learning.event_replay import envelope
-from deephelp_app.ledger import new_receipt
-from deephelp_app.release_assets import prepare_manifest, release_hash, verify_release
-from deephelp_app.release_store import ReleaseMismatch, ReleaseRepository
-from deephelp_app.sop_governance import bundled_registry
+from deephelp_tools.evaluation.core import file_digest
+from deephelp_tools.evaluation.release_prepare import prepare_manifest
+from deephelp_tools.learning.event_replay import envelope
 
 pytestmark = pytest.mark.unit
 
 
+def test_prepare_requires_source_provenance_even_when_runtime_hash_is_valid(release, monkeypatch):
+    import deephelp_tools.evaluation.release_prepare as preparation
+
+    monkeypatch.setattr(
+        preparation,
+        "provenance",
+        lambda: {"package_digest": "fixed-code", "git_commit": None, "dirty_worktree": None},
+    )
+    with pytest.raises(ConfigurationError, match="source Git provenance"):
+        prepare_manifest(
+            Path(release.assets_path), Path(release.providers_path), bundled_registry(), "no-git"
+        )
+
+
 @pytest.fixture
 def release(tmp_path, monkeypatch):
-    import deephelp_app.release_assets as module
+    import deephelp_app.adapters.release_assets as runtime_module
+    import deephelp_tools.evaluation.release_prepare as module
 
     paths = {
         name: tmp_path / (name + ".json")
@@ -80,6 +96,8 @@ def release(tmp_path, monkeypatch):
         "provenance",
         lambda: dict(package_digest="fixed-code", git_commit="abc", dirty_worktree=False),
     )
+    for name in ("verify_files", "pointer_manifest", "FastTextClassifier", "provenance"):
+        monkeypatch.setattr(runtime_module, name, getattr(module, name))
     return prepare_manifest(paths["assets"], paths["providers"], bundled_registry(), "complete-v1")
 
 
@@ -140,8 +158,9 @@ def test_static_valid_sop_cannot_bypass_its_content_regression(release):
 
 
 async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeypatch):
-    import deephelp_app.release_runtime as module
-    from deephelp_app.tool_gateway import ToolGateway, process_alive
+    import deephelp_app.bootstrap.release_runtime as module
+    from deephelp_app.adapters.tool_gateway import process_alive
+    from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 
     owners, gateways = [], []
 
@@ -186,7 +205,7 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
 
 
 async def test_continuation_cannot_accept_a_half_new_release(release, monkeypatch):
-    from deephelp_app.approval_store import ApprovalRepository
+    from deephelp_app.adapters.approval_store import ApprovalRepository
 
     request = envelope("订单000031优惠未到账", "release-test")
     original = new_receipt(request)

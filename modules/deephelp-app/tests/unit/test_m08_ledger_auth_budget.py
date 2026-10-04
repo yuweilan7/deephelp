@@ -7,7 +7,11 @@ from uuid import uuid4
 import pytest
 from starlette.requests import Request
 
-from deephelp_app.conversation import usage_delta
+from deephelp_app.adapters.ledger import MemoryLedger, payload_hash
+from deephelp_app.application.conversation import usage_delta
+from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     BudgetUsed,
     ErrorCode,
@@ -19,10 +23,6 @@ from deephelp_app.domain.models import (
     RunStatus,
     VerifiedIdentity,
 )
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.ledger import MemoryLedger, payload_hash
-from deephelp_app.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
 
 pytestmark = pytest.mark.unit
 

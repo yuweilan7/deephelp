@@ -4,6 +4,8 @@
 
 本文同时约束未来模块，不声明数据库表或审批能力已存在。后续首次消费时增量细化，不在 M02 冻结全部未来协议。破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增 ADR。
 
+M19保持HTTP/工具DTO和wire版本不变，Python入口按职责迁移：Port在domain/ports.py，会话/SOP/审批在application，具体外部实现/发布读侧在adapters，装配CLI在bootstrap。学习、demo、冻结评测与发布prepare/validate只由deephelp-tools消费；运行包无反向依赖。ToolGateway通过显式StdioServerParameters选择现有协议进程，serve须明确MCP模块，Hybrid提供已发布语料；不隐式启用demo或回退数据库。现行路径与安装边界见[M19交接](../handoffs/M19.md)。
+
 ## 哪个阶段实现什么
 
 M05在唯一domain/models.py增量发布CorpusRecord、DenseScope、DenseHit、DenseCandidate、DenseResult，ports.py发布DenseRetrieverPort；envelope仍0.2.0-m02，旧消费者兼容。CorpusRecord只接受actionable目录标签及合成语料。DenseScope绑定namespace/dataset_version/registry_version/完整EmbeddingSignature；同维度不同模型不等价，scope改变使用另一个集合。namespace为语料范围，不是用户授权凭据。

@@ -1,7 +1,6 @@
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from importlib.resources import files
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +12,8 @@ from deephelp_app.domain.checks import (
     validate_tool_context,
     validate_tool_result,
 )
+from deephelp_app.domain.errors import HTTP_STATUS, AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     BudgetSnapshot,
     BudgetUsed,
@@ -42,9 +43,8 @@ from deephelp_app.domain.models import (
     tool_parameters_hash,
 )
 from deephelp_app.domain.registry import IntentRegistry, complaint_registry
-from deephelp_app.errors import HTTP_STATUS, AppError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.learning.fakes import FakeRepository
+from deephelp_tools.assets import asset_path
+from deephelp_tools.learning.fakes import FakeRepository
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 10, 2, tzinfo=UTC)
@@ -125,9 +125,7 @@ def tool_request(identity, **changes):
 
 
 def test_m02_json_examples_and_unconfigured_versions():
-    examples = json.loads(
-        files("deephelp_app").joinpath("assets/learning/examples.json").read_text(encoding="utf-8")
-    )
+    examples = json.loads(asset_path("examples.json").read_text(encoding="utf-8"))
     for model, data in (
         (RequestEnvelope, examples["request"]),
         (ResponseEnvelope, examples["missing_order_response"]),

@@ -6,8 +6,8 @@ from ipaddress import ip_address
 
 import pytest
 
-from deephelp_app.errors import ConfigurationError
-from deephelp_app.settings import Settings
+from deephelp_app.bootstrap.settings import Settings
+from deephelp_app.domain.errors import ConfigurationError
 
 
 def _allow_local_host(host):
@@ -96,3 +96,14 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(
                     pytest.mark.skip(reason="Live requires explicit switches and budgets")
                 )
+
+
+@pytest.fixture
+def message():
+    return {
+        "channel": "local",
+        "session_id": "session-1",
+        "message_id": "message-1",
+        "raw_text": "合成测试：查询订单",
+        "occurred_at": "2026-09-13T01:00:00+08:00",
+    }

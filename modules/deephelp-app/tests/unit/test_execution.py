@@ -3,10 +3,10 @@ import asyncio
 import httpx
 import pytest
 
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget, read_json
 from deephelp_app.domain.models import ErrorCode
-from deephelp_app.errors import AppError
-from deephelp_app.execution import AsyncCalls, ExecutionBudget, read_json
-from deephelp_app.learning.fakes import FakeModelGateway
+from deephelp_tools.learning.fakes import FakeModelGateway
 
 pytestmark = pytest.mark.unit
 

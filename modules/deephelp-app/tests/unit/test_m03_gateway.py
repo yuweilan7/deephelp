@@ -6,12 +6,12 @@ from pathlib import Path
 import httpx
 import pytest
 
+from deephelp_app.adapters.gateway import QianwenGateway
+from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
+from deephelp_app.domain.errors import AppError, ConfigurationError
+from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.domain.models import ChatMessage, ChatRequest, ErrorCode, ModelTool
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.gateway import QianwenGateway
-from deephelp_app.learning.model_fakes import FakeGateway
-from deephelp_app.providers import EndpointConfig, ProviderConfig, create_gateway
+from deephelp_tools.learning.model_fakes import FakeGateway
 
 pytestmark = pytest.mark.unit
 

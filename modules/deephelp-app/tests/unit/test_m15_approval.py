@@ -10,8 +10,16 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
-from deephelp_app.approval import ApprovalService, effect_response
-from deephelp_app.approval_store import ApprovalRepository, validate_binding
+from deephelp_app.adapters.approval_store import ApprovalRepository, validate_binding
+from deephelp_app.adapters.synthetic_rights import (
+    RightsClient,
+    RightsObservation,
+    SyntheticEffect,
+    binding_hash,
+)
+from deephelp_app.application.approval import ApprovalService, effect_response
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models import (
     ApprovalCommand,
     ApprovalStatus,
@@ -38,14 +46,6 @@ from deephelp_app.domain.models import (
     VerifiedIdentity,
     VersionManifest,
     tool_parameters_hash,
-)
-from deephelp_app.errors import AppError
-from deephelp_app.execution import ExecutionBudget
-from deephelp_app.synthetic_rights import (
-    RightsClient,
-    RightsObservation,
-    SyntheticEffect,
-    binding_hash,
 )
 
 

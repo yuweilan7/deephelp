@@ -5,9 +5,9 @@ import httpx
 import pytest
 import uvicorn
 
-from deephelp_app.app import create_app
-from deephelp_app.settings import Settings
-from deephelp_app.trace import MemoryTrace
+from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.api.app import create_app
+from deephelp_app.bootstrap.settings import Settings
 
 pytestmark = pytest.mark.e2e
 

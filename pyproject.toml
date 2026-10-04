@@ -12,18 +12,22 @@ dev = [
     "ruff>=0.11,<1",
     "mypy>=1.15,<2",
     "types-jsonschema>=4.25,<5",
+    "deephelp-tools",
 ]
 
 [tool.uv]
 package = false
 required-version = ">=0.12.13,<0.13"
 
+[tool.uv.sources]
+deephelp-tools = { workspace = true }
+
 [tool.uv.workspace]
 members = ["modules/*"]
 exclude = ["modules/README.md"]
 
 [tool.pytest.ini_options]
-testpaths = ["modules/deephelp-app/tests"]
+testpaths = ["modules/deephelp-app/tests", "modules/deephelp-tools/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "--strict-markers"
@@ -37,12 +41,12 @@ markers = [
 [tool.ruff]
 target-version = "py314"
 line-length = 100
-src = ["modules/deephelp-app/src"]
+src = ["modules/deephelp-app/src", "modules/deephelp-tools/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.mypy]
 python_version = "3.14"
-files = ["modules/deephelp-app/src"]
+files = ["modules/deephelp-app/src", "modules/deephelp-tools/src"]
 strict = true

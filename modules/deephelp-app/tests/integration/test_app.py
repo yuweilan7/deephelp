@@ -7,11 +7,11 @@ import pytest
 from fastapi import Request
 from pydantic import SecretStr
 
-from deephelp_app.app import create_app
+from deephelp_app.adapters.trace import JsonlTrace, MemoryTrace, request_context
+from deephelp_app.api.app import create_app
+from deephelp_app.bootstrap.settings import Settings
+from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models import ErrorCode
-from deephelp_app.errors import AppError, ConfigurationError
-from deephelp_app.settings import Settings
-from deephelp_app.trace import JsonlTrace, MemoryTrace, request_context
 
 pytestmark = pytest.mark.integration
 
@@ -62,7 +62,7 @@ async def test_missing_key_fake_startup_and_shared_client_shutdown(message):
             assert response.status_code == 501
             assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"
             assert app.state.resources.client is pool
-            assert app.state.resources.gateway.call_count == 0
+            assert app.state.resources.gateway is None
             assert response.json()["run_id"] is None
             assert response.json()["question_id"] is None
             assert response.json()["budget_used"]["attempts"] == 0
@@ -79,7 +79,7 @@ async def test_startup_failure_closes_previously_opened_trace(monkeypatch):
         raise ValueError("synthetic client setup failure")
 
     app = create_app(Settings(mode="test"), trace=trace)
-    monkeypatch.setattr("deephelp_app.app.httpx.AsyncClient", fail_client)
+    monkeypatch.setattr("deephelp_app.api.app.httpx.AsyncClient", fail_client)
     with pytest.raises(ValueError):
         async with app.router.lifespan_context(app):
             pytest.fail("Startup should fail")
