@@ -139,6 +139,13 @@ class LangfuseRunClient:
                 }
                 for r in bindings
             ],
+            "langfuse_url": self.config["host"].rstrip("/")
+            + "/project/"
+            + str(rows[0]["projectId"])
+            + "/traces/"
+            + traces[-1]
+            if spans and rows and re.fullmatch(r"[A-Za-z0-9_-]+", str(rows[0].get("projectId", "")))
+            else None,
         }
 
     def project(self, row: dict[str, Any]) -> dict[str, Any]:
@@ -161,7 +168,7 @@ class LangfuseRunClient:
             "attributes": safe_attributes(metadata),
             "links": [],
             "type": row["type"],
-            "model": row.get("providedModelName"),
+            "model": row.get("providedModelName", row.get("model")),
             "usage": row.get("usageDetails"),
             "input": content["input"],
             "output": content["output"],

@@ -9,7 +9,7 @@
 1. M08最小闭环：三类客诉，真实千问、Milvus和MCP协议，业务数据合成。
 2. 核心深化：Hybrid、记忆、事件聚合、完整级联、FastText、SOP治理、调试、评测与审核回流。
 3. 个人学习与远端运行：M19工程分层→M20持久业务→M21可观测性→M22学习工作台→M23个人云部署。M15已提供审批基础；真实业务写工具仍须实际执行适配与专项验收。
-4. 用户2026-10-04追加现代技术路线：旧技术栈已保存在bak/mysql-otel，main继续演进；M25全业务PostgreSQL→M26官方checkpoint→M27 Langfuse平台→M28原生观测→M30新环境切换/旧服务退役；M29 Prompt/评测平台为推荐学习扩展。另明确追加M31 qwen3.7-text-rerank接入/效果验证，可独立于迁移启动。模块尚未实施，见下方独立路线。
+4. 用户2026-10-04追加现代技术路线：旧技术栈已保存在bak/mysql-otel，main继续演进；M25全业务PostgreSQL→M26官方checkpoint→M27 Langfuse平台→M28原生观测→M30新环境切换/旧服务退役；M29 Prompt/评测平台为推荐学习扩展。另明确追加M31 qwen3.7-text-rerank接入/效果验证，可独立于迁移启动。各模块当前成果以PROJECT_STATE为准，规格/依赖见下方独立路线。
 
 身份隔离、幂等、预算和事实证据贯穿核心。15+情境、500+样本为完整规模目标，未完成单列限制，不用小样本冒充。
 
@@ -75,7 +75,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) | 协议/盘点与全持久迁移/导入/隔离恢复均交付（[交接](../handoffs/M25.md)） | M26持久前置满足；现行旧部署未切換 |
 | [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) | 两特性均交付；官方保存器/原ID转换、正式装配/学习HTTP、全历史逐状态恢复与保留守卫（[交接](../handoffs/M26.md)） | M25前置完成；现网切换/旧服务退役留M30，不冒称旧无效绑定已恢复执行 |
 | [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [交接](../handoffs/M27.md) | 全部完成：固定平台/自托管SeaweedFS存入读回、180.61秒组合容量、实际冷备恢复 | M25/M26；无需付费对象存储 |
-| [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP/官方图/pause与resume关联→业务覆盖/工作台查询替换 | M26/M27；依API/SDK实际能力继续 |
+| [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [交接](../handoffs/M28.md) | 两特性完成：跨MCP/官方图及暂停恢复前序、实际业务13段/脱敏generation/usage与原工作台替换 | M26/M27；SDK无公开Span Link参数，使用持久显式前序；旧服务留M30 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | Dataset/Experiment/Score映射→Prompt版本/审核映射 | M28；模块可选，启动则完成全部特性，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标/新部署/隔离恢复演练→最后快照/单写切换/旧服务退役 | M25–M28；每项真实验收后继续，M29可跳过 |
 | [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口/内容已交付（[交接](../handoffs/M31.md)）→同链质量对照→Retrieval MCP/学习页/正式发布 | 后两项尚未实施；不依赖迁库完成 |

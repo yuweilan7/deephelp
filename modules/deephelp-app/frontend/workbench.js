@@ -375,7 +375,7 @@ async function inspect(r) {
           ),
         );
       box.append(
-        action("读取同次OTel子span", async () => {
+        action("读取同次运行观测", async () => {
           const obs = await api(
             `/observability/runs/${encodeURIComponent(r.run_id)}?session_id=${encodeURIComponent(sid)}`,
           );
@@ -926,7 +926,11 @@ async function observe(cursor = 0) {
   $("observation-summary").replaceChildren(
     node(
       "p",
-      `平台 ${obs.status} · 当前run子span样本 ${obs.total} · 原 trace ${flow.trace_id} · OTel ${obs.otel_trace_id || "未知"}`,
+      `来源 ${obs.source || "legacy-tempo"} · 平台 ${obs.status} · 当前run观察记录 ${obs.total} · 原 trace ${flow.trace_id} · 观测 ${obs.otel_trace_id || "未知"}`,
+    ),
+    node(
+      "p",
+      `本页模型记录 ${JSON.stringify(obs.spans.filter(s => s.type === "GENERATION").map(s => ({model: s.model, usage: s.usage || "未知", version: s.version})))} · 恢复前序 ${JSON.stringify(obs.associations || [])}`,
     ),
     node(
       "p",
@@ -937,6 +941,13 @@ async function observe(cursor = 0) {
   if (obs.grafana_url) {
     const a = node("a", "在独立受保护的 Grafana 打开同一 trace");
     a.href = obs.grafana_url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    $("grafana-link").append(a);
+  }
+  if (obs.langfuse_url) {
+    const a = node("a", "在独立管理员登录的 Langfuse 查看同一运行");
+    a.href = obs.langfuse_url;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     $("grafana-link").append(a);

@@ -175,6 +175,9 @@ class QianwenGateway:
                 }
             )
             previous_retries = budget.retries_used
+            from deephelp_app.adapters.native_observation import model_io
+
+            model_io(input_value=body)
             base, key = credentials
             async with self.client.stream(
                 "POST",
@@ -201,6 +204,7 @@ class QianwenGateway:
                 request_id = safe_identifier(
                     response.headers.get("x-request-id")
                 ) or safe_identifier(data.get("request_id") if native_rerank else data.get("id"))
+                model_io(output_value=data)
                 self._diagnose(
                     {
                         "path": path,

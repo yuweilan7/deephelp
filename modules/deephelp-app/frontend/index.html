@@ -360,21 +360,21 @@
           <p class="eyebrow">SAME RUN / SAME TRACE</p>
           <h1>观察发生过的动作</h1>
           <p>
-            先在主对话选择一条结果。这里读取原计数、错误、usage与时间线，再按保存的OTel
-            trace读取子span；不会重新执行业务。小样本耗时不表示稳定P95/P99。
+            先在主对话选择一条结果。这里读取原计数、错误、usage与时间线，再按已登记的
+            trace读取原生观测；不会重新执行业务。小样本耗时不表示稳定P95/P99。
           </p>
           <button id="observation-read">读取已选 run 的实际观测</button
-          ><button id="observation-more" hidden>继续读取同 trace span</button>
+          ><button id="observation-more" hidden>继续读取当前 run 的观测</button>
           <p class="selected-run"></p>
           <div id="grafana-link"></div>
           <div class="lesson">
             <h3>预期观察与反例</h3>
             <p>
-              每个span保留进程/service、父子关系、Link、状态和实际耗时。Grafana使用独立受保护登录，前端只给同一次trace深链接。平台不可用、usage未知或诊断缺失会明确标记；持久业务结果仍可读取。
+              每个观测保留进程/service、父子关系、状态和实际耗时。模型调用显示实际usage；暂停与恢复通过持久前序关联查看。Langfuse管理员页面使用独立受保护登录，前端只给同一次trace深链接；旧Tempo历史标明来源。平台不可用、usage未知或诊断缺失会明确标记；持久业务结果仍可读取。
             </p>
             <p class="code">
-              adapters/telemetry.py · observed / environment<br />adapters/tempo.py
-              · TempoClient.read<br />api/app.py · observability run scope guard
+              adapters/native_observation.py · 原生接缝<br />adapters/langfuse_query.py
+              · 授权run投影<br />api/app.py · 身份与运行归属校验
             </p>
           </div>
         </div>
