@@ -7,7 +7,7 @@ from langgraph.graph import END, START, StateGraph
 from opentelemetry import trace
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from deephelp_app.adapters.native_observation import NativeTelemetry, graph_callbacks
+from deephelp_app.adapters.native_observation import NativeTelemetry, graph_callbacks, model_io
 from deephelp_app.adapters.telemetry import (
     annotate,
     carrier,
@@ -139,3 +139,42 @@ async def test_native_mcp_parent_never_authorizes_and_invalid_parent_is_root(nat
     servers = [s for s in exporter.get_finished_spans() if s.name == "mcp.business.call"]
     assert servers[0].parent.span_id == ctx.span_id
     assert servers[1].parent is None and servers[1].attributes["rpc.method"] == "unregistered"
+
+
+async def test_generation_io_filters_reasoning_and_serialized_identifiers_without_mutation(native):
+    runtime, exporter = native
+    original = {"messages": [{"content": "订单0001234，password=DO_NOT_EXPORT"}]}
+    output = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"order_id":"0001234","paid":"173.45"}',
+                    "reasoning_content": "DO_NOT_EXPORT",
+                }
+            }
+        ]
+    }
+    with observation("model.attempt"):
+        model_io(input_value=original, output_value=output)
+    await asyncio.to_thread(runtime.client.flush)
+    row = exporter.get_finished_spans()[0]
+    text = row.to_json()
+    assert "DO_NOT_EXPORT" not in text and "0001234" not in text and "173.45" in text
+    assert original["messages"][0]["content"].endswith("password=DO_NOT_EXPORT")
+    assert "reasoning_content" in output["choices"][0]["message"]
+    assert runtime.mask(data={"deephelp_safe_io": True, "content": "DO_NOT_EXPORT"}) == (
+        "[structural observation; IO omitted]"
+    )
+
+
+async def test_observation_io_failure_cannot_change_actual_model_result(native, monkeypatch):
+    with observation("model.attempt"):
+        from deephelp_app.adapters.native_observation import _active
+
+        def failed(**kwargs):
+            raise ValueError("DO_NOT_EXPORT")
+
+        monkeypatch.setattr(_active.get(), "update", failed)
+        model_io(input_value={"content": "safe"})
+        # Invalid provider content still reaches the gateway's original parser.
+        model_io(output_value={"choices": [{"message": None}, {"message": []}]})

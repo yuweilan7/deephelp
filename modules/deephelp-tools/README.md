@@ -48,4 +48,27 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 
 学习页按原operation/session/run读取本主体的官方checkpoint和实际审批图；显式配置合成权益服务并使用专用演示身份后，可创建固定练习、批准/拒绝/撤销及恢复同一原操作。普通消息仍不能批准旧操作，UNKNOWN先对账；synthetic_rights不改M20资料、不表示真实退款。页面不允许直接写checkpoint，也不暴露任意MCP、SQL或文件接口。旧reader仅供迁移资格验证，正式app不包含旧自建codec；转换与历史逐状态恢复见[M26交接](../../handoffs/M26.md)。
 
-扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测使用已保存run的OTel ID、M21分页与私有Grafana深链接；如需实际平台设置，见[观测运行入口](../../infra/observability/README.md#平台与访问)，平台故障明确显示，不重跑业务。
+扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测先校验已保存run的主体与session，再读取已登记的Langfuse观测；显示来源、实际generation用量、版本及暂停/恢复前序，管理员平台独立登录。未登记原生观测的历史明确标为legacy-tempo，保留[M21历史入口](../../infra/observability/README.md#平台与访问)。平台故障明确显示，不重跑业务。
+
+## M28 原生观测验收入口
+
+先按[本机环境](../../docs/LOCAL_SETUP.md)设置专用PG与原生观测私有配置，并检查已有隧道；
+两MCP继承相同环境。根目录使用`py -3.14 -m uv run --locked --env-file .env.local python`前缀。
+协议/官方图首试验`proof`为模型0次；`business`显式发送所选固定订单/优惠券消息，
+复用现有模型配置、Embedding签名与实际PG事实。先建立本轮累计预算文件，参数按任务选择，
+失败修复沿用原文件，不重置预算。输出必须新路径；凭据、报告与trace诊断保存在`.local`。
+
+```powershell
+$env:DEEPHELP_POSTGRES_CONFIG = (Resolve-Path '.local/m28/facts.json').Path
+$env:DEEPHELP_LANGFUSE_CONFIG = (Resolve-Path '.local/m28/native.json').Path
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.native_observation_probe --live --mode proof --output .local/m28/proof-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.native_observation_probe --live --mode business --sample all --fault-checks --output .local/m28/business-new.json
+```
+
+`--sample order|coupon`只运行该样本。`--source <已有business报告>`按原消息ID重投并核对原回执，
+模型新增调用必须为0；页面浏览与故障重放也不调用模型。
+`--browser-control <临时路径>`在读回后保留服务最多5分钟，打印本机URL和已授权run/session，
+人工或浏览器验收同一运行后将该文件写为`PASS`；它只登记页面检查，不能代替内容/API断言。
+`--fault-checks`另开停用导出/不可用端点的应用进程，原预算锁仅在本入口拥有的进程退出后回收。
+报告区分本轮实际模型调用与读回generation数；同一历史generation不会因重放再计费。
+实际交付与适用范围见[M28交接](../../handoffs/M28.md)。

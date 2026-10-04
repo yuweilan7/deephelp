@@ -879,6 +879,9 @@ class Conversation:
                 stats,
                 input_question_version=receipt.question.version,
             )
+            from deephelp_app.adapters.native_observation import register_run
+
+            await register_run(getattr(self.ledger, "pool", None), receipt.run_id)
             if self.approvals is not None and response.approval_operation_id:
                 # The receipt/approval transaction is already authoritative if this fails.
                 try:

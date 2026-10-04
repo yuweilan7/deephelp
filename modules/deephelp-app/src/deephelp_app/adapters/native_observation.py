@@ -1,11 +1,14 @@
 """Native SDK observations at the existing explicit seams, with export-time guards."""
 
 import json
+import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
@@ -18,6 +21,8 @@ from opentelemetry.trace import Link, Span, SpanContext
 from deephelp_app.adapters.telemetry import Telemetry, current, safe_attributes
 from deephelp_app.application.debug import sanitize
 from deephelp_app.domain.errors import ConfigurationError
+
+_active: ContextVar[Any] = ContextVar("deephelp_native_observation", default=None)
 
 
 def configuration(path: str) -> dict[str, Any]:
@@ -45,6 +50,7 @@ class NativeTelemetry(Telemetry):
         self.config = configuration(path)
         self.key = bytes.fromhex(self.config["redaction_key"])
         self.service = service
+        self.io_marker = uuid4().hex
         self.provider = TracerProvider(resource=Resource({"service.name": service}))
         self.client = Langfuse(
             public_key=self.config["public_key"],
@@ -61,12 +67,18 @@ class NativeTelemetry(Telemetry):
             span_exporter=exporter,
         )
         self.tracer = self.provider.get_tracer("deephelp.native")
-        self.setup_metrics(Resource({"service.name": service}), None, None)
+        self.setup_metrics(
+            Resource({"service.name": service}),
+            os.getenv("DEEPHELP_OTLP_ENDPOINT", "").rstrip("/") or None,
+            None,
+        )
 
     def mask(self, *, data: Any, **kwargs: Any) -> Any:
+        if data is None:
+            return None
         # The official callback passes whole graph states here. Only gateway IO
         # has an explicit marker; graph arguments and state never leave the process.
-        if isinstance(data, dict) and data.get("deephelp_safe_io") is True:
+        if isinstance(data, dict) and data.get("deephelp_safe_io") == self.io_marker:
             return sanitize({"content": data.get("content")}, self.key)["content"]
         return "[structural observation; IO omitted]"
 
@@ -107,6 +119,7 @@ class NativeTelemetry(Telemetry):
             as_type="generation" if name == "model.attempt" else "span",
         )
         observation = manager.__enter__()
+        active_token = _active.set(observation)
         span = trace.get_current_span()
         span.set_attributes(safe_attributes(attributes))
         if links:
@@ -122,6 +135,7 @@ class NativeTelemetry(Telemetry):
             attrs = getattr(span, "attributes", {}) or {}
             options: dict[str, Any] = {
                 "level": "ERROR" if attrs.get("deephelp.status") == "failed" else "DEFAULT",
+                "version": attrs.get("deephelp.version", "m28-native-v1"),
             }
             if name == "model.attempt":
                 options["model"] = attrs.get("deephelp.model")
@@ -130,12 +144,18 @@ class NativeTelemetry(Telemetry):
                         "input": attrs["deephelp.input_tokens"],
                         "output": attrs["deephelp.output_tokens"],
                     }
-            observation.update(**options)
-            # Suppress the SDK's automatic exception-event capture. Existing seam
-            # records only the safe exception type/status and propagates cancellation.
-            manager.__exit__(None, None, None)
-            if token is not None:
-                context.detach(token)
+            try:
+                observation.update(**options)
+            except Exception:
+                pass
+            finally:
+                # Suppress automatic exception-event capture and always restore task context.
+                try:
+                    manager.__exit__(None, None, None)
+                finally:
+                    _active.reset(active_token)
+                    if token is not None:
+                        context.detach(token)
 
     def shutdown(self) -> None:
         self.client.shutdown()
@@ -161,6 +181,60 @@ def graph_callbacks() -> list[Any]:
         if span.is_valid
         else []
     )
+
+
+def model_io(*, input_value: Any = None, output_value: Any = None) -> None:
+    runtime, active = current(), _active.get()
+    if not isinstance(runtime, NativeTelemetry) or active is None:
+        return
+
+    def decode(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: decode(item)
+                for key, item in value.items()
+                if key not in {"reasoning_content", "reasoning", "thinking"}
+            }
+        if isinstance(value, (list, tuple)):
+            return [decode(item) for item in value]
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except ValueError:
+                return value
+            return decode(parsed) if isinstance(parsed, (dict, list)) else value
+        return value
+
+    options = {}
+    if input_value is not None:
+        options["input"] = {"deephelp_safe_io": runtime.io_marker, "content": decode(input_value)}
+    if isinstance(output_value, dict):
+        choices = output_value.get("choices")
+        final: Any
+        if isinstance(choices, list):
+            final = [
+                {key: item["message"].get(key) for key in ("content", "tool_calls")}
+                for item in choices
+                if isinstance(item, dict) and isinstance(item.get("message"), dict)
+            ]
+        else:
+            final = output_value.get("data", output_value.get("output"))
+            if isinstance(final, list):
+                final = [
+                    {"index": item.get("index"), "dimensions": len(item["embedding"])}
+                    if isinstance(item, dict) and isinstance(item.get("embedding"), list)
+                    else item
+                    for item in final
+                ]
+        if final is not None:
+            options["output"] = {"deephelp_safe_io": runtime.io_marker, "content": decode(final)}
+    if options:
+        try:
+            active.update(**options)
+        except Exception:
+            from deephelp_app.adapters.telemetry import annotate
+
+            annotate(**{"deephelp.validation": "observation_io_unavailable"})
 
 
 async def register_run(
