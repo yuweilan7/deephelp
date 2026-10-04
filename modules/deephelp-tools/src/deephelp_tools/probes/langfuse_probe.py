@@ -98,13 +98,88 @@ async def emit(config: dict[str, Any], count: int, *, enabled: bool = True) -> d
     return {"traces": traces, "foreground_ms": foreground_ms, "flush_ms": flush_ms}
 
 
+async def cancellation_proof(config: dict[str, Any]) -> dict[str, Any]:
+    client = sdk(config)
+    ready = asyncio.Event()
+    trace_id = uuid4().hex
+    observation_id = ""
+
+    async def observed_wait() -> None:
+        nonlocal observation_id
+        with client.start_as_current_observation(
+            name="m27-cancelled-wait", trace_context={"trace_id": trace_id}
+        ) as observation:
+            observation_id = observation.id
+            ready.set()
+            try:
+                await asyncio.sleep(60)
+            except asyncio.CancelledError:
+                observation.update(output="cancelled", metadata={"cancelled": True})
+                raise
+
+    task = asyncio.create_task(observed_wait())
+    await ready.wait()
+    started = time.monotonic()
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+    cancellation_ms = (time.monotonic() - started) * 1000
+    ticks = 0
+
+    async def ticker() -> None:
+        nonlocal ticks
+        while True:
+            ticks += 1
+            await asyncio.sleep(0.001)
+
+    ticking = asyncio.create_task(ticker())
+    try:
+        await asyncio.to_thread(client.flush)
+    finally:
+        ticking.cancel()
+        try:
+            await ticking
+        except asyncio.CancelledError:
+            pass
+        await asyncio.to_thread(client.shutdown)
+    assert task.cancelled() and ticks > 0
+    async with httpx.AsyncClient(
+        base_url=config["host"], auth=(config["public_key"], config["secret_key"]), timeout=5
+    ) as reader:
+        for _ in range(60):
+            response = await reader.get(
+                "/api/public/v2/observations",
+                params={"traceId": trace_id, "fields": "core,basic,io,metadata"},
+            )
+            response.raise_for_status()
+            rows = response.json()["data"]
+            if rows:
+                row = next(item for item in rows if item["id"] == observation_id)
+                assert row["endTime"] and row["output"] == "cancelled"
+                return {
+                    "trace_id": trace_id,
+                    "observation_id": observation_id,
+                    "cancellation_ms": cancellation_ms,
+                    "flush_event_loop_ticks": ticks,
+                    "closed_observation": True,
+                }
+            await asyncio.sleep(1)
+    raise TimeoutError("Cancelled observation was not stored")
+
+
 def check_trace(body: dict[str, Any], expected: dict[str, str]) -> dict[str, Any]:
     observations = body.get("observations", [])
     root = next(item for item in observations if item["id"] == expected["root_id"])
     generation = next(item for item in observations if item["id"] == expected["observation_id"])
     if any(item["traceId"] != expected["trace_id"] for item in (root, generation)):
         raise AssertionError("Trace identity differs")
-    if not root["isRootObservation"] or root["name"] != "m27-platform-proof":
+    if (
+        not root["isRootObservation"]
+        or root["name"] != "m27-platform-proof"
+        or root["type"] != "SPAN"
+    ):
         raise AssertionError("Logical root differs")
     if json.loads(root["output"]) != {"amount": "173.45", "synthetic": True}:
         raise AssertionError("Root content differs")
@@ -112,11 +187,18 @@ def check_trace(body: dict[str, Any], expected: dict[str, str]) -> dict[str, Any
         raise AssertionError("Observation parent differs")
     if generation["name"] != "m27-synthetic-generation":
         raise AssertionError("Observation name differs")
+    if (
+        generation["type"] != "GENERATION"
+        or generation["input"] != "Synthetic platform storage check"
+    ):
+        raise AssertionError("Observation type/input differs")
     if generation["output"] != "Synthetic amount 173.45":
         raise AssertionError("Observation content differs")
     if generation["usageDetails"] != {"input": 17, "output": 9, "total": 26}:
         raise AssertionError("Synthetic usage differs")
     score = next(item for item in body["scores"] if item["id"] == expected["score_id"])
+    if score["dataType"] != "NUMERIC" or score["name"] != "m27-storage-proof":
+        raise AssertionError("Score type/name differs")
     if score["value"] != 1 or score["subject"] != {
         "kind": "observation",
         "id": expected["observation_id"],
@@ -234,13 +316,16 @@ async def run(args: argparse.Namespace) -> None:
     report: dict[str, Any] = {"sdk": version("langfuse"), "model_calls": 0, "mode": args.mode}
     try:
         async with asyncio.timeout(args.timeout):
-            if args.mode == "s3":
+            if args.mode == "cancel":
+                report["cancel"] = await cancellation_proof(config)
+            elif args.mode == "s3":
                 report["object"] = await asyncio.to_thread(
                     s3_proof, config, retain=args.retain, create_bucket=args.create_bucket
                 )
             elif args.mode == "verify":
                 source = json.loads(args.source.read_text(encoding="utf-8"))
-                report["verified"] = await verify(config, source["traces"], args.timeout - 5)
+                traces = source.get("traces") or source["verified"]
+                report["verified"] = await verify(config, traces, args.timeout - 5)
             else:
                 report.update(await emit(config, args.count, enabled=args.mode != "disabled"))
                 if args.mode == "roundtrip":
@@ -252,7 +337,7 @@ async def run(args: argparse.Namespace) -> None:
     report["status"] = "PASS"
     report["remote_delivery"] = (
         "CONTENT_VERIFIED"
-        if args.mode in {"roundtrip", "verify", "s3"}
+        if args.mode in {"roundtrip", "verify", "s3", "cancel"}
         else "DISABLED"
         if args.mode == "disabled"
         else "UNCONFIRMED"
@@ -266,7 +351,9 @@ def main() -> None:
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
-        "--mode", choices=("roundtrip", "send", "verify", "s3", "disabled"), default="roundtrip"
+        "--mode",
+        choices=("roundtrip", "send", "verify", "s3", "disabled", "cancel"),
+        default="roundtrip",
     )
     parser.add_argument("--source", type=Path)
     parser.add_argument("--retain", action="store_true")

@@ -7,7 +7,10 @@ case "$root" in /srv/deephelp-langfuse) ;; *) echo 'Use the dedicated platform d
 cd "$root"
 umask 077
 mkdir -p config data/{postgres,redis,clickhouse,clickhouse-logs,seaweedfs/master,seaweedfs/filer} backups
-[[ -z "$(find config data -type l -print -quit)" ]]
+for path in config data data/postgres data/redis data/clickhouse data/clickhouse-logs \
+  data/seaweedfs data/seaweedfs/master data/seaweedfs/filer; do
+  [[ $(realpath -e "$path") == "$root/$path" && ! -L "$path" ]]
+done
 if [[ ! -f runtime.env ]]; then
   python3 - <<'PY'
 import json, secrets
@@ -32,7 +35,7 @@ Path('config/probe.json').write_text(json.dumps(config))
 PY
 fi
 [[ -s runtime.env && -s config/s3.json && -s config/probe.json ]]
-chmod 600 runtime.env config/*
+chmod 600 runtime.env config/s3.json config/probe.json
 sudo chown -R 101:101 data/clickhouse data/clickhouse-logs
 sudo chown -R 999:999 data/postgres
 sudo docker compose --env-file runtime.env config --quiet
