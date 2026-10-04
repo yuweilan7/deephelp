@@ -55,7 +55,11 @@ class SOPExecutor:
         definitions: dict[IntentCode, SOPDefinition] | None = None,
         registry: SOPRegistry | None = None,
         history: tuple[SOPRegistry, ...] = (),
+        evidence_version: str = "business-fixtures-v1",
     ) -> None:
+        if evidence_version not in {"business-fixtures-v1", "business-mysql-v1"}:
+            raise ValueError("Unknown business evidence source")
+        self.evidence_version = evidence_version
         self.model = model
         self.tools = tools
         registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
@@ -351,7 +355,7 @@ class SOPExecutor:
             validate_tool_result(request, result)
             if result.status == ToolStatus.SUCCEEDED:
                 try:
-                    validate_observation(request, result)
+                    validate_observation(request, result, evidence_version=self.evidence_version)
                 except ValueError:
                     raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Unverified SOP facts") from None
             if result.status != ToolStatus.FAILED or not result.error or not result.error.retryable:
@@ -589,8 +593,7 @@ class SOPExecutor:
                 return branch
         return None
 
-    @staticmethod
-    def _has_evidence(d: SOPDefinition, result: ToolResult | None) -> bool:
+    def _has_evidence(self, d: SOPDefinition, result: ToolResult | None) -> bool:
         if result is None or result.status != ToolStatus.SUCCEEDED or not result.facts:
             return False
         names = {f.name for f in result.facts}
@@ -599,7 +602,9 @@ class SOPExecutor:
             and set(d.required_facts) <= names
             and bool(result.evidence_refs)
             and all(
-                r.version == d.evidence_version and r.content_hash and r.record_id == result.call_id
+                r.version == self.evidence_version
+                and r.content_hash
+                and r.record_id == result.call_id
                 for r in result.evidence_refs
             )
         )

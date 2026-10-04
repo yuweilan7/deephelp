@@ -1,0 +1,16 @@
+[project]
+name = "deephelp-services"
+version = "0.1.0"
+description = "Independent DeepHelp business and retrieval MCP services"
+requires-python = ">=3.14.7,<3.15"
+dependencies = ["deephelp-app==0.1.0"]
+
+[tool.uv.sources]
+deephelp-app = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deephelp_services"]

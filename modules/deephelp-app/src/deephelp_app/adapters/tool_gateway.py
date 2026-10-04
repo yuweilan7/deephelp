@@ -27,6 +27,7 @@ from deephelp_app.adapters.mcp_protocol import (
     validate_arguments,
     validate_observation,
 )
+from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient, ServiceCredentials
 from deephelp_app.domain.checks import (
     require_owner,
     validate_question_access,
@@ -53,6 +54,7 @@ class ToolGateway:
         self,
         *,
         server: StdioServerParameters | None = None,
+        http: HTTPMCPConfig | None = None,
         child_timeout: float = 5,
         concurrency: int = 4,
         max_result_bytes: int = 65536,
@@ -71,7 +73,11 @@ class ToolGateway:
             raise ValueError("Invalid MCP limits")
         if not 1 <= max_invocations <= 4096:
             raise ValueError("Invalid MCP diagnostic capacity")
-        self.server = server
+        if server is not None and http is not None:
+            raise ConfigurationError("Choose exactly one MCP transport")
+        self.server, self.http = server, http
+        self.credentials: ServiceCredentials | None = http.credentials() if http else None
+        self.evidence_version = "business-mysql-v1" if http else "business-fixtures-v1"
         self.max_invocations = max_invocations
         self.calls = AsyncCalls(concurrency, child_timeout)
         self.max_result_bytes = max_result_bytes
@@ -79,7 +85,7 @@ class ToolGateway:
         self.ledger_path = ledger_path
         self.stderr = stderr
         self._secret = secrets.token_hex(32)
-        self._client: Client | None = None
+        self._client: Client | NetworkMCPClient | None = None
         self.pid: int | None = None
         self.diagnostics: list[dict[str, Any]] = []
         self._entered = False
@@ -89,6 +95,19 @@ class ToolGateway:
         if self._entered:
             raise ValueError("Gateway lifespan is single-use")
         self._entered = True
+        if self.http and self.credentials:
+            self._client = NetworkMCPClient(self.http, self.credentials)
+            try:
+                async with asyncio.timeout(self.startup_timeout):
+                    await self.list_tools()
+                    health = await self._resource(HEALTH_URI)
+                    if health.get("source") != self.evidence_version:
+                        raise ConfigurationError("Business MCP source differs")
+                    self.pid = health["pid"]
+                yield self
+            finally:
+                self._client = None
+            return
         if self.server is None:
             raise ConfigurationError("Select an explicit MCP server; demo requires deephelp-tools")
         env = {
@@ -121,7 +140,7 @@ class ToolGateway:
             # Close SDK scopes normally so caller errors/cancellation retain their original type.
             await client.__aexit__(None, None, None)
 
-    def _connected(self) -> Client:
+    def _connected(self) -> Client | NetworkMCPClient:
         if self._client is None:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Tool gateway is not connected")
         return self._client
@@ -152,9 +171,7 @@ class ToolGateway:
 
     async def _resource(self, uri: str) -> dict[str, Any]:
         # Administrative diagnostics are not tools and must never be exposed to a model.
-        meta = sign_metadata(
-            self._secret, {"action": "read_resource", "uri": uri, "nonce": uuid4().hex}
-        )
+        meta = self._metadata({"action": "read_resource", "uri": uri, "nonce": uuid4().hex})
         async with asyncio.timeout(self.startup_timeout):
             result = await self._connected().read_resource(uri, meta=meta, cache_mode="bypass")
         if len(result.contents) != 1 or not isinstance(result.contents[0], TextResourceContents):
@@ -163,6 +180,11 @@ class ToolGateway:
         if not isinstance(data, dict):
             raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Invalid diagnostic resource")
         return data
+
+    def _metadata(self, payload: dict[str, Any]) -> Any:
+        if self.http and self.credentials:
+            return self.credentials.protect(self.http.audience, payload)
+        return sign_metadata(self._secret, payload)
 
     async def ledger(self) -> tuple[ToolInvocationRecord, ...]:
         data = await self._resource(LEDGER_URI)
@@ -205,8 +227,7 @@ class ToolGateway:
                     trace_id=context.trace_id,
                     call_id=call_id,
                 )
-                meta = sign_metadata(
-                    self._secret,
+                meta = self._metadata(
                     {
                         "action": "call_tool",
                         "nonce": call_id,
@@ -292,9 +313,7 @@ class ToolGateway:
                     raise ValueError
                 error = ErrorDetail.model_validate(data["error"])
                 # Remote text is data, including error messages; publish only a fixed message.
-                raise AppError(
-                    error.code, "Synthetic tool invocation failed", retryable=error.retryable
-                )
+                raise AppError(error.code, "Tool invocation failed", retryable=error.retryable)
             if (
                 len(wire.content) != 1
                 or not isinstance(wire.content[0], TextContent)
@@ -309,7 +328,7 @@ class ToolGateway:
                 or result.upstream_request_id != call_id
             ):
                 raise ValueError
-            validate_observation(request, result)
+            validate_observation(request, result, evidence_version=self.evidence_version)
             return result
         except ValueError, TypeError, ValidationError:
             raise AppError(
