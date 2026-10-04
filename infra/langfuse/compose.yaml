@@ -1,0 +1,139 @@
+name: ${LF_PROJECT:-deephelp-langfuse}
+x-common: &common
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+x-env: &platform-env
+  DATABASE_URL: postgresql://langfuse:${POSTGRES_PASSWORD:?}@postgres:5432/langfuse
+  SALT: ${SALT:?}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?}
+  NEXTAUTH_URL: ${LF_WEB_URL:-http://127.0.0.1:13300}
+  TELEMETRY_ENABLED: "false"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_PASSWORD:?}
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://seaweedfs:8333
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?}
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_BATCH_EXPORT_ENABLED: "false"
+  LANGFUSE_INGESTION_QUEUE_DELAY_MS: "1000"
+  LANGFUSE_INGESTION_CLICKHOUSE_WRITE_INTERVAL_MS: "1000"
+services:
+  web:
+    <<: *common
+    image: ghcr.io/langfuse/langfuse:4.50.0@sha256:9e13bc1a6282fddf0d4a129a2fead3e481cb6f285d1a9031abce475b984792fa
+    mem_limit: 1280m
+    cpus: 1.5
+    ports: ["127.0.0.1:${LF_WEB_PORT:-13300}:3000"]
+    environment:
+      <<: *platform-env
+      HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: --max-old-space-size=768
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?}
+      LANGFUSE_INIT_ORG_ID: deephelp-learning
+      LANGFUSE_INIT_ORG_NAME: DeepHelp Learning
+      LANGFUSE_INIT_PROJECT_ID: deephelp-m27
+      LANGFUSE_INIT_PROJECT_NAME: M27 Synthetic Platform
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LF_PUBLIC_KEY:?}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LF_SECRET_KEY:?}
+      LANGFUSE_INIT_USER_EMAIL: ${LF_USER_EMAIL:?}
+      LANGFUSE_INIT_USER_NAME: DeepHelp Learner
+      LANGFUSE_INIT_USER_PASSWORD: ${LF_USER_PASSWORD:?}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+      seaweedfs: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/public/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+  worker:
+    <<: *common
+    image: ghcr.io/langfuse/langfuse-worker:4.50.0@sha256:672b48cbfc979f7821b37b1f36aa8ff8872cafa22090c745dcd4ce04ae9b4e06
+    mem_limit: 1g
+    cpus: 1
+    environment:
+      <<: *platform-env
+      NODE_OPTIONS: --max-old-space-size=512
+    depends_on:
+      web: {condition: service_healthy}
+  postgres:
+    <<: *common
+    image: postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650
+    mem_limit: 512m
+    cpus: 0.75
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_DB: langfuse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      TZ: UTC
+      PGTZ: UTC
+    volumes: ["./data/postgres:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "langfuse", "-d", "langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  clickhouse:
+    <<: *common
+    image: clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6
+    user: "101:101"
+    mem_limit: 1536m
+    cpus: 1
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?}
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+      - ./data/clickhouse-logs:/var/log/clickhouse-server
+      - ./clickhouse.xml:/etc/clickhouse-server/config.d/deephelp.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    <<: *common
+    image: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
+    mem_limit: 256m
+    cpus: 0.5
+    environment: {REDIS_PASSWORD: "${REDIS_PASSWORD:?}"}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory-policy noeviction --appendonly yes --appendfsync everysec"]
+    volumes: ["./data/redis:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  seaweedfs:
+    <<: *common
+    image: docker.1ms.run/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    mem_limit: 512m
+    cpus: 0.75
+    command: ["server", "-ip=seaweedfs", "-ip.bind=0.0.0.0", "-dir=/data", "-master.dir=/data/master", "-master.volumeSizeLimitMB=512", "-volume.max=8", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
+    ports: ["127.0.0.1:${LF_S3_PORT:-18333}:8333"]
+    volumes:
+      - ./data/seaweedfs:/data
+      - ./config/s3.json:/etc/seaweedfs/s3.json:ro
+      - ./filer.toml:/etc/seaweedfs/filer.toml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -O /dev/null http://127.0.0.1:8333/langfuse 2>&1 | grep -q '403 Forbidden'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
