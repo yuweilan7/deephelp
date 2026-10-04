@@ -72,7 +72,7 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 
 | 模块 | 用户可启动的首特性 | 后续范围/前置 |
 |---|---|---|
-| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 驱动/真实事务与全部持久消费者盘点；可首先启动 | 旧路线已备份；探针后细化全业务迁移/隔离备份恢复 |
+| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 首项已交付；[协议/盘点交接](../handoffs/M25.md) | 全持久迁移/导入/隔离恢复待用户启动；M26前置仍未满足 |
 | [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换、独立进程恢复 | M25全持久特性；探针后正式装配/完整历史恢复 |
 | [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS、Web/Worker实际存入/读回 | M25/M26；无需付费对象存储，随后组合容量/平台恢复 |
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP、官方图与pause/resume可查关联 | M26/M27；随后业务覆盖和原工作台查询替换 |
@@ -80,9 +80,9 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标与新部署/隔离恢复演练 | M25–M28；另启动最后快照/单写切换/旧服务退役，M29可跳过 |
 | [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [计划](../planning/M31/PLAN.md) | qwen3.7-text-rerank专用端口/协议及真实内容试验；可独立启动 | 已交付M03/M09/M12/M17/M18/M20/M22；随后同链质量对照、Retrieval MCP/学习页/正式发布，不依赖迁库完成 |
 
-每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25和独立M31的首特性当前可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
+每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25后续迁移特性和独立M31首特性可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
 
-实施Prompt可直接使用：“实施M25首特性。按docs/MODULES/M25_POSTGRES_FACTS.md和planning/M25/PLAN.md验证隔离PostgreSQL/psycopg异步事务并盘点持久消费者；旧路线保留在bak/mysql-otel，按AGENTS从main建特性分支并合入main。一个主写者，验证/中文提交/推送/同步后停止，不切现网、不卸载、不购买资源，不启动下一特性或M26。”后续选择对应首特性，并核对实际前置。
+实施Prompt可直接使用：“实施M25全持久迁移特性。按docs/MODULES/M25_POSTGRES_FACTS.md、planning/M25/PLAN.md和handoffs/M25.md完成全持久适配、只读快照导入/续跑与隔离PG实际备份恢复；旧路线保留在bak/mysql-otel，按AGENTS从main建特性分支并合入main。一个主写者，验证/中文提交/推送/同步后停止，不切现网、不卸载、不购买资源，不启动M26。”后续选择对应首特性，并核对实际前置。
 
 补检索能力可先使用：“实施M31首特性。按docs/MODULES/M31_RERANK_INTEGRATION.md和planning/M31/PLAN.md完成qwen3.7-text-rerank专用端口/协议与代表内容实测，保留当前Hybrid和active发布；按AGENTS从main建特性分支，验收/中文提交/推送/合并/同步后停止。只做首特性，不同时迁数据库或部署Langfuse；后续真实会话/MCP/学习页与正式发布另启。”
 

@@ -23,6 +23,8 @@ def _allow_local_host(host):
 
 def _install_offline_network_guard(config):
     # Install before collection, including when --live only checks configuration.
+    import psycopg
+
     patch = pytest.MonkeyPatch()
     original_resolve = socket.getaddrinfo
     original_connect = socket.socket.connect
@@ -45,6 +47,18 @@ def _install_offline_network_guard(config):
     patch.setattr(socket, "getaddrinfo", resolve)
     patch.setattr(socket.socket, "connect", connect)
     patch.setattr(socket.socket, "connect_ex", connect_ex)
+
+    # libpq opens sockets in C, bypassing Python's socket patches. Real PG
+    # qualification belongs to the explicit probe, including loopback SSH tunnels.
+    def postgres_connect(*args, **kwargs):
+        raise RuntimeError("Offline pytest blocks PostgreSQL; use an explicit live probe")
+
+    async def postgres_async_connect(*args, **kwargs):
+        postgres_connect()
+
+    patch.setattr(psycopg.Connection, "connect", postgres_connect)
+    patch.setattr(psycopg, "connect", postgres_connect)
+    patch.setattr(psycopg.AsyncConnection, "connect", postgres_async_connect)
     config._deephelp_network_patch = patch
 
 
