@@ -1,7 +1,6 @@
 """Native SDK observations at the existing explicit seams, with export-time guards."""
 
 import json
-import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -67,11 +66,7 @@ class NativeTelemetry(Telemetry):
             span_exporter=exporter,
         )
         self.tracer = self.provider.get_tracer("deephelp.native")
-        self.setup_metrics(
-            Resource({"service.name": service}),
-            os.getenv("DEEPHELP_OTLP_ENDPOINT", "").rstrip("/") or None,
-            None,
-        )
+        self.setup_metrics(Resource({"service.name": service}), None)
 
     def mask(self, *, data: Any, **kwargs: Any) -> Any:
         if data is None:

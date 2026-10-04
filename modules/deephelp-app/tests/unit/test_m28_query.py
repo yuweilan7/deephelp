@@ -6,7 +6,6 @@ import httpx
 import pytest
 
 from deephelp_app.adapters.langfuse_query import LangfuseRunClient
-from deephelp_app.adapters.tempo import TempoClient
 
 
 class Pool:
@@ -80,7 +79,7 @@ async def test_registered_run_pagination_and_defense_in_depth_redaction(tmp_path
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        reader = LangfuseRunClient(http, config(tmp_path), TempoClient(http, None))
+        reader = LangfuseRunClient(http, config(tmp_path))
         result = await reader.read(
             Pool([(identifier, "a" * 16, "run", None, None)]), "authorized-run", None, 0, 1
         )
@@ -109,7 +108,7 @@ async def test_bad_native_read_is_bounded_and_cannot_escape_trace_filter(tmp_pat
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        reader = LangfuseRunClient(http, config(tmp_path), TempoClient(http, None))
+        reader = LangfuseRunClient(http, config(tmp_path))
         state, rows = await reader.trace(identifier)
     assert state in {"truncated", "incomplete", "unavailable"}
     if mode == "foreign_trace":
@@ -121,6 +120,15 @@ async def test_unregistered_run_is_explicitly_legacy_and_never_searches_langfuse
         pytest.fail("Unregistered historical trace must not be queried as native")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        reader = LangfuseRunClient(http, config(tmp_path), TempoClient(http, None))
+        reader = LangfuseRunClient(http, config(tmp_path))
         result = await reader.read(Pool([]), "authorized-run", uuid4().hex, 0, 10)
-    assert result["source"] == "legacy-tempo" and result["status"] == "unavailable"
+    assert result["source"] == "legacy-tempo" and result["status"] == "retired"
+
+
+async def test_invalid_native_identifier_never_queries(tmp_path):
+    def handler(request):
+        pytest.fail("Invalid identifier must not reach the platform")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        reader = LangfuseRunClient(http, config(tmp_path))
+        assert await reader.trace("../private") == ("unavailable", [])

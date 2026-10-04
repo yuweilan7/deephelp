@@ -57,24 +57,20 @@ def main():
     request = urllib.request.Request(url, headers={"Authorization": "Basic " + auth})
     ids = command("docker", "ps", "-q").splitlines()
     containers = json.loads(command("docker", "inspect", *ids))
-    assert len(containers) >= 15, "Required combined containers absent"
+    assert len(containers) >= 12, "Required combined containers absent"
     required = {
-        "deephelp-mysql",
         "deephelp-redis",
         "deephelp-milvus",
         "deephelp-etcd",
         "deephelp-postgres-protocol",
     }
-    required.update(
-        "deephelp-observability-" + name + "-1"
-        for name in ("collector", "tempo", "grafana", "prometheus")
-    )
+    required.update("deephelp-metrics-" + name + "-1" for name in ("prometheus", "grafana"))
     required.update(
         "deephelp-langfuse-" + name + "-1"
         for name in ("web", "worker", "postgres", "redis", "clickhouse", "seaweedfs")
     )
     assert required <= {container["Name"].lstrip("/") for container in containers}
-    services = ["deephelp-personal@" + name for name in ("app", "business", "retrieval")]
+    services = ["deephelp-modern@" + name for name in ("app", "business", "retrieval", "rights")]
     groups = {
         unit: Path(
             "/sys/fs/cgroup" + command("systemctl", "show", unit, "-p", "ControlGroup", "--value")

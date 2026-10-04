@@ -18,7 +18,8 @@ case "${1:-}" in
     set -a; source "$root/config/runtime.env"; set +a
     curl -fsS --max-time 5 "http://127.0.0.1:${DEEPHELP_APP_PORT:-8000}/health"
     for port in "${DEEPHELP_APP_METRICS_PORT:-9464}" "${DEEPHELP_BUSINESS_METRICS_PORT:-9465}" "${DEEPHELP_RETRIEVAL_METRICS_PORT:-9466}"; do
-      curl -fsS --max-time 5 "http://127.0.0.1:$port/metrics" | grep '^target_info' >/dev/null
+      # SDK target_info appears after its first observation; an idle new MCP is healthy.
+      curl -fsS --max-time 5 "http://127.0.0.1:$port/metrics" | grep '^process_start_time_seconds ' >/dev/null
     done ;;
   *) echo 'Usage: control.sh start|stop|health' >&2; exit 2 ;;
 esac

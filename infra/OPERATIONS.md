@@ -1,21 +1,25 @@
+# M30 当前运行边界
+
+正式事实在PostgreSQL，启动控制见[deployment](deployment/README.md)，PG备份/新库恢复见[postgres](postgres/README.md)。当前compose核心只启动Redis，Milvus/etcd保持；基础health不访问退役MySQL。以下旧MySQL运维描述仅供保留源/备份恢复查阅，旧服务不可作为新写后数据回退目标。源数据卷/凭据不删除，bak/mysql-otel提供原脚本。
+
 # 中间件运维
 
 这些命令在指定环境执行。日常只读 health 见 [LOCAL_SETUP](../docs/LOCAL_SETUP.md)；现有DeepHelp专用云实验环境的重启、恢复、删除和故障演练已按[AGENTS](../AGENTS.md)授权，执行前核对目标与复验范围。不要以容器 Up 代替协议鉴权，不重跑旧 P00 安装。
 
 ## 服务器入口
 
-SSH 后进入 `/srv/deephelp-infra`。服务器运行中间件，不运行应用/Agent。账号 deephelp_app 默认使用完整权限，方便单人学习与实验：MySQL 全局权限及授权能力、Redis 全命令/键/频道、Milvus 内置 admin 角色。保留已有密码与管理账号。MySQL、Redis、Milvus/WebUI 均发布到服务器 loopback，经客户端隧道访问。etcd 只在项目容器网络提供 Milvus 元数据，不发布主机端口。
+基础服务控制在 `/srv/deephelp-infra`；应用、两个独立MCP和权益由 `/srv/deephelp-modern` 配置及modern systemd单元管理。账号deephelp_app使用完整学习权限：PG完整权限、Redis全命令/键/频道、Milvus内置admin，保留已有密码与管理账号。PG、Redis、Milvus/WebUI及新观测平台均只发布到服务器loopback，经各自SSH隧道访问。etcd只在项目容器网络提供Milvus元数据。
 
 | 脚本 | 用途 |
 |---|---|
 | `scripts/doctor.sh` / `smoke-infra.sh` | 资源/容器健康诊断、认证探针 |
 | `scripts/compose.sh` | 私下加载 `.env.secret` 调用 Compose；不公开展开的配置/环境 |
-| `scripts/start-core.sh` / `stop-core.sh` / `restart-core.sh` | MySQL / Redis 启停；启动等待 healthy |
+| `scripts/start-core.sh` / `stop-core.sh` / `restart-core.sh` | Redis启停；启动等待healthy，PG/平台由各自控制入口管理 |
 | `scripts/start-all.sh` / `start-milvus.sh` / `stop-milvus.sh` | 完整顺序启动 / Milvus与etcd启停；start-all先等core，start-milvus检查磁盘并等etcd健康 |
 | `scripts/disk-guard.sh ACTION` | pull/import/build/backup 前的 SOFT_GUARD，非硬配额 |
 | `scripts/pull-images.sh` | 拉取固定镜像并生成版本锁；不是日常启动步骤 |
-| `scripts/backup-mysql.sh` / `restore-mysql.sh` | 事务一致性备份 / 独立库恢复 |
-| `scripts/backup-restore-check.sh` | 创建恢复测试库并验证，不是只读探针 |
+| `scripts/backup-mysql.sh` / `restore-mysql.sh` | 退役源的历史备份/独立库恢复材料；仅在隔离维护窗口使用，不属于正式启动流程 |
+| `scripts/backup-restore-check.sh` | 退役源恢复演练材料；不能回退已有新写的正式PG事实 |
 
 数据目录 `/srv/deephelp-data/{mysql,redis,milvus}`；备份 `/srv/deephelp-backup`。服务器秘密文件 `.env.secret` 权限 600，`compose.sh` 使用的 `.secrets/` 不交付公开仓库。
 
@@ -37,7 +41,7 @@ Milvus合成重建在本机、隧道开启时从仓库根运行 `infra/.venv314/
 
 etcd3.5.23以256MiB/0.25CPU独立运行，复用`/srv/deephelp-data/milvus/etcd`；Milvus2.6.23以`ETCD_USE_EMBED=false`连接它，保留本地Woodpecker及原数据目录。原`embedEtcd.yaml`仅供回退参考，不能让嵌入和独立etcd同时写同一目录。维护重启使用`stop-milvus.sh`→`start-milvus.sh`，再doctor、本机health与M05只读verify；单独重启Milvus也应先检查etcd健康。回退前停两容器、冷备当前目录，按备份恢复匹配配置/数据后再验，禁止通过空库启动掩盖缺失记录。迁移及实际重启证据见[M05交接](../handoffs/M05.md)。
 
-Redis AOF/RDB 关闭，缓存丢失是预期行为；业务事实、幂等、审批和最终状态归 MySQL。MySQL/Redis/Milvus 的角色与 checkpoint 门禁见 [ARCHITECTURE](../docs/ARCHITECTURE.md)。
+应用Redis的AOF/RDB关闭，缓存可重建；业务事实、幂等、审批和最终状态归PG，checkpoint只记录图进度。Langfuse专用Redis队列另外保留AOF并纳入平台冷备。角色与checkpoint门禁见[ARCHITECTURE](../docs/ARCHITECTURE.md)。
 
 ## 学习环境权限
 
@@ -49,8 +53,8 @@ infra/.venv314/Scripts/python.exe infra/client/learning-access.py --output .loca
 infra/.venv314/Scripts/python.exe infra/client/check-redis-acl.py --output .local/learning-access/redis-new.json
 ```
 
-MySQL 取消账号专属连接/每小时配额，总连接数采用151；Redis ACL 为 `~* &* +@all`；Milvus 给应用账号授予 admin，已有角色保留。调整同时写服务器 MySQL 初始化SQL、mysql.cnf和Redis ACL文件，现有数据、密码与来源材料保留。MySQL/Milvus账号授权本身持久保存；Redis ACL LOAD即时生效，Redis重启后从同一文件加载。
+M30后的这个入口仅应用/验证Redis与Milvus权限：Redis ACL 为 `~* &* +@all`，Milvus应用账号使用admin，已有角色保留。Redis ACL LOAD即时生效，重启后从同一文件加载；现有数据、密码与来源材料保留。PostgreSQL账号及配置由[PG入口](postgres/README.md)维护，已部署的学习账号拥有完整权限。旧MySQL授权材料仅作为退役源恢复配置保留，不再由此入口连接或修改。
 
 MySQL旧授权/初始化SQL/配置及Redis原ACL保存在服务器专用备份目录，维护工具的私下报告记录具体位置。Redis ACL为单文件bind mount，工具原位写入并保留inode/权限；不能通过更换文件inode让运行容器继续读旧ACL。恢复Redis使用对应备份及 `update-redis-acl.py --restore`，该脚本位于仓库 infra/scripts；不要重新运行退役bootstrap覆盖当前学习配置。
 
-测试实际覆盖脚本/CAS/事务/有序集合、MySQL视图/触发器/存储过程/19连接、Milvus独立库与内容检索。清库、关闭服务等权限通过ACL DRYRUN检查，不在权限验收中执行。中间件账号权限与应用的用户归属/版本/幂等规则分别维护。
+此权限入口覆盖Redis脚本/CAS/事务/有序集合、Milvus独立库与内容检索。旧MySQL视图/触发器/存储过程/19连接是历史P00证据，M30后不再由此脚本执行。中间件账号权限与应用的用户归属/版本/幂等规则分别维护。

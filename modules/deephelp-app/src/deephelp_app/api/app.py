@@ -15,8 +15,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from deephelp_app.adapters.langfuse_query import LangfuseRunClient, retired_observation
 from deephelp_app.adapters.telemetry import ObservabilityMiddleware, annotate, environment
-from deephelp_app.adapters.tempo import TempoClient
 from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, TraceSink, request_context
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.conversation import Conversation
@@ -210,8 +210,6 @@ def create_app(
     ]
     | None = None,
     budget_factory: Callable[[], ExecutionBudget] | None = None,
-    tempo_endpoint: str | None = None,
-    grafana_url: str | None = None,
 ) -> FastAPI:
     config = Settings.from_env() if settings is None else settings
 
@@ -252,16 +250,9 @@ def create_app(
             gateway: ModelGateway | None = None
             repository: Repository | None = None
             app.state.resources = Resources(client, calls, gateway, repository, sink)
-            app.state.tempo = TempoClient(
-                client,
-                tempo_endpoint or os.environ.get("DEEPHELP_TEMPO_ENDPOINT"),
-                grafana_url or os.environ.get("DEEPHELP_GRAFANA_URL"),
-            )
             app.state.native_observations = None
             if path := os.environ.get("DEEPHELP_LANGFUSE_CONFIG"):
-                from deephelp_app.adapters.langfuse_query import LangfuseRunClient
-
-                app.state.native_observations = LangfuseRunClient(client, path, app.state.tempo)
+                app.state.native_observations = LangfuseRunClient(client, path)
             if conversation_factory is not None:
                 app.state.resources.conversation = await stack.enter_async_context(
                     conversation_factory(client, sink)
@@ -474,7 +465,7 @@ def create_app(
         if native is not None and pool is not None:
             value = await native.read(pool, run_id, snapshot.otel_trace_id, cursor, page_size)
         else:
-            value = await request.app.state.tempo.read(snapshot.otel_trace_id, cursor, page_size)
+            value = retired_observation(snapshot.otel_trace_id)
         return JSONResponse(value, headers={"Cache-Control": "no-store"})
 
     @app.get("/debug/runs/{run_id}/{view}")

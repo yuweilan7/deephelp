@@ -590,7 +590,7 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 
 ## M21标准观测
 
-显式配置DEEPHELP_OTLP_ENDPOINT后，原业务入口与两个MCP导出标准OTel链路和指标；三视图保留身份/session守卫并增加otel_trace_id。运行、计数/时钟/脱敏、固定动作和Collector边界见[观测入口](../../infra/observability/README.md)。审批/Saver已接实际Span Link；Tempo/Prometheus/私有Grafana已实测，受保护历史查询见观测入口；应用未迁移到云端。
+正式运行配置DEEPHELP_LANGFUSE_CONFIG与各进程DEEPHELP_METRICS_PORT，trace直接进入Langfuse，度量由Prometheus抓取；W3C/内部OTel及身份/session守卫保持。旧OTLP装配与Tempo查询已经退役，未登记历史显示retired；旧数据与bak/mysql-otel保留。入口及指标含义见[观测说明](../../infra/observability/README.md)，个人云安装/恢复见[部署入口](../../infra/deployment/README.md)。
 
 ## M22浏览器工作台
 

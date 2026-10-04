@@ -117,8 +117,6 @@ class ToolGateway:
             "DEEPHELP_MCP_SESSION_SECRET": self._secret,
             "PYTHONUTF8": "1",
         }
-        if endpoint := os.getenv("DEEPHELP_OTLP_ENDPOINT"):
-            env["DEEPHELP_OTLP_ENDPOINT"] = endpoint
         if self.ledger_path is not None:
             env["DEEPHELP_MCP_LEDGER"] = str(self.ledger_path.resolve())
         params = self.server.model_copy(update={"env": env})
@@ -361,7 +359,6 @@ def process_alive(pid: int) -> bool:
             return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259
         finally:
             kernel.CloseHandle(handle)
-    import os
 
     try:
         os.kill(pid, 0)

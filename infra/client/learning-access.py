@@ -1,4 +1,4 @@
-"""Apply or verify full application access in the existing private learning environment."""
+"""Apply or verify Redis and Milvus application access in the private learning environment."""
 
 import argparse
 import importlib.util
@@ -61,10 +61,6 @@ def apply_policy(root):
     source_root = Path(__file__).resolve().parents[2]
     redis_source = (source_root / "infra/scripts/update-redis-acl.py").read_text(encoding="utf-8")
     redis_result = ssh_python(c, root, redis_source, "--apply")
-    mysql_source = (source_root / "infra/scripts/update-mysql-access.py").read_text(
-        encoding="utf-8"
-    )
-    mysql_result = ssh_python(c, root, mysql_source, "--apply")
     client = milvus_client(c, admin=True)
     try:
         before = client.describe_user(user_name=c["MILVUS_USER"])["roles"]
@@ -77,84 +73,8 @@ def apply_policy(root):
         client.close()
     return {
         "redis": redis_result,
-        "mysql": mysql_result,
         "milvus": {"before_roles": before, "after_roles": after},
     }
-
-
-def verify_mysql():
-    c = local_settings.settings()
-    connections = []
-    name = "learning_access_" + uuid4().hex
-    checks = {}
-    conn = local_settings.mysql_connect()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("SHOW GRANTS")
-            grants = [r[0] for r in cursor.fetchall()]
-            global_grants = " ".join(g for g in grants if " ON *.* " in g)
-            # SHOW GRANTS expands ALL into individual static and dynamic privileges.
-            checks["global_admin_and_grant_option"] = "WITH GRANT OPTION" in global_grants and all(
-                privilege in global_grants
-                for privilege in (
-                    "CREATE USER",
-                    "CREATE ROLE",
-                    "CREATE VIEW",
-                    "CREATE ROUTINE",
-                    "TRIGGER",
-                    "EVENT",
-                    "SHUTDOWN",
-                    "CONNECTION_ADMIN",
-                    "SYSTEM_VARIABLES_ADMIN",
-                )
-            )
-            cursor.execute(
-                "SELECT max_user_connections,max_questions,max_updates,max_connections "
-                "FROM mysql.user WHERE User=%s AND Host='%%'",
-                (c["MYSQL_USER"],),
-            )
-            checks["no_account_quotas"] = cursor.fetchone() == (0, 0, 0, 0)
-            cursor.execute("SELECT @@global.max_user_connections,@@global.max_connections")
-            checks["standard_connection_capacity"] = cursor.fetchone() == (0, 151)
-            cursor.execute("CREATE DATABASE `" + name + "`")
-            cursor.execute("CREATE TABLE `" + name + "`.sample (id INT PRIMARY KEY, value INT)")
-            cursor.execute(
-                "CREATE VIEW `"
-                + name
-                + "`.sample_view AS SELECT id,value FROM `"
-                + name
-                + "`.sample"
-            )
-            cursor.execute(
-                "CREATE TRIGGER `"
-                + name
-                + "`.sample_trigger BEFORE INSERT ON `"
-                + name
-                + "`.sample FOR EACH ROW SET NEW.value=NEW.value+1"
-            )
-            cursor.execute("CREATE PROCEDURE `" + name + "`.sample_procedure() SELECT 7 AS result")
-            cursor.execute("INSERT INTO `" + name + "`.sample VALUES (1,10)")
-            cursor.execute("SELECT value FROM `" + name + "`.sample_view WHERE id=1")
-            checks["database_view_trigger"] = cursor.fetchone() == (11,)
-            conn.rollback()
-            cursor.execute("SELECT COUNT(*) FROM `" + name + "`.sample")
-            checks["real_transaction_rollback"] = cursor.fetchone() == (0,)
-            cursor.execute("CALL `" + name + "`.sample_procedure()")
-            checks["stored_procedure"] = cursor.fetchone() == (7,)
-            while cursor.nextset():
-                pass
-        for _ in range(18):
-            connections.append(local_settings.mysql_connect())
-        checks["more_than_old_16_connections"] = len(connections) + 1 == 19
-        return checks
-    finally:
-        for extra in connections:
-            extra.close()
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("DROP DATABASE IF EXISTS `" + name + "`")
-        finally:
-            conn.close()
 
 
 def verify_milvus():
@@ -227,7 +147,7 @@ def verify_all():
     spec = importlib.util.spec_from_file_location("redis_acl_check", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return {"mysql": verify_mysql(), "redis": module.verify_redis(), "milvus": verify_milvus()}
+    return {"redis": module.verify_redis(), "milvus": verify_milvus()}
 
 
 def main():

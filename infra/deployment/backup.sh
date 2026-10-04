@@ -16,12 +16,14 @@ restart() {
   if ! bash /opt/deephelp-app/bin/control.sh start; then
     echo 'Application restart failed; preserve backup and lock for recovery' >&2; exit 1
   fi
+  docker compose -f /srv/deephelp-metrics/compose.yaml start
   rmdir "$root/.backup-lock"
   exit "$code"
 }
 trap restart EXIT
 trap 'exit 130' INT TERM
 bash /opt/deephelp-app/bin/control.sh stop
+docker compose -f /srv/deephelp-metrics/compose.yaml stop -t 30
 set -a; source "$root/config/runtime.env"; set +a
 database=$(/opt/deephelp-app/modern/.venv/bin/python -c 'import json; print(json.load(open("/srv/deephelp-modern/config/postgres.json"))["dbname"])')
 [[ "$database" =~ ^deephelp_m25_[a-z0-9_]+$ ]]
@@ -40,6 +42,10 @@ cp /srv/deephelp-langfuse/backups/"modern-$label".tar.gz "$destination/langfuse.
 tar --exclude=deephelp-modern/.backup-lock -czf "$destination/runtime.tar.gz" -C /srv deephelp-modern
 readlink -f /opt/deephelp-app/modern > "$destination/installed-version.txt"
 tar --exclude='.venv' -czf "$destination/installation.tar.gz" -C /opt/deephelp-app/releases "$(basename "$(cat "$destination/installed-version.txt")")"
+tar -czf "$destination/metrics.tar.gz" -C /srv deephelp-metrics
+# These immutable compatible installs are the new-write-safe rollback material.
+tar --exclude='.venv' -czf "$destination/retained-installations.tar.gz" -C /opt/deephelp-app/releases \
+  m30-deployment-v1 "$(basename "$(cat "$destination/installed-version.txt")")"
 cd "$destination"
 sha256sum *.dump *.tar.gz installed-version.txt > SHA256SUMS
 sha256sum --strict --check SHA256SUMS

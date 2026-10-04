@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath $cfgPath)) {$cfgPath=Join-Path $base 'config/co
 $cfg=@{}
 Get-Content -LiteralPath $cfgPath | ForEach-Object {if ($_ -match '^([A-Z_]+)=(.*)$') {$cfg[$matches[1]]=$matches[2]}}
 $pidPath=Join-Path $PSScriptRoot $(if($Profile -eq 'personal'){'.tunnel-personal.json'}else{'.tunnel-windows.json'})
-$remoteMarker=if($Profile -eq 'personal'){'127.0.0.1:8000'}else{'127.0.0.1:3306'}
+$remoteMarker=if($Profile -eq 'personal'){'127.0.0.1:8000'}else{'127.0.0.1:6379'}
 function Get-ManagedTunnel {
  if(Test-Path -LiteralPath $pidPath){
   $record=Get-Content -LiteralPath $pidPath -Raw | ConvertFrom-Json
@@ -25,9 +25,9 @@ if($Action -in 'stop','restart'){
  if(Test-Path -LiteralPath $pidPath){Remove-Item -LiteralPath $pidPath}
  if($Action -eq 'stop'){exit 0}
 }
-$ports=@([int]$cfg.MYSQL_PORT,[int]$cfg.REDIS_PORT,[int]$cfg.MILVUS_LOCAL_PORT,[int]$cfg.MILVUS_WEBUI_PORT)
-$remotePorts=@(3306,6379,19530,9091)
-if($Profile -eq 'personal'){$ports=@(18080,23000);$remotePorts=@(8000,13000)}
+$ports=@([int]$cfg.REDIS_PORT,[int]$cfg.MILVUS_LOCAL_PORT,[int]$cfg.MILVUS_WEBUI_PORT)
+$remotePorts=@(6379,19530,9091)
+if($Profile -eq 'personal'){$ports=@(18080,23000);$remotePorts=@(8000,13002)}
 if($Action -in 'check','health'){
  foreach($port in $ports){$c=[Net.Sockets.TcpClient]::new(); try{$ok=$c.ConnectAsync('127.0.0.1',$port).Wait(1500); if(-not $ok -or -not $c.Connected){throw "Port $port unavailable"}; Write-Output "127.0.0.1:$port reachable"}finally{$c.Dispose()}}
  if($Action -eq 'health'){

@@ -1,6 +1,6 @@
 """Synthetic acceptance only. Never emits passwords or DSNs. Run on developer PC."""
 import argparse,datetime,json,logging,pathlib,sys,time
-from settings import BASE,mysql_connect,redis_connect,milvus_connect
+from settings import BASE,redis_connect,milvus_connect
 logging.getLogger('pymilvus').setLevel(logging.CRITICAL)
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('mode',nargs='?',choices=['health','full','post-restart'],default='full')
@@ -14,35 +14,6 @@ def denied(fn):
     try:fn()
     except Exception:return True
     return False
-def mysql_test():
-    c=mysql_connect();q=c.cursor();r={}
-    q.execute('SELECT VERSION(),DATABASE(),1,@@character_set_database,@@session.time_zone,@@global.max_connections,@@innodb_buffer_pool_size')
-    r['server']=list(q.fetchone());assert r['server'][1:] == ['deephelp',1,'utf8mb4','+00:00',151,134217728]
-    if MODE=='health':c.close();return r
-    q.execute('CREATE TABLE IF NOT EXISTS p00_probe (id INT PRIMARY KEY, token VARCHAR(100) NOT NULL UNIQUE, content VARCHAR(200) NOT NULL, created_at DATETIME(6) NOT NULL, category VARCHAR(50), INDEX idx_category(category)) ENGINE=InnoDB')
-    if MODE=='post-restart':
-        q.execute('SELECT content FROM p00_probe WHERE id=1');assert q.fetchone()[0]=='中文事务已提交😀';r['restart_persistence']=True;c.close();return r
-    q.execute('DELETE FROM p00_probe');c.commit()
-    q.execute('INSERT INTO p00_probe VALUES (1,%s,%s,UTC_TIMESTAMP(6),%s)',('committed','中文事务已提交😀','p00'));c.commit()
-    q.execute('INSERT INTO p00_probe VALUES (2,%s,%s,UTC_TIMESTAMP(6),%s)',('rolled-back','应回滚','p00'));c.rollback()
-    q.execute('SELECT COUNT(*) FROM p00_probe WHERE id=2');assert q.fetchone()[0]==0
-    assert denied(lambda:q.execute('INSERT INTO p00_probe VALUES(3,%s,%s,UTC_TIMESTAMP(6),%s)',('committed','duplicate','p00')));c.rollback()
-    q.execute('SELECT content,created_at,UTC_TIMESTAMP(6) FROM p00_probe WHERE id=1');row=q.fetchone();assert row[0]=='中文事务已提交😀' and abs((row[1]-row[2]).total_seconds())<120
-    q.execute('SHOW INDEX FROM p00_probe');assert 'idx_category' in [x[2] for x in q.fetchall()]
-    q.execute("SELECT max_user_connections FROM mysql.user WHERE User='deephelp_app'")
-    r['learning_account_quota_removed']=all(row[0]==0 for row in q.fetchall())
-    assert r['learning_account_quota_removed']
-    q.execute('SHOW GRANTS');r['grants']=[x[0] for x in q.fetchall()]
-    c.close()
-    opened=[]
-    try:
-        for _ in range(18):opened.append(mysql_connect())
-        r['connections_above_old_limit']=len(opened)==18
-        assert r['connections_above_old_limit']
-    finally:
-        for conn in opened:conn.close()
-    r.update(utf8mb4=True,commit=True,rollback=True,unique_key=True,index=True,utc_datetime=True)
-    return r
 def redis_test():
     c=redis_connect();r={'ping':c.ping()};assert r['ping']
     if MODE=='health':return r
@@ -85,7 +56,7 @@ def milvus_test():
     r['learning_admin_role']='admin' in c.describe_user('deephelp_app')['roles'];assert r['learning_admin_role']
     c.close();return r
 try:
-    for label,fn in [('mysql',mysql_test),('redis',redis_test),('milvus',milvus_test)]:
+    for label,fn in [('redis',redis_test),('milvus',milvus_test)]:
         out[label]=fn();print(label.upper()+': PASS',flush=True)
     out['status']='PASS'
 except Exception as e:

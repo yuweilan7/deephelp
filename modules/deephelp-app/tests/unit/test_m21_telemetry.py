@@ -2,19 +2,16 @@
 
 import asyncio
 import json
-import threading
 from types import SimpleNamespace
 
 import pytest
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import Link
 
 from deephelp_app.adapters.mcp_protocol import sign_metadata, verify_metadata
 from deephelp_app.adapters.telemetry import (
     META_KEY,
-    BoundedProcessor,
-    GuardedExporter,
     ObservedCursor,
     Telemetry,
     annotate,
@@ -158,30 +155,6 @@ async def test_semantic_error_and_export_failure_preserve_result():
     assert runtime.provider.force_flush(2000)
     assert runtime.exporter.failures == 1
     runtime.shutdown()
-
-
-def test_full_export_queue_is_bounded_and_explicitly_counts_loss():
-    gate, entered = threading.Event(), threading.Event()
-
-    class Blocked(SpanExporter):
-        def export(self, spans):
-            entered.set()
-            gate.wait(2)
-            return SpanExportResult.SUCCESS
-
-        def shutdown(self):
-            gate.set()
-
-    processor = BoundedProcessor(GuardedExporter(Blocked()), size=2)
-    processor.on_end(SimpleNamespace())
-    assert entered.wait(1)
-    for _ in range(8):
-        processor.on_end(SimpleNamespace())
-    assert processor.queue.qsize() == 2
-    assert processor.dropped == 6
-    gate.set()
-    assert processor.force_flush(2000)
-    processor.shutdown()
 
 
 def test_no_ambient_resource_data_or_incoming_sampling_drops(telemetry, monkeypatch):

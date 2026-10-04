@@ -4,7 +4,7 @@ cd /srv/deephelp-infra
 bash scripts/disk-guard.sh check
 python3 - <<'PY'
 import json,subprocess
-for name,ports in [('mysql',['3306/tcp']),('redis',['6379/tcp']),('etcd',[]),('milvus',['19530/tcp','9091/tcp'])]:
+for name,ports in [('redis',['6379/tcp']),('etcd',[]),('milvus',['19530/tcp','9091/tcp'])]:
  d=json.loads(subprocess.check_output(['docker','inspect','deephelp-'+name]))[0]
  assert d['State']['Running'] and d['State']['Health']['Status']=='healthy',name+' not healthy'
  assert not d['State']['OOMKilled'],name+' OOM'
