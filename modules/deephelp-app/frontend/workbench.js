@@ -15,6 +15,9 @@ const state = {
   demo: null,
   selected: null,
   observationCursor: null,
+  evaluation: null,
+  candidate: null,
+  reportOffset: null,
 };
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
@@ -74,6 +77,8 @@ function clearSession() {
     record: null,
     demo: null,
     selected: null,
+    evaluation: null,
+    candidate: null,
   });
   for (const id of [
     "sessions",
@@ -100,6 +105,17 @@ function clearSession() {
     "observation-summary",
     "grafana-link",
     "workflow-graph",
+    "evaluation-scope",
+    "evaluation-code",
+    "evaluation-plan",
+    "evaluation-report-result",
+    "evaluation-report-summary",
+    "evaluation-candidate-result",
+    "evaluation-task-result",
+    "evaluation-task-summary",
+    "evaluation-pointer",
+    "evaluation-release-result",
+    "evaluation-release-summary",
   ])
     $(id).replaceChildren();
   $("text").value = "";
@@ -122,6 +138,41 @@ function clearSession() {
   $("send").disabled = false;
   $("text").disabled = false;
   for (const n of document.querySelectorAll("[data-learning]")) n.hidden = true;
+  document.querySelector("[data-evaluation]").hidden = true;
+  for (const id of [
+    "evaluation-report",
+    "evaluation-source",
+    "evaluation-candidate",
+    "evaluation-asset",
+    "evaluation-task",
+    "evaluation-release",
+  ])
+    $(id).replaceChildren();
+  for (const id of [
+    "evaluation-build-ids",
+    "evaluation-review-reason",
+    "evaluation-review-phrases",
+    "evaluation-review-exclusions",
+  ])
+    $(id).value = "";
+  for (const tab of document.querySelectorAll(".tab"))
+    tab.hidden = tab.id !== "conversation";
+  for (const b of document.querySelectorAll("[data-tab]"))
+    b.classList.toggle("selected", b.dataset.tab === "conversation");
+  for (const id of [
+    "evaluation-review-confirm",
+    "evaluation-review-independent",
+    "evaluation-task-confirm",
+    "evaluation-release-confirm",
+  ])
+    $(id).checked = false;
+  for (const id of [
+    "evaluation-task-cancel",
+    "evaluation-task-resume",
+    "evaluation-publish",
+    "evaluation-rollback",
+  ])
+    $(id).disabled = true;
   for (const id of ["demo-operation", "demo-session", "demo-run"])
     $(id).value = "";
   $("demo-confirm").checked = false;
@@ -578,6 +629,7 @@ for (const b of document.querySelectorAll("[data-tab]"))
       btn.classList.toggle("selected", btn === b);
     if (b.dataset.tab === "business") run(() => business());
     if (b.dataset.tab === "workflow") run(loadWorkflow);
+    if (b.dataset.tab === "evaluation") run(evaluationPlan);
   });
 $("kind").addEventListener("change", () => {
   state.kind = $("kind").value;
@@ -635,6 +687,13 @@ async function learningStatus() {
     $("demo-prerequisite").textContent = s.demo_enabled
       ? "独立演示身份与权益执行口已启用。"
       : `需显式配置合成权益服务，并用 ${s.demo_identity_required} 的受信令牌登录。`;
+    try {
+      await loadEvaluation();
+      document.querySelector("[data-evaluation]").hidden = false;
+    } catch (e) {
+      if (e.status !== 404) throw e;
+      document.querySelector("[data-evaluation]").hidden = true;
+    }
   } catch (e) {
     if (e.status !== 404) throw e;
   }
@@ -887,6 +946,302 @@ $("observation-read").addEventListener("click", () => run(() => observe()));
 $("observation-more").addEventListener("click", () =>
   run(() => observe(state.observationCursor)),
 );
+function choices(id, rows, value, label) {
+  const select = $(id),
+    previous = select.value;
+  select.replaceChildren();
+  for (const row of rows) {
+    const option = node("option", label(row));
+    option.value = value(row);
+    select.append(option);
+  }
+  if (rows.some((r) => value(r) === previous)) select.value = previous;
+}
+async function loadEvaluation() {
+  const d = await api("/learning/evaluation");
+  state.evaluation = d;
+  choices(
+    "evaluation-report",
+    d.reports,
+    (r) => r,
+    (r) => r,
+  );
+  choices(
+    "evaluation-source",
+    d.capture_sources,
+    (r) => r,
+    (r) => r,
+  );
+  choices(
+    "evaluation-candidate",
+    d.candidates,
+    (r) => r.id,
+    (r) => `r${r.revision} · ${r.text.slice(0, 55)}`,
+  );
+  choices(
+    "evaluation-asset",
+    d.assets,
+    (r) => r,
+    (r) => r,
+  );
+  choices(
+    "evaluation-task",
+    d.tasks,
+    (r) => r.id,
+    (r) =>
+      `${r.options.action} · ${r.state} · 尝试${r.attempt} · ${r.id.slice(0, 8)}`,
+  );
+  choices(
+    "evaluation-release",
+    d.releases,
+    (r) => r.hash,
+    (r) => `${r.version} · ${r.state}`,
+  );
+  const a = d.dataset;
+  $("evaluation-scope").textContent =
+    `当前工具冻结集 ${a.cases}个合成会话 / ${a.turns}条消息 · 独立审计${a.independent_cases} · 来源组${a.declared_source_groups} · ${JSON.stringify(a.split_counts)} · 浏览新增调用0。历史报告范围另见各报告。`;
+  $("evaluation-code").textContent = d.code.join("\n");
+  $("evaluation-pointer").textContent =
+    `MySQL ${d.pointer.channel} · revision ${d.pointer.revision} · active ${d.pointer.active || "无"} · previous ${d.pointer.previous || "无"}`;
+  $("evaluation-rollback").disabled = !d.pointer.previous;
+  $("evaluation-task-start").disabled = d.tasks.some((r) =>
+    ["RUNNING", "CANCELLING"].includes(r.state),
+  );
+}
+async function evaluationPlan() {
+  await loadEvaluation();
+  const p = await api("/learning/evaluation/plan"),
+    auth = await api("/auth/session");
+  showIdentity(auth);
+  $("evaluation-plan").replaceChildren(
+    node(
+      "p",
+      `离线：${p.offline.conversations}会话 / 每路${p.offline.messages}消息 × ${p.offline.modes}路 · 0远程模型。`,
+    ),
+    node(
+      "p",
+      `构建：基线${p.build.base_corpus_rows}条语料 + 最多${p.build.max_candidates}个批准来源，预计${p.build.embedding_calls_before_retry.join("–")}次Embedding（重试另受共享门禁），输入约${p.build.embedding_input_tokens_estimate.join("–")}token。可选训练走原FastText门禁。验证：${p.validate.conversations}会话 / ${p.validate.messages}消息，预计${p.validate.remote_calls_estimate.join("–")}次远程调用；每条输入约500–18000、输出256–7000token，推理沿原供应商配置与usage统计，未知项保持未知。估算不等于实测用量。`,
+    ),
+    node(
+      "p",
+      `共享剩余 ${auth.execution.remaining_calls} 次远端预算预约，token上限 ${auth.execution.max_tokens} / 已计 ${auth.execution.charged_tokens}。必要上下文与输出由原入口控制；预算不足会停止并保留诊断。`,
+    ),
+    node(
+      "p",
+      `一次一个任务 · 总超时${p.timeout_seconds}秒 · 最多${p.max_task_attempts}次尝试 · 恢复另建不可变尝试目录。任务成功与内容PASS分开；准备/登记仍核对当前代码、SOP、供应商和审核。`,
+    ),
+  );
+}
+async function evaluationReport(offset = 0) {
+  const d = await api(
+    `/learning/evaluation/reports/${encodeURIComponent($("evaluation-report").value)}?offset=${offset}`,
+  );
+  state.reportOffset = d.next_offset;
+  $("evaluation-report-more").hidden = d.next_offset === null;
+  $("evaluation-report-result").textContent = JSON.stringify(d, null, 2);
+  $("evaluation-report-summary").replaceChildren(
+    node(
+      "p",
+      `原报告 ${d.summary.status} · ${d.summary.live === true ? "历史真实执行" : d.summary.live === false ? "离线执行" : d.summary.interpretation || "执行方式见原报告"} · 差例${d.error_count} · 当前页${d.errors.length} · 当前浏览0模型`,
+    ),
+  );
+  const dataset = d.summary.dataset;
+  if (dataset)
+    $("evaluation-report-summary").append(
+      node(
+        "p",
+        `该报告冻结集 ${dataset.cases}会话 / ${dataset.turns}消息 · 实际选中 ${d.summary.selected_case_ids?.length ?? "见原报告"}会话 · 独立审计 ${dataset.independent_cases ?? "未知"} · ${dataset.independence_limit || "按原冻结说明"}`,
+      ),
+    );
+  for (const [mode, m] of Object.entries(d.metrics))
+    $("evaluation-report-summary").append(
+      node(
+        "p",
+        `${mode} · accuracy ${JSON.stringify(m.metrics?.accuracy)} · completion ${JSON.stringify(m.metrics?.completion_rate)}`,
+      ),
+    );
+  for (const r of d.errors)
+    $("evaluation-report-summary").append(
+      node(
+        "p",
+        `${r.mode} / ${r.case_id}：${r.text} → ${JSON.stringify(r.score)}`,
+      ),
+    );
+  $("evaluation-report-summary").append(
+    node(
+      "p",
+      "历史报告按原冻结样本与字节解释；未验证当前模型质量或企业泛化。",
+      "muted",
+    ),
+  );
+}
+async function evaluationCandidate() {
+  const d = await api(
+    `/learning/evaluation/candidates/${encodeURIComponent($("evaluation-candidate").value)}`,
+  );
+  state.candidate = d.candidate;
+  $("evaluation-candidate-result").textContent = JSON.stringify(d, null, 2);
+  $("evaluation-review-confirm").checked = false;
+  $("evaluation-review-independent").checked = false;
+}
+async function evaluationTask() {
+  const id = $("evaluation-task").value;
+  if (!id) throw new Error("先启动或选择一项任务。");
+  const d = await api(`/learning/evaluation/tasks/${encodeURIComponent(id)}`);
+  if (id !== $("evaluation-task").value) return;
+  $("evaluation-task-result").textContent = JSON.stringify(d, null, 2);
+  $("evaluation-task-summary").textContent =
+    `任务 ${d.state} · 尝试 ${d.attempt}/3 · 内容证据 ${d.result?.evidence_status || d.partial_evidence?.summary?.status || "尚无完整结果"} · ${d.error || "无任务错误"}`;
+  $("evaluation-task-cancel").disabled = !["RUNNING", "CANCELLING"].includes(
+    d.state,
+  );
+  $("evaluation-task-resume").disabled =
+    !["CANCELLED", "INTERRUPTED", "FAILED"].includes(d.state) || d.attempt >= 3;
+  await loadEvaluation();
+}
+$("evaluation-refresh").addEventListener("click", () => run(evaluationPlan));
+$("evaluation-report-read").addEventListener("click", () =>
+  run(() => evaluationReport()),
+);
+$("evaluation-report-more").addEventListener("click", () =>
+  run(() => evaluationReport(state.reportOffset)),
+);
+$("evaluation-candidate-read").addEventListener("click", () =>
+  run(evaluationCandidate),
+);
+$("evaluation-capture").addEventListener("click", () =>
+  run(async () => {
+    const d = await api("/learning/evaluation/capture", "POST", {
+      run_id: $("evaluation-source").value,
+    });
+    await loadEvaluation();
+    $("evaluation-candidate").value = d.candidate_id;
+    await evaluationCandidate();
+    notify("已采集独立合成来源；尚未审核，不自动构建。");
+  }),
+);
+const lines = (id) =>
+  $(id)
+    .value.split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
+$("evaluation-review-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    const c = state.candidate,
+      route = $("evaluation-review-route").value,
+      reason = $("evaluation-review-reason").value;
+    if (!c || c.candidate_id !== $("evaluation-candidate").value)
+      throw new Error("先读取当前候选及 revision。");
+    if (!$("evaluation-review-confirm").checked)
+      throw new Error("请独立确认本次人工审核。");
+    await api(
+      `/learning/evaluation/candidates/${encodeURIComponent(c.candidate_id)}/review`,
+      "POST",
+      {
+        revision: c.revision,
+        route: route === "withdraw" ? null : route,
+        review:
+          route === "withdraw"
+            ? null
+            : {
+                state: $("evaluation-review-state").value,
+                label: $("evaluation-review-label").value || null,
+                reviewer: "browser-owner",
+                method: "human",
+                reason,
+                phrases: lines("evaluation-review-phrases"),
+                exclusions: lines("evaluation-review-exclusions"),
+                independent_from_heldout: $("evaluation-review-independent")
+                  .checked,
+              },
+        reason,
+        confirmed: true,
+      },
+    );
+    await evaluationCandidate();
+    await loadEvaluation();
+    notify("审核已保存；构建仍需明确启动。");
+  });
+});
+$("evaluation-asset-read").addEventListener("click", () =>
+  run(async () => {
+    const d = await api(
+      `/learning/evaluation/assets/${encodeURIComponent($("evaluation-asset").value)}`,
+    );
+    $("evaluation-task-result").textContent = JSON.stringify(d, null, 2);
+    $("evaluation-task-summary").textContent =
+      `候选 ${d.version} · ${d.status} · 文件核对 ${d.files_verified} · 审核当前 ${d.reviews_current} · ${d.note}`;
+  }),
+);
+$("evaluation-task-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  run(async () => {
+    if (!$("evaluation-task-confirm").checked)
+      throw new Error("先核对执行计划与预算并确认。");
+    const action = $("evaluation-task-action").value;
+    $("evaluation-task-start").disabled = true;
+    try {
+      const d = await api("/learning/evaluation/tasks", "POST", {
+        action,
+        candidate_ids: action === "build" ? lines("evaluation-build-ids") : [],
+        asset_id: ["validate", "prepare"].includes(action)
+          ? $("evaluation-asset").value
+          : null,
+        confirmed: true,
+      });
+      $("evaluation-task-confirm").checked = false;
+      await loadEvaluation();
+      $("evaluation-task").value = d.id;
+      await evaluationTask();
+    } finally {
+      await loadEvaluation();
+    }
+  });
+});
+$("evaluation-task-read").addEventListener("click", () => run(evaluationTask));
+for (const op of ["cancel", "resume"])
+  $("evaluation-task-" + op).addEventListener("click", () =>
+    run(async () => {
+      await api(
+        `/learning/evaluation/tasks/${encodeURIComponent($("evaluation-task").value)}/${op}`,
+        "POST",
+      );
+      await evaluationTask();
+    }),
+  );
+$("evaluation-release-read").addEventListener("click", () =>
+  run(async () => {
+    const d = await api(
+      `/learning/evaluation/releases/${encodeURIComponent($("evaluation-release").value)}`,
+    );
+    $("evaluation-release-result").textContent = JSON.stringify(d, null, 2);
+    $("evaluation-release-summary").textContent =
+      `${d.version} · 当前门禁 ${d.eligible ? "通过" : "未通过"} · ${d.error || "发布时仍复核版本CAS"}`;
+    $("evaluation-release-confirm").checked = false;
+    $("evaluation-publish").disabled = !d.eligible;
+  }),
+);
+for (const op of ["publish", "rollback"])
+  $("evaluation-" + op).addEventListener("click", () =>
+    run(async () => {
+      if (!$("evaluation-release-confirm").checked)
+        throw new Error("先核对目标与当前 revision 并独立确认。");
+      const d = await api("/learning/evaluation/release", "POST", {
+        action: op,
+        target:
+          op === "publish"
+            ? $("evaluation-release").value
+            : state.evaluation.pointer.previous,
+        revision: state.evaluation.pointer.revision,
+        confirmed: true,
+      });
+      $("evaluation-release-confirm").checked = false;
+      await loadEvaluation();
+      $("evaluation-release-result").textContent = JSON.stringify(d, null, 2);
+      notify("完整版本指针已按原门禁切换。");
+    }),
+  );
 run(async () => {
   try {
     const data = await api("/auth/session");

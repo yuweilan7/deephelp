@@ -1,0 +1,16 @@
+{
+  "owner": { "tenant_id": "personal-m20", "user_id": "user-a" },
+  "task_root": ".local/learning/tasks",
+  "channel": "personal-learning",
+  "reports": {
+    "m17-live": ".local/m17-scale/live-feature-final.json",
+    "m17-offline-index": ".local/m17-scale/offline-full-coverage-index.json"
+  },
+  "assets": { "reviewed": ".local/m18/feature-v5/reviewed/assets.json" },
+  "providers": "modules/deephelp-app/providers.example.json",
+  "auth": ".local/m17/auth.json",
+  "budget_state": ".local/m22/budget.json",
+  "pointer": ".local/m09/active.json",
+  "fasttext_pointer": ".local/m13/active.json",
+  "redaction_key": ".local/m18/redaction.key"
+}

@@ -29,7 +29,7 @@
 | M19 | IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M19.md) | 运行分层、独立工具/demo安装、冻结数据字节和机制导航通过；模型0次，无新完整业务发布 |
 | M20 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M20.md) | Business特性22项实测；独立Retrieval、原Port接入、同向量三路对照、断连/重启与跨两个MCP业务11项实测通过；个人合成数据、loopback运行 |
 | M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接、独立重启与两类导出故障通过；应用未迁移 |
-| M22 | PARTIALLY_IMPLEMENTED；[交接](../handoffs/M22.md) | 第1–3主工作台、协议/schema与审批checkpoint、意图/同向量三路检索/权威记忆/同run观测已浏览器闭环；第4评测飞轮待完；未部署 |
+| M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项主工作台、协议/schema与审批checkpoint、意图/三路检索/记忆/同run观测、评测与审核/受控任务/原发布门禁已浏览器闭环；合成业务与个人loopback，未部署 |
 | M23 | NOT_IMPLEMENTED | 个人云应用部署、浏览器闭环、隔离恢复/回滚；现有云中间件不是应用已部署 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
@@ -37,7 +37,7 @@
 
 正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁、infra及MySQL事实源保持；Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游、任意RUNNING重领及M23未实现；M22后续学习页未完；M21观测平台已集成，DeepHelp应用仍本机运行。
+完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游、任意RUNNING重领及M23未实现；M22四个学习特性已完成；M21观测平台已集成，DeepHelp应用仍本机运行。
 
 2026-10-04路线规划后的M19交付：运行源码归domain/application/adapters/api/bootstrap/resources，工具/demo独立deephelp-tools；datasets与demo/data为单一数据源，wheel安装后读取工具包资源。该特性时业务仍为显式合成JSON后端，一个领域和引擎，没有学习/正式双份实现。全量924 passed/1 skipped及后增安装/发布59项通过，927项最终收集；两包各83文件逐字节一致，无工具/无Git检出的独立运行安装与追加工具stdio通过。该特性模型0次，无云检查、部署或新完整发布；旧清单不能套到新运行字节。
 

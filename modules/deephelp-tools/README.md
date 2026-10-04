@@ -27,6 +27,23 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli --he
 
 安装tools后，以 `python -m deephelp_tools.learning.workbench serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
 
+### 评测与飞轮目录
+
+将[目录模板](learning-catalog.example.json)复制到自己的`.local/learning/catalog.json`，按实际已有报告/资产修改映射；移除不存在的条目。路径由服务器配置，浏览器只提交映射ID、候选ID或任务ID。最多16份报告/16个资产；单份浏览报告上限8MB，完整大报告使用已有汇总索引。模板没有凭据正文；`auth`指向原M18验证所需的专用合成身份配置，`redaction_key`沿用现有稳定32字节key，不能重置。`budget_state`与应用`--budget-state`使用同一累计文件；真实构建/验证复用已经打开的共享预算writer。
+
+```powershell
+$env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
+# 随后使用上面的 tools.learning.workbench serve 与原业务/检索/身份/预算参数
+```
+
+只有`owner`这一明确配置的个人学习主体可浏览该本机管理目录；其他已登录身份仍只使用自己的业务工作台，目录读写404。全局审核/完整版本来自当前MySQL，不另建事实源。页内主链采集仅接受已完成的专用`m18-collect`合成run，冻结评测输入不能回收为训练；内容生成沿用原[飞轮入口](../deephelp-app/README.md#m18-审核后的反馈闭环)。审核复用原revision守卫、留出隔离和三路队列，浏览器只能明确人工审核，不能伪造确定性证据注册者。
+
+进入页面先读取计划与共享剩余预约数。冻结审计和四路离线回归为0远程模型；离线计数中的模型适配动作不等于远程API调用。构建基线12条语料、最多10个批准来源，默认每8条一批，预计2–3次Embedding（重试受原门禁）；FastText只在相应路由获批时训练。验证使用原M17/M18固定11会话/14消息、真实服务/模型，预计1–113次远程调用，实际依规则/检索/SOP路径；token范围是计划估计，API usage和预算预留另计，推理沿供应商配置，不关闭或裁剪有效上下文。预算不足会停止并保留诊断；已知不足以完成构建批次时在启动前拒绝。
+
+显式任务仅`audit/offline/build/validate/prepare`，不接收命令、模型配置或任意路径；同一进程一个重任务、1800秒总上限、最多3次尝试、最多100份持久任务记录。取消等待原适配器退出再释放槽位；硬中断重启标`INTERRUPTED`，仅显式恢复才另建不可变尝试目录。已经完成或未知提交的资产/验证/版本登记先对账，原M18队列lease/尝试仍有效，不盲重放。任务`SUCCEEDED`只表示入口返回；`evidence_status`才是实际PASS/REJECTED/PREPARED/READY。任务目录保留状态和仍需恢复/浏览的产物，不作临时目录清空。
+
+候选不修改active。`prepare`复用`prepare_manifest`及`ReleaseStore.register`，完整发布和回退复用`ReleaseStore.switch`、目标hash与revision CAS；回退还绑定当前previous。代码/工具/供应商/SOP/审核或绑定资产失效时旧报告PASS也不可发布。页面不自动执行训练、全量live或切换版本；本轮UI验收没有新质量发布。
+
 如需独立合成审批练习，先用 `python -m deephelp_tools.demo.approval_cli init` 准备专用key/合成SOP，再用 `python -m deephelp_tools.demo.synthetic_rights --port 8024 --key .local/m15/rights.key` 启动受控服务。启动学习扩展前设置本机 `DEEPHELP_LEARNING_RIGHTS_PORT=8024` 和 `DEEPHELP_LEARNING_RIGHTS_KEY=.local/m15/rights.key`。auth中需显式配置synthetic-tenant/synthetic-user-a的演示令牌；个人资料身份不能创建该固定fixture练习。示例key路径来自已有运行入口，不从浏览器接受路径/端口/密钥。
 
 协议页只允许四种固定动作，查询仍使用可信身份与原只读守卫；工作流页读取实际SOP及ApprovalService图。演示先实际MySQL落计划并interrupt，审批绑定operation/版本/参数hash/SOP快照，独立确认后再显式resume；重启后用原operation/session/run读取与恢复。UNKNOWN仍先对账，重复恢复不重复效果；synthetic_rights不改M20资料、不表示真实退款。页面不写checkpoint，也不暴露任意MCP、SQL或文件接口。
