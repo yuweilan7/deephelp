@@ -1,6 +1,6 @@
 # DeepHelp 业务运行、验收与学习
 
-M25新源码关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。现行旧安装未切换。审批执行/恢复需M26，当前只读历史；旧完整发布不能当作新字节通过的证据。
+新源码关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。现行旧安装未切换，旧完整发布不能当作新字节通过的证据。
 
 Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。
 
@@ -569,17 +569,22 @@ py -3.14 -m uv run --locked python -m deephelp_tools.probes.checkpoint_probe pau
 py -3.14 -m uv run --locked python -m deephelp_tools.probes.checkpoint_probe resume --live --config $pgConfig --thread $newThread --output .local/m26/gate-resume-new.json
 # 全矩阵含真实模型HTTP、真实PostgreSQL/Redis/Milvus与自建stdio、实际应用/下游进程退出和恢复
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.approval_probe --live --stage feature --output .local/m15/feature-new.json
+# M26改动只验固定协议；不运行上面的模型会话
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.approval_probe --live --fixed-only --output .local/m26/approval-new.json --key .local/tmp/m26-task/rights.key --timeout 900
+# 正式装配与学习HTTP同图，0模型；使用新控制目录与预算路径
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.approval_probe learning --live --output .local/m26/learning-new.json --key .local/tmp/m26-task/rights.key --budget-state .local/tmp/m26-task/learning-budget.json --pointer .local/m09/active.json
 ```
 
 M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转换入口为
-`python -m deephelp_tools.evaluation.checkpoint_migration import|verify --live --config ... --snapshot ... --output ...`。
+`python -m deephelp_tools.evaluation.checkpoint_migration import|verify|audit --live --config ... --snapshot ... --output ...`。
 输入必须是M25已完成且checksum正确的只读MySQL快照，目标应用须离线，报告须新路径。
 默认schema为`m26_checkpoint_proof`，不接现行业务；`--timeout`默认1200秒，可按本轮实际目标设置。
+正式目标须显式`--schema deephelp_checkpoints`；迁移/恢复顺序见[PG运行入口](../../infra/postgres/README.md#m26-官方保存器与历史恢复)。
 转换保留原ID/parent/版本及待写task/index/path；重复导入幂等，冲突或已经执行的线程拒绝覆盖。
 `checkpoint_probe legacy`另接`--snapshot`，从真实旧中断状态验证整数版本恢复，使用独立试验schema。
 该入口没有模型调用，也不执行订单/券变更。正式PG审批装配与历史恢复进度见[M26交接](../../handoffs/M26.md)。
 
-探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；新任务累计文件缺失时创建本次运行上限，恢复沿原预算、新报告，文件全部留.local。固定动作的多故障准备只验证恢复协议，真实模型HTTP单列；逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留PostgreSQL事实、key和恢复配置。旧自建MySQLSaver由备份分支保留；M26首试验使用官方AsyncPostgresSaver，正式审批装配仍待下一特性。未接企业支付、退款、补偿或通用13段RUNNING自动重领。
+探针显式 `--live` 才运行真实依赖；默认 pytest 仍离线。`--budget-state/--key/--auth/--pointer/--providers` 可指定；有模型的运行沿共享累计预算，固定协议入口不创建模型预算。逐例报告网络execute/query次数、持久效果次数、审批/操作历史和最终状态。探针只删除自己的缓存键/事件集合，保留PostgreSQL事实和恢复配置；结束进程并提取必要证据后清理临时控制文件。旧自建MySQLSaver由备份分支保留，正式审批只使用官方AsyncPostgresSaver；tools保留只读旧状态reader。未接企业支付、退款、补偿或通用13段RUNNING自动重领。
 
 任务过程输出与收尾见[AGENTS](../../AGENTS.md#临时产物与任务收尾)。M17成功完整报告包含全部逐行证据，保存后自动删除等价rows.jsonl；失败/中断保留行日志。发布绑定报告不可裁剪，累计预算和恢复状态不得重置；旧模块完整命令仅在明确启动该范围时使用。
 

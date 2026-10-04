@@ -1,6 +1,6 @@
 # M27 实施计划
 
-判断：`PROBE_FIRST`。就绪：`BLOCKED`（M25/M26未交付，自托管SeaweedFS/组合容量尚未验证）。规格见 [M27](../../docs/MODULES/M27_LANGFUSE_PLATFORM.md)。
+判断：`PROBE_FIRST`。就绪：`READY`（M25/M26已交付；自托管SeaweedFS/组合容量仍须首试验，不代表平台已验收）。规格见 [M27](../../docs/MODULES/M27_LANGFUSE_PLATFORM.md)。本次仅更新前置状态，未启动M27。
 
 1. **这次做成什么：** 完成M27全部特性：先锁定Langfuse服务/SDK与SeaweedFS稳定镜像，隔离启动必要Web/Worker/PostgreSQL独立库/ClickHouse/专用队列Redis/单机SeaweedFS；合成observation经过对象存储/Worker真实入库并读回。首项验收交付后依据结果更新本PLAN，继续恢复与完整组合容量特性。
 2. **从哪里改：** M23/M25/M26 handoff、LOCAL_SETUP/.local/DEPENDENCIES、infra与根锁；按Langfuse官方SeaweedFS接入示例配置S3身份/path-style，明确持久对象与metadata目录、私有端点/卷和实际桶/所需操作。只使用现有服务器，不购买COS/RDS或托管存储，不引入Kubernetes。`feature/m27-langfuse-storage-proof`从main建立。

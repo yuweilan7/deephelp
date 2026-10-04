@@ -31,8 +31,8 @@
 | M21 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M21.md) | OTel/跨两MCP/图/Saver、真实Tempo/Prometheus/私有Grafana、受保护run分页/深链接及导出故障通过；平台由M23远端组合复用 |
 | M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项学习页面已完成；M23在云端提供同源工作台，业务仍为个人合成持久资料 |
 | M23 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M23.md) | Linux3.14.7三包/FastText、保签名路径绑定、新完整发布、浏览器四轮/同trace、独立重启、实际隔离恢复和安装回滚通过；私有SSH入口、短时低并发，不证明公网TLS/长期SLA/历史代码升级 |
-| M25 | LIVE_VERIFIED；[交接](../handoffs/M25.md) | 两特性完成；新源码关系仓储统一PG，26表13846行原值迁移/续跑/冲突守卫、Windows/Linux仓储、实际dump→另库恢复与代表查询通过；现行MySQL未切，M26前PG审批图关闭 |
-| M26 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M26.md) | 官方3.1.2在Windows/Linux3.14.7独立pause/resume、593旧checkpoint/1137待写原ID转换与重跑、实际旧整数线程恢复通过；正式装配/完整审批历史恢复待后续特性，现网未切 |
+| M25 | LIVE_VERIFIED；[交接](../handoffs/M25.md) | 两特性完成；新源码关系仓储统一PG，26表13846行原值迁移/续跑/冲突守卫、Windows/Linux仓储、实际dump→另库恢复与代表查询通过；现行MySQL未切 |
+| M26 | LIVE_VERIFIED；[交接](../handoffs/M26.md) | 两特性完成；官方3.1.2双平台独立进程/593旧checkpoint/1137待写原ID转换、正式装配/学习HTTP同图、8故障/7闭合/并发/取消互斥通过；130旧操作原计划/版本/79效果保持。源待审批1条缺绑定拒绝保留，4条UNKNOWN过期查询后保留；现网未切 |
 | M31 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M31.md) | 专用RerankPort/httpx原生协议、共享预算/取消已接入；3 query×同12条reference实际映射/usage通过；Hybrid/会话/MCP/学习页/正式发布尚未接入 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
@@ -40,13 +40,13 @@
 
 2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成qwen3.7-text-rerank专用端口/协议首特性，同链/MCP/学习页及效果对照待后续实施。规格是工程目标，不是当前运行事实。
 
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。规划交付未迁库/部署/卸载/调用模型；M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M26首项官方saver/旧状态转换已有实施handoff；正式装配与完整历史恢复待下一特性，PG运行门禁保持。M27–M30尚无实施handoff。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
+用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；M26两特性已完成官方saver转换/正式装配/完整历史逐状态恢复验收。新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M27–M30尚无实施handoff。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
 
 2026-10-04用户明确调整实施范围：“完成Mxx”由同一会话、同一主写者从未完成项续做该M全部特性，逐项验收与分支交付后继续，全部完成后停止；同模块下一特性无需逐项另启。该条为范围规则调整的历史说明；随后M25完整实施按此规则交付，未启动M26/M31后续特性或改变调度配置。
 
 ## 当前运行与验收边界
 
-正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁、infra及MySQL事实源保持；Redis/Milvus可重建，checkpoint不是账本。
+正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；新源码唯一关系事实源为PG，现行云安装仍为原MySQL。Redis/Milvus可重建，checkpoint不是账本。
 
 完整发布以MySQL单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节，不用于冒充当前包通过。M15已经接入批准/拒绝/撤销、唯一执行与UNKNOWN对账，默认只读；synthetic_rights仍为合成下游，不修改M20业务表。企业支付/下游与任意RUNNING重领未实现。M22四项学习页面、M21平台已接入M23个人云应用；本机只需浏览器与SSH传输，访问及恢复方法见LOCAL_SETUP和infra/deployment。
 

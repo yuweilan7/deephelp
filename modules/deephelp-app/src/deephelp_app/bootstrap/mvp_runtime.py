@@ -287,14 +287,24 @@ class LiveAssembly:
                 from deephelp_app.adapters.release_store import ReleaseRepository
 
                 repository = ReleaseRepository
-            if self.rights_port or self.rights_key:
-                raise ConfigurationError("PostgreSQL approval execution requires M26")
+            if bool(self.rights_port) != bool(self.rights_key):
+                raise ConfigurationError("Synthetic rights requires both port and signing key")
             ledger = await repository.open(self.root)
             if self.release_manifest:
                 assert isinstance(ledger, ReleaseRepository)
                 ledger.manifest, ledger.channel = self.release_manifest, self.release_channel
             stack.push_async_callback(ledger.aclose)
             self.ledger = ledger
+            approvals = None
+            if isinstance(ledger, ApprovalRepository) and self.rights_port and self.rights_key:
+                approvals = await stack.enter_async_context(
+                    ApprovalService.open(
+                        ledger,
+                        RightsClient(client, self.rights_port, self.rights_key.read_bytes()),
+                        self.sop_registry.snapshot_hash,
+                        root=self.root,
+                    )
+                )
             cache = RedisMemory.open(self.root)
             stack.push_async_callback(cache.aclose)
             memory = MemoryService(ledger, cache)
@@ -430,13 +440,7 @@ class LiveAssembly:
                 cases=ledger,
                 events=events,
                 reply_composer=ReplyComposer(model if self.reply_polish else None),
-                approvals=ApprovalService(
-                    ledger,
-                    RightsClient(client, self.rights_port, self.rights_key.read_bytes()),
-                    self.sop_registry.snapshot_hash,
-                )
-                if isinstance(ledger, ApprovalRepository) and self.rights_port and self.rights_key
-                else None,
+                approvals=approvals,
             )
 
 

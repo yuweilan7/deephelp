@@ -42,6 +42,7 @@ if ($Action -eq 'start') {
             if ($value.Contains('"')) { throw 'Invalid SSH path' }
         }
         $sshArguments = @('-N','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','IdentitiesOnly=yes',
+            '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3',
             '-o','KexAlgorithms=curve25519-sha256','-o',('"UserKnownHostsFile='+$knownHosts+'"'),
             '-o','ExitOnForwardFailure=yes','-i',('"'+$settings['DEEPHELP_SSH_KEY_WINDOWS']+'"'),
             '-p',$settings['DEEPHELP_SSH_PORT'],'-L','127.0.0.1:15432:127.0.0.1:15432',

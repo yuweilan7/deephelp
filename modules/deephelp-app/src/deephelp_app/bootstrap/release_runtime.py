@@ -7,9 +7,12 @@ from typing import Any, cast
 
 from mcp import StdioServerParameters
 
+from deephelp_app.adapters.approval_store import TERMINAL
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig
 from deephelp_app.adapters.release_assets import verify_release
 from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseRepository, ReleaseStore
+from deephelp_app.adapters.synthetic_rights import RightsClient
+from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.conversation import Conversation
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
@@ -35,7 +38,15 @@ class ReleasedApprovals:
         return await (await self.service(operation)).decide(identity, operation, command)
 
     async def resume(self, identity: Any, operation: str, command: Any, budget: Any) -> Any:
-        await self.repo.scoped(identity, command.session_id, command.run_id, operation)
+        op = await self.repo.scoped(identity, command.session_id, command.run_id, operation)
+        if op.status in TERMINAL:
+            # A committed ledger result is authoritative even when its retained
+            # release cannot run in this package. Close only the checkpoint gap;
+            # never load a new conversation or dispatch a historical effect.
+            async with ApprovalService.open(
+                self.repo, cast(RightsClient, None), op.plan.snapshot_hash
+            ) as recovery:
+                return await recovery.resume(identity, operation, command, budget)
         return await (await self.service(operation)).resume(identity, operation, command, budget)
 
 

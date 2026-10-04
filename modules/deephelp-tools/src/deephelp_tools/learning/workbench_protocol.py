@@ -1,15 +1,18 @@
 """Fixed protocol experiments and scoped views of the original M15 approval graph."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Request
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
-from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
 from deephelp_app.adapters.mcp_protocol import TOOL_VERSION, validate_arguments
 from deephelp_app.adapters.network_mcp import NetworkMCPClient
+from deephelp_app.adapters.postgres import application_config
+from deephelp_app.adapters.postgres_checkpoints import official_checkpoints
 from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.approval import ApprovalService
@@ -62,40 +65,41 @@ def learning_router(
         if assembly.ledger is None or assembly.tools is None:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Learning runtime is not ready", 503)
 
-    def approval(request: Request) -> ApprovalService:
+    @asynccontextmanager
+    async def approval(request: Request) -> AsyncIterator[ApprovalService]:
         ready()
         if rights_port is None or rights_key is None:
             raise AppError(ErrorCode.NOT_IMPLEMENTED, "Synthetic demo is not configured", 501)
         assert assembly.ledger is not None
-        return ApprovalService(
+        async with ApprovalService.open(
             ApprovalRepository(assembly.ledger.pool),
             RightsClient(request.app.state.resources.client, rights_port, rights_key),
             proposal_registry().snapshot_hash,
-        )
+            root=assembly.root,
+        ) as service:
+            yield service
 
+    @asynccontextmanager
     async def scoped(request: Request, operation_id: str, session_id: str, run_id: str) -> Any:
-        service = approval(request)
-        op = await service.repo.scoped(auth(request), session_id, run_id, operation_id)
-        if not session_id.startswith("m22-demo-") or op.plan.parameters.order_id != "DEMO-D01":
-            raise AppError(ErrorCode.NOT_FOUND, "Learning demo operation not found", 404)
-        return service, op
+        async with approval(request) as service:
+            op = await service.repo.scoped(auth(request), session_id, run_id, operation_id)
+            if not session_id.startswith("m22-demo-") or op.plan.parameters.order_id != "DEMO-D01":
+                raise AppError(ErrorCode.NOT_FOUND, "Learning demo operation not found", 404)
+            yield service, op
 
     @router.get("/status")
     async def status(request: Request) -> dict[str, Any]:
         identity = auth(request)
-        backend = getattr(getattr(assembly.ledger, "pool", None), "backend", None)
         return {
             "installed": True,
             "protocol": True,
             "workflow": True,
             "analysis": True,
-            "demo_enabled": rights_port is not None
-            and identity == DEMO_IDENTITY
-            and backend != "postgresql"
+            "demo_enabled": rights_port is not None and identity == DEMO_IDENTITY
             if assembly.ledger is not None
             else False,
             "demo_identity_required": "synthetic-tenant / synthetic-user-a",
-            "execution_gate": "M26" if backend == "postgresql" else None,
+            "execution_gate": None,
             "model_calls": 0,
         }
 
@@ -244,20 +248,19 @@ def learning_router(
         auth(request)
         ready()
         assert assembly.ledger is not None
-        graph = (
-            approval(request).graph(request.state.budget).get_graph().to_json()
-            if rights_port and getattr(assembly.ledger.pool, "backend", None) != "postgresql"
-            else None
-        )
+        graph = None
+        if rights_port:
+            async with approval(request) as service:
+                graph = service.graph(request.state.budget).get_graph().to_json()
         return {
             "sop": assembly.sop_registry.model_dump(mode="json"),
             "approval_graph": graph,
             "synthetic": True,
-            "checkpoint": "历史检查点只读；工作流执行尚未启用",
+            "checkpoint": "官方 AsyncPostgresSaver；原批准权与效果账本独立",
             "code": [
                 "application/sop.py:SOPExecutor.execute",
                 "application/approval.py:ApprovalService.graph",
-                "adapters/checkpoints.py:LegacyCheckpointArchive",
+                "adapters/postgres_checkpoints.py:PostgresCheckpoints",
             ],
             "model_calls": 0,
         }
@@ -266,45 +269,45 @@ def learning_router(
     async def create_demo(request: Request) -> Any:
         if auth(request) != DEMO_IDENTITY:
             raise AppError(ErrorCode.FORBIDDEN, "Use the configured synthetic demo identity", 403)
-        service = approval(request)
-        op = await prepare(service.repo, "m22-demo-" + uuid4().hex)
-        await service.pause(op.plan.operation_id, request.state.budget)
-        return op.model_dump(mode="json")
+        async with approval(request) as service:
+            op = await prepare(service.repo, "m22-demo-" + uuid4().hex)
+            await service.pause(op.plan.operation_id, request.state.budget)
+            return op.model_dump(mode="json")
 
     @router.get("/demo/{operation_id}")
     async def demo_status(operation_id: str, request: Request, session_id: str, run_id: str) -> Any:
         ready()
         assert assembly.ledger is not None
-        archived = getattr(assembly.ledger.pool, "backend", None) == "postgresql"
-        service = None
-        if archived:
-            repo = ApprovalRepository(assembly.ledger.pool)
-            op = await repo.scoped(auth(request), session_id, run_id, operation_id)
-            if not session_id.startswith("m22-demo-") or op.plan.parameters.order_id != "DEMO-D01":
-                raise AppError(ErrorCode.NOT_FOUND, "Learning demo operation not found", 404)
-            saver = LegacyCheckpointArchive(repo.pool)
-        else:
-            service, op = await scoped(request, operation_id, session_id, run_id)
-            repo, saver = service.repo, service.saver
-        config = ApprovalService.config(op)
-        checkpoints = []
-        async for item in saver.alist(config, limit=10):
-            checkpoints.append(
-                {
-                    "id": item.checkpoint["id"],
-                    "parent": item.parent_config,
-                    "metadata": {
-                        k: dict(item.metadata)[k]
-                        for k in ("source", "step", "parents")
-                        if k in item.metadata
-                    },
-                    "channels": list(item.checkpoint["channel_values"]),
-                    "pending_writes": [
-                        {"task": w[0], "channel": w[1]} for w in item.pending_writes or []
-                    ],
-                }
+        repo = ApprovalRepository(assembly.ledger.pool)
+        op = await repo.scoped(auth(request), session_id, run_id, operation_id)
+        if not session_id.startswith("m22-demo-") or op.plan.parameters.order_id != "DEMO-D01":
+            raise AppError(ErrorCode.NOT_FOUND, "Learning demo operation not found", 404)
+        async with official_checkpoints(
+            getattr(repo.pool, "config", None) or application_config(assembly.root),
+            owner=getattr(repo.pool, "owner", None),
+        ) as saver:
+            config = ApprovalService.config(op)
+            checkpoints = []
+            async for item in saver.alist(config, limit=10):
+                checkpoints.append(
+                    {
+                        "id": item.checkpoint["id"],
+                        "parent": item.parent_config,
+                        "metadata": {
+                            k: dict(item.metadata)[k]
+                            for k in ("source", "step", "parents")
+                            if k in item.metadata
+                        },
+                        "channels": list(item.checkpoint["channel_values"]),
+                        "pending_writes": [
+                            {"task": w[0], "channel": w[1]} for w in item.pending_writes or []
+                        ],
+                    }
+                )
+            graph_reader = ApprovalService(
+                repo, cast(RightsClient, None), op.plan.snapshot_hash, saver=saver
             )
-        state = await service.graph(request.state.budget).aget_state(config) if service else None
+            state = await graph_reader.graph(request.state.budget).aget_state(config)
         async with repo.pool.acquire() as conn, conn.cursor() as cursor:
             await cursor.execute(
                 "SELECT COUNT(*) FROM dh_m15_synthetic_effects WHERE operation_id=%s",
@@ -317,7 +320,7 @@ def learning_router(
             "checkpoints": checkpoints,
             "next": state.next if state else (),
             "interrupts": [i.value for t in state.tasks for i in t.interrupts] if state else [],
-            "execution_enabled": not archived,
+            "execution_enabled": rights_port is not None,
             "effects": effects,
             "history": await repo.history(operation_id),
             "model_calls": 0,
@@ -325,14 +328,14 @@ def learning_router(
 
     @router.post("/demo/{operation_id}/approval")
     async def decide(operation_id: str, body: ApprovalCommand, request: Request) -> Any:
-        service, _ = await scoped(request, operation_id, body.session_id, body.run_id)
-        return (await service.decide(auth(request), operation_id, body)).model_dump(mode="json")
+        async with scoped(request, operation_id, body.session_id, body.run_id) as (service, _):
+            return (await service.decide(auth(request), operation_id, body)).model_dump(mode="json")
 
     @router.post("/demo/{operation_id}/resume")
     async def resume(operation_id: str, body: ResumeCommand, request: Request) -> Any:
-        service, _ = await scoped(request, operation_id, body.session_id, body.run_id)
-        return (
-            await service.resume(auth(request), operation_id, body, request.state.budget)
-        ).model_dump(mode="json")
+        async with scoped(request, operation_id, body.session_id, body.run_id) as (service, _):
+            return (
+                await service.resume(auth(request), operation_id, body, request.state.budget)
+            ).model_dump(mode="json")
 
     return router

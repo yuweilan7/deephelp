@@ -5,7 +5,7 @@ import asyncio
 import json
 import os
 import tempfile
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -193,17 +193,22 @@ async def approval(args: argparse.Namespace, report: dict[str, Any], processes: 
         # Reconcile UNKNOWN with a lost reply, using fixed actions and no model.
         with observation("probe.approval_unknown"):
             unknown = await prepare(repo, "m21-unknown-" + uuid4().hex)
-            async with httpx.AsyncClient(trust_env=False, timeout=20) as http:
+            async with (
+                httpx.AsyncClient(trust_env=False, timeout=20) as http,
+                AsyncExitStack() as approval_stack,
+            ):
 
                 def lost_response(stage: str) -> None:
                     if stage == "after_tool":
                         raise OSError("Synthetic lost observation")
 
-                service = ApprovalService(
-                    repo,
-                    RightsClient(http, args.port, args.key.read_bytes()),
-                    proposal_registry().snapshot_hash,
-                    fault=lost_response,
+                service = await approval_stack.enter_async_context(
+                    ApprovalService.open(
+                        repo,
+                        RightsClient(http, args.port, args.key.read_bytes()),
+                        proposal_registry().snapshot_hash,
+                        fault=lost_response,
+                    )
                 )
                 await service.pause(unknown.plan.operation_id, ExecutionBudget.start(60, 10, 0))
                 await service.decide(

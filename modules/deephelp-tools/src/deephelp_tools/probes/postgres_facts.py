@@ -15,7 +15,6 @@ from uuid import uuid4
 import httpx
 
 from deephelp_app.adapters.approval_store import ApprovalRepository
-from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
 from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.adapters.postgres import PostgresConfig
 from deephelp_app.adapters.release_assets import release_hash
@@ -46,6 +45,7 @@ from deephelp_tools.demo.approval_prepare import prepare
 from deephelp_tools.demo.scenarios import proposal_registry
 from deephelp_tools.demo.synthetic_rights import create_rights_app
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore
+from deephelp_tools.evaluation.legacy_checkpoints import LegacyCheckpointArchive
 from deephelp_tools.evaluation.postgres_migration import canonical, read_snapshot, untyped, verify
 from deephelp_tools.learning.event_replay import envelope
 from deephelp_tools.probes.postgres_probe import require_isolated
@@ -359,7 +359,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         except AppError as exc:
             assert exc.code == ErrorCode.NOT_IMPLEMENTED
         else:
-            raise AssertionError("M26 gate failed")
+            raise AssertionError("Missing explicit official saver was accepted")
         archive = LegacyCheckpointArchive(repo.pool)
         await rejected(archive.adelete_thread("unused"), ErrorCode.NOT_IMPLEMENTED)
         thread = (
@@ -368,12 +368,12 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             )
         )[0][0]
         assert await archive.aget_tuple({"configurable": {"thread_id": thread}})
-        checks["approval_claim_effect_unknown_legacy_gate"] = {
+        checks["approval_claim_effect_unknown_explicit_saver"] = {
             "status": "PASS",
             "effects": 1,
             "graph_executions": 0,
             "legacy_read": "PASS",
-            "m26_gate": "CLOSED",
+            "explicit_saver_required": True,
         }
     except Exception as exc:
         args.output.write_bytes(
