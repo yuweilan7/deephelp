@@ -54,7 +54,18 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.rerank_cli evaluate --live --providers $rerankProviders --pointer $hybridPointer --selection $frozenSelection --budget-state $probeBudgetFile --output $testReport
 ```
 
-进度/内容结果见[M31交接](../../handoffs/M31.md)。开发集选择N=6/default，独立test排序总体持平且有一条退化，保留明确开启能力；远端/工作台/完整发布在下一顺序特性接入，当前active未改变。
+RemoteRetriever与独立Retrieval MCP采用同一已发布策略；服务端实际重排一次，客户端验证原文/归属/排序和签名usage。M31 profile分别固定candidate_budget=6、top_n=6、最终top_k=3及default/fail_closed；关闭仍保持原三路与零次重排。学习页在原检索表单展示四路、文档原名次/新名次、每意图最佳证据、独立score、策略/usage/耗时。页面和历史浏览不执行模型；显式提交才调用。M17使用M31指针须明确`--capability rerank`，报告保存冻结策略/候选和原生证据；对照质量入口仍为上面的rerank_cli。
+
+新的完整发布须分别运行开启/关闭资产的内容门禁，再生成不可变清单；指针、相邻corpus.jsonl、providers和评测profile必须精确一致：
+
+```powershell
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.release_cli validate --live --assets $releaseAssets --providers $rerankProviders --auth $releaseAuth --budget-state $probeBudgetFile --output $contentReport
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.release_cli prepare --assets $releaseAssets --providers $rerankProviders --validation $contentReport --version $newVersion --output $newManifest
+# 单一发布写者核验完整远端资产后register/CAS-switch；正式serve读取该channel。
+# 应用与Retrieval服务须一起使用同一策略指针、语料和providers；不修改旧清单。
+```
+
+当前正式配置与恢复入口见[部署说明](../../infra/deployment/README.md#m31-策略发布与恢复)。开发集选择N=6/default，独立test总体持平且有一条退化，因此正式默认关闭；开启版本作为独立已验收channel保留，切换时同时停止/重建应用及检索服务，并使用相应指针/profile与完整发布。实际结果和限制见[M31交接](../../handoffs/M31.md)。
 
 ## 业务启动入口
 
@@ -66,7 +77,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve -
 py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --text "订单 000031 未享受优惠，请查一下"
 ```
 
-`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；PostgreSQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。可另传成对的`--retrieval-mcp-url`与`--retrieval-credentials`选择[独立Retrieval服务](../deephelp-services/README.md#独立检索服务)，复用同一Dense/Hybrid Port；省略时用原本地检索，远端失败关闭、不自动回退。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行用下方release_cli serve，读取PostgreSQL active并固定完整版本，不隐式切换业务channel。本次没有注册新完整发布，旧清单不能套到新字节。
+`python -m deephelp_app` 与 `bootstrap.mvp_cli` 使用同一实现，提供init/migrate/serve/ask。serve必须显式选择 `--mcp-module` 或 `--business-mcp-url`，Hybrid另指定 `--corpus` 为当前发布语料。demo闭环需要独立deephelp-tools；PostgreSQL可维护业务使用[独立Business服务](../deephelp-services/README.md)，应用无需导入services。可另传成对的`--retrieval-mcp-url`与`--retrieval-credentials`选择[独立Retrieval服务](../deephelp-services/README.md#独立检索服务)，复用同一Dense/Hybrid Port；省略时用原本地检索，远端失败关闭、不自动回退。模型与业务来源分别配置，默认不启用会话业务写工具。适用审批需显式SOP/rights服务及原32-byte key，见M15；完整发布运行读取PostgreSQL active并固定完整版本，不隐式切换业务channel。运行字节或策略改变须新完整清单，旧清单不能套到新字节。
 
 直接 `uvicorn deephelp_app.api.app:create_app --factory` 是M01离线骨架，`/converse`保持501，用于学习生命周期。它不能作为三类业务启动命令。学习入口 `python -m deephelp_tools.learning.experiments`；受控能力验收 `python -m deephelp_tools.probes.live_probe --help`；冻结评测 `python -m deephelp_tools.evaluation.evaluation_cli --help`。
 

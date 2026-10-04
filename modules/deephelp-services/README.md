@@ -60,6 +60,8 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 Retrieval使用自己的持久Bearer与委托key。服务的`--auth`映射允许主体；应用使用同一份身份映射与当前发布pointer、corpus、providers。它只验证现有集合，不导入语料、不reindex。新机器先按应用init准备身份/累计预算；已有文件不重置。启动前按LOCAL_SETUP检查隧道health并显式加载模型环境。
 
+M31指针显式绑定重排策略时，两端采用`m31-retrieval-v1`和同一精确profile，分别记录candidate_budget/top_n/最终top_k。服务端完成唯一一次native rerank，客户端只核验原文/导入来源、排序与签名usage；四路compare共用一次Embedding和原始候选。关闭策略保留原Hybrid结果且0次重排，第四路标记not_run/disabled；未配置策略继续原M20三路协议。修改策略/模型/语料须新完整发布及同时重建应用与检索服务，不能由客户端提供model/documents/endpoint。配置/实际质量结论见[应用M31入口](../deephelp-app/README.md#m31-专用重排端口)。
+
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_services.retrieval init --credentials .local/m20/retrieval-service.json
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_services.retrieval serve --credentials .local/m20/retrieval-service.json --auth .local/m20/auth.json --pointer .local/m09/active.json --corpus demo/data/m09_corpus.jsonl --port 8012

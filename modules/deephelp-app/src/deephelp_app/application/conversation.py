@@ -48,6 +48,8 @@ from deephelp_app.domain.models import (
     Question,
     QuestionStatus,
     RequestEnvelope,
+    RerankRequest,
+    RerankResult,
     ResponseEnvelope,
     RunStatus,
     SOPResult,
@@ -64,6 +66,7 @@ from deephelp_app.domain.ports import (
     DenseRetrieverPort,
     EmbeddingPort,
     MemoryPort,
+    RerankPort,
     SOPExecutorPort,
     ToolPort,
 )
@@ -152,8 +155,21 @@ current_run: ContextVar[RunTrace | None] = ContextVar("m08_run", default=None)
 
 
 class CountedModel:
-    def __init__(self, chat: ChatPort, embedding: EmbeddingPort) -> None:
+    def __init__(
+        self, chat: ChatPort, embedding: EmbeddingPort, rerank: RerankPort | None = None
+    ) -> None:
         self.chat_port, self.embedding_port = chat, embedding
+        self.rerank_port = rerank
+
+    async def rerank(self, request: RerankRequest, budget: ExecutionBudget) -> RerankResult:
+        if self.rerank_port is None:
+            raise AppError(ErrorCode.MODEL_CAPABILITY_UNAVAILABLE, "Rerank is not configured")
+        before = budget.attempts_used
+        try:
+            return await self.rerank_port.rerank(request, budget)
+        finally:
+            if stats := current_run.get():
+                stats.model_calls += budget.attempts_used - before
 
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
         before = budget.attempts_used

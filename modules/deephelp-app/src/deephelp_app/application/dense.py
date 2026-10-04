@@ -135,6 +135,44 @@ def row_for(
     }
 
 
+def reference_matches(hit: DenseHit, record: CorpusRecord, corpus_digest: str | None) -> bool:
+    """Owned attributes may be wrapped in M05 import provenance; never accept arbitrary metadata."""
+    if (
+        hit.doc_id != record.doc_id
+        or hit.content != record.content
+        or hit.intent_code != record.intent_code
+    ):
+        return False
+    if hit.metadata == record.metadata:
+        return True
+    metadata = hit.metadata
+    return (
+        set(metadata)
+        == {
+            "source_group",
+            "variant_group",
+            "synthetic",
+            "record_hash",
+            "source_file_sha256",
+            "batch_id",
+            "corpus_digest",
+            "registry_version",
+            "attributes",
+        }
+        and metadata["attributes"] == record.metadata
+        and metadata["source_group"] == record.source_group
+        and metadata["variant_group"] == record.variant_group
+        and metadata["synthetic"] is True
+        and metadata["record_hash"] == digest(record.model_dump(mode="json"))
+        and metadata["registry_version"] == hit.scope.registry_version
+        and (corpus_digest is None or metadata["corpus_digest"] == corpus_digest)
+        and isinstance(metadata["source_file_sha256"], str)
+        and len(metadata["source_file_sha256"]) == 64
+        and all(c in "0123456789abcdef" for c in metadata["source_file_sha256"])
+        and metadata["batch_id"] == digest([metadata["source_file_sha256"], hit.scope.fingerprint])
+    )
+
+
 def verify_rows(expected: list[dict[str, object]], actual: list[dict[str, object]]) -> None:
     by_id = {str(row["doc_id"]): row for row in actual}
     if len(by_id) != len(expected) or len(by_id) != len(actual):

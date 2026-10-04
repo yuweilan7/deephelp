@@ -4,6 +4,8 @@ from pathlib import Path
 
 from deephelp_app.adapters.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.fasttext_runtime import FastTextClassifier, pointer_manifest
+from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.retrieval_protocol import binding_from_files
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.intent_prompt import (
     ROLE,
@@ -35,6 +37,13 @@ def prepare_manifest(
     if data["providers_digest"] != file_digest(providers):
         raise ConfigurationError("Provider configuration changed")
     dense = read_data(Path(data["dense_pointer"]))
+    if dense.get("selection", {}).get("format") == "m31-dev-selection-v1":
+        pointer = Path(data["dense_pointer"])
+        binding = binding_from_files(
+            pointer, ProviderConfig.load(providers), pointer.parent / "corpus.jsonl"
+        )
+        if validation.get("retrieval_profile") != binding.health():
+            raise ConfigurationError("Rerank profile differs from complete content validation")
     classifier = FastTextClassifier(pointer_manifest(Path(data["fasttext_pointer"])))
     package = PACKAGE
     prompts = {

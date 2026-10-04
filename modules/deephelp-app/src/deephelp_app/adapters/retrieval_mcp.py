@@ -64,7 +64,7 @@ class RemoteRetriever:
         self.entered = True
         async with asyncio.timeout(30):
             tools = await self.network.list_tools()
-            expected = {t.name: t for t in registered_tools()}
+            expected = {t.name: t for t in registered_tools(self.binding)}
             if (
                 tools.next_cursor is not None
                 or len(tools.tools) != len(expected)
@@ -121,6 +121,8 @@ class RemoteRetriever:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Retrieval MCP is not connected")
         if scope != self.binding.scope:
             raise AppError(ErrorCode.FORBIDDEN, "Retrieval scope is not owned")
+        if self.binding.rerank_policy and top_k != self.binding.top_k:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Final top_k differs from the release")
         context = request_execution.get()
         if context is None:
             raise AppError(ErrorCode.FORBIDDEN, "Trusted request context required for retrieval")
@@ -130,6 +132,7 @@ class RemoteRetriever:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Invalid retrieval query") from None
         cap = self.binding.allowance(text, budget.remaining_seconds())
         delegation = RetrievalDelegation(
+            version=self.binding.version,
             context=RetrievalContext.from_request(context),
             name=cast(Literal["retrieve_intents", "compare_intents"], name),
             query_hash=hashlib.sha256(canonical(query.model_dump(mode="json"))).hexdigest(),
@@ -198,11 +201,19 @@ class RemoteRetriever:
                 or proof["reply_hash"]
                 != hashlib.sha256(canonical(reply.model_dump(mode="json"))).hexdigest()
                 or reply.delegation != delegation
+                or reply.version != self.binding.version
                 or reply.query != query
                 or result.is_error != (reply.error is not None)
                 or sum(a.attempts for a in reply.actions) != reply.used.attempts
                 or any(a.model_calls > a.attempts for a in reply.actions)
-                or sum(a.model_calls for a in reply.actions) > 1
+                or sum(a.model_calls for a in reply.actions)
+                > (2 if self.binding.rerank_policy and self.binding.rerank_policy.enabled else 1)
+                or any(
+                    a.model_calls and a.action not in {"embedding", "rerank"} for a in reply.actions
+                )
+                or sum(a.model_calls for a in reply.actions if a.action == "embedding") > 1
+                or sum(a.model_calls for a in reply.actions if a.action == "rerank")
+                > (1 if self.binding.rerank_policy and self.binding.rerank_policy.enabled else 0)
                 or sum(a.tokens for a in reply.actions) != reply.used.tokens
                 or sum(a.charged_tokens for a in reply.actions) != reply.used.token_upper_bound
             ):
@@ -214,6 +225,20 @@ class RemoteRetriever:
                 validate_results(
                     self.binding, query, name, {str(k): v for k, v in reply.results.items()}
                 )
+                if ranked := reply.results.get("hybrid_rerank"):
+                    state = ranked.rerank
+                    assert state is not None
+                    native = [a for a in reply.actions if a.action == "rerank"]
+                    if (
+                        sum(a.attempts for a in native) != state.attempts
+                        or (state.status == "passed" and sum(a.model_calls for a in native) != 1)
+                        or (
+                            state.result
+                            and state.result.usage
+                            and sum(a.tokens for a in native) != state.result.usage.total_tokens
+                        )
+                    ):
+                        raise ValueError
             budget.settle_remote(cap.attempts, cap.tokens, cap.cost, reply.used)
             record.update(
                 status="failed" if reply.error else "succeeded",

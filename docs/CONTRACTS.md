@@ -72,7 +72,11 @@ M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、
 
 M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/RerankResult 与 `ports.py` 的 RerankPort。输入文档为不可变有序 tuple，包含本地 doc_id/content/intent_code/source；仅 query、文档文本及可选 instruct 送模型，top_n 严格为 1..文档数。响应 index 为唯一范围内非bool整数，数量等于 top_n，score 有限且按降序返回，并列按原输入 index 稳定排序；以 index 映射原文档，不采信响应替换内容/标签。score_kind 固定 rerank，无概率/融合含义。完整合法 usage 通过原共享预算结算一次；缺失/不完整 usage 为 null，结构诊断保留已知项，未知尝试保留预留。
 
-同链增量 `RerankPolicy` 绑定版本/模型/instruct/enabled/candidate_budget/top_n/failure_policy及指纹；当前对全部候选重排，top_n=candidate_budget，实际文档不足时top_n为实际数量。`DenseResult.retrieval_mode=hybrid_rerank`/`policy_version=m31-rerank-v1`附`RetrievalRerank`，记录输入顺序、passed/not_run/fallback、原因、原生结果/usage及耗时/attempt。hits仅重排原始融合证据，原分数不变；candidates按重排最佳证据归并截top_k。passed强制原600语义确认，不复用fusion阈值。发布selection支持m31-dev-selection-v1，明确最终top_k与更宽candidate_budget、完整策略指纹；旧selection仍可验证。M20远端wire/profile升级在下一特性，业务envelope不变。
+同链增量 `RerankPolicy` 绑定版本/模型/instruct/enabled/candidate_budget/top_n/failure_policy及指纹；当前对全部候选重排，top_n=candidate_budget，实际文档不足时top_n为实际数量。`DenseResult.retrieval_mode=hybrid_rerank`/`policy_version=m31-rerank-v1`附`RetrievalRerank`，记录输入顺序、passed/not_run/fallback、原因、原生结果/usage及耗时/attempt。hits仅重排原始融合证据，原分数不变；candidates按重排最佳证据归并截top_k。passed强制原600语义确认，不复用fusion阈值。发布selection支持m31-dev-selection-v1，明确最终top_k与更宽candidate_budget、完整策略指纹；旧selection仍可验证。业务envelope保持原契约。
+
+绑定M31策略时，Retrieval MCP工具metadata、委托和回执采用`m31-retrieval-v1`；未配置策略仍为原`m20-retrieval-v1`。profile同时绑定完整策略、候选上限、最终top_k、模型配置及原语料/signature；新策略请求的top_k必须等于发布值。开启后retrieve返回hybrid_rerank，compare返回原三路及第四路；关闭后的retrieve保留原Hybrid，compare第四路明确not_run/disabled并与原Hybrid候选一致，实际重排0次。服务端是唯一重排执行点，客户端只验证签名、原文映射、来源metadata、排序/意图归并及已知usage；compare的原三路与第四路必须共享同一原始候选。Milvus导入来源结构与原始attributes分别核验，额外属性或外来语料拒收。
+
+RetrievalAction增加rerank，开启回执最多一次Embedding和一次Rerank；关闭最多一次Embedding。只有这两种动作可携带模型调用数，模型attempt/实际tokens须与原生结果一致；预算预留按最宽reference文本及重复query/instruct计算，合法签名回执只结算一次，断连/不可信回执仍保留未知预留。完整发布文件闭包绑定策略指针、相邻corpus.jsonl和对应内容报告的精确profile，不允许向旧清单动态注入新模型。M17明确`--capability rerank`才消费M31指针，M22仅显式提交检索表单产生调用。
 
 | 阶段 | 当前要落地 | 只作未来约束 |
 |---|---|---|

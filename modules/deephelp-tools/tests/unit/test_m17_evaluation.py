@@ -17,9 +17,20 @@ from deephelp_tools.evaluation.core import (
     release_gate,
     score,
 )
-from deephelp_tools.evaluation.evaluation_cli import compare_reports
+from deephelp_tools.evaluation.evaluation_cli import compare_reports, rerank_scope
 
 pytestmark = pytest.mark.unit
+
+
+def test_rerank_scope_requires_explicit_capability_and_a_frozen_strategy(tmp_path):
+    pointer = tmp_path / "pointer.json"
+    pointer.write_text(json.dumps({"selection": {"rerank_policy": {"enabled": False}}}))
+    with pytest.raises(ConfigurationError, match="explicit"):
+        rerank_scope(pointer, "standard")
+    assert rerank_scope(pointer, "rerank") == {"enabled": False}
+    pointer.write_text(json.dumps({"selection": {}}))
+    with pytest.raises(ConfigurationError, match="frozen"):
+        rerank_scope(pointer, "rerank")
 
 
 def rewritten(tmp_path, change):

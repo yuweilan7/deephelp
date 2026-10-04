@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from deephelp_app.application.cascade import retrieval_reason
 from deephelp_app.application.corpus import digest
+from deephelp_app.application.dense import reference_matches, row_for
 from deephelp_app.application.hybrid import HybridRetriever, rerank_result, result_for
 from deephelp_app.application.retrieval_policy import validate_published_selection
 from deephelp_app.application.text_entity import TextPolicy, clean_text
@@ -219,3 +220,47 @@ def test_published_selection_checks_policy_fingerprint_and_distinct_final_budget
 
     with pytest.raises(ConfigurationError):
         validate_published_selection(value, SCOPE, corpus.index_digest, 3)
+
+
+def test_import_provenance_wrapper_keeps_owned_attributes_and_rejects_injected_constraints():
+    corpus, _ = dataset()
+    record = corpus.index_records[0]
+    metadata = row_for(record, corpus, SCOPE, [1.0, 0.0, 0.0])["metadata"]
+    hit = DenseHit(
+        doc_id=record.doc_id,
+        content=record.content,
+        intent_code=record.intent_code,
+        metadata=metadata,
+        scope=SCOPE,
+        raw_score=0.8,
+    )
+    assert reference_matches(hit, record, corpus.index_digest)
+    assert not reference_matches(hit, record, "0" * 64)
+    changed = hit.model_copy(
+        update={"metadata": {**metadata, "entity_constraints": {"order_id": "x"}}}
+    )
+    assert not reference_matches(changed, record, corpus.index_digest)
+
+
+async def test_foreign_recall_text_is_rejected_before_any_rerank_dispatch():
+    corpus, _ = dataset()
+
+    class Embeddings:
+        async def embed(self, texts, run):
+            return EmbeddingResult(signature=SIG, vectors=[[1.0, 0.0, 0.0]], usage=ModelUsage())
+
+    class Store:
+        async def routes(self, *args):
+            return {mode: list(baseline().hits) for mode in ("dense", "bm25", "hybrid")}
+
+    port = Reranker()
+    with pytest.raises(AppError) as error:
+        await HybridRetriever(
+            Embeddings(),
+            Store(),
+            reranker=port,
+            rerank_policy=POLICY,
+            records=corpus.index_records,
+            corpus_digest=corpus.index_digest,
+        ).compare("q", SCOPE, budget())
+    assert error.value.code == ErrorCode.MODEL_OUTPUT_INVALID and not port.requests

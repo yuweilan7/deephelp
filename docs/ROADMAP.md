@@ -78,13 +78,13 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 | [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [交接](../handoffs/M28.md) | 两特性完成：跨MCP/官方图及暂停恢复前序、实际业务13段/脱敏generation/usage与原工作台替换 | M26/M27；SDK无公开Span Link参数，使用持久显式前序；旧服务留M30 |
 | [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [交接](../handoffs/M29.md) | 历史报告映射/恢复、不可变Prompt、原审核回流与完整发布回退 | M28；模块可选，启动则完成全部特性，不替换M18 active |
 | [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [交接](../handoffs/M30.md) | 两特性完成：直接指标/安装/恢复、最终单写切换/新完整发布/浏览器/兼容PG回滚及旧服务退役 | M25–M29已覆盖；原数据/备份保留，全部交付后停止 |
-| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口与同链对照已交付（[交接](../handoffs/M31.md)）→Retrieval MCP/学习页/正式发布 | 最后一项待实施；test总体持平，保留显式开启 |
+| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) | 端口→同链dev/test→真实MCP/会话/四路学习/精确完整发布均已验（[交接](../handoffs/M31.md)） | 全部三项完成；test总体持平且一条退化，正式默认关闭，显式开启版已验 |
 
 “完成Mxx”授权同一实施会话、同一主写者顺序完成当前M的全部规格特性；每项独立建分支、验收、合入main并同步后继续下一项，无需逐项另启。已有交付从未完成项续做；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不预写后续实现细节，结果出来后更新同一PLAN并继续。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS；首试验通过不等于全库迁移或Rerank主链已交付。M25已全部交付，M26持久前置已满足；后续M或独立M31剩余特性须按用户启动范围推进，不并行写共享网关/根锁。全部特性交付后才报告当前M完成并停止；跨M推进须由用户或已授权的顺序调度启动，阻塞不能冒充模块交付。
 
 通用实施Prompt：“完成Mxx。按当前模块规格、现有适用PLAN和直接handoff，从已交付成果续做全部剩余特性；核对实际前置，保留旧路线备份。一个主写者，各特性按AGENTS独立验收/中文提交/推送/合并/同步后继续；当前M全部特性交付后停止，不自行启动下一M。”已完成的M25不再作为待实施入口。
 
-补检索能力可使用：“完成M31。按docs/MODULES/M31_RERANK_INTEGRATION.md、planning/M31/PLAN.md和handoffs/M31.md，从已验RerankPort续做全部剩余特性：先完成召回后、意图归并前的同链接入与受控对照，固定同候选/同向量，dev确定instruct/预算/失败策略，独立test验收排序与拒识；验收交付后继续真实会话/Retrieval MCP/学习页及正式发布接入。发布门禁前保留active，一个主写者，各特性按AGENTS分别验收/中文提交/推送/合并/同步；M31全部特性交付后停止，不同时迁数据库或部署Langfuse。”
+M31已完成专用端口、同条件dev/test和真实会话/Retrieval MCP/学习页/正式发布三个顺序特性，完成PLAN已删除；后续核验按规格与handoff选择实际变化范围，不能重跑旧实施提示。未证明统一质量收益，正式默认关闭，显式开启版保留已验完整发布；不自动启动新M或扩大live。
 
 容量与资源：现有约7.51GiB适合先做受控低负载试验，不保证完整Langfuse与训练峰值共存。当前Langfuse需Web/Worker/PG/ClickHouse/专用noeviction队列Redis/S3对象存储；不能照旧截图写ClickHouse或对象存储可选。选官方支持的SeaweedFS单机自托管，使用现有磁盘/容器网络，和PG/ClickHouse一起做容量及隔离恢复实测；不购买COS、RDS或其他托管存储，不默认安装已归档社区MinIO。容量不足则报告，不自动开通计费资源。
 

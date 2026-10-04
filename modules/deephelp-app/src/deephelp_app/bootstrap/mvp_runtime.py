@@ -319,7 +319,7 @@ class LiveAssembly:
             memory = MemoryService(ledger, cache)
             gateway = create_gateway(client, self.config, AsyncCalls(2, 30))
             self.gateway = gateway
-            model = CountedModel(gateway, gateway)
+            model = CountedModel(gateway, gateway, gateway)
             endpoint = EndpointConfig.model_validate_json(
                 self.judge_providers.read_text(encoding="utf-8")
             )
@@ -388,7 +388,13 @@ class LiveAssembly:
                     if isinstance(scope, HybridScope):
                         weight = float(str(assembly.pointer.get("dense_weight", 0.5)))
                         return await HybridRetriever(
-                            model, MilvusHybridStore(milvus, budget), dense_weight=weight
+                            model,
+                            MilvusHybridStore(milvus, budget),
+                            dense_weight=weight,
+                            reranker=model if assembly.retrieval_binding.rerank_policy else None,
+                            rerank_policy=assembly.retrieval_binding.rerank_policy,
+                            records=assembly.retrieval_binding.records,
+                            corpus_digest=assembly.retrieval_binding.corpus_digest,
                         ).retrieve(text, scope, budget, top_k=top_k)
                     return await DenseRetriever(model, MilvusDenseStore(milvus, budget)).retrieve(
                         text, scope, budget, top_k=top_k
