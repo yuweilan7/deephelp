@@ -37,6 +37,10 @@ from deephelp_tools.probes.approval_probe import (
     stop,
 )
 
+SUBPROCESS_FLAGS = 0
+if sys.platform == "win32":
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+
 
 async def publisher(args: argparse.Namespace) -> None:
     store = await ReleaseStore.open(Path.cwd())
@@ -68,7 +72,7 @@ async def crash_publish(channel: str, target: str, revision: int, fault: str) ->
         fault,
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.PIPE,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        creationflags=SUBPROCESS_FLAGS,
     )
     try:
         async with asyncio.timeout(60):

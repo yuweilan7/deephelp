@@ -43,6 +43,10 @@ from deephelp_tools.evaluation.mvp_acceptance import api_client
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry
 from deephelp_tools.learning.event_replay import envelope
 
+SUBPROCESS_FLAGS = 0
+if sys.platform == "win32":
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+
 
 def decision(op: OperationRecord, kind: str = "approve") -> ApprovalCommand:
     return ApprovalCommand.model_validate(
@@ -129,7 +133,7 @@ async def spawn_worker(
         fault,
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.PIPE,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        creationflags=SUBPROCESS_FLAGS,
     )
     try:
         async with asyncio.timeout(75):
@@ -158,7 +162,7 @@ async def start_rights(args: argparse.Namespace, fault_path: Path) -> asyncio.su
         str(fault_path),
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        creationflags=SUBPROCESS_FLAGS,
     )
     try:
         async with httpx.AsyncClient(trust_env=False, timeout=1) as client:
