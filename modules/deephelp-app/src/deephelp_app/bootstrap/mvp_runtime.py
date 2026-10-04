@@ -480,6 +480,7 @@ def live_app(
             },
         )
     )
+    app.state.browser_auth = browser_auth
     if config := getattr(assembly, "business_mcp", None):
         from deephelp_app.adapters.business_client import BusinessClient
         from deephelp_app.api.business import business_router
