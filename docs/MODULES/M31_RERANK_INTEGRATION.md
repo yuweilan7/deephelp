@@ -1,12 +1,12 @@
 # M31｜Reranker 接入与检索效果验证
 
-**状态：** PLANNED；首特性 `PROBE_FIRST / READY`。用户2026-10-04明确追加，不依赖M25–M30迁移；每次只做一个特性。
+**范围：** 用户2026-10-04明确追加，不依赖M25–M30迁移；每次只做一个特性。实际进度见[STATE](../PROJECT_STATE.md)和[M31交接](../../handoffs/M31.md)。
 
 **前置：** 已交付M03模型预算/适配、M05/M09召回、M12唯一600主分类、M17评测、M18发布绑定、M20 Retrieval MCP和M22检索学习页。见[计划](../../planning/M31/PLAN.md)。M28完成后可用Langfuse观察，本模块也须兼容现有OTel，不能为了观测等待整套迁移。
 
 ## 当前缺口与目标
 
-当前网关只有Chat/Embedding，HybridRetriever把Milvus召回结果按意图取最佳证据；Retrieval MCP同样没有Rerank调用。`qwen3.7-text-rerank`虽已登记并完成历史三候选合成内容验证，仍只是可用候选。补一个脚本或注册模型不算接入完成。
+在既有Chat/Embedding网关中补专用Rerank端口；进一步在HybridRetriever按意图取最佳证据前重排召回文档，并让Retrieval MCP采用同一策略。`qwen3.7-text-rerank`的候选登记或历史接口验证不能代替本次端口、主链和内容验收；补一个脚本或注册模型不算主链接入完成。
 
 目标是在真实会话检索及独立Retrieval MCP中实际调用该模型，让学习页解释重排前后文档/意图顺序、实际调用和效果。优先使用`qwen3.7-text-rerank`，不悄悄换成Chat、Embedding或其他模型。最终默认启用与适用范围由同条件内容对照决定，不预设重排一定更准。
 

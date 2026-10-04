@@ -1,4 +1,4 @@
-"""Bounded OpenAI-compatible QianWen adapter. No SDK retries, automatic model switch or tools."""
+"""Bounded QianWen adapter for Chat, Embedding and native text Rerank."""
 
 import hashlib
 import json
@@ -26,6 +26,9 @@ from deephelp_app.domain.models import (
     ErrorCode,
     ModelToolCall,
     ModelUsage,
+    RerankHit,
+    RerankRequest,
+    RerankResult,
 )
 
 
@@ -90,10 +93,12 @@ class QianwenGateway:
         config: ProviderConfig,
         chat_credentials: tuple[str, str],
         embedding_credentials: tuple[str, str],
+        rerank_credentials: tuple[str, str] | None = None,
     ) -> None:
         self.client, self.calls, self.config = client, calls, config
         self._chat_credentials = chat_credentials
         self._embedding_credentials = embedding_credentials
+        self._rerank_credentials = rerank_credentials
         self.signature = config.signature()
         if config.allow_zero_embedding_indices and (
             config.provider != "qianwen" or config.embedding.model != "qwen3.7-text-embedding-flash"
@@ -134,7 +139,10 @@ class QianwenGateway:
         credentials: tuple[str, str],
         budget: ExecutionBudget,
         max_output: int = 0,
-    ) -> tuple[dict[str, object], ModelUsage, str | None]:
+        *,
+        native_rerank: bool = False,
+        repeated_input_bytes: int = 0,
+    ) -> tuple[dict[str, object], ModelUsage | None, str | None]:
         if budget.token_limit is None or budget.cost_limit is None:
             raise ConfigurationError("Model calls require explicit token and cost limits")
         encoded = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
@@ -143,11 +151,12 @@ class QianwenGateway:
         # UTF-8 byte count plus framing allowance deliberately overestimates these bounded
         # text-only prompts; explicit thinking allowance is included by the caller.
         # Search and SDK retries are disabled. Usage overruns fail closed.
-        reserved_tokens = len(encoded) + 1024 + max_output
+        input_upper = len(encoded) + 1024 + repeated_input_bytes
+        reserved_tokens = input_upper + max_output
         reserved_cost = self._cost(
             endpoint,
             ModelUsage(
-                input_tokens=len(encoded) + 1024,
+                input_tokens=input_upper,
                 output_tokens=max_output,
             ),
         )
@@ -155,7 +164,7 @@ class QianwenGateway:
         previous_retries = budget.retries_used
 
         @observed("model.attempt")
-        async def operation() -> tuple[dict[str, object], ModelUsage, str | None]:
+        async def operation() -> tuple[dict[str, object], ModelUsage | None, str | None]:
             nonlocal previous_retries
             annotate(
                 **{
@@ -169,9 +178,10 @@ class QianwenGateway:
             base, key = credentials
             async with self.client.stream(
                 "POST",
-                base + "/" + path,
+                base if native_rerank else base + "/" + path,
                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
                 content=encoded,
+                follow_redirects=False,
             ) as response:
                 chunks = bytearray()
                 async for chunk in response.aiter_bytes():
@@ -190,7 +200,7 @@ class QianwenGateway:
                     data = {}
                 request_id = safe_identifier(
                     response.headers.get("x-request-id")
-                ) or safe_identifier(data.get("id"))
+                ) or safe_identifier(data.get("request_id") if native_rerank else data.get("id"))
                 self._diagnose(
                     {
                         "path": path,
@@ -200,9 +210,15 @@ class QianwenGateway:
                         "api_usage": diagnostic_usage(data.get("usage")),
                     }
                 )
-                if not 200 <= response.status_code < 300:
+                if not 200 <= response.status_code < 300 or (native_rerank and data.get("code")):
                     error = data.get("error", {})
-                    code = safe_identifier(error.get("code")) if isinstance(error, dict) else None
+                    code = (
+                        safe_identifier(data.get("code"))
+                        if native_rerank
+                        else safe_identifier(error.get("code"))
+                        if isinstance(error, dict)
+                        else None
+                    )
                     lowered = (code or "").lower()
                     if any(marker in lowered for marker in ("quota", "balance", "arrearage")):
                         kind = ErrorCode.PROVIDER_QUOTA_EXHAUSTED
@@ -224,13 +240,33 @@ class QianwenGateway:
                         provider_code=code,
                     )
                 try:
-                    raw_usage = data["usage"]
+                    raw_usage = data.get("usage") if native_rerank else data["usage"]
+                    if native_rerank:
+                        if "model" in data and data["model"] != endpoint.model:
+                            raise ValueError
+                        if raw_usage is None:
+                            return data, None, request_id
+                        if (
+                            not isinstance(raw_usage, dict)
+                            or any(
+                                name in raw_usage
+                                and (type(raw_usage[name]) is not int or raw_usage[name] < 0)
+                                for name in ("prompt_tokens", "total_tokens", "completion_tokens")
+                            )
+                            or raw_usage.get("completion_tokens", 0) != 0
+                        ):
+                            raise ValueError
+                        if "prompt_tokens" not in raw_usage or "total_tokens" not in raw_usage:
+                            # Partial counts remain in diagnostics; no fabricated settlement.
+                            return data, None, request_id
                     if not isinstance(raw_usage, dict):
                         raise ValueError
                     usage = ModelUsage.model_validate(
                         {
-                            "input_tokens": raw_usage.get(
-                                "prompt_tokens", raw_usage.get("total_tokens")
+                            "input_tokens": (
+                                raw_usage.get("prompt_tokens")
+                                if native_rerank
+                                else raw_usage.get("prompt_tokens", raw_usage.get("total_tokens"))
                             ),
                             "output_tokens": raw_usage.get("completion_tokens", 0),
                         }
@@ -240,12 +276,14 @@ class QianwenGateway:
                         or raw_usage.get("total_tokens") != usage.total_tokens
                     ):
                         raise ValueError
+                    if native_rerank and usage.output_tokens != 0:
+                        raise ValueError
                 except KeyError, ValueError, ValidationError:
                     raise invalid_output(request_id) from None
                 budget.settle_model(
                     reserved_tokens, reserved_cost, usage.total_tokens, self._cost(endpoint, usage)
                 )
-                if data.get("model") != endpoint.model:
+                if (not native_rerank or "model" in data) and data.get("model") != endpoint.model:
                     raise invalid_output(request_id)
                 annotate(
                     **{
@@ -271,6 +309,94 @@ class QianwenGateway:
             token_reservation=reserved_tokens,
             cost_reservation=reserved_cost,
         )
+
+    @observed("model.rerank")
+    async def rerank(self, request: RerankRequest, budget: ExecutionBudget) -> RerankResult:
+        endpoint = self.config.rerank
+        if endpoint is None or self._rerank_credentials is None:
+            raise AppError(ErrorCode.MODEL_CAPABILITY_UNAVAILABLE, "Rerank is not configured")
+        parameters: dict[str, object] = {"top_n": request.top_n}
+        if request.instruct is not None:
+            parameters["instruct"] = request.instruct
+        body: dict[str, object] = {
+            "model": endpoint.model,
+            "input": {
+                "query": request.query,
+                "documents": [doc.content for doc in request.documents],
+            },
+            "parameters": parameters,
+        }
+        data, usage, request_id = await self._post(
+            "rerank/text-rerank",
+            body,
+            endpoint,
+            self._rerank_credentials,
+            budget,
+            native_rerank=True,
+            # Native metering repeats query for every document; include instruction too.
+            repeated_input_bytes=(
+                len(request.query.encode()) + len((request.instruct or "").encode())
+            )
+            * (len(request.documents) - 1),
+        )
+        try:
+            output = data["output"]
+            if not isinstance(output, dict):
+                raise ValueError
+            rows = output["results"]
+            if not isinstance(rows, list) or len(rows) != request.top_n:
+                raise ValueError
+            hits = []
+            seen: set[int] = set()
+            last_score = math.inf
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError
+                index, score = row.get("index"), row.get("relevance_score")
+                if (
+                    type(index) is not int
+                    or not 0 <= index < len(request.documents)
+                    or index in seen
+                    or not isinstance(score, (int, float))
+                    or isinstance(score, bool)
+                    or not math.isfinite(score)
+                    or score > last_score
+                ):
+                    raise ValueError
+                seen.add(index)
+                last_score = score
+                hits.append(RerankHit(index=index, document=request.documents[index], score=score))
+            # Equal scores retain the request's input order, independent of provider tie order.
+            hits.sort(key=lambda hit: (-hit.score, hit.index))
+            result = RerankResult(
+                hits=tuple(hits),
+                model=endpoint.model,
+                instruct=request.instruct,
+                usage=usage,
+                provider_request_id=request_id,
+            )
+        except ValueError, TypeError, KeyError, ValidationError, OverflowError:
+            self._diagnose(
+                {
+                    "capability": "rerank",
+                    "provider_request_id": request_id,
+                    "validation": "failed",
+                    "expected_count": request.top_n,
+                }
+            )
+            raise invalid_output(request_id) from None
+        self._diagnose(
+            {
+                "capability": "rerank",
+                "provider_request_id": request_id,
+                "indices": [hit.index for hit in result.hits],
+                "document_count": len(request.documents),
+                "top_n": request.top_n,
+                "usage_known": usage is not None,
+                "validation": "passed",
+            }
+        )
+        return result
 
     async def complete(self, text: str, budget: ExecutionBudget) -> str:
         result = await self.chat(
@@ -353,6 +479,7 @@ class QianwenGateway:
             budget,
             request.max_output_tokens + thinking_allowance,
         )
+        assert usage is not None  # OpenAI-compatible calls require complete API usage.
         try:
             choices = data["choices"]
             if not isinstance(choices, list) or len(choices) != 1:
@@ -497,6 +624,7 @@ class QianwenGateway:
                 self._embedding_credentials,
                 budget,
             )
+            assert usage is not None
             input_tokens += usage.input_tokens
             if request_id:
                 request_ids.append(request_id)

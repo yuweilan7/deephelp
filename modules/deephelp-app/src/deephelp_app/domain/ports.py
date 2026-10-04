@@ -16,6 +16,8 @@ from deephelp_app.domain.models import (
     MemoryWindow,
     Question,
     RequestEnvelope,
+    RerankRequest,
+    RerankResult,
     ResponseEnvelope,
     SOPResult,
     TextEntityResult,
@@ -35,6 +37,10 @@ class ChatPort(Protocol):
 
 class EmbeddingPort(Protocol):
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult: ...
+
+
+class RerankPort(Protocol):
+    async def rerank(self, request: RerankRequest, budget: ExecutionBudget) -> RerankResult: ...
 
 
 class ClusterJudgePort(Protocol):

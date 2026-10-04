@@ -1191,6 +1191,55 @@ class ModelUsage(DTO):
         return self.input_tokens + self.output_tokens
 
 
+class RerankDocument(DTO):
+    """Local immutable evidence. Only content is sent to the provider."""
+
+    doc_id: Identifier
+    content: RawText
+    intent_code: IntentCode
+    source: Identifier
+
+
+class RerankRequest(DTO):
+    query: RawText
+    documents: tuple[RerankDocument, ...] = Field(min_length=1, max_length=500)
+    top_n: PositiveCount
+    instruct: RawText | None = None
+
+    @model_validator(mode="after")
+    def bounded_selection(self) -> RerankRequest:
+        if self.top_n > len(self.documents):
+            raise ValueError("Rerank top_n must not exceed document count")
+        if len({doc.doc_id for doc in self.documents}) != len(self.documents):
+            raise ValueError("Rerank document IDs must be unique")
+        return self
+
+
+class RerankHit(DTO):
+    index: Count
+    document: RerankDocument
+    score: Annotated[float, Field(strict=True, allow_inf_nan=False)]
+    score_kind: Literal["rerank"] = "rerank"
+
+
+class RerankResult(DTO):
+    hits: tuple[RerankHit, ...] = Field(min_length=1, max_length=500)
+    model: Identifier
+    instruct: RawText | None
+    usage: ModelUsage | None
+    provider_request_id: Identifier | None = None
+
+    @model_validator(mode="after")
+    def ordered_unique_hits(self) -> RerankResult:
+        if len({hit.index for hit in self.hits}) != len(self.hits):
+            raise ValueError("Rerank indices must be unique")
+        if len({hit.document.doc_id for hit in self.hits}) != len(self.hits):
+            raise ValueError("Rerank document IDs must be unique")
+        if list(self.hits) != sorted(self.hits, key=lambda hit: (-hit.score, hit.index)):
+            raise ValueError("Rerank hits require descending scores and stable input ties")
+        return self
+
+
 class ModelToolCall(DTO):
     call_id: Identifier
     name: Identifier

@@ -18,13 +18,31 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.evaluation_cli run --live --mode memory_event --case m17-baseline-discount --case m17-baseline-missing --output $evaluationReportFile --budget-state $evaluationBudgetFile
 ```
 
-M03不再依据stage自动跑四能力；`--all-capabilities`显式全能力，`--extended`需与它配合，或分别选extended_chat/thinking_schema。M04 live必须选`--case`或明确`--all-cases`；传强端口配置不再自动附加重复直连验证。M17 live必须选择`--mode`与`--case`，或明确`--full-evaluation`；完整四组使用后者，额外`--all-cases`才扩展到所有冻结会话，`--approvals`另显式选择审批矩阵。targeted报告仅证明所选内容/安全/持久回读/零调用重放，不能当四组消融或完整发布通过。离线默认范围保持完整，不影响pytest量。
+M03不再依据stage自动跑四能力；`--all-capabilities`显式选择Chat/schema/tool/embed，`--extended`需与它配合，或分别选extended_chat/thinking_schema；M31的rerank始终单独显式选择。M04 live必须选`--case`或明确`--all-cases`；传强端口配置不再自动附加重复直连验证。M17 live必须选择`--mode`与`--case`，或明确`--full-evaluation`；完整四组使用后者，额外`--all-cases`才扩展到所有冻结会话，`--approvals`另显式选择审批矩阵。targeted报告仅证明所选内容/安全/持久回读/零调用重放，不能当四组消融或完整发布通过。离线默认范围保持完整，不影响pytest量。
 
 仅选择实际装配了受影响能力的主链入口；M17默认关闭可选模型润色，不能用其报告替代M16润色Prompt的真实内容。回复或业务策略用一个相关主链入口取得必要真实内容，不再重复历史M08/M12/M14/M16/M18相同路径。能力未变可复用同会话内容证据；修复后只重跑失败和受影响相邻样本。M15固定动作可验证真实协议/数据库/下游，故障矩阵不逐例重新调用大模型；模型生成计划/事实若变化仍需本次真实内容。
 
 M03/M04/M17报告新增按阶段、模型、样本的API观察与调用汇总。API提供的input/output/total/reasoning按原项记录，缺失/超时/诊断尾部缺失标null并保留已观察小计；reasoning可能包含在output中，不再相加。M17逐样本采集避免不同模式的100条诊断尾部代替全量usage；report中的累计预算包含其他尝试，不能冒充模型实际调用数。cost是配置估算，charged/token_upper_bound是预算占用，均非账单。原报告和失败证据留.local，不为多个入口重复生成模型响应。
 
 下方完整探针/多组对照/发布命令均是明确启动相应目标的可选运行入口；普通小改动不串跑。完整发布仍要求精确版本/配置/资产/行为适用的成功证据和清单；单纯hash相同不足以证明行为相同，工具变化也不隐式启动新发布。历史main复验步骤已由当前AGENTS取代，main合并后不跑静态/pytest/构建/live。
+
+## M31 专用重排端口
+
+在自己的ProviderConfig文件增添可选 `rerank` 对象；省略或设为null时不加载重排凭据，也不调用模型。字段为 `model="qwen3.7-text-rerank"`、`base_url_env="DEEPHELP_RERANK_URL"`、`api_key_env`、本任务的保守 `input_cny_per_million` 与 `output_cny_per_million="0"`。后者是输入计量协议，费用估算不等于账单。凭据环境变量可复用原Key字段。
+
+`DEEPHELP_RERANK_URL`必须明确配置为完整HTTPS原生地址，路径以 `/api/v1/services/rerank/text-rerank/text-rerank` 结束；按账号/地域核对[官方地址](https://help.aliyun.com/zh/model-studio/base-url)，不从Chat地址自动推导。工厂拒绝兼容Chat路径、扁平reranks路径、URL查询参数和缺失凭据。网关使用 `model/input/parameters` 专用请求，文档ID/意图/source仅在本地映射。
+
+复用M03已初始化的专用共享预算格式，设置本轮调用/token/费用上限、新报告路径及 `$rerankProviders` 后执行：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.live_probe --help
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.live_probe --live --capability rerank --stage feature --providers $rerankProviders --budget-state $probeBudgetFile --output $probeReportFile --max-calls $probeCalls --max-tokens $probeTokens --max-cost $probeCost
+# 修复只复验失败样本：在上一命令追加 --rerank-sample coupon|discount|activity，可重复。
+```
+
+默认三条固定合成query共享原M09的12条reference文本，使用语义相似度instruct、每次返回全部12条；gold预期仅在本地断言。一次三样本需至少3次剩余调用；不足在派发前拒绝。探针单次30秒、共享总120秒、重试0，恢复沿用累计预算且使用新报告。输出包括原文档映射、独立重排分数、模型/instruct、结构诊断、API实际usage和预算预留；output/reasoning未提供则标未知，不与input相加。成功报告只留一份，预算阶段只保存摘要与报告指纹。
+
+首特性仅交付网关端口与内容试验，进度/证据见[M31交接](../../handoffs/M31.md)。原Hybrid、唯一600主分类、Retrieval MCP、学习页及active仍按已发布策略；召回后重排、同条件dev/test对照及新完整发布须按后续PLAN另启。
 
 ## 业务启动入口
 

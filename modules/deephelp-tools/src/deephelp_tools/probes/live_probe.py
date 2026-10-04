@@ -17,7 +17,17 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import ChatMessage, ChatRequest, ErrorCode, ModelTool
+from deephelp_app.domain.models import (
+    ChatMessage,
+    ChatRequest,
+    CorpusRecord,
+    ErrorCode,
+    IntentCode,
+    ModelTool,
+    RerankDocument,
+    RerankRequest,
+)
+from deephelp_tools.assets import asset_path
 from deephelp_tools.probes.usage import api_records, summarize_usage
 
 PROBE_SCHEMA: dict[str, object] = {
@@ -31,7 +41,12 @@ PROBE_SCHEMA: dict[str, object] = {
 }
 
 
-CAPABILITIES = ("chat", "schema", "tool", "embed", "extended_chat", "thinking_schema")
+CAPABILITIES = ("chat", "schema", "tool", "embed", "extended_chat", "thinking_schema", "rerank")
+RERANK_SAMPLES = (
+    ("coupon", "券选不上，付款页面说不能用", IntentCode.COUPON_UNUSABLE),
+    ("discount", "下单前答应减价，结果支付的钱一分也没少", IntentCode.DISCOUNT_MISSING),
+    ("activity", "我只想查这笔订单报名了什么促销，不是券不能用", IntentCode.ORDER_ACTIVITY_QUERY),
+)
 
 
 def selected_capabilities(args: argparse.Namespace) -> list[str]:
@@ -41,7 +56,7 @@ def selected_capabilities(args: argparse.Namespace) -> list[str]:
             raise ConfigurationError("Choose --capability or --all-capabilities, not both")
         selected = list(CAPABILITIES[:4])
         if args.extended:
-            selected += list(CAPABILITIES[4:])
+            selected += list(CAPABILITIES[4:6])
     elif args.extended:
         raise ConfigurationError(
             "--extended requires --all-capabilities; individual checks use --capability"
@@ -55,8 +70,21 @@ def selected_capabilities(args: argparse.Namespace) -> list[str]:
     return selected
 
 
+def selected_rerank_samples(args: argparse.Namespace, capabilities: list[str]) -> list[str]:
+    allowed = [row[0] for row in RERANK_SAMPLES]
+    selected = list(getattr(args, "rerank_sample", None) or [])
+    if selected and (
+        "rerank" not in capabilities
+        or len(selected) != len(set(selected))
+        or any(sample not in allowed for sample in selected)
+    ):
+        raise ConfigurationError("Choose unique --rerank-sample IDs with --capability rerank")
+    return selected or (allowed if "rerank" in capabilities else [])
+
+
 async def probe(args: argparse.Namespace) -> int:
     capabilities = selected_capabilities(args)
+    rerank_samples = selected_rerank_samples(args, capabilities)
     state_path = local_path(args.budget_state)
     output = local_path(args.output)
     validate_control_paths([state_path, Path(args.providers)], output=output)
@@ -75,6 +103,7 @@ async def probe(args: argparse.Namespace) -> int:
         "status": "PENDING_LIVE",
         "results": [],
         "selected_capabilities": capabilities,
+        "selected_rerank_samples": rerank_samples,
         "environment": {
             "python": platform.python_version(),
             "httpx": version("httpx"),
@@ -84,7 +113,7 @@ async def probe(args: argparse.Namespace) -> int:
     output = local_path(args.output)
     try:
         original = json.loads(state_path.read_text(encoding="utf-8-sig"))
-        required_calls = len(capabilities)
+        required_calls = sum(len(rerank_samples) if c == "rerank" else 1 for c in capabilities)
         remaining_calls = original["max_calls"] - original["attempts"]
         remaining_tokens = original["max_tokens"] - original["charged_tokens"]
         initial_cost = Decimal(
@@ -355,6 +384,60 @@ async def probe(args: argparse.Namespace) -> int:
                             "provider_request_id": thinking.provider_request_id,
                         }
                     )
+                if "rerank" in capabilities:
+                    corpus_path = asset_path("m09_corpus.jsonl")
+                    corpus_bytes = corpus_path.read_bytes()
+                    corpus = [
+                        CorpusRecord.model_validate_json(line) for line in corpus_bytes.splitlines()
+                    ]
+                    if not corpus or any(doc.split != "reference" for doc in corpus):
+                        raise ConfigurationError(
+                            "Rerank capability probe requires reference documents"
+                        )
+                    documents = tuple(
+                        RerankDocument(
+                            doc_id=doc.doc_id,
+                            content=doc.content,
+                            intent_code=doc.intent_code,
+                            source=doc.source_group,
+                        )
+                        for doc in corpus
+                    )
+                    report["rerank_reference_sha256"] = hashlib.sha256(corpus_bytes).hexdigest()
+                    for sample_id, query, expected in RERANK_SAMPLES:
+                        if sample_id not in rerank_samples:
+                            continue
+                        observe("rerank-" + sample_id)
+                        request = RerankRequest(
+                            query=query,
+                            documents=documents,
+                            top_n=len(documents),
+                            instruct="Retrieve semantically similar text.",
+                        )
+                        ranked = await gateway.rerank(request, budget)
+                        valid = (
+                            ranked.hits[0].document.intent_code == expected
+                            and ranked.usage is not None
+                            and all(
+                                hit.document == request.documents[hit.index] for hit in ranked.hits
+                            )
+                        )
+                        results.append(
+                            {
+                                "capability": "rerank",
+                                "sample": sample_id,
+                                "query": query,
+                                "expected_intent": expected,
+                                "status": "PASS" if valid else "FAIL",
+                                **ranked.model_dump(mode="json"),
+                            }
+                        )
+                        if not valid:
+                            raise AppError(
+                                ErrorCode.MODEL_OUTPUT_INVALID,
+                                "Synthetic rerank content/mapping expectation failed",
+                                provider_request_id=ranked.provider_request_id,
+                            )
                 report.update(status="PASS")
             except AppError as exc:
                 report.update(
@@ -378,7 +461,21 @@ async def probe(args: argparse.Namespace) -> int:
                 )
                 persist()
                 current = json.loads(state_path.read_text(encoding="utf-8"))
-                current.setdefault("stages", []).append(report)
+                # Rerank reports contain final synthetic evidence; keep one copy only.
+                stage_record = (
+                    {
+                        "stage": args.stage,
+                        "status": report["status"],
+                        "selected_capabilities": capabilities,
+                        "selected_rerank_samples": rerank_samples,
+                        "report_sha256": hashlib.sha256(
+                            json.dumps(report, ensure_ascii=False, sort_keys=True).encode()
+                        ).hexdigest(),
+                    }
+                    if "rerank" in capabilities
+                    else report
+                )
+                current.setdefault("stages", []).append(stage_record)
                 current.pop("active_stage", None)
                 state_path.write_text(
                     json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -399,7 +496,15 @@ def main() -> int:
     parser.add_argument("--stage", choices=["feature", "main"], required=True)
     parser.add_argument("--capability", action="append", choices=CAPABILITIES)
     parser.add_argument(
-        "--all-capabilities", action="store_true", help="Explicit full capability check"
+        "--rerank-sample",
+        action="append",
+        choices=[row[0] for row in RERANK_SAMPLES],
+        help="Selected rerank content samples; default all three",
+    )
+    parser.add_argument(
+        "--all-capabilities",
+        action="store_true",
+        help="Chat/schema/tool/embed set; select rerank explicitly with --capability rerank",
     )
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument(
