@@ -214,12 +214,20 @@ class ApprovalService:
 
     @staticmethod
     def config(op: OperationRecord) -> Any:
-        return {"configurable": {"thread_id": "m15-approval-v1:" + op.run_id}}
+        from deephelp_app.adapters.native_observation import graph_callbacks
+
+        return {
+            "configurable": {"thread_id": "m15-approval-v1:" + op.run_id},
+            "callbacks": graph_callbacks(),
+        }
 
     @observed("approval.pause")
     async def pause(self, operation_id: str, budget: ExecutionBudget) -> None:
         self.inject("before_checkpoint")
         op = await self.repo.get(operation_id)
+        from deephelp_app.adapters.native_observation import register_run
+
+        await register_run(self.repo.pool, op.run_id, kind="pause", operation_id=operation_id)
         await operation_link(self.repo.pool, operation_id, save=True)
         graph = self.graph(budget)
         config = self.config(op)
@@ -245,13 +253,22 @@ class ApprovalService:
         command: ResumeCommand,
         budget: ExecutionBudget,
     ) -> OperationRecord:
-        await self.repo.scoped(identity, command.session_id, command.run_id, operation_id)
+        scoped = await self.repo.scoped(identity, command.session_id, command.run_id, operation_id)
         links = await operation_link(self.repo.pool, operation_id)
         with observation(
             "approval.resume",
             links=links,
             attributes={"deephelp.operation_id": operation_id, "deephelp.synthetic": True},
         ):
+            from deephelp_app.adapters.native_observation import register_run
+
+            await register_run(
+                self.repo.pool,
+                scoped.run_id,
+                kind="resume",
+                operation_id=operation_id,
+                predecessor=links,
+            )
             op, token = await self.repo.acquire(operation_id, self.snapshot)
             if token is None:
                 graph = self.graph(budget)

@@ -231,6 +231,11 @@ class Telemetry:
         self.processor = BoundedProcessor(self.exporter)
         self.provider.add_span_processor(self.processor)
         self.tracer = self.provider.get_tracer("deephelp.explicit", "m21-v1")
+        self.setup_metrics(resource, endpoint, reader)
+
+    def setup_metrics(
+        self, resource: Resource, endpoint: str | None, reader: MetricReader | None
+    ) -> None:
         readers = (
             [
                 PeriodicExportingMetricReader(
@@ -272,8 +277,9 @@ class Telemetry:
         self.outcomes = meter.create_counter("deephelp.request.outcomes", unit="{request}")
         self.unknown_usage = meter.create_counter("deephelp.model.usage_unknown", unit="{attempt}")
         self.retries = meter.create_counter("deephelp.model.retries", unit="{attempt}")
-        meter.create_observable_counter("deephelp.export.failed_spans", [self._failures])
-        meter.create_observable_counter("deephelp.export.dropped_spans", [self._dropped])
+        if hasattr(self, "exporter"):
+            meter.create_observable_counter("deephelp.export.failed_spans", [self._failures])
+            meter.create_observable_counter("deephelp.export.dropped_spans", [self._dropped])
 
     def _failures(self, options: Any) -> Any:
         from opentelemetry.metrics import Observation
@@ -302,6 +308,22 @@ def using(runtime: Telemetry) -> Iterator[Telemetry]:
 @contextmanager
 def environment(service: str) -> Iterator[Telemetry | None]:
     global _default
+    runtime: Telemetry
+    native_config = os.getenv("DEEPHELP_LANGFUSE_CONFIG")
+    if native_config:
+        from deephelp_app.adapters.native_observation import NativeTelemetry
+
+        if isinstance(current(), NativeTelemetry):
+            yield current()
+            return
+        runtime = NativeTelemetry(service, native_config)
+        old, _default = _default, runtime
+        try:
+            yield runtime
+        finally:
+            _default = old
+            runtime.shutdown()
+        return
     endpoint = os.getenv("DEEPHELP_OTLP_ENDPOINT", "").rstrip("/")
     if not endpoint:
         yield None
@@ -337,15 +359,20 @@ def observation(
     labels = {"operation": name}
     if runtime:
         runtime.inflight.add(1, labels)
-    with tracer.start_as_current_span(
-        name,
-        context=parent,
-        links=links or [],
-        kind=kind,
-        attributes=safe_attributes(attributes or {}),
-        record_exception=False,
-        set_status_on_exception=False,
-    ) as span:
+    manager = (
+        runtime.native_span(name, attributes or {}, parent, links or [])
+        if runtime and hasattr(runtime, "native_span")
+        else tracer.start_as_current_span(
+            name,
+            context=parent,
+            links=links or [],
+            kind=kind,
+            attributes=safe_attributes(attributes or {}),
+            record_exception=False,
+            set_status_on_exception=False,
+        )
+    )
+    with manager as span:
         try:
             yield span
         except BaseException as exc:
@@ -614,6 +641,10 @@ async def operation_link(pool: Any, operation_id: str, *, save: bool = False) ->
     """Optional diagnostic table; never alters business/checkpoint content or authority."""
     if current() is None:
         return []
+    if hasattr(current(), "native_span"):
+        from deephelp_app.adapters.native_observation import pause_links
+
+        return [] if save else await pause_links(pool, operation_id)
     try:
         async with asyncio.timeout(0.5), pool.acquire() as conn, conn.cursor() as cursor:
             if save:

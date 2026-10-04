@@ -2,6 +2,8 @@
 
 新源码必须显式设置 `DEEPHELP_POSTGRES_CONFIG` 指向应用库五字段JSON，入口见[PG迁移与恢复](../infra/postgres/README.md)。执行app的 `migrate` 同时建立业务表和独立schema内的官方checkpoint迁移；serve只检查并打开已建立的保存器。现行服务器安装、下方旧P00 MySQL连接/健康/备份配置仍保留，M30另切换；不能用这些旧配置启动新源码。M26审批执行/恢复已接官方保存器，旧状态须显式转换；新完整发布需要新运行字节的适用证据。
 
+原生观测显式设置`DEEPHELP_LANGFUSE_CONFIG`指向服务器私有JSON，字段见[模板](../modules/deephelp-app/native-observation.example.json)。host/public_key/secret_key由已部署项目提供，redaction_key须新生成32随机字节的hex并持久保存；模板零值须替换。enabled=false用于停用导出。配置同样传给两个MCP进程；原业务权限、模型请求/预算保持。此模式选择原生SDK，不重复向旧Collector导出。旧部署及Tempo历史留M30。
+
 这是运行环境入口。显式demo使用 `python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl`；新源码PostgreSQL可维护记录先启动[独立Business服务](../modules/deephelp-services/README.md#启动与凭据)，应用选择`--business-mcp-url`及持久服务凭据。独立检索见[Retrieval启动](../modules/deephelp-services/README.md#独立检索服务)，应用另选`--retrieval-mcp-url`与其专用凭据；省略该组时仍用原本地检索。完整发布仍使用release_cli serve及精确清单；本次没有新完整发布。中间件可连接、模型目录可读不代表内容验收。进度见 [PROJECT_STATE](PROJECT_STATE.md)。
 
 用户2026-10-03更新交付约定：所有验收仅在特性分支完成，main只合并、保存和同步代码。当前文档仅列特性分支验收命令；历史main证据留Git历史与handoff，当前规则以AGENTS/ROADMAP为准。
