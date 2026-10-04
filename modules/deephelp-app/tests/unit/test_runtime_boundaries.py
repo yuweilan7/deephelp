@@ -143,15 +143,31 @@ def test_runtime_policy_keeps_query_provenance_and_rejects_missing_hash(selectio
         validate_published_selection(value, scope, "corpus", 3)
 
 
-def test_runtime_integrity_does_not_require_learning_or_frozen_assets(tmp_path, monkeypatch):
+@pytest.mark.parametrize("excluded", ["learning", "probes", "evaluation"])
+def test_runtime_integrity_does_not_require_learning_or_frozen_assets(
+    tmp_path, monkeypatch, excluded
+):
     import deephelp_app.adapters.asset_integrity as integrity
 
     (tmp_path / "runtime.py").write_text("runtime = 1")
-    (tmp_path / "assets/evaluation").mkdir(parents=True)
-    gold = tmp_path / "assets/evaluation/test.json"
+    (tmp_path / "assets" / excluded).mkdir(parents=True)
+    gold = tmp_path / "assets" / excluded / "test.json"
     gold.write_text('{"gold": 1}')
     monkeypatch.setattr(integrity, "PACKAGE", tmp_path)
-    first = provenance()["package_digest"]
+
+    def no_git(*args, **kwargs):
+        raise FileNotFoundError("Git is not installed")
+
+    monkeypatch.setattr(integrity.subprocess, "run", no_git)
+    before = provenance()
+    assert before["git_commit"] is None and before["dirty_worktree"] is None
+    assert before["integrity_scope"] == "runtime-v2"
+    assert before["artifact_hashes"] == {
+        "runtime.py": integrity.file_digest(tmp_path / "runtime.py")
+    }
+    first = before["package_digest"]
+    gold.write_text('{"gold": 2}')
+    assert provenance()["package_digest"] == first
     gold.unlink()
     assert provenance()["package_digest"] == first
     (tmp_path / "runtime.py").write_text("runtime = 2")

@@ -84,6 +84,10 @@ unit 验证类型、设置、预算和实验；integration 用真实本机 httpc
 
 `tests/live`默认跳过，pytest的--live仍只测历史配置门禁。真实网关/业务闭环使用对应probe，M08入口见下方。GitHub Actions使用根锁执行静态检查和离线pytest。
 
+运行摘要的无Git来源、运行字节变更和learning/probes/evaluation排除统一在[运行边界测试](tests/unit/test_runtime_boundaries.py)；[M19结构测试](tests/unit/test_m19_structure.py)继续验证导入方向、资源查找和未选择后端时零依赖打开。M02的36条固定标注由[工具包样本测试](../deephelp-tools/tests/unit/test_m02_samples.py)整份校验，并用独立非法标注场景防止校验退化；[M08测试](tests/integration/test_m08_conversation.py)仍逐条运行36个完整API场景。
+
+M07直接SOP端口与真实stdio、M08 API/账本、M14治理注册表/发布回退分别保护不同组装路径；M10显式提示的HTTP续接与M12自动归属/级联也分别保留。数量/序列化检查保护冻结集形状、精度和线协议，不能只因断言短而删除。收集数量是参数化展开后的pytest节点数，与测试文件/函数数及循环内断言数分开统计。
+
 ## M03 模型网关
 
 `providers.create_gateway(client, config, calls, env=...)` 复用调用者管理的 AsyncClient。transport retries 必须为 0；chat/embed 分别配置 endpoint/model/Key 字段，当前实现不自动切换模型。候选池及账号余额的使用遵循[AGENTS](../../AGENTS.md)，显式换配置后重新验收。调用前创建一次带 token_limit/cost_limit 的 ExecutionBudget 并在整个请求内复用。旧 complete(text, budget) 转为普通 ChatRequest；新调用者直接使用 ChatPort.chat / EmbeddingPort.embed。
@@ -422,7 +426,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.evaluation_cli audit
 # 默认离线全量：语义/SOP固定适配器及正式SDK本机stdio/loopback HTTP，非模型质量
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.evaluation_cli run --output .local/m17/offline-new.json
-py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m17_evaluation.py modules/deephelp-app/tests/integration/test_m17_evaluation_flow.py
+py -3.14 -m uv run --locked pytest modules/deephelp-tools/tests/unit/test_m17_evaluation.py modules/deephelp-tools/tests/integration/test_m17_evaluation_flow.py
 # 新机器/新任务初始化正数运行上限；已有任务继续原累计文件
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli init --auth .local/m17/auth-new.json --budget-state .local/m17/session-budget-new.json --max-calls $m17Calls --max-tokens $m17Tokens --max-cost $m17Cost
 & infra/client/tunnel.ps1 -Action health
@@ -469,7 +473,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 # 新任务先给足上限；已有累计预算和稳定脱敏key不能重置
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.flywheel_cli init --max-calls $m18Calls --max-tokens $m18Tokens --max-cost $m18Cost
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.flywheel_cli migrate --live
-py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/test_m18_flywheel.py
+py -3.14 -m uv run --locked pytest modules/deephelp-tools/tests/unit/test_m18_flywheel.py
 # 真实服务/合成业务：采集、审核、两版构建、固定评测、启用/回退、更正/撤回
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.flywheel_probe --live --stage feature --output .local/m18/demo-feature-new
 # 特性验收通过后按AGENTS合并/推送main，不再重复main验收
