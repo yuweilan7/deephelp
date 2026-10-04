@@ -332,7 +332,7 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 
 ## M22浏览器会话与历史
 
-`POST /auth/login`仅接收`{token}`，通过原可信LocalAuth映射换取8小时随机HttpOnly/SameSite=strict会话及CSRF标记；无正文自报身份。cookie仅支持当前loopback同源，登录/退出拒绝外Origin/跨站，写请求需`X-CSRF-Token`；原Bearer协议兼容且优先，错误Bearer不能回退cookie。`GET /auth/session`返回当前身份及调用/维护模式，`POST /auth/logout`撤销服务会话，重启需重新登录。全部API返回no-store。
+`GET /auth/session`在当前loopback/SSH同源个人入口自动建立随机8小时HttpOnly/SameSite=strict会话与CSRF标记；刷新复用有效会话，失效/进程重启自动为同一owner重建。serve必须显式给`--personal-identity` JSON（仅`tenant_id/user_id`，唯一匹配`--auth`现有身份）；缺失/未知/歧义在启动前失败，不取第一条fixture。`POST /auth/login`和`/auth/logout`已移除。浏览器没有访问令牌/身份选择，身份来自服务端配置；正文、X-User和Host不能授权。Host限定现行loopback，Origin必须同源，Sec-Fetch-Site仅允许same-origin/none；浏览器写请求需原会话`X-CSRF-Token`。原Bearer协议兼容且优先，错误Bearer不能回退cookie，外身份Bearer不能创建个人cookie。握手/历史API均no-store。API-only探针可不装配个人UI，握手明确503；不会自动选其token主体。
 
 `GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原PostgreSQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。
 

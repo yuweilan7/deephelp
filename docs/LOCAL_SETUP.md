@@ -53,7 +53,7 @@ py -3.14 -m pip install --upgrade "uv==0.12.13"
 
 ```powershell
 py -3.14 -m uv sync --locked --all-packages
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m08/session-budget.json
 ```
 
 配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。当前demo必须安装deephelp-tools并明确指定MCP模块，Hybrid语料也须显式选择；MySQL业务后端与独立检索通过上述M20服务选择，依赖故障关闭，没有自动JSON回退。仅学习骨架使用 `uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501；fake回放由独立工具包明确装配。业务启动不导入工具/demo或读取冻结dev/test，包安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。

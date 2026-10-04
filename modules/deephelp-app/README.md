@@ -73,7 +73,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app --help
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m08/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m08/session-budget.json
 py -3.14 -m uv run --locked python -m deephelp_app ask --session demo-session --text "订单 000031 未享受优惠，请查一下"
 ```
 
@@ -229,7 +229,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstr
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli ask --auth .local/m08/demo-auth.json --text "订单 000031 未享受优惠，请查一下"
 ```
 
-浏览器打开`http://127.0.0.1:8000/`，密码框填auth文件中的令牌。页面显示回复/事实/证据/13段耗时与调用数，令牌不写浏览器存储。“发送新消息”生成新message ID，“重投同一消息”发送原payload。CLI重投必须同时保留message_id、occurred_at、session和正文，改变payload返回409。
+浏览器打开`http://127.0.0.1:8000/`即进入服务端明确配置的个人工作区，配置方法见M34入口。页面显示回复/事实/证据/13段耗时与调用数。“发送新消息”生成新message ID，“重投同一消息”发送原payload。CLI重投必须同时保留message_id、occurred_at、session和正文，改变payload返回409。
 
 主流程沿M00的13段，500明确单消息passthrough；600是唯一主意图服务，规则确定单类时选择，否则Dense召回加一次schema分类确认。余弦分数不当概率，不设置未经校准的接管阈值；无规则的长输入转人工，不截掉尾部后猜意图。原文/前导零/来源/更正沿用M04，缺乏明确字段语义的裸编号可以澄清。
 
@@ -329,7 +329,7 @@ PostgreSQL成员、终态响应及outbox保留事实。派生事件摘要通过�
 ```powershell
 # 新累计文件可用hybrid_cli init创建；参数按当前任务设置，不固定长期额度
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.hybrid_cli init --budget-state .local/m12/session-budget.json --max-calls $cascadeCalls --max-tokens $cascadeTokens --max-cost $cascadeCost
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --budget-state .local/m12/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m12/session-budget.json
 
 # 同session依次发送：两个开放问题、明确更正、券号补充、订单补充
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.mvp_cli ask --session m12-demo --text "我的订单未享受优惠"
@@ -374,7 +374,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.fasttext_cli eva
 # 原子切换并验证上一版本回退；服务已加载的模型在重新装配时才变更
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.fasttext_cli activate --manifest $experimentReport.selected_quantized --pointer .local/m13/active.json
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.fasttext_cli rollback --pointer .local/m13/active.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --fasttext-pointer .local/m13/active.json --auth .local/m08/auth.json --budget-state .local/m13/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --fasttext-pointer .local/m13/active.json --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m13/session-budget.json
 ```
 
 真实探针按影响选择，需中间件时先health/所需能力证据；沿现有凭据与专用业务表，新任务通过mvp_cli init设任务累计预算，已有预算继续使用、不得归零。init同时生成专用合成身份文件；预算参数按任务选定，不把历史数值作长期额度规则。
@@ -402,7 +402,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli show --dire
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli validate --source .local/m14/registry-new.json
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli publish --source .local/m14/registry-new.json --directory .local/m14/registry
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli rollback --directory .local/m14/registry
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --sop-directory .local/m14/registry --auth .local/m08/auth.json --budget-state .local/m14/session-budget.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --sop-directory .local/m14/registry --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m14/session-budget.json
 ```
 
 发布先回读完整内容再原子替换active/previous，重复发布保留previous。已有进程保留原快照，新装配才读取新active；历史快照保留供旧问题补槽，不应删除。显式目录不存在/损坏或所需旧快照缺失会阻断执行。发布/回退用同一写锁；崩溃残留锁须先核实原进程已退出再处理。这是本机发布机制。
@@ -414,7 +414,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstr
 py -3.14 -m uv run --locked python -m deephelp_tools.probes.governed_sop_probe --output .local/m14/offline-new.json
 py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m14_sop_governance.py
 # 已有预算沿用；新任务先按M13的mvp_cli init格式创建，参数按本次需要设置
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.governed_sop_probe --live --stage feature --auth .local/m08/auth.json --budget-state .local/m14/session-budget.json --output .local/m14/feature-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.governed_sop_probe --live --stage feature --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m14/session-budget.json --output .local/m14/feature-new.json
 # 特性分支验收通过后直接合并/推送main，不再main复验
 ```
 
@@ -434,7 +434,7 @@ py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.sop_cli publish --s
 
 运行同一只读主链，在页面查看意图、多轮和流程三个视图。金额、编号、业务结论由事实模板输出；`--reply-polish`可选，模型只选固定语气，新增事实/坏结构/失败直接回退。M14的计划回复明确尚未申请/批准/执行。机制见[M16规格](../../docs/MODULES/M16_OUTPUT_DEBUG.md)，接口见[契约](../../docs/CONTRACTS.md#m16-事实回复与调试契约)。
 
-已有任务预算/身份可复用；新任务先按前文mvp_cli init创建并设本次足够运行上限。serve会调用真实模型/PostgreSQL/Milvus及合成只读MCP；默认不开可选润色。浏览器地址为http://127.0.0.1:8000，令牌只从本机auth文件取出填入页面，不保存到浏览器存储。
+已有任务预算/身份可复用；新任务先按前文mvp_cli init创建并设本次足够运行上限。serve会调用真实模型/PostgreSQL/Milvus及合成只读MCP；默认不开可选润色。浏览器地址为http://127.0.0.1:8000，身份由`--personal-identity`显式配置，页面直接进入。
 
 ```powershell
 py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app.bootstrap.mvp_cli serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m16/auth.json --budget-state .local/m16/session-budget.json --trace-path .local/m16/demo.trace.jsonl --reply-polish
@@ -615,7 +615,7 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 
 ## M22浏览器工作台
 
-原业务serve命令无需增加前端进程；启动后访问 `http://127.0.0.1:8000/`，使用该次 `--auth` 配置中的个人令牌登录。令牌仅用于换取短期HttpOnly会话，页面不写入浏览器存储；服务重启后重新登录。原三视图页面在 `/debug`，已有Bearer客户端保持兼容。当前仅支持loopback，远端TLS/应用部署属于M23。
+业务serve不需要前端常驻进程；显式配置`--personal-identity`后访问 `http://127.0.0.1:8000/`直接进入。刷新/服务重启自动建立同owner会话并读取PG历史。原三视图在 `/debug`，Bearer客户端保持兼容；当前仅支持loopback/SSH私有入口。
 
 选择PostgreSQL业务资料时，先启动M20 Business服务；可同时选择Retrieval服务，参数见[服务README](../deephelp-services/README.md#启动与凭据)。个人auth与Retrieval允许身份映射应一致。工作台复用原累计预算，显示调用模式/事实来源/剩余额度，点击“明确执行真实对话”才调用模型。浏览历史、事实/追踪与手工维护不请求模型。
 
@@ -628,3 +628,9 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 通用与归属判断模板当前均为qwen3.7-flash；实际切换见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。当前默认完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
 
 使用release_cli validate和prepare时均追加同一--prompt-artifact路径；validate的11会话14消息通过后才prepare/register/CAS-switch。云端应用与Retrieval进程需采用同一显式providers，启动后查实际内容、历史重放与同run模型记录。历史版本、旧审批、UNKNOWN和已绑定工件原样保留；当前状态及恢复见[STATE](../../docs/PROJECT_STATE.md)和[部署入口](../../infra/deployment/README.md)。
+
+## M34 个人工作区直接进入
+
+服务端先配置 [personal-identity.example.json](personal-identity.example.json) 的 `tenant_id/user_id` 为现有历史主体，保存为受保护的 `.local/personal-identity.json`，serve 用 `--personal-identity` 明确选择。该身份必须唯一匹配原 `--auth`，缺失、未知或多条映射都在启动时失败；不要重新创建随机用户，否则无法读取原历史。部署环境用 `DEEPHELP_PERSONAL_IDENTITY`，见 [安装/恢复](../../infra/deployment/README.md)。
+
+打开工作台便自动连接本人工作区，无登录、密码或令牌步骤。刷新和服务重启后会恢复原PG历史；浏览器仅持有随机HttpOnly会话和CSRF标记，没有服务/模型密钥。会话失效后读取自动重新协商；写操作保留原消息/操作ID，提示核对后明确再次执行，不自动重放。权限/归属、维护CAS、独立审批、MCP鉴权与累计预算继续由原机制保证。页面浏览、历史、身份协商不调用模型。

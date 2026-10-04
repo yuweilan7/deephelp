@@ -2,7 +2,6 @@
 const $ = (id) => document.getElementById(id);
 const state = {
   csrf: null,
-  epoch: 0,
   session: null,
   hint: null,
   pending: null,
@@ -29,8 +28,7 @@ function notify(text, error = false) {
   $("notice").textContent = text;
   $("notice").classList.toggle("error", error);
 }
-async function api(path, method = "GET", body) {
-  const epoch = state.epoch;
+async function api(path, method = "GET", body, reconnect = true) {
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
@@ -42,9 +40,14 @@ async function api(path, method = "GET", body) {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const data = await response.json();
-  if (epoch !== state.epoch) throw new Error("登录状态已改变，请重新操作。");
   if (!response.ok) {
-    if (response.status === 401 && state.csrf) clearSession();
+    if (response.status === 401 && path !== "/auth/session" && reconnect) {
+      showIdentity(await api("/auth/session", "GET", undefined, false));
+      // Reads are safe to retry. Writes need an explicit action and retain the
+      // original message/operation ID, so an uncertain effect is never replayed.
+      if (method === "GET") return api(path, method, body, false);
+      throw new Error("个人工作区已恢复，请核对后再次执行原操作。");
+    }
     const error = new Error(
       data.reply || data.error?.message || `请求失败 (${response.status})`,
     );
@@ -66,135 +69,11 @@ async function run(fn) {
     notify(e.message, true);
   }
 }
-function clearSession() {
-  state.epoch++;
-  Object.assign(state, {
-    csrf: null,
-    session: null,
-    hint: null,
-    pending: null,
-    last: null,
-    record: null,
-    demo: null,
-    selected: null,
-    evaluation: null,
-    candidate: null,
-  });
-  for (const id of [
-    "sessions",
-    "messages",
-    "inspection",
-    "current-result",
-    "business-records",
-    "record-fields",
-    "record-result",
-    "execution",
-    "protocol-result",
-    "workflow-result",
-    "demo-result",
-    "demo-summary",
-    "rules-result",
-    "rules-summary",
-    "intent-result",
-    "retrieval-result",
-    "retrieval-summary",
-    "memory-result",
-    "memory-summary",
-    "turns-result",
-    "observation-result",
-    "observation-summary",
-    "grafana-link",
-    "workflow-graph",
-    "evaluation-scope",
-    "evaluation-code",
-    "evaluation-plan",
-    "evaluation-report-result",
-    "evaluation-report-summary",
-    "evaluation-candidate-result",
-    "evaluation-task-result",
-    "evaluation-task-summary",
-    "evaluation-pointer",
-    "evaluation-release-result",
-    "evaluation-release-summary",
-    "evaluation-import-summary",
-    "evaluation-prompt-summary",
-    "evaluation-platform-summary",
-  ])
-    $(id).replaceChildren();
-  $("text").value = "";
-  $("activity-ids").value = "";
-  $("token").value = "";
-  $("workspace").hidden = true;
-  $("logout").hidden = true;
-  $("login-panel").hidden = false;
-  $("identity").textContent = "尚未登录";
-  for (const id of [
-    "retry",
-    "replay",
-    "relations",
-    "more-sessions",
-    "more-messages",
-    "more-business",
-    "clear-hint",
-  ])
-    $(id).hidden = true;
-  $("send").disabled = false;
-  $("text").disabled = false;
-  for (const n of document.querySelectorAll("[data-learning]")) n.hidden = true;
-  document.querySelector("[data-evaluation]").hidden = true;
-  for (const id of [
-    "evaluation-report",
-    "evaluation-source",
-    "evaluation-candidate",
-    "evaluation-asset",
-    "evaluation-task",
-    "evaluation-release",
-    "evaluation-import",
-    "evaluation-platform-score",
-  ])
-    $(id).replaceChildren();
-  for (const id of [
-    "evaluation-build-ids",
-    "evaluation-review-reason",
-    "evaluation-review-phrases",
-    "evaluation-review-exclusions",
-  ])
-    $(id).value = "";
-  for (const tab of document.querySelectorAll(".tab"))
-    tab.hidden = tab.id !== "conversation";
-  for (const b of document.querySelectorAll("[data-tab]"))
-    b.classList.toggle("selected", b.dataset.tab === "conversation");
-  for (const id of [
-    "evaluation-review-confirm",
-    "evaluation-review-independent",
-    "evaluation-task-confirm",
-    "evaluation-release-confirm",
-    "evaluation-import-confirm",
-    "evaluation-platform-confirm",
-  ])
-    $(id).checked = false;
-  for (const id of [
-    "evaluation-task-cancel",
-    "evaluation-task-resume",
-    "evaluation-publish",
-    "evaluation-rollback",
-  ])
-    $(id).disabled = true;
-  for (const id of ["demo-operation", "demo-session", "demo-run"])
-    $(id).value = "";
-  $("demo-confirm").checked = false;
-  demoButtons();
-  $("memory-session").value = "";
-  for (const n of document.querySelectorAll(".selected-run"))
-    n.textContent = "尚未选择结果。";
-}
 function showIdentity(data) {
   state.csrf = data.csrf;
   $("identity").textContent =
     `${data.identity.tenant_id} / ${data.identity.user_id}`;
   $("workspace").hidden = false;
-  $("login-panel").hidden = true;
-  $("logout").hidden = false;
   const e = data.execution;
   $("execution").textContent =
     `模式：${e.mode} · 事实来源：${e.business_source === "postgresql" ? "PostgreSQL个人持久资料" : "显式demo"} · 单条预计${e.expected_calls_per_message} · 剩余调用${e.remaining_calls} · 共享token上限${e.max_tokens} / 已计${e.charged_tokens} · 超时${e.request_timeout_seconds}秒。点击执行才调用模型。`;
@@ -570,25 +449,6 @@ async function loadRecord(id) {
   }
   $("record-result").textContent = JSON.stringify(record, null, 2);
 }
-$("login-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  run(async () => {
-    const token = $("token").value;
-    $("token").value = "";
-    showIdentity(await api("/auth/login", "POST", { token }));
-    newSession();
-    editor();
-    await sessions();
-    notify("已登录。浏览与资料维护不调用模型。");
-  });
-});
-$("logout").addEventListener("click", () =>
-  run(async () => {
-    await api("/auth/logout", "POST");
-    clearSession();
-    notify("已退出，当前页面中的业务内容已清除。");
-  }),
-);
 $("chat-form").addEventListener("submit", (e) => {
   e.preventDefault();
   run(async () => {
@@ -1318,10 +1178,7 @@ run(async () => {
     editor();
     await sessions();
   } catch (e) {
-    notify(
-      e.message.includes("请登录") ? "使用已配置令牌登录后开始。" : e.message,
-      e.message.includes("未配置"),
-    );
+    notify(e.message, true);
   }
 });
 

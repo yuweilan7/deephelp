@@ -71,6 +71,24 @@ class LocalAuth:
         if len({token for token, _ in self.rows}) != len(self.rows):
             raise ConfigurationError("Duplicate local bearer token")
 
+    def personal(self, path: Path | None) -> VerifiedIdentity:
+        """Select an existing owner explicitly, never the first fixture/token row."""
+        if path is None or not path.is_file():
+            raise ConfigurationError(
+                "工作台需要 --personal-identity JSON，包含现有 tenant_id 和 user_id。"
+            )
+        from pydantic import ValidationError
+
+        try:
+            identity = VerifiedIdentity.model_validate(load_json(path))
+        except (AppError, ValidationError, ValueError) as exc:
+            raise ConfigurationError("个人身份配置须仅包含有效的 tenant_id 和 user_id。") from exc
+        if sum(owner == identity for _, owner in self.rows) != 1:
+            raise ConfigurationError(
+                "个人身份必须唯一匹配 --auth 中一条现有身份，不能选择歧义映射。"
+            )
+        return identity
+
     def __call__(self, request: Request) -> VerifiedIdentity:
         auth = request.headers.get("authorization", "")
         token = auth[7:] if auth.startswith("Bearer ") else ""
@@ -476,10 +494,12 @@ def live_app(
     auth: LocalAuth,
     budget: BudgetSession,
     trace_path: str = ".local/m08/trace.jsonl",
+    *,
+    personal_identity: VerifiedIdentity | None = None,
 ) -> FastAPI:
     from deephelp_app.api.workbench import BrowserAuth, workbench_router
 
-    browser_auth = BrowserAuth(auth)
+    browser_auth = BrowserAuth(auth, identity=personal_identity)
     app = create_app(
         Settings(
             mode="mvp",

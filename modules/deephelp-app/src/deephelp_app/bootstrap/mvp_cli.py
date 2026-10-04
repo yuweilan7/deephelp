@@ -133,6 +133,9 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
         "--sop-directory", help="Published M14 registries; omitted uses bundled registry"
     )
     p.add_argument("--auth", default=".local/m08/auth.json")
+    p.add_argument(
+        "--personal-identity", type=Path, help="Explicit existing tenant_id/user_id JSON for the UI"
+    )
     p.add_argument("--budget-state", default=".local/m08/session-budget.json")
     p.add_argument("--max-calls", type=int, default=300)
     p.add_argument("--max-tokens", type=int, default=600000)
@@ -164,6 +167,8 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
         elif args.command == "ask":
             asyncio.run(ask(args))
         else:
+            auth = LocalAuth(local_path(args.auth))
+            personal_identity = auth.personal(args.personal_identity)
             validate_trace_path(
                 local_path(args.trace_path),
                 [
@@ -171,6 +176,7 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
                     local_path(args.budget_state),
                     local_path(args.pointer),
                     Path(args.providers),
+                    args.personal_identity,
                 ],
             )
             gate = BudgetSession(local_path(args.budget_state))
@@ -232,9 +238,10 @@ def main(*, configure_app: Callable[[FastAPI, LiveAssembly], None] | None = None
                     )
                 app = live_app(
                     assembly,
-                    LocalAuth(local_path(args.auth)),
+                    auth,
                     gate,
                     trace_path=str(local_path(args.trace_path)),
+                    personal_identity=personal_identity,
                 )
                 if configure_app is not None:
                     configure_app(app, assembly)

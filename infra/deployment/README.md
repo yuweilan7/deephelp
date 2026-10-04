@@ -88,3 +88,9 @@ metrics.tar.gz、retained-installations.tar.gz及整体SHA256SUMS；对应Langfu
 只用于隔离读取/恢复或另有完整反向迁移方案的操作，不能直接恢复成第二活动写入口。
 新副本恢复按上面新库/新根协议，先停源平台以满足单机容量，再实际比较内容、指标旧
 时间点及审批/历史；校验通过后删除本次独立副本，受保护归档保持。
+
+## M34 固定个人入口配置
+
+`start.sh app`要求`DEEPHELP_PERSONAL_IDENTITY`指向受保护JSON，仅含现有`tenant_id/user_id`（[模板](../../modules/deephelp-app/personal-identity.example.json)），必须唯一匹配`state/auth.json`的一条身份。不增加新token/owner；原历史、学习catalog owner、审批绑定、MCP委托及预算不变。其他服务继续使用原独立凭据，个人入口不替代服务鉴权。
+
+本机/SSH同源工作台直接进入；重启/过期由`GET /auth/session`协商新的HttpOnly会话与CSRF，写操作仍需有效标记，原Bearer API继续可用。安装切换须同时保留对应完整release及runtime.env，旧安装配置不得直接套给新安装。实际正式安装与恢复证据待M34第二特性交付。
