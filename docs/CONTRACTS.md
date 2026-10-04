@@ -321,3 +321,7 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 ### M22 可选学习扩展：协议与工作流
 
 GET /learning/status、/protocol、/workflow复用BrowserAuth；POST /learning/protocol仅benefits/coupon/client_invalid/server_invalid，参数只含订单/券ID；内部固定无效输入不允许任意委托。GET协议实际执行tools/list/initialize，不请求模型。POST /learning/demo只允许显式fixture身份和本机合成执行口。GET /learning/demo/{operation}?session_id&run_id先原ApprovalRepository.scoped再读checkpoint/效果/审计；POST同路径/approval及/resume使用原ApprovalCommand/ResumeCommand，额外限制m22-demo会话及DEMO-D01。无任意线程/SQL/文件/工具名或checkpoint写API。图定义仅M15审批部分，不冒称整个13段是LangGraph。
+
+### M22 学习扩展：实体、三路与记忆
+
+POST /learning/rules只收非空text（最多2000字符），原规则输出带原文范围/否定/更正，模型0次、不表示600决策。POST /learning/retrieval相同输入边界，仅使用装配的Retrieval MCP和scope，固定top3、原同向量compare、持久budget_factory及request_execution；返回原候选、签名回执、动作/耗时和实际usage，不能传scope/模型/路径。GET /learning/memory?session_id先MySQLHistory.messages主体验证再只读权威窗口/本generation Redis/outbox末50条；缺失投影不重建，外身份404。意图、归属、运行观测页继续原/debug/runs/{run}/intent|turns|flow及/observability/runs/{run}，同session/run守卫，不另分类或任意trace搜索。

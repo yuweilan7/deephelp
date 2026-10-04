@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from deephelp_app.bootstrap.mvp_cli import main
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
+from deephelp_tools.learning.workbench_analysis import analysis_router
 from deephelp_tools.learning.workbench_protocol import learning_router
 
 
@@ -23,6 +24,7 @@ def install(app: FastAPI, assembly: LiveAssembly) -> None:
             rights_key=Path(key).read_bytes() if key else None,
         )
     )
+    app.include_router(analysis_router(assembly, app.state.browser_auth))
 
 
 if __name__ == "__main__":
