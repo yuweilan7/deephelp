@@ -26,6 +26,6 @@ checkpoint 记录执行状态，审批、operation、效果及授权仍由 Postg
 
 使用独立进程实际 pause→退出→读取→resume、重复 resume，以及取消、并发领取、在效果前后中断、查询 ABSENT 与效果提交互斥、导入重跑。原业务效果计数保持一次；拒绝/越权/绑定失效为零次；模型 0 次，以固定合成动作验证数据库与恢复协议。
 
-读回官方 checkpoint 的 parent/pending writes，核对授权/参数/版本不变，故障路径有必要恢复证据。通过后新路线正式装配只使用官方 saver；旧自建 saver 完整保留在bak/mysql-otel。必要旧状态 reader 可留迁移工具包，不进入正式运行。现网切换留 M30；完成后停止。
+读回官方 checkpoint 的 parent/pending writes，核对授权/参数/版本不变，故障路径有必要恢复证据。通过后新路线正式装配只使用官方 saver；旧自建 saver 完整保留在bak/mysql-otel。必要旧状态 reader 可留迁移工具包，不进入正式运行。“完成M26”在首试验验收交付后继续正式装配与完整历史恢复，无需用户另启；本M全部特性交付后停止。现网切换留 M30。
 
 官方依据：[Checkpointers](https://docs.langchain.com/oss/python/langgraph/checkpointers)、[Persistence](https://docs.langchain.com/oss/python/langgraph/persistence)。PostgreSQL 是官方提供的生产后端之一，LangGraph 并非只支持 PostgreSQL。

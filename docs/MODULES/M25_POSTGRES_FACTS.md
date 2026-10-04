@@ -12,7 +12,7 @@
 
 应用事实库与 Langfuse 元数据库为不同数据库；个人环境可复用一个 PostgreSQL 实例，但独立连接配置、迁移、备份和恢复。业务事实、outbox 与其必要原子更新留在同一应用库；checkpoint 独立 schema/表，由 M26 的官方 saver 管理。Langfuse 不读写应用表。保留 Redis/Milvus 派生投影及其归属/status/version 回查。
 
-首特性在隔离 PostgreSQL 库验证 Python3.14.7、Windows/Linux、`psycopg` 异步池、取消/连接关闭、事务回滚、唯一键冲突、CAS 与短行锁。核对锁定版本，成功后才替换正式适配；不换 SQLAlchemy、不重写领域层来扩大范围。
+首特性在隔离 PostgreSQL 库验证 Python3.14.7、Windows/Linux、`psycopg` 异步池、取消/连接关闭、事务回滚、唯一键冲突、CAS 与短行锁。核对锁定版本，成功后才替换正式适配；不换 SQLAlchemy、不重写领域层来扩大范围。“完成M25”覆盖协议资格、全持久迁移/导入和隔离备份恢复，首项交付后继续同模块剩余特性，全部交付后停止；已验首项不重复实施。
 
 ## 数据和事务语义
 

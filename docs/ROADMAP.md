@@ -60,7 +60,7 @@
 | [M22](MODULES/M22_LEARNING_WORKBENCH.md) | 主工作台、MCP/工作流学习、意图/检索/记忆实验、评测飞轮；四个顺序特性 |
 | [M23](MODULES/M23_PERSONAL_DEPLOYMENT.md) | 已完成Linux3.14.7/容量、保签名资产绑定、私有浏览器远端闭环、隔离恢复和安装回滚；[交接](../handoffs/M23.md) |
 
-M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23个人学习路线已完成；旧M19部署/故障要求的必要部分归M23，旧M20物流、M21框架对照从当前路线撤下，历史由Git追溯。每M可有多个顺序特性，完成后停止，不自动启动业务扩展。
+M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23个人学习路线已完成；旧M19部署/故障要求的必要部分归M23，旧M20物流、M21框架对照从当前路线撤下，历史由Git追溯。每M可有多个顺序特性；“完成Mxx”按序交付该M全部特性后停止，不自动启动范围外业务扩展。
 
 ## 现代技术路线（M25–M31，规划）
 
@@ -70,21 +70,21 @@ M02–M18原核心能力及其历史证据保留。M19→M20→M21→M22→M23�
 
 备份分支bak/mysql-otel已推送并固定在`930958a2f21bab7377c30c74ca770771fa1004cf`，保留M00–M23、Linux CI修复及原MySQL/OTel部署恢复入口；后续提交不合入该分支，不移动/覆盖它。继续遵守AGENTS：从同步main建立feature、特性分支验收、合入/推送main、同步六SHA，最终回到干净main。本轮计划由用户明确授权直接提交/推送main；备份动作已完成，不再为它建立独立模块或修改默认分支。
 
-| 模块 | 用户可启动的首特性 | 后续范围/前置 |
+| 模块 | 模块内顺序特性 | 前置与边界 |
 |---|---|---|
-| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 首项已交付；[协议/盘点交接](../handoffs/M25.md) | 全持久迁移/导入/隔离恢复待用户启动；M26前置仍未满足 |
-| [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换、独立进程恢复 | M25全持久特性；探针后正式装配/完整历史恢复 |
-| [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS、Web/Worker实际存入/读回 | M25/M26；无需付费对象存储，随后组合容量/平台恢复 |
-| [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP、官方图与pause/resume可查关联 | M26/M27；随后业务覆盖和原工作台查询替换 |
-| [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | 现有报告/冻结集的Dataset/Experiment/Score映射 | M28；可选，随后Prompt版本/审核映射，不替换M18 active |
-| [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标与新部署/隔离恢复演练 | M25–M28；另启动最后快照/单写切换/旧服务退役，M29可跳过 |
-| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 首项已交付；[端口/内容交接](../handoffs/M31.md) | 同链质量对照待启动；随后Retrieval MCP/学习页/正式发布，不依赖迁库完成 |
+| [M25 PG事实](MODULES/M25_POSTGRES_FACTS.md) · [计划](../planning/M25/PLAN.md) | 协议/盘点已交付（[交接](../handoffs/M25.md)）→全持久迁移/导入/隔离恢复 | 全持久范围尚未实施；完成前M26前置仍未满足 |
+| [M26 官方checkpoint](MODULES/M26_OFFICIAL_CHECKPOINTS.md) · [计划](../planning/M26/PLAN.md) | 官方保存器与旧状态转换/独立进程试验→正式装配/完整历史恢复 | M25全持久特性；依试验结果更新同一PLAN继续 |
+| [M27 Langfuse平台](MODULES/M27_LANGFUSE_PLATFORM.md) · [计划](../planning/M27/PLAN.md) | 版本/自托管SeaweedFS/Web与Worker存入读回→组合容量/平台恢复 | M25/M26；无需付费对象存储 |
+| [M28 原生观测](MODULES/M28_NATIVE_OBSERVABILITY.md) · [计划](../planning/M28/PLAN.md) | 跨MCP/官方图/pause与resume关联→业务覆盖/工作台查询替换 | M26/M27；依API/SDK实际能力继续 |
+| [M29 LLM工程](MODULES/M29_LANGFUSE_ENGINEERING.md) · [计划](../planning/M29/PLAN.md) | Dataset/Experiment/Score映射→Prompt版本/审核映射 | M28；模块可选，启动则完成全部特性，不替换M18 active |
+| [M30 切换与退役](MODULES/M30_MODERN_CUTOVER.md) · [计划](../planning/M30/PLAN.md) | 直接Prometheus指标/新部署/隔离恢复演练→最后快照/单写切换/旧服务退役 | M25–M28；每项真实验收后继续，M29可跳过 |
+| [M31 Reranker](MODULES/M31_RERANK_INTEGRATION.md) · [后续计划](../planning/M31/PLAN.md) | 端口/内容已交付（[交接](../handoffs/M31.md)）→同链质量对照→Retrieval MCP/学习页/正式发布 | 后两项尚未实施；不依赖迁库完成 |
 
-每次只启动当前M的一项特性；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不把未来范围当成已经可执行的详细实现。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS。M25后续迁移特性和独立M31同链接入/受控对照可启动，用户任选其一，不并行写共享网关/根锁；首试验通过不等于全库迁移或Rerank主链已交付。完成一个特性后停止，不能自动串行实施这七个M。
+“完成Mxx”授权同一实施会话、同一主写者顺序完成当前M的全部规格特性；每项独立建分支、验收、合入main并同步后继续下一项，无需逐项另启。已有交付从未完成项续做；先读规格/PLAN/直接handoff和当前代码，探针结果出来前不预写后续实现细节，结果出来后更新同一PLAN并继续。依赖未交付标BLOCKED，SDK/实库/容量未测不是PASS；首试验通过不等于全库迁移或Rerank主链已交付。当前可从M25全持久迁移或独立M31剩余特性续做，不并行写共享网关/根锁。全部特性交付后才报告当前M完成并停止；跨M推进须由用户或已授权的顺序调度启动，阻塞不能冒充模块交付。
 
-实施Prompt可直接使用：“实施M25全持久迁移特性。按docs/MODULES/M25_POSTGRES_FACTS.md、planning/M25/PLAN.md和handoffs/M25.md完成全持久适配、只读快照导入/续跑与隔离PG实际备份恢复；旧路线保留在bak/mysql-otel，按AGENTS从main建特性分支并合入main。一个主写者，验证/中文提交/推送/同步后停止，不切现网、不卸载、不购买资源，不启动M26。”后续选择对应首特性，并核对实际前置。
+实施Prompt可直接使用：“完成M25。按docs/MODULES/M25_POSTGRES_FACTS.md、planning/M25/PLAN.md和handoffs/M25.md，从已交付的协议/盘点成果续做全部剩余特性，完成全持久适配、只读快照导入/续跑与隔离PG实际备份恢复；旧路线保留在bak/mysql-otel。一个主写者，各特性按AGENTS独立验收/中文提交/推送/合并/同步后继续；M25全部特性交付后停止，不切现网、不卸载、不购买资源，不自行启动M26。”其他M同样使用“完成Mxx”，核对实际前置后完成其全部特性。
 
-补检索能力下一项可使用：“实施M31同链接入与受控对照特性。按docs/MODULES/M31_RERANK_INTEGRATION.md、planning/M31/PLAN.md和handoffs/M31.md，在召回后、意图归并前复用已验RerankPort；固定同候选/同向量，dev确定instruct/预算/失败策略，独立test验收排序与拒识。保留active发布；按AGENTS验收/中文提交/推送/合并/同步后停止。只做本特性，不同时迁数据库或部署Langfuse；后续真实会话/MCP/学习页与正式发布另启。”
+补检索能力可使用：“完成M31。按docs/MODULES/M31_RERANK_INTEGRATION.md、planning/M31/PLAN.md和handoffs/M31.md，从已验RerankPort续做全部剩余特性：先完成召回后、意图归并前的同链接入与受控对照，固定同候选/同向量，dev确定instruct/预算/失败策略，独立test验收排序与拒识；验收交付后继续真实会话/Retrieval MCP/学习页及正式发布接入。发布门禁前保留active，一个主写者，各特性按AGENTS分别验收/中文提交/推送/合并/同步；M31全部特性交付后停止，不同时迁数据库或部署Langfuse。”
 
 容量与资源：现有约7.51GiB适合先做受控低负载试验，不保证完整Langfuse与训练峰值共存。当前Langfuse需Web/Worker/PG/ClickHouse/专用noeviction队列Redis/S3对象存储；不能照旧截图写ClickHouse或对象存储可选。选官方支持的SeaweedFS单机自托管，使用现有磁盘/容器网络，和PG/ClickHouse一起做容量及隔离恢复实测；不购买COS、RDS或其他托管存储，不默认安装已归档社区MinIO。容量不足则报告，不自动开通计费资源。
 
@@ -104,7 +104,7 @@ M22按机制组织页面与操作教程，不复制引擎；页面浏览/历史/
 
 ### 顺序实施指令
 
-下列指令每次只选一条；实施前按当前规格/直接handoff核对接口与前置、写或更新当前M短PLAN，按AGENTS单特性交付，完成后停止。
+下列条目记录已交付路线的特性与历史边界，不作为“完成Mxx”只做一项的当前限制。实施前按当前规格/直接handoff核对接口与前置、写或更新当前M短PLAN；按AGENTS逐特性交付，同一M全部特性完成后停止。用户明确只选一项时按该范围停止。
 
 这是依赖与推荐顺序，不要求等待M22所有页面才可远端使用：M20/M21和M22主工作台通过后，可由用户单独启动M23的首个远端版本，未实现tab明确标注；其余学习页面随后逐特性迭代。不会因前置满足自动启动部署。
 
