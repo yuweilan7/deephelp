@@ -9,6 +9,7 @@ from langgraph.types import Command, interrupt
 
 from deephelp_app.adapters.approval_store import TERMINAL, ApprovalRepository
 from deephelp_app.adapters.checkpoints import LegacyCheckpointArchive
+from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints
 from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect, binding_hash
 from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
 from deephelp_app.domain.errors import AppError
@@ -98,15 +99,16 @@ class ApprovalService:
         snapshot: str,
         *,
         fault: Callable[[str], None] | None = None,
+        saver: PostgresCheckpoints | None = None,
     ) -> None:
-        if getattr(repo.pool, "backend", None) == "postgresql":
+        if getattr(repo.pool, "backend", None) == "postgresql" and saver is None:
             raise AppError(
                 ErrorCode.NOT_IMPLEMENTED,
                 "PostgreSQL approval execution/resume requires the qualified M26 saver",
                 501,
             )
         self.repo, self.rights, self.snapshot, self.fault = repo, rights, snapshot, fault
-        self.saver = LegacyCheckpointArchive(repo.pool)
+        self.saver = saver or LegacyCheckpointArchive(repo.pool)
 
     def inject(self, stage: str) -> None:
         if self.fault:

@@ -1,6 +1,6 @@
 # M26｜官方 AsyncPostgresSaver 与历史审批恢复
 
-**状态：** PLANNED；依赖 M25，首特性为官方保存器和旧状态转换的最小真实试验。
+**状态：** 首特性已交付；真实范围见[M26交接](../../handoffs/M26.md)。剩余正式装配与完整历史恢复按唯一PLAN继续，M25前置已满足。
 
 **前置：** M25 handoff，M15/M18/M21/M23 的审批、版本引用与恢复证据；核对旧备份分支bak/mysql-otel。见 [计划](../../planning/M26/PLAN.md)。
 

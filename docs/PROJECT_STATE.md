@@ -32,6 +32,7 @@
 | M22 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M22.md) | 四项学习页面已完成；M23在云端提供同源工作台，业务仍为个人合成持久资料 |
 | M23 | IMPLEMENTED_LIVE_VERIFIED；[交接](../handoffs/M23.md) | Linux3.14.7三包/FastText、保签名路径绑定、新完整发布、浏览器四轮/同trace、独立重启、实际隔离恢复和安装回滚通过；私有SSH入口、短时低并发，不证明公网TLS/长期SLA/历史代码升级 |
 | M25 | LIVE_VERIFIED；[交接](../handoffs/M25.md) | 两特性完成；新源码关系仓储统一PG，26表13846行原值迁移/续跑/冲突守卫、Windows/Linux仓储、实际dump→另库恢复与代表查询通过；现行MySQL未切，M26前PG审批图关闭 |
+| M26 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M26.md) | 官方3.1.2在Windows/Linux3.14.7独立pause/resume、593旧checkpoint/1137待写原ID转换与重跑、实际旧整数线程恢复通过；正式装配/完整审批历史恢复待后续特性，现网未切 |
 | M31 | FIRST_FEATURE_LIVE_VERIFIED；[交接](../handoffs/M31.md) | 专用RerankPort/httpx原生协议、共享预算/取消已接入；3 query×同12条reference实际映射/usage通过；Hybrid/会话/MCP/学习页/正式发布尚未接入 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 通用Chat改qwen3.8-max，schema/tool及M18真实内容通过；原Embedding签名保持；Rerank三候选补验通过、主链未接入 |
 
@@ -39,7 +40,7 @@
 
 2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成qwen3.7-text-rerank专用端口/协议首特性，同链/MCP/学习页及效果对照待后续实施。规格是工程目标，不是当前运行事实。
 
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。规划交付未迁库/部署/卸载/调用模型；M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M26–M30无实施handoff，M26的M25持久前置已满足但官方saver尚未验收，PG审批图执行/恢复保持关闭。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
+用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；规划时用户明确授权直接提交/推送main。不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。规划交付未迁库/部署/卸载/调用模型；M25两特性已交付协议资格、全部应用关系仓储/导入及隔离备份恢复；新源码显式选择PG，旧MySQL/OTel部署和数据保持，M30另切换。M31同链接入/受控对照及远端/学习页/正式发布仍未实施；M26首项官方saver/旧状态转换已有实施handoff；正式装配与完整历史恢复待下一特性，PG运行门禁保持。M27–M30尚无实施handoff。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
 
 2026-10-04用户明确调整实施范围：“完成Mxx”由同一会话、同一主写者从未完成项续做该M全部特性，逐项验收与分支交付后继续，全部完成后停止；同模块下一特性无需逐项另启。该条为范围规则调整的历史说明；随后M25完整实施按此规则交付，未启动M26/M31后续特性或改变调度配置。
 
