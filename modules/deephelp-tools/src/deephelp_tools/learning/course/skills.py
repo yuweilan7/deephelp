@@ -37,21 +37,34 @@ class RecordedSkillModel:
 
 async def skills_demo() -> dict[str, object]:
     """原核心订单例，核对回执、实际工具账本与金额；离开async with才交付结果。"""
-    budget = ExecutionBudget.start(30, 8, 0)
-    gateway = DemoToolGateway()
-    executor = SOPExecutor(RecordedSkillModel(), gateway, registry=bundled_registry())
-    question, context = sop_question(budget, IntentCode.DISCOUNT_MISSING)
-    question = question.model_copy(
-        update={"versions": executor.pin_versions(question.versions, IntentCode.DISCOUNT_MISSING)}
-    )
-    async with gateway.open():
-        result = await executor.execute(question, budget, context=context, run_id="course-skill")
-        ledger = await gateway.ledger()
-    assert result.status == "RESOLVED" and len(ledger) == len(result.skill_receipts) == 1
-    assert result.skill_receipts[0].observation is not None
-    assert result.skill_receipts[0].observation.call_id == ledger[0].call_id
-    return {
-        "remote_model_calls": 0,
-        "real_stdio_calls": len(ledger),
-        "result": result.model_dump(mode="json"),
-    }
+    cases = []
+    for name, intent, order, coupon in [
+        ("order", IntentCode.DISCOUNT_MISSING, "000031", None),
+        ("order-coupon", IntentCode.COUPON_UNUSABLE, "DEMO-C01", "COUPON-C01"),
+    ]:
+        budget = ExecutionBudget.start(30, 8, 0)
+        gateway = DemoToolGateway()
+        executor = SOPExecutor(RecordedSkillModel(), gateway, registry=bundled_registry())
+        question, context = sop_question(budget, intent, order=order, coupon=coupon)
+        question = question.model_copy(
+            update={"versions": executor.pin_versions(question.versions, intent)}
+        )
+        async with gateway.open():
+            result = await executor.execute(
+                question, budget, context=context, run_id="course-skill-" + name
+            )
+            ledger = await gateway.ledger()
+        assert result.status == "RESOLVED" and len(ledger) == (2 if coupon else 1)
+        leaves = [r for r in result.skill_receipts if r.observation]
+        assert [r.observation.call_id for r in leaves if r.observation] == [
+            r.call_id for r in ledger
+        ]
+        cases.append(
+            {
+                "case": name,
+                "real_stdio_calls": len(ledger),
+                "result": result.model_dump(mode="json"),
+                "budget": budget.usage().model_dump(mode="json"),
+            }
+        )
+    return {"remote_model_calls": 0, "cases": cases}

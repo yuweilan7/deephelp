@@ -26,6 +26,9 @@ class SkillReceipt(DTO):
     version: Identifier
     digest: Identifier
     slots: tuple[Entity, ...]
+    input_sources: dict[str, str] = {}
+    children: tuple[Identifier, ...] = ()
+    evidence_ids: tuple[Identifier, ...] = ()
     status: Literal["RUNNING", "COMPLETED", "FAILED", "CANCELLED", "UNKNOWN"]
     observation: ToolResult | None = None
     error: ErrorDetail | None = None
@@ -35,10 +38,15 @@ class SkillReceipt(DTO):
     @model_validator(mode="after")
     def supported(self) -> SkillReceipt:
         if self.status == "COMPLETED" and (
-            not self.observation
-            or self.observation.status != ToolStatus.SUCCEEDED
-            or not self.observation.evidence_refs
-            or not self.observation.call_id
+            (self.observation is None and (not self.children or not self.evidence_ids))
+            or (
+                self.observation is not None
+                and (
+                    self.observation.status != ToolStatus.SUCCEEDED
+                    or not self.observation.evidence_refs
+                    or not self.observation.call_id
+                )
+            )
         ):
             raise ValueError("Completed Skill requires an actual evidenced tool observation")
         if self.observation and self.observation.run_id != self.run_id:

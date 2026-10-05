@@ -396,3 +396,6 @@ M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额
 唯一SkillReceipt记录原run/question/node、registry_digest、稳定skill_id/version/digest、已确认Entity来源、状态/起止、实际ToolResult与安全错误；SOPResult/ResponseEnvelope.skill_receipts默认空，VersionManifest.skills默认null兼容旧记录。响应守卫核对原run/question、注册表和call。Skill不是审批授权或事实来源，输出仍验证原ToolResult及证据链；缺槽无模型/工具/Skill，取消抛回父请求，不以新组合重跑恢复UNKNOWN。
 
 SkillDefinition机器契约只允许既有意图工具授予，schema必须匹配原输入/事实；代码选择当前意图/工具的唯一登记候选，ID/version/hash精确读取，同版本字节不可替换。没有远程Skill安装、Markdown代码执行、模型注册或扩权。旧问题skills=null继续原SOP；新版本漂移在任何模型/工具前拒绝。客户端/预算/连接由原请求装配拥有，回执仅值。
+
+
+M41组合使用SkillStep精确子ID/version/hash与输入来源映射，SkillComposition固定机器输入/输出、意图/工具许可、有限步数/深度/attempts/时限。只允许直接只读叶子，递归组合/环拒绝；校验前序类型与完整依赖闭包，权限取父/意图/工具交集。单模式券诊断先订单→券，原SOP节点只读回收观察；组合与子共享同一ExecutionBudget/原重试上限，父id/children/input_sources/evidence_ids进入原SkillReceipt。审批SOPPlan.skills_digest绑定原问题版本，validate_binding同时核对；未开放写Skill，无新审批/UNKNOWN恢复协议。

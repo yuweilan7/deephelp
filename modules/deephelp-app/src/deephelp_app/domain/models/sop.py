@@ -51,6 +51,7 @@ class SOPPlan(DTO):
     sop_version: Identifier
     snapshot_hash: Identifier
     evidence_ids: tuple[Identifier, ...] = Field(min_length=1)
+    skills_digest: Identifier | None = None
 
     @model_validator(mode="after")
     def binding(self) -> SOPPlan:
