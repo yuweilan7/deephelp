@@ -6,6 +6,7 @@ import { explanationPath, type Explanation } from "../../api/explanation";
 import { statusLabel, factLabel } from "../../content/navigation";
 import StateNotice from "../../components/StateNotice.vue";
 import RawDetails from "../../components/RawDetails.vue";
+import MechanismGuide from "../../components/MechanismGuide.vue";
 const read = useRead<Explanation>();
 watch(
   () => workspace.selected,
@@ -20,6 +21,7 @@ watch(
 <template>
   <StateNotice :loading="read.loading.value" :error="read.error.value" />
   <template v-if="read.data.value">
+    <MechanismGuide mechanism="request" />
     <h3>这次发生了什么</h3>
     <p class="user-text">{{ read.data.value.input.raw_text }}</p>
     <p>{{ read.data.value.summary }}</p>
@@ -70,8 +72,18 @@ watch(
       :value="read.data.value.entities.conflicts"
     />
     <p>
-      归属记录 {{ read.data.value.event?.relation ?? "未记录" }} · 原因
-      {{ read.data.value.event?.reason ?? "未知" }}。补充不会自动批准旧操作。
+      归属记录
+      {{
+        read.data.value.event?.judgement?.relation ??
+        read.data.value.event?.disposition ??
+        "未记录"
+      }}
+      · 原因
+      {{
+        read.data.value.event?.edges.map((e) => e.reason).join("、") ||
+        read.data.value.event?.diagnostics.join("、") ||
+        "未知"
+      }}。补充不会自动批准旧操作。
     </p>
     <h3>这次走了哪条路</h3>
     <p>

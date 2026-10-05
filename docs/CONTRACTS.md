@@ -336,6 +336,8 @@ m18-demo-assets-v1绑定审核快照、三路指针/文件hash、Embedding签名
 
 M36增加只读 `GET /history/runs/{run_id}/explanation?session_id=...`，返回 `run-explanation-v1`。先用当前身份在PG消息/run/question联合查询核对tenant/user/session/run；跨主体、跨会话和不存在均404，无任意文件/trace搜索。最多读取一个原run及同scope诊断，响应no-store、浏览模型/工具0次。`input/receipt/status`来自原PG记录，`question_now`是当前问题，`question_at_run/entities/event/tools/retrievals`是原脱敏debug快照；缺失为null并写gaps，不以新状态补造历史。步骤名称/用途是固定模板，状态/时间/计数沿原receipt，原意图及cascade理由不生成隐藏推理。原receipt计数与客户端所选重投返回计数分别显示；没有终态回执的取消/运行保留状态，不能推断清理或副作用结果。
 
+原 `/observability/runs/{run}` 有界读回增加 `explanation`：在分页切片前按trace/span去重GENERATION、核对input/output为非负整数，父汇总和reasoning不另加；相同ID内容冲突按unknown处理。已知小计、未知attempt数与完整实际总量分开；平台非available/usage缺失/冲突/无generation时实际总量null。每trace的已观察包围时间不累计重叠，缺endTime的duration_ms为null，不填0；CPU/排队无观测保持null。原状态/页边界/2MiB/20k限制、前序与身份守卫保持。原生导出补本进程PID白名单，旧记录缺失不推造；版本来自原观察，profile未记录显示未知。
+
 `GET /auth/session`在当前loopback/SSH同源个人入口自动建立随机8小时HttpOnly/SameSite=strict会话与CSRF标记；刷新复用有效会话，失效/进程重启自动为同一owner重建。serve必须显式给`--personal-identity` JSON（仅`tenant_id/user_id`，唯一匹配`--auth`现有身份）；缺失/未知/歧义在启动前失败，不取第一条fixture。`POST /auth/login`和`/auth/logout`已移除。浏览器没有访问令牌/身份选择，身份来自服务端配置；正文、X-User和Host不能授权。Host限定现行loopback，Origin必须同源，Sec-Fetch-Site仅允许same-origin/none；浏览器写请求需原会话`X-CSRF-Token`。原Bearer协议兼容且优先，错误Bearer不能回退cookie，外身份Bearer不能创建个人cookie。握手/历史API均no-store。API-only探针可不装配个人UI，握手明确503；不会自动选其token主体。
 
 `GET /history/sessions?offset=0&limit=20`给出当前身份会话数/更新时间；`GET /history/sessions/{session}/messages`返回原ConverseInput、run/status、当前Question及原ResponseEnvelope，同样支持offset/limit（1–50）和next_offset。来源为原PostgreSQL账本，不是trace；跨身份session与不存在同为404。读取不运行引擎/模型、写账本或恢复RUNNING。只有原converse执行绑定message_id和问题版本；浏览器补槽显式传question_hint/expected_question_version，网络重试原样重投。原响应trace与重投新请求trace分别标明，历史阶段不算新调用。根工作台随app包提供，旧三视图保留`/debug`。

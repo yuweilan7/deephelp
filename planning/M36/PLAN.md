@@ -13,7 +13,7 @@
 | 顺序/分支 | 内容 | 独立验收 |
 |---|---|---|
 | 1 feature/m36-run-explanation（已验收） | 同run摘要、13段路径/实体归属/事实证据/真实时间线及失败状态 | 证据见handoffs/M36.md；后续特性复用 |
-| 2 feature/m36-mechanism-labs | 同候选四路检索、记忆/outbox、MCP双端、图恢复、generation/指标分母的可读页面 | 真实分支/分数/调用去重/UNKNOWN/不完整观测均可解释，与教程链接一致 |
+| 2 feature/m36-mechanism-labs（已验收） | 同候选四路检索、记忆/outbox、MCP双端、图恢复、generation/指标分母的可读页面 | 证据见handoffs/M36.md；最终实际浏览器/安装仍在第三项 |
 | 3 feature/m36-learning-delivery | 完整场景引导、实际浏览器阅读核验、精确新发布/安装/恢复及清理 | 规格8场景逐项闭合；课程/页面/代码入口对应，个人云可直接使用 |
 
 ## 怎样证明

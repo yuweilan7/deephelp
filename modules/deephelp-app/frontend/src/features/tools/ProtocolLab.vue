@@ -6,6 +6,7 @@ import { factLabel } from "../../content/navigation";
 import { useRead, useAction } from "../../composables/requests";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import MechanismGuide from "../../components/MechanismGuide.vue";
 const discovery = useRead<ProtocolDiscovery>(),
   action = useAction(),
   result = ref<ProtocolResult | null>(null);
@@ -29,6 +30,7 @@ function execute() {
 <template>
   <section class="card">
     <h2>MCP 协议与双端校验</h2>
+    <MechanismGuide mechanism="protocol" />
     <p>
       固定动作观察正式 initialize → tools/list → tools/call →
       structuredContent。协议成功与业务内容通过分别看原结果；此处不调用模型。
@@ -59,6 +61,15 @@ function execute() {
         {{ result.model_calls }}
       </p>
       <p>校验边界 {{ result.boundary }} · trace {{ result.trace_id }}</p>
+      <p>
+        {{
+          !result.dispatched
+            ? "客户端已阻止发送，没有服务端业务查询证据。"
+            : result.rejected
+              ? "请求已发到服务端并被拒绝，拒绝不等于查询成功。"
+              : "按实际工具status、facts和evidence核对；握手成功或HTTP200不能代替内容通过。"
+        }}
+      </p>
       <p v-for="(f, i) in result.result?.facts || []" :key="i">
         {{ factLabel(f.name) }}：{{
           typeof f.value === "object" ? JSON.stringify(f.value) : f.value

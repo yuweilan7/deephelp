@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from deephelp_app.adapters.persistence.history import PostgresHistory
+from deephelp_app.application.observation_explanation import observation_summary
 from deephelp_app.application.run_explanation import explain_run
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.history import HistoryMessage
@@ -56,6 +57,58 @@ def test_missing_diagnostic_keeps_original_receipt_and_current_version_separate(
         "debug_snapshot_unavailable" in value["gaps"]
         and "diagnostic_events_dropped" in value["gaps"]
     )
+
+
+def span(identifier, kind="GENERATION", **changes):
+    return dict(
+        trace_id="trace",
+        span_id=identifier,
+        type=kind,
+        start_unix_ns="1000000000",
+        duration_ms=100,
+        usage={"input": 10, "output": 20, "reasoning": 15},
+        **changes,
+    )
+
+
+def test_generation_dedup_parent_summary_reasoning_and_overlap_are_not_added():
+    rows = [
+        span("a"),
+        span("a"),
+        span("parent", "SPAN"),
+        {**span("b"), "start_unix_ns": "1050000000"},
+    ]
+    value = observation_summary(rows, "available")
+    assert value["unique_generations"] == 2 and value["duplicates_removed"] == 1
+    assert value["actual_total_tokens"] == 60 and value["known_token_subtotal"] == 60
+    assert value["trace_extents"][0]["observed_extent_ms"] == 150  # overlapping 100ms spans
+    assert value["queue_ms"] is None and value["cpu_ms"] is None
+
+
+@pytest.mark.parametrize(
+    "usage", [None, {"input": 1}, {"input": True, "output": 2}, {"input": -1, "output": 2}]
+)
+def test_missing_invalid_usage_preserves_known_subtotal_and_unknown_total(usage):
+    value = observation_summary([span("a"), {**span("b"), "usage": usage}], "available")
+    assert value["known_token_subtotal"] == 30 and value["actual_total_tokens"] is None
+    assert value["unknown_usage_attempts"] == 1
+
+
+def test_incomplete_read_conflicting_duplicate_and_missing_end_stay_unknown():
+    assert observation_summary([span("a")], "truncated")["actual_total_tokens"] is None
+    value = observation_summary(
+        [
+            span("a"),
+            {**span("a"), "usage": {"input": 9, "output": 7}},
+            {**span("b"), "duration_ms": None},
+        ],
+        "available",
+    )
+    assert value["conflicting_observations"] == 1 and value["unknown_usage_attempts"] == 1
+    assert (
+        value["actual_total_tokens"] is None and not value["trace_extents"][0]["complete_intervals"]
+    )
+    assert observation_summary([], "available")["actual_total_tokens"] is None
 
 
 def test_cancelled_without_receipt_never_claims_no_effect_or_cleanup_complete():

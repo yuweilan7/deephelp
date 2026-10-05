@@ -118,8 +118,8 @@ def learning_router(
             "trace_id": request.state.trace_id,
             "process": "app → MCP SDK → Business service",
             "code": [
-                "adapters/tool_gateway.py:ToolGateway.list_tools",
-                "adapters/network_mcp.py:NetworkMCPClient.session",
+                "adapters/mcp/business/tool_gateway.py:ToolGateway.list_tools",
+                "adapters/mcp/shared/network_mcp.py:NetworkMCPClient.session",
                 "deephelp_services/business/api.py:build_server",
             ],
             "model_calls": 0,
@@ -258,7 +258,7 @@ def learning_router(
             "code": [
                 "application/sop.py:SOPExecutor.execute",
                 "application/approval.py:ApprovalService.graph",
-                "adapters/postgres_checkpoints.py:PostgresCheckpoints",
+                "adapters/approval/postgres_checkpoints.py:official_checkpoints",
             ],
             "model_calls": 0,
         }

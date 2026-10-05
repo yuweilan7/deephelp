@@ -5,6 +5,7 @@ import type { LearningStatus, Operation, DemoResult } from "../../api/learning";
 import { useRead, useAction } from "../../composables/requests";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import MechanismGuide from "../../components/MechanismGuide.vue";
 const status = useRead<LearningStatus>(),
   workflow = useRead<{
     approval_graph?: { edges: { source: string; target: string }[] };
@@ -89,6 +90,7 @@ function resume() {
 <template>
   <section class="card">
     <h2>SOP 与实际审批图</h2>
+    <MechanismGuide mechanism="workflow" />
     <p>
       普通主链复用原 SOP 执行器，审批部分使用 LangGraph。PG
       操作账本是效果权威，checkpoint 记录图进度。
@@ -106,6 +108,9 @@ function resume() {
       {{ edge.source }} → {{ edge.target }}
     </p>
     <RawDetails v-if="workflow.data.value" :value="workflow.data.value" />
+    <p>
+      上方是已装配图的定义，只有原checkpoint/next/interrupt能证明此操作实际走过或暂停在哪个节点。整条13段主链并非都由LangGraph运行。
+    </p>
     <h3>独立合成权益练习</h3>
     <StateNotice :error="status.error.value" :loading="status.loading.value" />
     <p v-if="status.data.value">
@@ -158,7 +163,28 @@ function resume() {
       </p>
       <RawDetails
         title="核对原操作 / 参数 / 版本 / 快照 / interrupt"
-        :value="result" /></template
+        :value="result"
+      />
+      <p v-if="result.operation.status === 'UNKNOWN'">
+        效果未知：不能显示“失败且无效果”。明确恢复先query原operation；SUCCESS采用原效果，ABSENT才允许派发，查询不可用继续保留UNKNOWN。
+      </p>
+      <p>
+        thread绑定原operation，checkpoint
+        ID是这次保存进度；parent指向前一个保存点，pending
+        writes是任务已保存的频道写入，不是退款账本。人工等待不计入派发耗时；恢复新trace通过原前序关联。
+      </p>
+      <div v-for="c in result.checkpoints" :key="c.id" class="route-result">
+        <b>保存点 {{ c.id }}</b>
+        <p>待写任务 {{ c.pending_writes.length }} 条</p>
+        <RawDetails
+          title="父保存点与任务频道"
+          :value="{
+            parent: c.parent,
+            pending_writes: c.pending_writes,
+            metadata: c.metadata,
+          }"
+        />
+      </div> </template
     ><el-checkbox v-model="confirmed" :disabled="!bound"
       >已核对显示的原绑定与快照，独立确认本次审批</el-checkbox
     >

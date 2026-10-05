@@ -11,6 +11,7 @@ import httpx
 from deephelp_app.adapters.observability.native_observation import configuration
 from deephelp_app.adapters.observability.telemetry import safe_attributes
 from deephelp_app.application.debug import sanitize
+from deephelp_app.application.observation_explanation import observation_summary
 
 LIMIT = 2 * 1024 * 1024
 
@@ -138,6 +139,7 @@ class LangfuseRunClient:
         return {
             **base,
             "status": status,
+            "explanation": observation_summary(spans, status),
             "otel_trace_id": traces[0],
             "spans": spans[cursor : cursor + page_size],
             "total": len(spans),
@@ -166,6 +168,11 @@ class LangfuseRunClient:
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
         start = datetime.fromisoformat(row["startTime"].replace("Z", "+00:00"))
+        end = (
+            datetime.fromisoformat(row["endTime"].replace("Z", "+00:00"))
+            if row.get("endTime")
+            else None
+        )
         content = sanitize(
             {"input": row.get("input"), "output": row.get("output")},
             bytes.fromhex(self.config["redaction_key"]),
@@ -177,7 +184,7 @@ class LangfuseRunClient:
             "service": metadata.get("service.name", "unknown"),
             "name": row["name"],
             "start_unix_ns": str(int(start.timestamp() * 1_000_000_000)),
-            "duration_ms": (row.get("latency") or 0) * 1000,
+            "duration_ms": (end - start).total_seconds() * 1000 if end and end >= start else None,
             "attributes": safe_attributes(metadata),
             "links": [],
             "type": row["type"],
