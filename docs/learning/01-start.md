@@ -16,13 +16,16 @@
 
 ## 从仓库根运行
 
-Windows使用现有Python3.14.7环境。以下全部离线；request用包内合成订单和正式SDK stdio工具，远程模型0次。准备环境与课程运行是两件事。
+Windows使用Python3.14.7与uv0.12.13。从新克隆的仓库根开始，先准备锁定依赖；安装工具缺失时见[环境准备](../LOCAL_SETUP.md#windows在仓库根目录执行)。准备可能下载依赖，下面课程执行全部离线；request用包内合成订单和正式SDK stdio工具，远程模型0次。
 
 ```powershell
+py -3.14 -m uv sync --locked --all-packages
 py -3.14 -m uv run --locked python --version
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course --help
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 ```
+
+本地核心无需创建`.env.local`、`.local`、身份、预算、发布指针或SSH隧道，也无需安装Node或PG/Redis/Milvus/Langfuse。源码开发安装允许没有`frontend/built`；需要网页或构建正式Python安装包时，再按[前端说明](../../modules/deephelp-app/frontend/README.md)构建同源页面，正式wheel/sdist仍要求前端产物。已准备依赖后可给uv命令追加`--offline`，使依赖解析也不访问网络。
 
 预期Python为3.14.7；输出evidence_kind=synthetic_mechanism_replay、remote_model_calls=0。ID每次不同，核对关系与内容：
 
