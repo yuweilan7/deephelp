@@ -1,10 +1,12 @@
 # DeepHelp 独立工具包
 
-新源码关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。现行旧安装未切换，旧完整发布不能当作新字节通过的证据。
+关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)；旧完整发布继续绑定其原安装字节。
 
-本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装两包，独立机器可只安装app wheel；需要演示/学习时再安装tools wheel。
+本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装三个workspace包，独立机器可只安装app wheel；需要演示/学习时再安装tools及其依赖。
 
 `learning/` 是fake、回放与故障实验；`demo/` 是正式MCP SDK的合成业务stdio服务及合成权益HTTP服务；`probes/` 是受控显式验收；`evaluation/` 是冻结集审计、训练、人工审核与发布准备。M20独立Business服务使用PostgreSQL持久资料；本包demo事实仍来自JSON。
+
+evaluation按retrieval/quality/feedback/releases/migration/platform归组；probes按models/retrieval/protocol/conversation/approval/releases/platform/migration归组。learning/workbench组合工作台路由，replay/faults/fakes分别提供回放、故障与替代端口。原命令模块仍转调同一个main实现，内部import和patch使用职责路径。单元测试在tests/unit的对应目录，跨组件场景在tests/integration；调用者、资源拥有者与失败处理见[源码导航](../../docs/learning/source-navigation.md)。
 
 从仓库根运行以下入口，帮助、预览和审计均不调用真实模型：
 

@@ -50,12 +50,27 @@ tools/evaluation内部按retrieval、quality、feedback、releases、migration�
 
 原bootstrap/*_cli和tools下已有CLI名字是受支持的命令入口，文件只转调职责模块中的main，具体实现只有一处。消费者包括旧运行文档、部署start.sh、显式任务与历史恢复命令；这不是等待删除的临时别名。新实现路径同样支持明确执行，内部代码和patch定位直接使用新路径。Business/Retrieval/workbench原模块路径变成包，由__main__继续承接受支持的`python -m`命令。找逻辑时进入表中实现，不在薄入口增加业务代码。
 
+## 找对应断言
+
+三包测试复用根conftest的离线网络守卫；移动目录不创建另一套fixture或引擎。文件名中的M编号帮助追溯来源，目录表示现在验证的责任。
+
+| 想验证什么 | 当前测试目录 | 保留的边界 |
+|---|---|---|
+| DTO、输入与工具契约 | app/tests/unit/contracts | 身份/金额/来源、字段校验、双端schema；各类型和各入口的反例分别保留 |
+| 运行边界与模型请求 | app/tests/unit/runtime、model_gateway；tools/tests/unit/runtime | app独立导入/指纹/装配、协议解析/计量、远程隔离；原CLI与职责实现是同一个main |
+| 会话、检索、记忆与审批 | app/tests/unit/conversation、retrieval、approval | 600调用次数、缺槽工具0、更正/归属、重投/取消、UNKNOWN与唯一执行 |
+| 事实、观测与完整发布 | app/tests/unit/persistence、observability、releases | PG账本与投影、诊断缺失不影响业务、不可变资产和保留引用 |
+| 冻结质量与反馈/恢复 | tools/tests/unit/quality、feedback、migration、platform、approval、learning | gold/heldout与审核隔离、迁移原状态、平台映射、工作台有限任务与取消 |
+| 组件协作与MCP两端 | app/tests/integration、e2e；tools/tests/integration；services/tests/business、retrieval | 原事实路径、本机SDK协议、可信委托、共享预算、跨服务错误/重放 |
+
+例如冻结样本标签检查与同样本的会话执行是不同断言：前者检查数据泄漏/来源，后者检查引擎事实和调用次数。此次审计保留这些独立用例；详细保留与实际删除依据见[M32交接](../../handoffs/M32.md)。
+
 ## 离线定位练习
 
 从仓库根运行：
 
 ```powershell
-py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m12_pipeline.py modules/deephelp-app/tests/unit/test_m32_structure.py --tb=short -q
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m12_pipeline.py modules/deephelp-app/tests/unit/runtime/test_m32_structure.py --tb=short -q
 ```
 
 观察原测试中的缺槽→补槽、更正、重投、600计数和模型/工具调用断言，再在上述路径逐步找到实现。这里复用原离线引擎及合成事实，证明组织后的行为与边界，不代表远程模型质量或新云版本。旧完整发布绑定旧运行字节；本轮源码指纹变了，应保留原安装或在未来正式发布时重新取得精确内容证据。

@@ -10,14 +10,15 @@
 
 学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行策略/SOP/Prompt在业务包resources；合成事实、冻结集和学习数据的唯一来源见[datasets职责](datasets/README.md)，工具包安装时包含对应资源。业务启动不导入这些工具或读取冻结评测集。
 
-2026-10-05已交付[M32–M36规格与实施计划](docs/ROADMAP.md#可读性与学习体验m32m36待实施)：结构/清理、面向Java的详细教程与代码注释、个人免登录、Vue组件前端、真实运行解释与观测学习。这些改进尚未实施，现有教程/登录/页面仍按当前代码运行；推荐先M34解除进入门槛，再M32→M33→M35→M36。当前默认模型已另行切换qwen3.7-flash并通过真实内容验收，见[M03](handoffs/M03.md#qwen37-flash切换2026-10-05)。
+2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36待实施)已完成M34个人免登录和M32代码职责整理/实际清理。读源码先沿[一条消息的调用路径](docs/learning/source-navigation.md)，再进入具体子系统；详细Java课程/注释、Vue组件前端和运行解释仍待M33/M35/M36实施。当前默认模型已另行切换qwen3.7-flash并通过真实内容验收，见[M03](handoffs/M03.md#qwen37-flash切换2026-10-05)。
 
 | 需要什么 | 入口 |
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
-| 结构/清理、教程、免登录与前端改进计划 | [M32–M36顺序及每M的PLAN](docs/ROADMAP.md#可读性与学习体验m32m36待实施)；待实施 |
+| 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
+| 后续课程与前端改进 | [M33/M35/M36顺序及PLAN](docs/ROADMAP.md#可读性与学习体验m32m36待实施)；尚未实施 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

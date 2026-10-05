@@ -1,8 +1,10 @@
 # DeepHelp独立业务与检索服务
 
-M25新源码关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。现行旧安装未切换。审批执行/恢复需M26，当前只读历史；旧完整发布不能当作新字节通过的证据。
+关系事实已统一PostgreSQL；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接。审批执行/恢复沿M26；当前正式安装与发布边界见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，旧完整发布继续绑定其原安装字节。
 
 M20复用应用的唯一DTO、只读工具schema与会话引擎。Business服务拥有订单/券/活动的PostgreSQL维护事务及查询快照；Retrieval服务复用既有Embedding/Milvus/BM25适配器与Dense/Hybrid排序。两个服务不依赖deephelp-tools，不提供任意SQL或中间件命令。
+
+Business的API/协议编排位于business/api，事务位于business/repository；Retrieval位于retrieval/api和retrieval/backend。transport/http只负责认证与受控HTTP会话。tests/business与tests/retrieval分别保留两端协议、预算、错误和重放断言；两个原服务命令入口继续受支持。
 
 ## 启动与凭据
 

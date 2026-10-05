@@ -2,7 +2,7 @@
 
 **来源：** 用户2026-10-05明确要求；工程与学习改进，不新增PDF复刻结论。
 **前置：** 已交付M19分层、M30正式路线和M31发布边界；见[M19](../../handoffs/M19.md)、[M30](../../handoffs/M30.md)、[M31](../../handoffs/M31.md)。
-**实施：** [唯一PLAN](../../planning/M32/PLAN.md)。本轮只交付规格/计划，未实施结构迁移或全项目删除。
+**实施：** 三个特性已按序离线验收交付，实际映射/删除/保留依据见[交接](../../handoffs/M32.md)，当前职责入口见[源码导航](../learning/source-navigation.md)。已完成的重复PLAN删除，历史规划从Git追溯；本M没有更新正式云安装。
 
 ## 要解决什么
 
@@ -24,7 +24,7 @@
 
 保持domain/application/adapters/api/bootstrap/resources上层边界，在内部按能力归组。下表是迁移候选，实施先核对实际依赖图；没有实际代码/消费者不建空目录。
 
-| 当前混合入口 | 建议职责组 | 必须解释的责任 |
+| 迁移前混合入口 | 职责组 | 必须解释的责任 |
 |---|---|---|
 | domain/models.py | models/common、conversation、entities、intents、retrieval、tools、approval、memory、release、business | 每类只定义一次，DTO不带连接/锁；依赖由公共值类型向具体业务类型单向流动 |
 | application/conversation.py及event_cluster.py | conversation编排、events归属、memory状态、retrieval决策、sop执行、approval恢复 | 编排先呈现主步骤；复杂辅助逻辑移到有名字的组件，不复制正常/恢复两套引擎 |
