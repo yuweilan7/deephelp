@@ -18,7 +18,7 @@
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
 | 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
-| 后续课程与前端改进 | [M33/M35/M36顺序及PLAN](docs/ROADMAP.md#可读性与学习体验m32m36待实施)；尚未实施 |
+| Java课程与后续前端 | [课程入口](docs/learning/README.md)已交付首批上手/主线；[M33/M35/M36顺序](docs/ROADMAP.md#可读性与学习体验m32m36待实施)见当前状态 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |
