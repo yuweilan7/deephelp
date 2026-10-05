@@ -15,7 +15,7 @@ from deephelp_app.application.intent_prompt import (
 )
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ReleaseManifest
+from deephelp_app.domain.models.release import ReleaseManifest
 from deephelp_tools.evaluation.flywheel_assets import read_data, verify_files
 from deephelp_tools.integrity import evaluation_provenance
 

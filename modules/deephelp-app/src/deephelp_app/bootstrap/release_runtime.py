@@ -14,7 +14,7 @@ from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseReposito
 from deephelp_app.adapters.synthetic_rights import RightsClient
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.artifact_paths import resolve_artifact
-from deephelp_app.application.conversation import Conversation
+from deephelp_app.application.conversation.orchestrator import Conversation
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
 from deephelp_app.domain.errors import ConfigurationError
 

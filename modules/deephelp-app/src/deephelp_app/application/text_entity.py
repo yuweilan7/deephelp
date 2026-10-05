@@ -18,19 +18,15 @@ from deephelp_app.application.dense import load_json
 from deephelp_app.application.reviewed_rules import rule_matches
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatMessage,
-    ChatRequest,
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityConflict, EntityName, EntitySource
+from deephelp_app.domain.models.intents import RuleMatch
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
+from deephelp_app.domain.models.text import (
     DemandType,
-    Entity,
-    EntityConflict,
-    EntityName,
-    EntitySource,
-    ErrorCode,
     ExtractedEntity,
     ExtractionLayerStat,
-    RequestEnvelope,
-    RuleMatch,
     TextCleanResult,
     TextEntityResult,
     TextSegment,
@@ -367,7 +363,7 @@ RULES = (
 
 
 def match_rules(request: RequestEnvelope) -> list[RuleMatch]:
-    from deephelp_app.domain.models import IntentCode
+    from deephelp_app.domain.models.intents import IntentCode
 
     text = width_normalize(request.raw_text)
     matches = []

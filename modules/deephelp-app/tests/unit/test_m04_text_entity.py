@@ -19,18 +19,11 @@ from deephelp_app.application.text_entity import (
 )
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatResult,
-    DemandType,
-    Entity,
-    EntityName,
-    EntitySource,
-    ErrorCode,
-    ModelUsage,
-    RequestEnvelope,
-    TextEntityResult,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
+from deephelp_app.domain.models.text import DemandType, TextEntityResult
 from deephelp_tools.assets import asset_path
 
 pytestmark = pytest.mark.unit

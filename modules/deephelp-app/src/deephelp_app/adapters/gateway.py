@@ -18,12 +18,12 @@ from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig
 from deephelp_app.adapters.telemetry import annotate, current, observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.model_io import (
     ChatMessage,
     ChatRequest,
     ChatResult,
     EmbeddingResult,
-    ErrorCode,
     ModelToolCall,
     ModelUsage,
     RerankHit,

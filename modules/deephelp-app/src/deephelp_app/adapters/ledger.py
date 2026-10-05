@@ -15,16 +15,10 @@ from psycopg_pool import PoolTimeout
 from deephelp_app.adapters.postgres import PostgresPool, application_config
 from deephelp_app.adapters.telemetry import ObservedPool
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    ErrorCode,
-    Question,
-    QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
-    RunStatus,
-    VerifiedIdentity,
-    VersionManifest,
-)
+from deephelp_app.domain.models.common import ErrorCode, QuestionStatus, RunStatus, VerifiedIdentity
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 def payload_hash(request: RequestEnvelope) -> str:

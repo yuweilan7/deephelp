@@ -1,26 +1,22 @@
 """Pure contract guards; downstream services still need authenticated, durable reads."""
 
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import (
     BudgetUsed,
-    Entity,
     ErrorCode,
-    IntentCode,
-    IntentDecision,
     Outcome,
-    Question,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
-    SOPResult,
-    SOPStatus,
-    ToolName,
-    ToolRequest,
-    ToolResult,
     VerifiedIdentity,
-    VersionManifest,
 )
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.entities import Entity
+from deephelp_app.domain.models.intent_decisions import IntentDecision
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.sop import SOPResult, SOPStatus
+from deephelp_app.domain.models.tools import ToolName, ToolRequest, ToolResult
 
 
 def require_owner(identity: VerifiedIdentity, owner: VerifiedIdentity) -> None:

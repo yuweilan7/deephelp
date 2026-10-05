@@ -9,8 +9,8 @@ from typing import Any
 from uuid import uuid4
 
 from deephelp_app.adapters.tool_gateway import process_alive
-from deephelp_app.application.conversation import STAGES
-from deephelp_app.application.event_cluster import PersistentEventAggregation
+from deephelp_app.application.conversation.tracking import STAGES
+from deephelp_app.application.event_cluster.persistence import PersistentEventAggregation
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import (
     BudgetSession,
@@ -19,7 +19,8 @@ from deephelp_app.bootstrap.mvp_runtime import (
     validate_control_paths,
 )
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import Outcome, QuestionStatus, ResponseEnvelope
+from deephelp_app.domain.models.common import Outcome, QuestionStatus
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.mvp_acceptance import api_client
 from deephelp_tools.learning.event_replay import envelope

@@ -8,18 +8,12 @@ from deephelp_app.application.intent import IntentService
 from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatResult,
-    Decision,
-    DenseCandidate,
-    DenseHit,
-    DenseResult,
-    EntityName,
-    ErrorCode,
-    FallbackResult,
-    IntentCode,
-    ModelUsage,
-)
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intent_decisions import Decision, FallbackResult
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
+from deephelp_app.domain.models.retrieval import DenseCandidate, DenseHit, DenseResult
 from deephelp_tools.evaluation.cascade_tune import select_gate
 from deephelp_tools.learning.event_replay import envelope
 from deephelp_tools.learning.mvp_replay import REPLAY_SCOPE

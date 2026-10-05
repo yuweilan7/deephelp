@@ -17,24 +17,19 @@ from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect
 from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ApprovalCommand,
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
+from deephelp_app.domain.models.common import (
     ApprovalStatus,
     ErrorCode,
-    EvidenceRef,
-    EvidenceSource,
-    Fact,
-    FactKind,
     NextAction,
-    OperationRecord,
     OperationStatus,
     Outcome,
     QuestionStatus,
-    ResponseEnvelope,
-    ResumeCommand,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource, Fact, FactKind
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 class ApprovalState(TypedDict, total=False):

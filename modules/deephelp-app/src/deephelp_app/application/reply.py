@@ -5,16 +5,10 @@ from typing import Literal
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    DTO,
-    ChatMessage,
-    ChatRequest,
-    ErrorCode,
-    Money,
-    ReplyPresentation,
-    SOPResult,
-    SOPStatus,
-)
+from deephelp_app.domain.models.common import DTO, ErrorCode, Money
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
+from deephelp_app.domain.models.responses import ReplyPresentation
+from deephelp_app.domain.models.sop import SOPResult, SOPStatus
 from deephelp_app.domain.ports import ChatPort
 
 

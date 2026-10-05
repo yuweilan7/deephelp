@@ -12,14 +12,11 @@ from deephelp_app.adapters.cases import summary
 from deephelp_app.application.memory import scope_key
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    CaseSummary,
-    EmbeddingSignature,
-    ErrorCode,
-    EventCandidate,
-    Question,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import Question
+from deephelp_app.domain.models.events import EventCandidate
+from deephelp_app.domain.models.memory import CaseSummary
+from deephelp_app.domain.models.model_io import EmbeddingSignature
 from deephelp_app.domain.ports import EmbeddingPort
 
 

@@ -19,7 +19,7 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, validate_control_paths
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import DenseResult, HybridScope, RerankPolicy
+from deephelp_app.domain.models.retrieval import DenseResult, HybridScope, RerankPolicy
 from deephelp_tools.evaluation.hybrid_eval import (
     RetrievalQuery,
     classify,

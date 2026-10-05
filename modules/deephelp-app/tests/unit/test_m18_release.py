@@ -13,7 +13,8 @@ from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseReposito
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.sop_governance import bundled_registry
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ReleaseManifest, ResponseEnvelope, VersionManifest
+from deephelp_app.domain.models.release import ReleaseManifest, VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.evaluation.core import file_digest
 from deephelp_tools.evaluation.release_prepare import prepare_manifest
 from deephelp_tools.learning.event_replay import envelope

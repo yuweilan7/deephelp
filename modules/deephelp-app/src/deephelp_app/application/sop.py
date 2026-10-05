@@ -13,28 +13,19 @@ from deephelp_app.application.sop_governance import GovernedSOP, SOPRegistry
 from deephelp_app.domain.checks import validate_question_access, validate_tool_result
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatMessage,
-    ChatRequest,
-    ErrorCode,
-    ErrorDetail,
-    Fact,
-    FactKind,
-    IntentCode,
-    ModelTool,
-    NextAction,
-    Question,
-    QuestionStatus,
-    RequestEnvelope,
-    SOPPlan,
-    SOPResult,
-    SOPStatus,
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail, NextAction, QuestionStatus
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.evidence import Fact, FactKind
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest, ModelTool
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.sop import SOPPlan, SOPResult, SOPStatus
+from deephelp_app.domain.models.tools import (
     ToolName,
     ToolParameters,
     ToolRequest,
     ToolResult,
     ToolStatus,
-    VersionManifest,
     tool_parameters_hash,
 )
 from deephelp_app.domain.ports import ChatPort, ToolPort

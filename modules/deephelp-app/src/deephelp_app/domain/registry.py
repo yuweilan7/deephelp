@@ -2,13 +2,9 @@
 
 from pydantic import model_validator
 
-from deephelp_app.domain.models import (
-    DTO,
-    REGISTRY_VERSION,
-    EntityName,
-    IntentCode,
-    IntentDefinition,
-)
+from deephelp_app.domain.models.common import DTO, REGISTRY_VERSION
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode, IntentDefinition
 
 
 class IntentRegistry(DTO):

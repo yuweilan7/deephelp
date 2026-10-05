@@ -6,13 +6,13 @@ from typing import Any, cast
 from uuid import uuid4
 
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.events import (
     ClusterCitation,
     ClusterJudgement,
     EventCandidate,
     EventMessage,
-    RequestEnvelope,
-    VerifiedIdentity,
 )
 from deephelp_tools.assets import asset_path
 

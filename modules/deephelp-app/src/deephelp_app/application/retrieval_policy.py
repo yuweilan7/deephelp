@@ -11,7 +11,7 @@ from typing import Any
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.hybrid import ANALYZER
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DenseScope, RerankPolicy
+from deephelp_app.domain.models.retrieval import DenseScope, RerankPolicy
 
 
 def validate_published_selection(

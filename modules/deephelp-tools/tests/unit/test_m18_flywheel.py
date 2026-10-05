@@ -9,7 +9,7 @@ from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.application.fasttext_preprocess import DICTIONARY, FastTextPreprocessor
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import IntentCode
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.demo.fixtures import load_business_fixtures
 from deephelp_tools.evaluation.core import DATA, historical_inputs, semantic_label
 from deephelp_tools.evaluation.fasttext_training import audit

@@ -397,7 +397,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 from deephelp_app.adapters.approval_store import ApprovalRepository
                 from deephelp_app.adapters.history import PostgresHistory
                 from deephelp_app.domain.errors import AppError
-                from deephelp_app.domain.models import RequestEnvelope, VerifiedIdentity
+                from deephelp_app.domain.models.common import VerifiedIdentity
+                from deephelp_app.domain.models.conversation import RequestEnvelope
                 from deephelp_services.business_store import BusinessRepository
                 from deephelp_tools.evaluation.legacy_checkpoints import LegacyCheckpointArchive
 

@@ -46,11 +46,9 @@ from deephelp_app.application.hybrid import HybridRetriever
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    DenseResult,
-    ErrorCode,
-    ErrorDetail,
-    HybridScope,
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail
+from deephelp_app.domain.models.retrieval import DenseResult, HybridScope
+from deephelp_app.domain.models.retrieval_protocol import (
     RetrievalAction,
     RetrievalDelegation,
     RetrievalQuery,

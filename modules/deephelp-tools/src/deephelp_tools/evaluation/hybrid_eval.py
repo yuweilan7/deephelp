@@ -9,15 +9,10 @@ from deephelp_app.application.intent import IntentService
 from deephelp_app.application.text_entity import TextPolicy, clean_text
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    DTO,
-    DemandType,
-    DenseResult,
-    DenseScope,
-    ExtractionLayerStat,
-    IntentCode,
-    TextEntityResult,
-)
+from deephelp_app.domain.models.common import DTO
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope
+from deephelp_app.domain.models.text import DemandType, ExtractionLayerStat, TextEntityResult
 from deephelp_app.domain.ports import ChatPort
 from deephelp_tools.assets import asset_path
 

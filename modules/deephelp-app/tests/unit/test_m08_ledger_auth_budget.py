@@ -8,21 +8,21 @@ import pytest
 from starlette.requests import Request
 
 from deephelp_app.adapters.ledger import MemoryLedger, payload_hash
-from deephelp_app.application.conversation import usage_delta
+from deephelp_app.application.conversation.tracking import usage_delta
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import (
     BudgetUsed,
     ErrorCode,
     NextAction,
     Outcome,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 pytestmark = pytest.mark.unit
 

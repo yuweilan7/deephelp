@@ -20,7 +20,8 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ErrorCode, ResponseEnvelope
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.business_catalog import business_config, business_registry

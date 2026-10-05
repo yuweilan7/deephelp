@@ -29,7 +29,7 @@ from deephelp_app.bootstrap.mvp_runtime import (
     validate_trace_path,
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import ConverseInput
+from deephelp_app.domain.models.conversation import ConverseInput
 
 
 def initialize(args: argparse.Namespace) -> None:

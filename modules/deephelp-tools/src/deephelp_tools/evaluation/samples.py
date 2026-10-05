@@ -7,26 +7,22 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from deephelp_app.domain.checks import response_from_sop
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import (
     DTO,
     BudgetUsed,
-    ConverseInput,
-    Entity,
-    EntityName,
     ErrorCode,
     Identifier,
-    IntentCode,
     NextAction,
     Outcome,
     QuestionStatus,
-    RequestEnvelope,
-    SOPResult,
-    SOPStatus,
-    ToolName,
-    ToolParameters,
     VerifiedIdentity,
-    VersionManifest,
 )
+from deephelp_app.domain.models.conversation import ConverseInput, RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityName
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.sop import SOPResult, SOPStatus
+from deephelp_app.domain.models.tools import ToolName, ToolParameters
 from deephelp_app.domain.registry import complaint_registry
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.fixtures import BusinessFixtures, load_business_fixtures

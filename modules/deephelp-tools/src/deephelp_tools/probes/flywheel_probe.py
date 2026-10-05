@@ -15,7 +15,9 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ErrorCode, IntentCode, ResponseEnvelope
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.flywheel import ROUTES, RouteReview
 from deephelp_tools.evaluation.flywheel_assets import (

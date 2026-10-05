@@ -12,13 +12,13 @@ from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore
 from deephelp_app.adapters.tool_gateway import ToolGateway as RuntimeToolGateway
 from deephelp_app.adapters.trace import TraceSink
 from deephelp_app.application.cascade import CascadePolicy, StructuredFallback
-from deephelp_app.application.conversation import (
-    Conversation,
+from deephelp_app.application.conversation.orchestrator import Conversation
+from deephelp_app.application.conversation.tracking import (
     CountedModel,
     CountedRetriever,
     TrackedTools,
 )
-from deephelp_app.application.event_cluster import EventAggregationService
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
 from deephelp_app.application.hybrid import result_for
 from deephelp_app.application.intent import IntentService
 from deephelp_app.application.memory import MemoryService
@@ -26,18 +26,15 @@ from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import bundled_registry
 from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.model_io import (
     ChatRequest,
     ChatResult,
-    DenseHit,
-    DenseResult,
-    DenseScope,
     EmbeddingResult,
-    HybridScope,
     ModelToolCall,
     ModelUsage,
-    VersionManifest,
 )
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope, HybridScope
 from deephelp_app.domain.ports import DenseRetrieverPort
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway

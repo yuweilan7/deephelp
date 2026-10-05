@@ -20,16 +20,10 @@ from deephelp_app.application.dense import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    DenseHit,
-    DenseResult,
-    DenseScope,
-    EmbeddingResult,
-    EmbeddingSignature,
-    ErrorCode,
-    IntentCode,
-    ModelUsage,
-)
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import EmbeddingResult, EmbeddingSignature, ModelUsage
+from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope
 from deephelp_tools.evaluation.corpus_preview import frozen_preview
 
 pytestmark = pytest.mark.unit

@@ -13,13 +13,9 @@ from deephelp_app.api.app import create_app
 from deephelp_app.api.workbench import COOKIE, BrowserAuth, workbench_router
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
 from deephelp_app.bootstrap.settings import Settings
-from deephelp_app.domain.models import (
-    Question,
-    RequestEnvelope,
-    ResponseEnvelope,
-    RunStatus,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import RunStatus, VerifiedIdentity
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 pytestmark = pytest.mark.integration
 TOKEN = "a" * 32

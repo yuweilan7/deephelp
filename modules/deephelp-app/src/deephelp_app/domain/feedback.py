@@ -5,7 +5,8 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from deephelp_app.domain.models import DTO, IntentCode
+from deephelp_app.domain.models.common import DTO
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.text_fingerprint import canonical
 
 Route = Literal["corpus", "fasttext", "rule"]

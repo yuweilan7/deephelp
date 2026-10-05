@@ -9,7 +9,8 @@ from mcp.shared.exceptions import MCPError
 from deephelp_app.adapters.mcp_protocol import LEDGER_URI, sign_metadata
 from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope, ToolStatus
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolStatus
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
 from deephelp_tools.probes.mcp_smoke import accept, invoke, synthetic_request, wait_record

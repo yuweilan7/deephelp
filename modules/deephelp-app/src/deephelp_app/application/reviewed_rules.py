@@ -10,7 +10,8 @@ from deephelp_app.domain.feedback import RouteReview
 def rule_matches(data: dict[str, Any], request: Any) -> list[Any]:
     """Data-only literal predicates, retaining original text spans and source revision."""
     from deephelp_app.application.text_entity import INJECTION, width_normalize
-    from deephelp_app.domain.models import EntitySource, RuleMatch
+    from deephelp_app.domain.models.entities import EntitySource
+    from deephelp_app.domain.models.intents import RuleMatch
 
     if data.get("format") != "m18-literal-rules-v1":
         raise ConfigurationError("Invalid reviewed rule artifact")

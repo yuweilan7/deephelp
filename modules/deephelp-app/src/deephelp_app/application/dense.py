@@ -14,14 +14,14 @@ from typing import Protocol
 from deephelp_app.application.corpus import CorpusPreview, content_hash, digest, normalized
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import (
     CorpusRecord,
     DenseCandidate,
     DenseHit,
     DenseResult,
     DenseScope,
-    ErrorCode,
-    IntentCode,
 )
 from deephelp_app.domain.ports import EmbeddingPort
 from deephelp_app.domain.registry import complaint_registry

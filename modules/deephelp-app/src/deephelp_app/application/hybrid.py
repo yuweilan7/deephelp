@@ -8,17 +8,16 @@ from typing import Literal, Protocol
 from deephelp_app.application.dense import reference_matches, validate_vector
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.model_io import RerankDocument, RerankRequest
+from deephelp_app.domain.models.retrieval import (
     CorpusRecord,
     DenseCandidate,
     DenseHit,
     DenseResult,
     DenseScope,
-    ErrorCode,
     HybridScope,
-    RerankDocument,
     RerankPolicy,
-    RerankRequest,
     RetrievalRerank,
 )
 from deephelp_app.domain.ports import EmbeddingPort, RerankPort

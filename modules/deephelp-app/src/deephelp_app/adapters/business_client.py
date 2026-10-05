@@ -11,7 +11,8 @@ from deephelp_app.adapters.mcp_protocol import canonical
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig, delegation_nonce, encode_delegation
 from deephelp_app.domain.checks import require_owner
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import BusinessRecord, ErrorCode, ErrorDetail, VerifiedIdentity
+from deephelp_app.domain.models.business import BusinessRecord
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail, VerifiedIdentity
 
 
 class BusinessClient:

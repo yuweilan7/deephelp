@@ -1,12 +1,14 @@
 # DeepHelp 机制学习导航
 
+先读[从一条消息找到代码](source-navigation.md)，再按下表进入具体机制。
+
 保留一套引擎。先用离线样本观察实际类型、决策、事实与trace，再由明确live入口运行真实模型；浏览文档、帮助、预览和pytest不会自动调用模型。开始异步基础可先读[M01指南](M01_ASYNC_GUIDE.md)。运行、工具和demo安装说明见[工具包](../../modules/deephelp-tools/README.md)。
 
 当前这里主要是一页异步说明和机制索引，尚未达到面向Java开发者的详细课程目标。2026-10-05新增[M33课程规格](../MODULES/M33_JAVA_LEARNING_COURSE.md)和[实施计划](../../planning/M33/PLAN.md)：先读懂一次请求/类型/高级写法，再跑异步时序/取消/资源实验，最后学习Agent、检索、记忆、审批和发布；核心源码注释与实验同步交付。[M32](../MODULES/M32_CODE_ORGANIZATION.md)先整理职责与路径，[M35](../MODULES/M35_FRONTEND_FOUNDATION.md)/[M36](../MODULES/M36_EXPLAINABLE_WORKBENCH.md)再让教程与实际页面/run对应。以下仍是当前可用入口，新增课程尚未实施。
 
 | 机制 | 调用入口与核心函数 | 最小离线样本 | 观察点 |
 |---|---|---|---|
-| 13段主链 | [Conversation.run](../../modules/deephelp-app/src/deephelp_app/application/conversation.py)，[Cascade.recognize](../../modules/deephelp-app/src/deephelp_app/application/cascade.py) | `pytest modules/deephelp-app/tests/integration/test_m12_pipeline.py -q` | 清洗/实体、事件归属、600主意图、SOP与回复；缺槽位不得调用工具；主分类只在600 |
+| 13段主链 | [Conversation.run](../../modules/deephelp-app/src/deephelp_app/application/conversation/orchestrator.py)，[Cascade.recognize](../../modules/deephelp-app/src/deephelp_app/application/cascade.py) | `pytest modules/deephelp-app/tests/integration/test_m12_pipeline.py -q` | 清洗/实体、事件归属、600主意图、SOP与回复；缺槽位不得调用工具；主分类只在600 |
 | Dense/BM25/Hybrid | [DenseRetriever](../../modules/deephelp-app/src/deephelp_app/application/dense.py)，[HybridRetriever](../../modules/deephelp-app/src/deephelp_app/application/hybrid.py)，[Milvus适配器](../../modules/deephelp-app/src/deephelp_app/adapters/milvus_hybrid.py) | `python -m deephelp_tools.evaluation.dense_cli preview`；`pytest modules/deephelp-app/tests/unit/test_m09_hybrid.py -q` | scope/完整Embedding签名、原始分数与候选rank、融合权重；分数不是概率；冻结dev/test不作为运行数据 |
 | MCP两端守卫 | [ToolGateway](../../modules/deephelp-app/src/deephelp_app/adapters/tool_gateway.py)，[协议schema](../../modules/deephelp-app/src/deephelp_app/adapters/mcp_protocol.py)，[demo服务](../../modules/deephelp-tools/src/deephelp_tools/demo/mcp_server.py) | `pytest modules/deephelp-app/tests/integration/test_m06_stdio.py -q` | 正式SDK list_tools/call_tool、可信上下文/签名、双端参数与结果事实校验、子进程退出 |
 | 审批与恢复 | [ApprovalService](../../modules/deephelp-app/src/deephelp_app/application/approval.py)，[官方保存器](../../modules/deephelp-app/src/deephelp_app/adapters/postgres_checkpoints.py) | `pytest modules/deephelp-app/tests/unit/test_m15_approval.py -q` | 原M15 LangGraph/interrupt/resume机制；正式PG官方saver、审批绑定/唯一领取/UNKNOWN先对账；实际迁移恢复证据见M26 handoff，checkpoint不是账本 |

@@ -30,15 +30,9 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, live_app
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ApprovalCommand,
-    ApprovalStatus,
-    OperationRecord,
-    OperationStatus,
-    Outcome,
-    ResponseEnvelope,
-    ResumeCommand,
-)
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
+from deephelp_app.domain.models.common import ApprovalStatus, OperationStatus, Outcome
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.approval_prepare import prepare
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.mvp_acceptance import api_client

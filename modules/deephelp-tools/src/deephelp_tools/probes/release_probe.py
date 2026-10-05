@@ -20,7 +20,8 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, live_app
 from deephelp_app.bootstrap.release_runtime import ReleaseRuntime
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import ReleasePointer, ResponseEnvelope
+from deephelp_app.domain.models.release import ReleasePointer
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import demo_server
 from deephelp_tools.evaluation.flywheel_assets import build
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore

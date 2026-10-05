@@ -15,7 +15,8 @@ from pydantic import Field
 
 from deephelp_app.adapters.telemetry import observation as observation_span
 from deephelp_app.adapters.telemetry import trace_id as otel_trace_id
-from deephelp_app.domain.models import DTO, DebugSnapshot, Identifier
+from deephelp_app.domain.models.common import DTO, Identifier
+from deephelp_app.domain.models.responses import DebugSnapshot
 
 request_context: ContextVar[tuple[str, str] | None] = ContextVar("request_context", default=None)
 sop_node_observer: ContextVar[Callable[[dict[str, object]], None] | None] = ContextVar(

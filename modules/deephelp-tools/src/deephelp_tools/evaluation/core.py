@@ -13,7 +13,9 @@ from pydantic import Field
 from deephelp_app.adapters.asset_integrity import file_digest as file_digest
 from deephelp_app.application.corpus import digest
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DTO, EntityName, IntentCode
+from deephelp_app.domain.models.common import DTO
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.text_fingerprint import canonical
 from deephelp_tools.assets import asset_path
 

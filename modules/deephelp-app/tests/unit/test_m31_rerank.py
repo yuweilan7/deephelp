@@ -14,7 +14,9 @@ from deephelp_app.adapters.providers import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import ErrorCode, IntentCode, RerankDocument, RerankRequest
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import RerankDocument, RerankRequest
 
 pytestmark = pytest.mark.unit
 URL = "https://rerank.invalid/api/v1/services/rerank/text-rerank/text-rerank"

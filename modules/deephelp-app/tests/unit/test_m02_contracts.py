@@ -14,32 +14,28 @@ from deephelp_app.domain.checks import (
 )
 from deephelp_app.domain.errors import HTTP_STATUS, AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import (
     BudgetSnapshot,
     BudgetUsed,
-    ConverseInput,
-    Entity,
-    EntityConflict,
-    EntityName,
-    EntitySource,
     ErrorCode,
     ErrorDetail,
-    EvidenceRef,
-    Fact,
-    IntentCandidate,
-    IntentDecision,
     Money,
     Outcome,
-    Question,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
-    SOPResult,
+    VerifiedIdentity,
+)
+from deephelp_app.domain.models.conversation import ConverseInput, Question, RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityConflict, EntityName, EntitySource
+from deephelp_app.domain.models.evidence import EvidenceRef, Fact
+from deephelp_app.domain.models.intent_decisions import IntentDecision
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.retrieval import IntentCandidate
+from deephelp_app.domain.models.sop import SOPResult
+from deephelp_app.domain.models.tools import (
     ToolParameters,
     ToolRequest,
     ToolResult,
-    VerifiedIdentity,
-    VersionManifest,
     tool_parameters_hash,
 )
 from deephelp_app.domain.registry import IntentRegistry, complaint_registry

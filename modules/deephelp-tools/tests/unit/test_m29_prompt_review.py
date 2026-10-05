@@ -17,7 +17,8 @@ from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.feedback import FeedbackCandidate, RouteReview
-from deephelp_app.domain.models import ChatResult, IntentCode, ModelUsage
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
 from deephelp_tools.evaluation.flywheel import reviewed
 from deephelp_tools.evaluation.langfuse_mapping import Platform
 from deephelp_tools.evaluation.langfuse_prompt_review import (

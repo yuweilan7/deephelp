@@ -17,7 +17,7 @@ from deephelp_app.bootstrap.mvp_runtime import (
     validate_control_paths,
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import IntentCode
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.evaluation.flywheel import ROUTES, RouteReview
 from deephelp_tools.evaluation.flywheel_assets import (
     activate,

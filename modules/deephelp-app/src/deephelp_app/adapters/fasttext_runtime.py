@@ -14,15 +14,15 @@ from deephelp_app.application.dense import atomic_json, load_json
 from deephelp_app.application.fasttext_preprocess import FastTextPreprocessor, digest
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.intent_decisions import (
     FASTTEXT_LABELS,
-    DenseResult,
     FallbackResult,
     FastTextCandidate,
     FastTextPrediction,
-    IntentCode,
-    TextEntityResult,
 )
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import DenseResult
+from deephelp_app.domain.models.text import TextEntityResult
 from deephelp_app.domain.ports import FallbackPort
 
 LABELS = FASTTEXT_LABELS

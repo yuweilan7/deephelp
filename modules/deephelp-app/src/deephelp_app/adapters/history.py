@@ -7,14 +7,9 @@ from psycopg import Error as PostgreSQLError
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.history import HistoryMessage, MessagePage, SessionPage, SessionSummary
-from deephelp_app.domain.models import (
-    ConverseInput,
-    ErrorCode,
-    Question,
-    RequestEnvelope,
-    ResponseEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import ConverseInput, Question, RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 class PostgresHistory:

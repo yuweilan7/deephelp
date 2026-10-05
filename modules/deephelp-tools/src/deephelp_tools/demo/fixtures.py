@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import model_validator
 
-from deephelp_app.domain.models import DTO, Identifier, Money, VerifiedIdentity
+from deephelp_app.domain.models.common import DTO, Identifier, Money, VerifiedIdentity
 from deephelp_tools.assets import asset_path
 
 

@@ -13,7 +13,8 @@ from deephelp_app.adapters.mcp_protocol import (
 )
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import ErrorCode, ToolInvocationEnvelope
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.fixtures import load_business_fixtures
 from deephelp_tools.demo.mcp_server import MockBackend

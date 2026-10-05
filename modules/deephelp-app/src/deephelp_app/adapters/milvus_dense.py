@@ -26,7 +26,9 @@ from deephelp_app.application.dense import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import DenseHit, DenseScope, ErrorCode, IntentCode
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import DenseHit, DenseScope
 
 FIELDS = {
     "doc_id": (DataType.VARCHAR, 128),

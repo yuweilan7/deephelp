@@ -7,7 +7,8 @@ import re
 from collections.abc import Mapping
 from typing import Literal
 
-from deephelp_app.domain.models import DebugSnapshot, VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.responses import DebugSnapshot
 
 DebugView = Literal["intent", "turns", "flow"]
 SENSITIVE_KEYS = {"password", "token", "authorization", "api_key", "secret", "reasoning_content"}

@@ -1,14 +1,9 @@
 """Pure case summary, lifecycle and bounded history rules."""
 
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    CaseSummary,
-    ErrorCode,
-    LifecycleCommand,
-    MemoryMessage,
-    Question,
-    QuestionStatus,
-)
+from deephelp_app.domain.models.common import ErrorCode, QuestionStatus
+from deephelp_app.domain.models.conversation import LifecycleCommand, Question
+from deephelp_app.domain.models.memory import CaseSummary, MemoryMessage
 
 OPEN = {QuestionStatus.ACTIVE, QuestionStatus.WAITING_SLOT}
 CLOSED = {QuestionStatus.RESOLVED, QuestionStatus.HANDED_OFF, QuestionStatus.CANCELLED}

@@ -31,7 +31,9 @@ from deephelp_app.adapters.postgres_checkpoints import (
     official_checkpoints,
 )
 from deephelp_app.application.dense import atomic_json
-from deephelp_app.domain.models import OperationRecord, OperationStatus, Question
+from deephelp_app.domain.models.approval import OperationRecord
+from deephelp_app.domain.models.common import OperationStatus
+from deephelp_app.domain.models.conversation import Question
 from deephelp_tools.evaluation.postgres_migration import canonical, read_snapshot, untyped
 from deephelp_tools.probes.postgres_probe import require_isolated
 

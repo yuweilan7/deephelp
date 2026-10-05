@@ -97,7 +97,7 @@ M31已完成专用端口、同条件dev/test和真实会话/Retrieval MCP/学习
 
 | 模块与入口 | 模块内全部顺序特性 | 前置/现在能否启动 |
 |---|---|---|
-| [M32结构与清理](MODULES/M32_CODE_ORGANIZATION.md) · [PLAN](../planning/M32/PLAN.md) | 唯一类型/主链职责→适配器/装配/工具归组→测试/忽略产物清理及导航 | M19/M30/M31已交付；首项可启动，当前只是规划 |
+| [M32结构与清理](MODULES/M32_CODE_ORGANIZATION.md) · [PLAN](../planning/M32/PLAN.md) | 唯一类型/主链职责→适配器/装配/工具归组→测试/忽略产物清理及导航 | M19/M30/M31已交付；首项类型/主链离线交付，续适配器归组与清理 |
 | [M33 Java学习课程](MODULES/M33_JAVA_LEARNING_COURSE.md) · [PLAN](../planning/M33/PLAN.md) | 上手/主链/类型→异步协调与资源→Agent/检索/记忆/审批/观测/评测发布 | 等待M32最终职责/路径；14主题须有实验/练习/注释，不交索引代替课程 |
 | [M34个人直接进入](MODULES/M34_PERSONAL_ACCESS.md) · [交接](../handoffs/M34.md) | 显式固定身份/删除登录交互→真实个人安装与恢复 | 两项已交付；免登录/原归属/CSRF、云业务/重启/兼容回退通过；不启动其他M |
 | [M35 Vue工作台](MODULES/M35_FRONTEND_FOUNDATION.md) · [PLAN](../planning/M35/PLAN.md) | Vue3/TS/Vite/Element Plus、对话主线/同源构建→全部原能力迁移与正式安装 | M34、M32及M33首批教程；一个前端源码/锁，不增Node常驻服务 |

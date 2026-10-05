@@ -13,7 +13,7 @@ from deephelp_app.application.corpus import digest
 from deephelp_app.application.hybrid import ANALYZER
 from deephelp_app.application.retrieval_policy import validate_published_selection
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import HybridScope
+from deephelp_app.domain.models.retrieval import HybridScope
 
 pytestmark = pytest.mark.unit
 

@@ -10,25 +10,19 @@ from pydantic import ValidationError
 
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.entities import Entity
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource
+from deephelp_app.domain.models.intent_decisions import (
     CascadeStep,
-    ChatMessage,
-    ChatRequest,
     Decision,
-    DemandType,
-    DenseResult,
-    DenseScope,
-    Entity,
-    ErrorCode,
-    EvidenceRef,
-    EvidenceSource,
     FallbackResult,
-    IntentCandidate,
-    IntentCode,
     IntentDecision,
-    ScoreKind,
-    TextEntityResult,
 )
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope, IntentCandidate, ScoreKind
+from deephelp_app.domain.models.text import DemandType, TextEntityResult
 from deephelp_app.domain.ports import ChatPort, DenseRetrieverPort, FallbackPort
 
 

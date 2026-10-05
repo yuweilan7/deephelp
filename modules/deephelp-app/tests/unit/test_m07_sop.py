@@ -12,19 +12,12 @@ from deephelp_app.application.sop_config import SOPDefinition, load_sops
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    EntityConflict,
-    ErrorCode,
-    ErrorDetail,
-    IntentCode,
-    ModelToolCall,
-    QuestionStatus,
-    SOPResult,
-    SOPStatus,
-    ToolInvocationEnvelope,
-    ToolResult,
-    ToolStatus,
-)
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail, QuestionStatus
+from deephelp_app.domain.models.entities import EntityConflict
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ModelToolCall
+from deephelp_app.domain.models.sop import SOPResult, SOPStatus
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolResult, ToolStatus
 from deephelp_tools.demo.mcp_server import MockBackend
 from deephelp_tools.demo.tool_config import MockConfig
 from deephelp_tools.learning.sop_replay import ReplayModel

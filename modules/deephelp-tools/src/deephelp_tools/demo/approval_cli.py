@@ -12,7 +12,7 @@ from deephelp_app.application.sop_governance import RegistryStore
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ApprovalCommand, ResumeCommand
+from deephelp_app.domain.models.approval import ApprovalCommand, ResumeCommand
 from deephelp_tools.demo.scenarios import proposal_registry
 
 

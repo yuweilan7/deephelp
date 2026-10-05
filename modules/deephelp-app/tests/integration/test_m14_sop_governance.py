@@ -11,16 +11,12 @@ from deephelp_app.application.sop_governance import RegistryStore, SOPRegistry, 
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    EntityName,
-    ErrorCode,
-    IntentCode,
-    ModelToolCall,
-    NextAction,
-    SOPResult,
-    SOPStatus,
-    VersionManifest,
-)
+from deephelp_app.domain.models.common import ErrorCode, NextAction
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ModelToolCall
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.sop import SOPResult, SOPStatus
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.evaluation.sop_acceptance import proposal_registry, scenario_config, scenarios
 from deephelp_tools.learning.sop_replay import ReplayModel

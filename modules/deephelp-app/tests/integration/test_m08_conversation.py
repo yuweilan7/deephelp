@@ -9,11 +9,12 @@ import pytest
 
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
-from deephelp_app.application.conversation import STAGES
+from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import ErrorCode, IntentCode, VerifiedIdentity
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.evaluation.samples import load_corpus
 from deephelp_tools.learning.mvp_replay import ReplayAssembly
 

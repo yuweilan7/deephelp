@@ -21,13 +21,9 @@ from deephelp_app.application.intent import IntentService
 from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    Decision,
-    DenseResult,
-    FallbackResult,
-    FastTextPrediction,
-    IntentCode,
-)
+from deephelp_app.domain.models.intent_decisions import Decision, FallbackResult, FastTextPrediction
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import DenseResult
 from deephelp_tools.evaluation.fasttext_cli import bounded_train
 from deephelp_tools.evaluation.fasttext_training import DATA, TrainingConfig, audit, calibrate
 from deephelp_tools.learning.event_replay import envelope

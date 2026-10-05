@@ -17,7 +17,7 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
 
 
 async def run(args: argparse.Namespace) -> None:

@@ -6,9 +6,10 @@ import pytest
 
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.application.cascade import CascadePolicy
-from deephelp_app.application.conversation import STAGES
+from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import IntentCode, Outcome, QuestionStatus
+from deephelp_app.domain.models.common import Outcome, QuestionStatus
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.learning.cases_fake import MemoryCaseRepository
 from deephelp_tools.learning.event_replay import ReplayJudge, envelope
 from deephelp_tools.learning.mvp_replay import ReplayAssembly
@@ -191,7 +192,7 @@ async def test_coupon_supplement_cannot_pollute_an_open_discount_question():
 
 async def test_unclassified_predecessor_event_can_reach_memory_cascade():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.application.event_cluster import PersistentEventAggregation
+        from deephelp_app.application.event_cluster.persistence import PersistentEventAggregation
 
         seeded = await PersistentEventAggregation(repo, conversation.events).process(
             envelope("SKU-C9 订单000053 免息活动名称查询", "m12"), ExecutionBudget.start(20, 40, 0)
@@ -207,7 +208,7 @@ async def test_unclassified_predecessor_event_can_reach_memory_cascade():
 
 async def test_rejected_decision_does_not_dispatch_tools_but_saves_terminal():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.domain.models import Decision, IntentDecision
+        from deephelp_app.domain.models.intent_decisions import Decision, IntentDecision
 
         async def reject(*args, **kwargs):
             return IntentDecision(decision=Decision.REJECT, reason_code="synthetic_safety_reject")
@@ -222,7 +223,8 @@ async def test_rejected_decision_does_not_dispatch_tools_but_saves_terminal():
 
 async def test_handoff_with_registered_code_still_never_executes_sop():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.domain.models import Decision, IntentCandidate, IntentDecision, ScoreKind
+        from deephelp_app.domain.models.intent_decisions import Decision, IntentDecision
+        from deephelp_app.domain.models.retrieval import IntentCandidate, ScoreKind
 
         async def handoff(*args, **kwargs):
             return IntentDecision(
@@ -244,7 +246,8 @@ async def test_handoff_with_registered_code_still_never_executes_sop():
 
 async def test_classifier_ambiguity_is_saved_pending_and_excluded_from_auto_candidates():
     async with service() as (conversation, repo, judge, assembly, trace):
-        from deephelp_app.domain.models import Decision, IntentCandidate, IntentDecision, ScoreKind
+        from deephelp_app.domain.models.intent_decisions import Decision, IntentDecision
+        from deephelp_app.domain.models.retrieval import IntentCandidate, ScoreKind
 
         async def clarify(*args, **kwargs):
             return IntentDecision(
@@ -291,7 +294,7 @@ async def test_cancellation_after_dispatch_preserves_call_id_and_terminal():
 async def test_preparation_service_failure_saves_error_without_running_business_nodes():
     async with service() as (conversation, repo, judge, assembly, trace):
         from deephelp_app.domain.errors import AppError
-        from deephelp_app.domain.models import ErrorCode
+        from deephelp_app.domain.models.common import ErrorCode
 
         class FailedMemory:
             async def load(self, *args, **kwargs):

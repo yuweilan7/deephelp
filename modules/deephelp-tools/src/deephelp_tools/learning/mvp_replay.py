@@ -9,30 +9,28 @@ import httpx
 from deephelp_app.adapters.ledger import MemoryLedger
 from deephelp_app.adapters.trace import TraceSink
 from deephelp_app.application.cascade import CascadePolicy
-from deephelp_app.application.conversation import (
-    Conversation,
+from deephelp_app.application.conversation.orchestrator import Conversation
+from deephelp_app.application.conversation.tracking import (
     CountedModel,
     CountedRetriever,
     TrackedTools,
 )
-from deephelp_app.application.event_cluster import EventAggregationService
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
 from deephelp_app.application.intent import IntentService
 from deephelp_app.application.memory import MemoryService
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.text_entity import TextEntityProcessor, TextPolicy, clean_text
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.model_io import (
     ChatRequest,
     ChatResult,
-    DenseHit,
-    DenseResult,
-    DenseScope,
     EmbeddingResult,
     EmbeddingSignature,
     ModelToolCall,
     ModelUsage,
-    VersionManifest,
 )
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope
 from deephelp_app.domain.ports import ClusterJudgePort
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.tool_config import MockConfig

@@ -24,11 +24,9 @@ from deephelp_app.adapters.retrieval_protocol import (
 from deephelp_app.adapters.telemetry import observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
-from deephelp_app.domain.models import (
-    DenseResult,
-    DenseScope,
-    ErrorCode,
-    ErrorDetail,
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope
+from deephelp_app.domain.models.retrieval_protocol import (
     RetrievalContext,
     RetrievalDelegation,
     RetrievalQuery,

@@ -15,20 +15,19 @@ from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.checkpoints import migrate_m15
 from deephelp_app.adapters.ledger import Receipt
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    ApprovalCommand,
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord
+from deephelp_app.domain.models.common import (
     ApprovalStatus,
     ErrorCode,
     NextAction,
-    OperationRecord,
     OperationStatus,
     Outcome,
-    Question,
     QuestionStatus,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import Question
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 TERMINAL = {OperationStatus.SUCCEEDED, OperationStatus.FAILED, OperationStatus.CANCELLED}
 

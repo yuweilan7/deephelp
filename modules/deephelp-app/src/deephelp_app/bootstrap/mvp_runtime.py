@@ -26,14 +26,15 @@ from deephelp_app.api.app import create_app
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.cascade import CascadePolicy, StructuredFallback
-from deephelp_app.application.conversation import (
-    Conversation,
+from deephelp_app.application.conversation.orchestrator import Conversation
+from deephelp_app.application.conversation.tracking import (
     CountedModel,
     CountedRetriever,
     TrackedTools,
 )
 from deephelp_app.application.dense import DenseRetriever, atomic_json, load_json
-from deephelp_app.application.event_cluster import EventAggregationService, StructuredClusterJudge
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
+from deephelp_app.application.event_cluster.judge import StructuredClusterJudge
 from deephelp_app.application.hybrid import HybridRetriever
 from deephelp_app.application.intent import IntentService
 from deephelp_app.application.memory import MemoryService, RedisMemory
@@ -44,15 +45,9 @@ from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    DenseResult,
-    DenseScope,
-    ErrorCode,
-    HybridScope,
-    ReleaseManifest,
-    VerifiedIdentity,
-    VersionManifest,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.release import ReleaseManifest, VersionManifest
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope, HybridScope
 from deephelp_app.resources import asset_path
 
 
@@ -383,7 +378,7 @@ class LiveAssembly:
             assembly = self
 
             if self.retrieval_mcp:
-                from deephelp_app.application.conversation import current_run
+                from deephelp_app.application.conversation.tracking import current_run
 
                 def record_retrieval(record: dict[str, Any]) -> None:
                     if stats := current_run.get():

@@ -12,16 +12,11 @@ from deephelp_app.application.reply import ReplyComposer, apply_wording, fact_re
 from deephelp_app.bootstrap.mvp_runtime import validate_trace_path
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatResult,
-    DebugSnapshot,
-    EvidenceRef,
-    Fact,
-    ModelUsage,
-    Money,
-    SOPResult,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import Money, VerifiedIdentity
+from deephelp_app.domain.models.evidence import EvidenceRef, Fact
+from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
+from deephelp_app.domain.models.responses import DebugSnapshot
+from deephelp_app.domain.models.sop import SOPResult
 
 pytestmark = pytest.mark.unit
 

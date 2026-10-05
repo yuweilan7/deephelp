@@ -6,20 +6,12 @@ import re
 from deephelp_app.adapters.telemetry import observed
 from deephelp_app.application.cascade import Cascade, CascadePolicy, StructuredFallback
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ChatMessage,
-    ChatRequest,
-    Decision,
-    DenseResult,
-    DenseScope,
-    EvidenceRef,
-    EvidenceSource,
-    IntentCandidate,
-    IntentCode,
-    IntentDecision,
-    ScoreKind,
-    TextEntityResult,
-)
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource
+from deephelp_app.domain.models.intent_decisions import Decision, IntentDecision
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope, IntentCandidate, ScoreKind
+from deephelp_app.domain.models.text import TextEntityResult
 from deephelp_app.domain.ports import ChatPort, DenseRetrieverPort, FallbackPort
 
 INTENT_SCHEMA: dict[str, object] = {
@@ -83,7 +75,8 @@ class IntentService:
         codes = list(dict.fromkeys(m.candidate_code for m in text.rule_matches))
         if context_intent is not None:
             from deephelp_app.domain.errors import AppError
-            from deephelp_app.domain.models import DemandType, ErrorCode
+            from deephelp_app.domain.models.common import ErrorCode
+            from deephelp_app.domain.models.text import DemandType
 
             if (codes and codes != [context_intent]) or text.demand_type == DemandType.NEW_TOPIC:
                 raise AppError(
