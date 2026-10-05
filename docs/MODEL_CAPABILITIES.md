@@ -7,7 +7,7 @@
 | qwen3.8-flash / chat/completions | 支持 | json_schema + 本地 Draft202012 校验；思考模式亦实测 | 原生 function 字段 | 不使用 | 推理可按配置/请求开启；工具字段完整时兼容 finish_reason=stop |
 | qwen3.7-text-embedding-flash / embeddings | 不使用 | 不使用 | 不使用 | 1024 维有序列表 | 对此模型显式允许全零 index 时按返回位置映射；正常完整索引则排序；其他坏索引拒绝 |
 | qwen3.8-max / chat/completions | M04及M18切换前实测通过 | M18严格schema/0007保真实测 | M18指定工具及参数实测通过 | 未验 | 通用对话与事件判断；enable_thinking=false，业务结果见M18交接 |
-| qwen3.7-flash / chat/completions | 2026-10-05真实返回指定内容 | 严格json_schema及0007保真 | 指定工具与0007参数通过 | 不使用 | 新通用/归属判断配置；业务切换证据见下文及M03交接 |
+| qwen3.7-flash / chat/completions | 2026-10-05真实返回指定内容 | 严格json_schema及0007保真 | 指定工具与0007参数通过 | 不使用 | 当次通用/归属判断配置；历史业务切换证据见下文及M03交接 |
 
 官方能力说明：[结构化输出](https://help.aliyun.com/zh/model-studio/qwen-structured-output)、[Embedding 兼容接口](https://help.aliyun.com/zh/model-studio/embedding-interfaces-compatible-with-openai)、[模型信息](https://help.aliyun.com/zh/model-studio/qwen3-7-text-embedding-flash)。文档宣称支持不代替交接中的真实检查。
 
@@ -30,7 +30,7 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 | ChatRequest默认输出2048 token，无本地4096上限；业务可显式覆盖 | 实际接受8192输出参数；最终长度受模型服务能力和任务预算影响。finish_reason=length仍拒收，不把截断当完整答案 |
 | 移除Chat消息32条、工具声明16条的固定上限；请求/响应默认1MiB/16MiB，配置无固定上限 | 41条消息、76034字节正文实测；这不是模型最大上下文证明。可按任务调整字节限制，超限显式报错，未增加静默摘要/裁剪 |
 | ProviderConfig和ChatRequest支持enable_thinking及thinking_budget | 请求覆盖配置；默认保留非思考模式兼容。已实测qwen3.8-flash思考+严格schema及用量；发送前将思考额度纳入原累计预算，只记录推理长度，不保存推理正文 |
-| 当前通用对话与归属判断配置为qwen3.7-flash；Embedding保持qwen3.7-text-embedding-flash | 用户2026-10-05要求切换；chat/schema/tool真实内容已验。原qwen3.8-max证据为历史，不外推Flash业务质量；本次结果见M03交接 |
+| 通用Chat默认模板固定qwen3.8-flash；独立归属/强判模板仍qwen3.7-flash | 用户2026-10-05长期选择；本次三项接口与14消息内容证据见M03交接，当前安装与完整绑定只写PROJECT_STATE。历史配置不改写，不自动切换模型 |
 | Embedding只做NFC/两端strip、相同文本+signature缓存和批次去重 | 没有摘要压缩或语义近似复用；原位置恢复、结果复制和缓存隔离已有测试 |
 
 当前协议验收不证明模型、输入/输出限制或推理模式适合全部业务任务；业务质量仍须用目标样本验证。
@@ -41,7 +41,7 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 
 | 用途 | 候选代码 |
 |---|---|
-| 当前通用模型 | qwen3.7-flash；用户2026-10-05授权切换，已通过chat/schema/tool内容检查 |
+| 默认通用模板 | qwen3.8-flash；用户2026-10-05明确长期选择，免费额度耗尽可使用余额；实际发布见PROJECT_STATE |
 | 通用备选 | qwen3.8-flash、qwen3.7-flash、qwen3.7-flash-2026-07-15、qwen3.8-27b、kimi-k3、deepseek-v4-flash-0731、deepseek-v4.1-flash、glm-5.3 |
 | 质量候选 | qwen3.8-max、qwen3.8-max-0902、deepseek-v4-pro-0813、qwen3.8-2.4t-a95b |
 | Embedding | qwen3.7-text-embedding-flash、qwen3.7-text-embedding |
@@ -54,10 +54,14 @@ Embedding 文本只做 NFC 和两端 strip；重复输入按原位置恢复。�
 
 2026-10-03按用户要求补验原Embedding及Rerank：两条Embedding均为1024维有限向量；`qwen3.7-text-rerank`真实接口对三条固定合成候选返回完整index/有限relevance_score，券无法抵扣查询首位是券有效期/使用条件候选。只证明该排序路径可调用与内容相符，不代表主链已启用、最终分类更准或企业效果。原始报告留`.local/model-interface-check/report.json`。请求结构参考[官方Rerank API](https://help.aliyun.com/zh/model-studio/text-rerank-api)的该模型专用input/parameters格式，不能与qwen3-rerank的扁平格式混用。
 
-## qwen3.7-flash 当前发布
+## qwen3.7-flash 历史切换
 
 2026-10-05用户要求切换通用Chat及事件归属模型，两份公开模板均改为qwen3.7-flash。三项实际接口、11会话14消息正式内容以及云端PG订单/原生Langfuse/零调用重放通过；[M03交接](../handoffs/M03.md#qwen37-flash切换2026-10-05)记录首次拒识退化、修复与证据边界。[官方模型说明](https://help.aliyun.com/zh/model-studio/qwen3-7-flash)列出结构化输出和Function Calling，但本项目采用本次内容证据认定资格。
 
 原默认提示在Flash初验中将物流误判成优惠。当前完整发布显式绑定[不可变Prompt模板](../modules/deephelp-app/intent-fallback.example.json)，先判断当前诉求是否属于支持范围，再参考召回样例；不把最相似样例当用户诉求。模板沿用M29的PromptArtifact和既有请求/schema契约，完整发布用release_cli的--prompt-artifact绑定；prepare和validate须传同一文件，不能只更换模型模板并套用旧PASS。未安装自动模型路由，未改推理默认值或缩减上下文/输出。
 
 当前Embedding签名及Rerank策略保持。原M31开启版和历史审批继续绑定其原完整发布；它们未参加这次Flash切换，不得将旧清单改写为Flash。额度记录仍为本机旧快照，未查询当前账单或承诺剩余免费额度。
+
+## qwen3.8-flash 长期默认
+
+用户2026-10-05明确选择通用Chat固定qwen3.8-flash；默认模板与AGENTS一致，强判/Embedding/Rerank仍各自显式配置。当前版本的普通chat、严格schema及原生function调用分别实测；同一冻结11会话14消息内容及9项工具参数全部通过。结果只证明本次固定样本与配置，不将接口支持或一次延迟比较外推到所有业务；[M03交接](../handoffs/M03.md#qwen38-flash长期默认2026-10-05)保留证据范围，当前发布事实见PROJECT_STATE。

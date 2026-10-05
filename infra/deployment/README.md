@@ -144,3 +144,11 @@ sudo bash /opt/deephelp-app/bin/control.sh health
 ```
 
 重启/旧新恢复只读取已有会话和原receipt核对，不重跑大模型。比较新订单版本、原receipt整体hash、审批/审计/唯一效果/调用及累计预算；平台诊断不可用不能改变业务结果或触发重放。详细通过范围与失败修复见M35交接。
+
+## 仅切换通用Chat模型
+
+运行源码/静态字节未变时复用匹配安装，但新provider、assets描述、精确内容报告及完整清单必须重新绑定，不能改旧清单。发布CLI的--manifest必须指向DEEPHELP_STATE_ROOT内受控文件；将已验证原字节清单用sudo install -o ubuntu -g ubuntu -m 600复制到state，再以sudo -u ubuntu -E登记。模型配置传给应用和Retrieval，catalog同时指向新候选配置/报告，原历史映射继续保留。
+
+切换或恢复前先control.sh stop，让运行进程正常释放预算锁，再保存或安装对应runtime.env/catalog，source新环境并按实际revision执行CAS activate。control.sh start返回不等于端口已就绪；在本次设置的有界等待内检查/health实际status=ok，超时保存服务诊断并恢复匹配配置及完整发布。不能把正常运行的锁当作过期锁删除，也不覆盖数据库或累计预算。
+
+本次模型切换恢复闭包recovery/qwen38-flash-default-v1保存原M35 Max的runtime.env/learning-catalog.json/pointer.json，以及新new-runtime.env/new-learning-catalog.json/recovery.json和前后域核对。两者都复用m35-vue-v3及同一事实库；具体已验结果见M03交接，当前发布见PROJECT_STATE。

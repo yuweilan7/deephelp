@@ -629,7 +629,7 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 
 ## 模型配置与完整发布
 
-通用与归属判断示例模板仍为qwen3.7-flash；早期切换证据见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)，实际个人安装采用完整清单绑定的配置，当前事实以[STATE](../../docs/PROJECT_STATE.md)为准。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
+通用Chat示例模板按用户长期选择固定为qwen3.8-flash，独立归属/强判模板仍为qwen3.7-flash；早期切换证据见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)，实际个人安装采用完整清单绑定的配置，当前事实以[STATE](../../docs/PROJECT_STATE.md)为准。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
 
 使用release_cli validate和prepare时均追加同一--prompt-artifact路径；validate的11会话14消息通过后才prepare/register/CAS-switch。云端应用与Retrieval进程需采用同一显式providers，启动后查实际内容、历史重放与同run模型记录。历史版本、旧审批、UNKNOWN和已绑定工件原样保留；当前状态及恢复见[STATE](../../docs/PROJECT_STATE.md)和[部署入口](../../infra/deployment/README.md)。
 
