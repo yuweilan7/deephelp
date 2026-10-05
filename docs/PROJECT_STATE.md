@@ -45,6 +45,10 @@
 | M36 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M36.md) | 原run确定性解释、同来源机制/观测与课程联动；八场景浏览器、14/14精确发布、正式安装/重启/M35→M36恢复通过；平台缺失/usage/CPU/排队按实未知，浏览0模型 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
+## 最终学习收尾规划
+
+2026-10-05用户确认只编写并推送[M37–M39规格与计划](ROADMAP.md#最终学习收尾m37m39待实施)。三项均为PLANNED，尚未实施：M37本地只要求核心原理教学可运行、云端保留完整教学，不要求环境完全相同；M38以Python/Agent通俗详细中文注释和局部职责收口为主，排除前端/数据JSON注释；M39只清理不必要文件。M37先核验现有M33/M36成果，M38/M39等待各自前置实际交付。本次未改源码、云安装、模型、业务数据或运行状态，也未执行清理。
+
 ## 现代路线实施与规划
 
 2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成端口、同链对照、MCP/会话/学习页与精确完整发布。规格定义目标，实际结果与限制见下表及各handoff。

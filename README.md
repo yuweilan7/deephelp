@@ -10,7 +10,7 @@
 
 学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行策略/SOP/Prompt在业务包resources；合成事实、冻结集和学习数据的唯一来源见[datasets职责](datasets/README.md)，工具包安装时包含对应资源。业务启动不导入这些工具或读取冻结评测集。
 
-2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36待实施)已完成M34个人免登录、M32职责整理/实际清理和M33完整[14章Java课程](docs/learning/README.md)。先运行离线课程，再沿[一条消息的调用路径](docs/learning/source-navigation.md)进入具体子系统；Vue前端和运行解释仍待M35/M36实施。当前默认模型已另行切换qwen3.7-flash并通过真实内容验收，见[M03](handoffs/M03.md#qwen37-flash切换2026-10-05)。
+2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36)已完成个人免登录、职责整理/清理、[14章Java课程](docs/learning/README.md)、Vue工作台和运行解释。先运行离线课程，再沿[一条消息的调用路径](docs/learning/source-navigation.md)进入具体子系统；当前云安装与通用Chat固定qwen3.8-flash的实际证据见[PROJECT_STATE](docs/PROJECT_STATE.md)。后续[M37–M39收尾规划](docs/ROADMAP.md#最终学习收尾m37m39待实施)分别面向本地核心教学/云端完整体验、Python与Agent的详细中文注释、最终不必要文件清理；仅完成规划，尚未实施，不要求本机复制云端全栈。
 
 | 需要什么 | 入口 |
 |---|---|
@@ -18,7 +18,7 @@
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
 | 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
-| Java课程与后续前端 | [14章课程与离线实验](docs/learning/README.md)已完成；[后续M35/M36](docs/ROADMAP.md#可读性与学习体验m32m36待实施)尚未实施 |
+| Java课程与学习工作台 | [14章课程与离线实验](docs/learning/README.md)、Vue工作台和运行解释已交付；[M37–M39](docs/ROADMAP.md#最终学习收尾m37m39待实施)为待实施收尾计划 |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |
