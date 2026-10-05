@@ -1,6 +1,6 @@
 # M40｜有界、可追溯的多Agent业务协作
 
-**状态：** `IMPLEMENTING / FEATURE_2_VERIFIED`；订单/券有界协作与持久中断已实现并验收，第三项正式交付继续；实际证据见[交接](../../handoffs/M40.md)。
+**状态：** `IMPLEMENTED_LIVE_VERIFIED / ALL_FEATURES_DELIVERED`；三项已完成，订单/券有界协作、持久中断、固定内容对照与精确云安装/恢复已验；实际证据见[交接](../../handoffs/M40.md)。
 **来源：** PDF文件页67–68的Agent/工具与多Agent协同方向；用户明确要求补齐多Agent。具体委托协议、角色与恢复规则是本项目增量设计，不宣称PDF已提供这些实现。
 **基线：** M39已交付源码/课程；复用[M07](M07_SOP_MINIMAL.md)、[M14](M14_SOP_GOVERNANCE.md)、[M15](M15_DURABILITY_APPROVAL.md)、[M20](M20_BUSINESS_SOURCE.md)、[M26](M26_OFFICIAL_CHECKPOINTS.md)、[M28](M28_NATIVE_OBSERVABILITY.md)、[M36](M36_EXPLAINABLE_WORKBENCH.md)现有能力。M41 Skills不是启动前置。
 

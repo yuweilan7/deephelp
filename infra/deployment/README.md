@@ -162,3 +162,16 @@ M36沿用三包、同源built和原个人身份/Flash配置。源码/静态字�
 两次切换均重新source runtime.env，以原ubuntu用户执行**目标安装**的deephelp_app.bootstrap.commands.release_cli status，读现场revision；再activate该闭包对应的完整hash及--expected-revision，使用原state/budget.json，最后switch对应安装并有界等实际health。M35目标为m35-vue-v3，M36目标取PROJECT_STATE；不能只切symlink或沿用旧revision。登记新manifest须先原字节复制到state目录以满足路径守卫。
 
 重启与切换使用同一现行PG，只读已有会话/原receipt、审批原计划/审计/唯一效果/下游调用、官方checkpoint并核对表内容hash。最终核对摘要在受保护final-recovery.json；不覆盖累计预算、恢复旧数据库或为补观测重发业务。Langfuse缺失应保留PG事实和unknown，固定动作/取消产生的无终态记录继续按原归属保护。清理仅针对本次已关闭进程和已提取且无消费者的传输副本，安装、清单、配置、凭据与恢复资料保持。
+
+
+## M40 专业Agent协作安装与恢复
+
+M40沿原三包/同源built、PG、个人身份、原providers与两HTTP MCP部署；角色策略JSON纳入原完整发布字节，默认single，用户明确选择collaboration才执行。当前安装/精确hash/revision见PROJECT_STATE，实际内容、任务/同run观测与恢复限制见[M40交接](../../handoffs/M40.md#特性3原业务对照精确安装与恢复)。
+
+恢复闭包`/srv/deephelp-modern/recovery/m40-collaboration-v1`含原/新runtime.env、learning-catalog.json/new-learning-catalog.json、原artifact-map.json/pointer.json、recovery.json及验证过的bundle。当前路径映射、检索签名与providers未变；manifest保护最终内容报告和原采集器FAIL，不裁剪/覆盖这些文件。云budget是原累计writer，不能用本机副本替换。
+
+回退先control.sh stop结束四单元和其他写者，恢复原runtime.env/learning-catalog.json/pointer.json；恢复M40改用new-runtime.env/new-learning-catalog.json和原pointer。逐文件sudo install -o ubuntu -g ubuntu -m 600到原config/state位置，重新source环境。用**目标安装**的deephelp_app.bootstrap.commands.release_cli status现场读取revision，再activate恢复闭包记录的完整hash及--expected-revision、原state/budget.json，最后switch.sh对应安装并有界health。旧目标m36-explainable-v2，新目标m40-collaboration-v1；两个精确hash取recovery.json，不沿用历史revision。
+
+M36严格类型不识别M40新字段；旧版只读其原有会话，不继续M40消息/协作。新增任务/回执保留PG，返回M40后读取同一run并核对facts/evidence/call/版本。恢复不回滚数据库或重放业务，UNKNOWN/审批不接管；只读Milvus发布守卫仍计原attempts，模型用量/费用/未知预留不增加。本次33张表仅发布active/events预期变化、旧新receipt与同run观测已验，不证明跨不兼容schema的回退或任意RUNNING重领。
+
+安装器通过sudo运行时显式提供已验证uv的PATH与UV_PYTHON_INSTALL_DIR；本环境uv在原ubuntu的.local/bin，Python3.14.7在其uv目录。首次必须确认目标不存在，不覆盖已有版本；失败先核对实际阶段再续，不把安装成功当内容门禁。

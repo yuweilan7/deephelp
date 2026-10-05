@@ -46,30 +46,30 @@
 | M37 | IMPLEMENTED_OFFLINE_AND_CLOUD_READ_VERIFIED；全部两项完成；[交接](../handoffs/M37.md) | 干净目录七个核心实验/七个审批反例、75项相关回归通过；正式包仍要求前端；当前入口/云原记录及可选配置边界已核验，新增模型0次，云安装保持M36；系统临时核验环境当时因自动审批拒绝暂留，已由M39核对后实际删除；原历史证据保持 |
 | M38 | IMPLEMENTED_OFFLINE_VERIFIED；全部两项实现/验收完成；[交接](../handoffs/M38.md) | 主链及支撑路径中文契约/时序、全范围走查与现有导航完成；连接配置/SSH容量职责收口，旧诊断端口及评测回放兼容问题修复；最终1260 passed/2 skipped、infra 8项、三包内容与独立安装11课程通过；模型0次，新源码不等同于仍保留的M36云安装 |
 | M39 | IMPLEMENTED_OFFLINE_VERIFIED；两项清理与保护核对完成；[交接](../handoffs/M39.md) | 删除完成M18/M39 PLAN及13487过程/临时文件（340929947字节）、2740空目录；1245保留hash不变，断连1项复验通过；模型0次，云未知用途对象保留 |
-| M40 | IMPLEMENTING；前两项已验收；[交接](../handoffs/M40.md) | 默认single，显式订单/券专业协作与跨源门槛；原PG子任务短事务/CAS/部分完成/取消/只读恢复；正常/矛盾真实内容通过；精确发布及新云安装在第三项，云仍M36 |
+| M40 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M40.md) | 默认single，显式订单/券角色/两源门槛；PG任务短事务/CAS/取消/只读回收；12条原主链内容对照/正式两HTTP MCP事实、新精确安装与M36→M40恢复通过；固定样本未证明质量收益，协作增加调用/等待 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 后续规格与实施边界
 
-2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40正在顺序实施，首项证据见上表；M41–M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`，未新增对应运行能力、验收或部署。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不改已有验收状态，也不启动远期能力或调度。
+2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部三项已交付，证据见上表；M41–M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`，未新增对应运行能力、验收或部署。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不改已有验收状态，也不启动远期能力或调度。
 
 ## 当前运行与验收边界
 
-以下云事实沿用M36/M37最终交接的观察，本次M38/M39和文档整理未部署或重新读取云端，不表示今日复测。main源码已包含M38中文讲解/职责收口和M39清理；它与仍保留的云安装字节分别理解。
+以下云事实为本次M40实际安装、正式PG/HTTP内容及恢复后的只读观察。M40精确安装来源为干净源码提交9c8c62a，后续文档提交不改安装字节；M38/M39成果已包含在新安装中。
 
 | 当前运行项 | 已记录值/边界 |
 |---|---|
-| 正式云安装 | `m36-explainable-v2`；运行根`/srv/deephelp-modern`，活动业务事实库`deephelp_m25_m30_live`（PG18.6） |
+| 正式云安装 | `m40-collaboration-v1`；运行根`/srv/deephelp-modern`，活动业务事实库`deephelp_m25_m30_live`（PG18.6） |
 | 业务/观测 | app、Business/Retrieval MCP、合成权益四服务；Langfuse原生SDK/官方图callback，直接指标→Prometheus/Grafana |
 | 模型/检索 | 通用Chat `qwen3.8-flash`，归属/强判 `qwen3.7-flash`，原1024维Embedding签名/集合；Rerank主链已接、正式默认关闭 |
-| 当前channel | `m30-personal` revision26；active为M36 Flash版，previous为M35 Flash版 |
-| 浏览器教学 | 个人免登录、持久历史/原证据、13段/确定性解释/同run观测；浏览/历史/说明不调用模型 |
+| 当前channel | `m30-personal` revision29；active为M40协作版，previous为M36 Flash版 |
+| 浏览器教学 | 个人免登录、原事实/13段/解释/同run观测、显式协作任务/回执与PG进度；浏览/历史/说明不调用模型 |
 | 仍未配置/未实现 | 当前catalog的Langfuse历史映射未配置；个人主体不接管synthetic审批；企业支付、任意RUNNING重领未实现 |
 | 旧路线 | MySQL/Collector/Tempo及旧指标/应用已停用且取消自启；原数据/冷备/配置/身份、受引用资产和旧安装保留 |
 
-当前完整发布active：`a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`；previous：`93616a95450c03e22c40d95c3db6c79070196d6b69f95e2328ee04b3278ec0b4`。当前安装runtime：`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`，tooling：`51aa2166fa716a48fd81ea61d04d336fd39a017caa56364b68475b9badb03e13`。这些是云安装绑定，不能套到新源码；实际切换必须恢复匹配安装/配置/资产并遵循完整发布守卫。
+当前完整发布active：`2a378adfc66959bb98a9d121f7b2a7b7eeb0a0725f9675b83ceffa725613ec1c`；previous：`a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`。当前安装runtime：`26bb31653702bc45c5b48f731f68124343de241ce1bf7629a49f8ebf106465b0`，tooling：`a1d632bff74915dfbb3cabe599155b0b308c631337e68ac407f46c3de4d2bb8a`。精确发布同时绑定最终PASS和保留的原采集FAIL；只读检查器修正不重新请求模型。恢复闭包`recovery/m40-collaboration-v1`及目标安装CLI/CAS见部署说明。M36严格DTO只支持旧记录；M40新字段/协作记录必须回到M40读取，不支持旧版继续新会话。
 
-独立`m31-rerank-opt-in` revision1开启版为`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；仍属旧安装，不能直接用于M35/M36。M31同候选dev/test与主链真实内容通过，但test总体持平且一条退化，不宣称统一收益。M36最后14/14内容、八场景、安装/重启/兼容恢复通过；M37原PG事实181.23/13.45、资料version3、原13段与Langfuse85节点/2 generation/1082 tokens可读，新增模型0次。完整范围见各handoff，原观测里的调用不计为本轮新增调用。
+独立`m31-rerank-opt-in` revision1开启版为`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；仍属旧安装，不能直接用于M35/M36。M31同候选dev/test与主链真实内容通过，但test总体持平且一条退化，不宣称统一收益。M36历史14/14内容、八场景、安装/重启通过；M40新增六类两模式12条内容对照与正式两源PG/HTTP内容、两任务持久读取、150节点/6 generation同run观测及旧新恢复通过，恢复模型0；M37原PG事实181.23/13.45、资料version3、原13段与Langfuse85节点/2 generation/1082 tokens可读，新增模型0次。完整范围见各handoff，原观测里的调用不计为本轮新增调用。
 
 ## 当前限制与维护结果
 
