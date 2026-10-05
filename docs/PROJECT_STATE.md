@@ -48,72 +48,28 @@
 | M39 | IMPLEMENTED_OFFLINE_VERIFIED；两项清理与保护核对完成；[交接](../handoffs/M39.md) | 删除完成M18/M39 PLAN及13487过程/临时文件（340929947字节）、2740空目录；1245保留hash不变，断连1项复验通过；模型0次，云未知用途对象保留 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
-## 最终学习收尾规划
-
-2026-10-05按“完成M37的所有内容”完成[收尾路线](ROADMAP.md#最终学习收尾m37m39)中的M37两项：新克隆安装不再要求先构建前端，本地核心不依赖旧状态/云凭据，正式包保留前端守卫；根/应用/工具包README、LOCAL_SETUP与课程导航统一离线course、基础serve、完整workbench和历史恢复。当前只读观察确认云`m36-explainable-v2`及`m30-personal` revision26/active `a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`保持，runtime仍为M36的`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`；四服务active，配置通用Chat为qwen3.8-flash、原1024维Embedding与关闭Rerank。原PG记录实付181.23/优惠13.45、资料version3、同一不可变Business证据及13段/解释可读；原run的Langfuse available/85节点、去重GENERATION2/1082 tokens可读。评测catalog/完整发布/实际图定义可读，平台历史映射仍未配置、个人主体仍不能创建synthetic审批。页面/历史读取新增模型0次，云累计预算保持；复用适用M36完整场景/安装/恢复证据，本轮未部署、发新消息、执行重投/审批或重跑模型质量。M38前置已满足；用户随后明确启动其全部内容，两项实现/离线验收现已完成，结果见本次表格。本次没有更新云安装；用户随后启动M39全部内容，两项清理现已完成，结果见本次表格和交接。
-
-## 现代路线实施与规划
-
-2026-10-04按用户明确要求新增[M25–M31规格/顺序入口](ROADMAP.md#现代技术路线m25m31规划)及每M一份首特性PLAN。选型为全部应用关系数据PostgreSQL、官方AsyncPostgresSaver、Langfuse原生SDK/实际图callback；对象存储选官方支持的SeaweedFS单机自托管，不购COS/RDS；保留基础指标，最后退役旧MySQL/独立Collector/Tempo。M29为可选Prompt/评测学习扩展；独立M31已完成端口、同链对照、MCP/会话/学习页与精确完整发布。规格定义目标，实际结果与限制见下表及各handoff。
-
-用户调整为备份旧路线、继续main演进：本地/远端`bak/mysql-otel`已创建并推送，均为`930958a2f21bab7377c30c74ca770771fa1004cf`，保存M00–M23源码/根锁、Linux CI修复、一键部署与恢复入口。main继续按AGENTS的feature→main流程；不建立modern分支/标签、不更改默认分支，原M24冻结模块撤下。M25–M30全部迁移模块已按特性交付：PG全部关系仓储、官方saver历史、Langfuse平台/原生观测、M29学习与发布扩展及M30正式单写切换/旧服务退役。M31全部三项亦已实施验证。Git备份保存代码，不代替数据库/受引用工件的实际备份恢复。
-
-2026-10-04用户明确调整实施范围：“完成Mxx”由同一会话、同一主写者从未完成项续做该M全部特性，逐项验收与分支交付后继续，全部完成后停止；同模块下一特性无需逐项另启。该条为范围规则调整的历史说明；随后M25完整实施按此规则交付，未启动M26/M31后续特性或改变调度配置。
-
 ## 当前运行与验收边界
 
-正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m36-explainable-v2`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
+以下云事实沿用M36/M37最终交接的观察，本次M38/M39和文档整理未部署或重新读取云端，不表示今日复测。main源码已包含M38中文讲解/职责收口和M39清理；它与仍保留的云安装字节分别理解。
 
-完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision26，active为M36/qwen3.8-flash版`a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`，previous为原M35/qwen3.8-flash版`93616a95450c03e22c40d95c3db6c79070196d6b69f95e2328ee04b3278ec0b4`。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；其代码字节仍属旧安装，切换须同时恢复匹配安装与应用/检索profile，不能将该清单直接用于M35。M31两版各通过当时的11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+| 当前运行项 | 已记录值/边界 |
+|---|---|
+| 正式云安装 | `m36-explainable-v2`；运行根`/srv/deephelp-modern`，活动业务事实库`deephelp_m25_m30_live`（PG18.6） |
+| 业务/观测 | app、Business/Retrieval MCP、合成权益四服务；Langfuse原生SDK/官方图callback，直接指标→Prometheus/Grafana |
+| 模型/检索 | 通用Chat `qwen3.8-flash`，归属/强判 `qwen3.7-flash`，原1024维Embedding签名/集合；Rerank主链已接、正式默认关闭 |
+| 当前channel | `m30-personal` revision26；active为M36 Flash版，previous为M35 Flash版 |
+| 浏览器教学 | 个人免登录、持久历史/原证据、13段/确定性解释/同run观测；浏览/历史/说明不调用模型 |
+| 仍未配置/未实现 | 当前catalog的Langfuse历史映射未配置；个人主体不接管synthetic审批；企业支付、任意RUNNING重领未实现 |
+| 旧路线 | MySQL/Collector/Tempo及旧指标/应用已停用且取消自启；原数据/冷备/配置/身份、受引用资产和旧安装保留 |
 
-2026-10-05按用户要求切换通用Chat与归属判断至qwen3.7-flash，当时复用原安装和不变的运行字节。三项真实接口、修复后的11会话14消息完整内容与云PG订单173.45/12.30、同run Langfuse实际Flash generation、历史/原receipt零调用及外身份拒绝均通过。初验物流被误判优惠，采用原M29不可变本地Prompt机制强化当前诉求与召回样例的范围边界，再验3个相邻样本及全部受影响内容通过。该发布qwen37-flash-default-v1已作为历史版本保留，当前active/previous见上段；原M31开启版及旧版本保持各自历史模型/资产绑定，未伪造改成Flash已验。恢复闭包已保留；证据见[模型切换交接](../handoffs/M03.md#qwen37-flash切换2026-10-05)。
+当前完整发布active：`a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`；previous：`93616a95450c03e22c40d95c3db6c79070196d6b69f95e2328ee04b3278ec0b4`。当前安装runtime：`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`，tooling：`51aa2166fa716a48fd81ea61d04d336fd39a017caa56364b68475b9badb03e13`。这些是云安装绑定，不能套到新源码；实际切换必须恢复匹配安装/配置/资产并遵循完整发布守卫。
 
-同日M34全部两项交付：原个人身份由显式JSON唯一匹配，工作台无需登录，刷新/重启仍读PG历史。新运行/前端字节与三包安装一致；精确11会话14消息内容证据由初验13/14和同配置交错会话4/4局部复验组成，最终14/14，两个原始报告均绑定新清单，不改写初验失败。真实浏览器创建订单、缺槽补充、事实/不可变证据与同run Langfuse、原消息零调用重投通过；维护CAS与外身份读/改/审批/恢复/观测守卫通过。实际m34→m31→m34兼容安装恢复仍保留订单新版本和原receipt；131原操作计划/状态整体hash、80合成效果/138调用不变，累计预算保留。固定个人身份没有旧审批记录，原合成审批继续由原synthetic owner读取；默认业务仍只读。该次M34交付未改模型/Prompt/Embedding/Rerank策略，不声称质量提升。随后M32/M33分别完成结构与课程离线交付，源码注释字节已变，当时云安装/不可变清单仍属M34；随后M35/M36正式更新，结果见后续段落。
+独立`m31-rerank-opt-in` revision1开启版为`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；仍属旧安装，不能直接用于M35/M36。M31同候选dev/test与主链真实内容通过，但test总体持平且一条退化，不宣称统一收益。M36最后14/14内容、八场景、安装/重启/兼容恢复通过；M37原PG事实181.23/13.45、资料version3、原13段与Langfuse85节点/2 generation/1082 tokens可读，新增模型0次。完整范围见各handoff，原观测里的调用不计为本轮新增调用。
 
-同日M35两项完成：唯一Vue前端源码/锁、八任务全部原能力迁移，旧巨型文件/legacy路由删除；个人云安装为m35-vue-v3，原身份和PG事实源保持。该次用户授权Chat改为qwen3.8-max；强判仍qwen3.7-flash，Embedding/签名/集合、检索资产、Prompt与默认关闭Rerank不变。该次精确provider/资产绑定为.local/m35/current，最终manifest-final.json/content-install-final.json为14/14 PASS，runtime为bc8b10544f1032a6282feb3e844a6cb9433074747175dd56fd72979d133fe757，tooling为d09eae180aa920f67e9ea73d44954c39c7401f1530d7a3946ba8f0f3223ecbef。实际缺槽补充与新消息返回181.23/13.45及活动关联，订单CAS版本3、原receipt重放0新增调用；同run平台usage与原执行/所选返回计数分列。重启及M35→M34→M35恢复保留新订单、三条原receipt整体hash、131操作/547审计/80效果/138调用整体hash及累计预算。该次个人catalog使用m30-personal和最终精确报告/资产；平台历史映射仍未配置、个人身份不接管synthetic审批练习。Flash无原生tool_calls及一次预算文件权限失败已保存必要诊断并恢复，未把失败报为PASS；最终相关回归256 passed/1 skipped。该次未启动M36，随后交付见下段。
+## 当前限制与维护结果
 
-同日用户随后明确长期固定通用Chat为qwen3.8-flash，AGENTS及公开providers模板已落实，不因免费额度耗尽自动换Max。新qwen38-flash-default-v1完整清单绑定.local/model-switch-qwen38-flash/providers.json、assets.json和content.json；三项chat/schema/tool实际接口及11会话14消息内容PASS，9项工具参数全部正确。复用字节未变的m35-vue-v3安装，runtime/tooling仍为上述bc8/d09；强判仍qwen3.7-flash，Embedding签名/集合、检索资产、Prompt与关闭Rerank保持。云端新优惠/活动查询返回PG实付181.23/优惠13.45和M35-LEARN-A，同run Langfuse记录实际qwen3.8-flash，原消息重放0新增调用。实际Flash→Max→Flash配置恢复通过，订单及五条原receipt、131操作/547审计/80效果/138调用整体hash保持，累计预算不回滚。登记清单按状态目录守卫落盘；启动需等待真实健康，恢复先停写释放原预算锁。历史Max/M34安装、清单和恢复闭包保留，证据见[M03](../handoffs/M03.md#qwen38-flash长期默认2026-10-05)。
+数据是同作者合成/个人维护的学习资料；真实PG/MCP/模型协议不等于企业泛化。容量/恢复证据是固定单机低负载窗口，不是公网TLS、长期SLA、高并发或跨schema回退结论。缺失span/usage/CPU/排队按实未知；checkpoint、trace ID和相似度不提供授权或业务权威。
 
-同日M36全部三项完成：按PG原主体/session/run授权后，用确定性模板投影原诉求、实体/更正/归属、600级联、13段和原工具/证据；无终态仍可读原消息，诊断缺失不伪造回执。机制页面连接同一M33课程/当前源码/离线实验；usage按原generation去重，父汇总和reasoning不重加，时序只用实际起止/重叠，未记录PID/profile/CPU/排队保持未知。八个实际场景覆盖正常、缺槽更正、券/活动交错、物流/裸编号、重投、新消息、MCP双端/取消/未终态/UNKNOWN、审批与平台故障；新正常查询的2次generation/1082 tokens与应用增量一致。新三包/静态字节经源码→sdist→wheel→独立安装→云安装一致检查，runtime为c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55，tooling为51aa2166fa716a48fd81ea61d04d336fd39a017caa56364b68475b9badb03e13；.local/m36/content-label-final.json为11会话14消息PASS，manifest-label-final.json绑定原Flash资产/Prompt，模型选择与关闭Rerank保持。服务重启及M36→原M35 Flash→M36恢复，16张业务/审批/checkpoint表内容hash一致，132操作/553审计/81唯一效果/140下游调用保持；原合成审批丢响应后UNKNOWN，再显式对账为SUCCEEDED且仅一效果，不由个人身份接管。临时固定动作服务未接原生平台，前序观测缺口明确未知；无终态PG原claim继续保留，不自动重领。相关离线354 passed/1 skipped及6项前端边界通过，临时进程/专用集合/过程副本已清理，受保护版本/预算/恢复闭包保持；全部M36交付后停止。
+M38最终完整离线为1260 passed/2 skipped；两个跳过分别为Windows symlink权限与未开启live的配置诊断。历史test-suite-pruning的断连失败由M39当前原用例单独复验1 passed，旧异常日志已删除；不据此宣称持续提速或改写当时失败结果。M39删除2个完成PLAN及13487忽略/临时文件，1245份保留hash不变，核定临时对象无剩余拒绝项；云未知消费者对象保留。细节见[M39交接](../handoffs/M39.md)。
 
-M31开启版通过三个实际进程的PG订单主链，实付173.45/优惠12.30；一次Embedding/一次Rerank/原600一次Chat，Langfuse三次generation与调用数一致。显式学习比较四路共享同一向量/原候选，实际模型2次；签名usage仅结算一次。重复消息、登录后页面/历史/三视图和越权守卫通过，读取0模型。安装后正式MCP version/profile/签名health/schema与页面/历史检查通过，亦0模型；未把HTTP健康当内容证据。离线全量在来源metadata修复前1216 passed/2 skipped，修复后192项相关回归及格式/类型检查通过。M31全部特性收尾，不启动下一M。
-
-当前应用/Business/Retrieval/权益四单元active且enabled，业务trace为Langfuse原生SDK，三进程直接指标进入新Prometheus/Grafana。旧四应用单元inactive/disabled；旧MySQL、Collector、Tempo及旧Prometheus/Grafana五容器exited/restart=no，旧端口退出。旧数据目录、只读源快照、完整冷备/原配置/身份及两版安装保持；未删除旧数据卷。M29独立学习库`deephelp_m25_m28_native`保留，不能作为第二活动业务写入口。浏览器本机18080、Grafana23000及恢复方法见LOCAL_SETUP和infra/deployment。
-
-最终一致备份实际恢复应用32表15914行、M29学习32表14229行，逐行hash一致；原120条Langfuse观测/4次generation内容与usage、Score/Dataset29/Prompt两版本/S3同对象及Prometheus旧时间点序列/Grafana看板一致。隔离恢复副本和本轮四测试库验后已清理，受保护备份保持。180.06秒组合容量含17容器与四服务，最低可用约3.16GiB、OOM/意外重启/新增swap为0；只证明本次固定负载。
-
-下文M23及更早模块段落为历史验收，不表示当前仍使用MySQL/Tempo或今日重跑。
-
-M23复用原4核/约7.51GiB服务器及八个中间件/观测容器，运行一个应用、两个独立HTTP MCP和可选合成权益进程。显式state根与旧Windows工件根映射保留原JSON/签名，最小受引用闭包交付，未打包完整.local或来源原件。Linux根锁、三包sdist→wheel与121项适用回归通过；源码/安装wheel的runtime-v2指纹一致。新完整发布按原冻结内容门禁14行PASS，独立m23-personal channel实际激活；原channel/历史审批/UNKNOWN不改写。
-
-浏览器新订单实付219.87/优惠18.65，缺槽→补槽、更正和四条历史实际通过；同一次Tempo trace有81 span，包含应用、两个MCP、实际chat/Embedding/Milvus/MySQL。鉴权/越权/schema、独立重启、观测停止恢复与原receipt零调用重放通过。新隔离合成权益在应用重启后恢复原MySQL checkpoint，批准执行一次、再次resume仍一效果。实际受保护备份恢复到隔离新库/运行根，27表13847行完整checksum一致，隔离应用订单/券/活动关系查询及原receipt回读通过。安装v1→v2→v1实际通过，两安装版本使用同一已验业务wheel；不外推历史业务代码或跨schema回退。约46秒容量窗口包含12行隔离索引、10次混合检索和两组CPU训练，最低可用内存约4.83GiB、容器OOM为0；窗口包含计划内应用备份重启，不作长期稳定/高并发结论。
-
-2026-10-04路线规划后的M19交付：运行源码归domain/application/adapters/api/bootstrap/resources，工具/demo独立deephelp-tools；datasets与demo/data为单一数据源，wheel安装后读取工具包资源。该特性时业务仍为显式合成JSON后端，一个领域和引擎，没有学习/正式双份实现。全量924 passed/1 skipped及后增安装/发布59项通过，927项最终收集；两包各83文件逐字节一致，无工具/无Git检出的独立运行安装与追加工具stdio通过。该特性模型0次，无云检查、部署或新完整发布；旧清单不能套到新运行字节。
-
-M20第1特性接入MySQL订单/券/活动、CAS维护与关系、不可变查询快照，独立Business MCP/维护事务复用原引擎。显式数据库模式采用实际initialize协议2025-11-25与双端守卫，Bearer和短期受保护委托独立于stdio临时key；正文/trace/session不授权，数据库失败关闭。该特性真实三类新记录、实际检索/金额/券/活动、更新后新消息/旧证据零调用重放、越权、并发版本冲突、独立服务/应用重启等22项PASS；数据为个人合成持久事实。该时点全量956 passed/1 skipped；最终网络协议/确定性31项通过、958项收集，三包构建及无tools独立安装/HTTP协议通过。
-
-M20第2特性已接入独立Retrieval MCP与原Dense/Hybrid Port，复用原模型、签名、发布语料、K/weight与排序。服务固定允许主体/发布scope，双端回验schema/候选语义及签名预算回执；应用派发前持久预留，未知断连保留上界，重启不归零。两条固定查询使用同一次实际Embedding向量，Dense/BM25/Hybrid候选、证据、排序与分数一致，最大差异0；检索服务独立重启、跨Business/Retrieval MCP金额与券门槛、应用重启零调用重放及越权共11项PASS。流程视图记录实际Embedding/Milvus/三路动作及双端校验；私有记忆、事务、outbox/checkpoint仍在应用。
-
-第2特性较广app/tools离线926 passed/1 skipped；最终services、M16、预算及运行边界组合113项通过，986项收集。Ruff/193文件格式、140源文件mypy、根锁及三包构建通过；wheel资源88/6/85文件逐字节一致。无tools、无Git检出的独立安装中70个app模块与4个services模块可导入，CLI及两个正式HTTP服务的SDK发现/检索profile握手通过；该安装检查不调用模型或云库。细节见[M20](../handoffs/M20.md)。未产生新完整发布、前端或应用部署；M20两项结束。
-
-同日M19后源码核对时：ToolGateway已有正式SDK/stdio与双端守卫，当时业务来源为demo JSON且无独立HTTP服务；M20现已补上Business与Retrieval服务。approval.py确有LangGraph StateGraph/interrupt/resume，checkpoints.py确有自建MySQLSaver及pending writes，非官方MySQL插件；并不代表整条13段主链都是LangGraph。后续按此复用，不重建已有能力。用户提供4核8GB/低负载截图，仅是截图时点，不作本轮服务器容量/峰值测量。该次核对为规划时点；当前M21标准SDK及Tempo/Prometheus/私有Grafana已实测，未部署应用。
-
-代表性历史证据：M17冻结548会话/1820消息、22业务情境；真实抽样29会话43消息×4组及17审批/6越权/9重放。运行边界特性真实HTTP 15/15，完整发布两版各14/14消息、11/11会话与23项守卫通过。数据同作者合成，不证明企业泛化或质量增益。必要明细在[M14](../handoffs/M14.md)、[M15](../handoffs/M15.md)、[M17](../handoffs/M17.md)、[M18](../handoffs/M18.md)，此处不复制逐轮过程。
-
-按影响验收已实施：M03能力、M04实体样本/强端口、M17模式/完整会话可独立选择；完整四组显式启动。pytest收集前阻止远程DNS/TCP，保留本机HTTP/stdio；`--live`仅配置检查。报告区分实际usage、未知项、预留与费用估算。所有验收在特性分支，main仅合并、保存与同步。
-
-M21两项已交付：标准Python OTel SDK1.45.0、Collector0.128.0、Tempo2.8.2、Prometheus3.4.2、Grafana12.0.2。原两MCP实际trace42 span及4个审批恢复Link可查询；受原身份/session保护的Tempo分页、Grafana实际帧/12面板查询、四组件独立重启持久及Collector/Tempo停止时金额173.45/唯一派发均通过。最终固定平台主链采用ReplayAssembly（模型API0），不证明新增质量；本轮Embedding2次用于真实检索关联。完整离线968 passed/1 skipped，最终观测组合88项、相邻M15/API/运行边界38项通过，后增例未冒称参加同一次全量。隔离观测栈cgroup当前合计361.9MiB、各容器峰值之和367.5MiB，RSS合计778.2MiB，主机可用5.75GiB；仅当前负载，无M23容量结论。详情见M21交接。M21结束，不自动启动M22/M23。
-
-## 全项目清理与任务收尾
-
-`feature/project-cleanup` 已在特性分支离线验收：18受控文件及6875原有忽略文件删除，旧重复PLAN/临时环境/渲染/构建/胶水脚本/迭代与等价行日志清除；占用从约1.896 GB降至0.724 GB。必要规格/学习资料/最终证据、875份本机保留来源与配置hash、96条账本文件引用保持。旧修订稿和暂停调度引用暂留，理由见[M18清理交接](../handoffs/M18.md#全项目清理与任务收尾)。
-
-最终918 passed/1 skipped、919项收集；Ruff/154格式文件/110源文件mypy/根锁/构建通过，wheel147份包文件和安装边界通过。模型API 0次，运行内容与冻结资产字节不变；只读MySQL保护引用，不删云端数据。AGENTS与现有入口落实任务收尾、必要证据保留、成功后清除等价journal及原子临时文件；完成本特性后停止，不启动业务/部署，main不复验。
-
-## 回归测试精简
-
-`feature/test-suite-pruning` 删除M19重复摘要测试和M02逐条重复标注检查；无Git来源/运行字节绑定迁入runtime边界，并独立覆盖learning/probes/evaluation排除。M02整份36条语料校验保留，新增7个非法标注反例；M08的36个API场景及ID全部保留。M02只读fixture、M08样本加载及services独立凭据/检索资产准备整合，嵌套metadata仍逐用例隔离。M07/M08/M14、M10/M12的不同调用层、协议和组装路径保留；产品源码、配置、Prompt、冻结数据、运行资产、根锁、CI与收集前网络守卫未改。
-
-测试文件45→45、测试函数455→453、展开用例986→958（app 765→766、tools 163→134、services 58→58）；收集精确差异38旧节点移除、10新节点加入，默认live配置跳过项仍为1。清理前完整离线985 passed/1 skipped、263.87秒；迁移后70项、删除后相关138项通过，10个内存缺陷全部被捕获；Ruff、193文件格式、140源文件mypy及测试文档路径检查通过。
-
-最终完整离线为956 passed/1 failed/1 skipped、254.76秒，退出1，不能标为验收PASS或性能增益。失败为services的`test_disconnected_http_tool_is_classified_without_facts_or_demo_fallback`：loopback服务退出后SDK会话初始化抛出含`httpx2.ConnectError`的ExceptionGroup，未返回FAILED；主体未改，根因与准备整合的因果尚未确认，未顺带修复产品。2026-10-04用户知悉失败后明确授权直接推送/合并、删除过程副本且不再跑测试；按此交付保留已知未通过项，无重复测试、模型/云调用、构建或main复验。持续提速与维护工时收益未测量；失败定位信息继续保留本机。
+项目文档已按用途收敛：协作规则、状态、路线、运行、规格/证据各有唯一入口，完成PLAN不再保留，历史变更过程由handoff/Git追溯。删除旧RISKS登记，其仍有效的授权/UNKNOWN/预算/签名等防线已覆盖在AGENTS与CONTRACTS；删除独立M01异步说明，其CPU/进程与取消实验并入[资源课程](learning/07-resources.md#原m01异步与cpu补充实验)，原命令离线运行通过。旧模块的单特性停止、旧后端/登录/观测提示已修正为顺序交付与历史背景；Git问题自主修复规则只维护在AGENTS。此维护不更改源码、配置、服务、调度或验收状态；当前运行命令见[LOCAL_SETUP](LOCAL_SETUP.md)，课程见[learning](learning/README.md)。

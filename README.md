@@ -26,21 +26,18 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 
 学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行策略/SOP/Prompt在业务包resources；合成事实、冻结集和学习数据的唯一来源见[datasets职责](datasets/README.md)，工具包安装时包含对应资源。业务启动不导入这些工具或读取冻结评测集。
 
-2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36)交付个人免登录、职责整理、14章Java课程、Vue工作台和运行解释。[M37–M39收尾路线](docs/ROADMAP.md#最终学习收尾m37m39)中M37已打通本地核心/云端教学入口；M38中文讲解与M39清理尚未启动。当前云安装与固定通用Chat选择见[PROJECT_STATE](docs/PROJECT_STATE.md)，从[一条消息的调用路径](docs/learning/source-navigation.md)阅读同一套实现。
+从[一条消息的调用路径](docs/learning/source-navigation.md)阅读同一套实现，再按[能力目录](docs/ROADMAP.md)选择机制或课程。当前交付、云安装与未验证边界统一见[PROJECT_STATE](docs/PROJECT_STATE.md)，模块交接保留各自的实际验证证据。
 
 | 需要什么 | 入口 |
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
-| 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
+| 能力机制与验收选择 | [ROADMAP](docs/ROADMAP.md) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
 | 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
 | 本地核心与云端完整教学 | [最短离线路径](docs/learning/README.md#本地核心最短路径)、[云工作台](docs/LOCAL_SETUP.md#当前云端个人入口)、[M37交接](handoffs/M37.md) |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
+| 架构、接口和设计依据 | [ARCHITECTURE](docs/ARCHITECTURE.md)、[CONTRACTS](docs/CONTRACTS.md)、[DECISIONS](docs/DECISIONS.md)、[SOURCE_MAP](docs/SOURCE_MAP.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |
 
-Python3.14.7；根uv workspace、一个uv.lock、一个Git仓库。业务代码在modules/deephelp-app，运维在infra；后续增量实现，不按M编号重建工程。每次一个特性，从同步main新建feature，验证后中文commit、push、合并并同步分支。
-
-按任务读取：接口查CONTRACTS，架构查ARCHITECTURE，裁决/来源查DECISIONS与SOURCE_MAP，难例查ACCEPTANCE，只读直接前置handoff。学习材料在docs/learning，历史过程资料不作当前实施指令。
-
-原PDF和凭据只留本机。新机器按LOCAL_SETUP提供配置；有免费额度、库能连接都不等于业务链路已验收。
+Python3.14.7；根uv workspace、一个uv.lock。业务、服务与工具包职责见各包README，运维在infra。实施约定集中在AGENTS；原PDF、内部资料与凭据只留本机，公共仓库使用机制摘要、页码和合成数据。

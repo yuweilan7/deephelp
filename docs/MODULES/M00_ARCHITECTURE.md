@@ -32,4 +32,4 @@ p58 先聚合事件，p60 说明主意图服务只由 600 阶段统一调用。�
 
 ## 接口与分期边界
 
-M00 已完成设计验收，长期产物为 `ARCHITECTURE / CONTRACTS / DECISIONS / RISKS / SOURCE_MAP / ACCEPTANCE`。除非这些基线与新代码产生实质冲突，否则不重新规划 M00；需要复核时选择 `VERIFY_EXISTING`，只修改受影响的契约或决定。兼容性继续以两个接口视角和三个跨模块走查为准，不以文档数量或会话数量作为质量指标。
+M00 已完成设计验收，长期产物为 `ARCHITECTURE / CONTRACTS / DECISIONS / SOURCE_MAP / ACCEPTANCE`。原风险登记的有效防线并入AGENTS与CONTRACTS，当前限制见PROJECT_STATE。除非这些基线与新代码产生实质冲突，否则不重新规划 M00；需要复核时选择 `VERIFY_EXISTING`，只修改受影响的契约或决定。兼容性继续以两个接口视角和三个跨模块走查为准，不以文档数量或会话数量作为质量指标。
