@@ -7,6 +7,7 @@ import { LatestRead } from "../../composables/latest";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
 import { statusLabel, factLabel } from "../../content/navigation";
+import RunExplanation from "./RunExplanation.vue";
 const read = new LatestRead();
 const flow = ref<Flow | null>(null),
   error = ref(""),
@@ -74,6 +75,7 @@ onBeforeUnmount(() => read.cancel());
         {{ workspace.selected.response.run_id }}
       </p>
       <el-tag>{{ statusLabel(workspace.selected.response.outcome) }}</el-tag>
+      <RunExplanation />
       <dl class="facts">
         <template v-for="(f, i) in workspace.selected.response.facts" :key="i"
           ><dt>{{ factLabel(f.name) }}</dt>

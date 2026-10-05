@@ -196,6 +196,65 @@ async def test_static_assets_and_frontend_release_binding(tmp_path):
     assert not any("node_modules" in path or path.endswith(".ts") for path in hashes)
 
 
+async def test_run_explanation_authorizes_ledger_before_optional_diagnostic(tmp_path, monkeypatch):
+    calls = []
+    now = datetime.now(UTC)
+    from deephelp_app.domain.errors import AppError
+    from deephelp_app.domain.history import HistoryMessage
+    from deephelp_app.domain.models.common import ErrorCode
+
+    async def run(self, identity, session, run_id):
+        calls.append((identity, session, run_id))
+        if identity != OWNER or session != "s" or run_id != "r":
+            raise AppError(ErrorCode.NOT_FOUND, "运行不存在或无权读取。", 404)
+        return HistoryMessage(
+            input=dict(
+                channel="browser",
+                session_id="s",
+                message_id="m",
+                raw_text="只有编号",
+                occurred_at=now,
+            ),
+            run_id="r",
+            status="CANCELLED",
+            question=Question(
+                question_id="q",
+                identity=OWNER,
+                session_id="s",
+                status="ACTIVE",
+                version=1,
+                member_message_ids=("m",),
+                versions={},
+                created_at=now,
+                updated_at=now,
+            ),
+        )
+
+    monkeypatch.setattr(PostgresHistory, "run", run)
+    async with client(tmp_path) as (api, auth):
+        app = api._transport.app
+        app.state.resources.conversation = SimpleNamespace(ledger=SimpleNamespace(pool=None))
+        await api.get("/auth/session")
+        try:
+            url = "/history/runs/r/explanation?session_id=s"
+            response = await api.get(url)
+            assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+            assert response.json()["status"] == "CANCELLED" and response.json()["receipt"] is None
+            assert response.json()["read_model_calls"] == 0
+            assert (
+                await api.get(url, headers={"Authorization": "Bearer " + "b" * 32})
+            ).status_code == 404
+            assert (
+                await api.get("/history/runs/r/explanation?session_id=wrong")
+            ).status_code == 404
+            assert (
+                await api.get(url, headers={"Authorization": "Bearer wrong"})
+            ).status_code == 401
+            assert len(calls) == 3
+        finally:
+            app.state.resources.conversation = None
+
+
 class Cursor:
     def __init__(self, rows):
         self.rows, self.calls = rows, []

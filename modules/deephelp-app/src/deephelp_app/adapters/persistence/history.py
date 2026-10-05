@@ -76,3 +76,27 @@ class PostgresHistory:
         return MessagePage(
             items=tuple(items), next_offset=offset + limit if len(rows) > limit else None
         )
+
+    async def run(self, identity: VerifiedIdentity, session: str, run_id: str) -> HistoryMessage:
+        """One bounded, owner-scoped read also works when diagnostics have expired."""
+        rows = await self.read(
+            "SELECT m.body,r.run_id,r.status,q.body,r.response FROM dh_m08_messages m "
+            "JOIN dh_m08_runs r ON r.run_id=m.run_id "
+            "JOIN dh_m08_questions q ON q.question_id=r.question_id "
+            "WHERE m.tenant_id=%s AND m.user_id=%s AND q.tenant_id=%s AND q.user_id=%s "
+            "AND q.session_id=%s AND r.run_id=%s LIMIT 1",
+            (identity.tenant_id, identity.user_id) * 2 + (session, run_id),
+        )
+        if not rows:
+            raise AppError(ErrorCode.NOT_FOUND, "运行不存在或无权读取。", 404)
+        raw, identifier, status, question, response = rows[0]
+        stored = RequestEnvelope.model_validate_json(raw)
+        return HistoryMessage(
+            input=ConverseInput.model_validate(
+                stored.model_dump(include=set(ConverseInput.model_fields))
+            ),
+            run_id=identifier,
+            status=status,
+            question=Question.model_validate_json(question),
+            response=ResponseEnvelope.model_validate_json(response) if response else None,
+        )

@@ -42,7 +42,7 @@
 | M32 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[交接](../handoffs/M32.md) | 唯一类型/会话/归属及适配器/装配/工具/服务归组；52测试文件按职责移动、独立断言保留；62无消费者过程文件已删除，源码导航可用；模型0次，云安装保持M34 |
 | M33 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[课程](learning/README.md) · [交接](../handoffs/M33.md) | 完整14章Java课程、11个安装可运行离线topic、原图UNKNOWN/反馈/发布实验及关键中文注释；屏障/取消/线程/子进程/共享候选/交错/证据门禁通过；模型0次，云保持M34，不代替用户学习或真实质量 |
 | M35 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M35.md) | Vue3/TS/Vite/Element Plus八任务入口、全部原能力迁移、唯一源码/前端锁及同源wheel；正式个人安装、14/14内容门禁、事实/重放/检索/记忆/观测、CAS、重启及M34→M35恢复通过；M36未启动 |
-| M36 | SPEC_AND_PLAN_DELIVERED；[规格/PLAN入口](ROADMAP.md#可读性与学习体验m32m36待实施) | 机制/观测学习仍为规格与PLAN |
+| M36 | IN_PROGRESS；原运行语义投影已离线验收；[交接](../handoffs/M36.md) | 机制深化与正式学习交付继续；云安装仍为M35，浏览0模型 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 现代路线实施与规划
