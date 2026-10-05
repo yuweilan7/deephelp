@@ -1,8 +1,8 @@
 # DeepHelp 业务运行、验收与学习
 
-工作台前端构建/开发入口见[frontend](frontend/README.md)。源码运行或构建Python安装包前，先在该目录使用Node22.12以上执行`npm ci`、`npm run build`；Python应用仅同源服务已构建资源，不运行Node常驻服务。
+本地核心学习先按[最短路径](../../docs/learning/README.md#本地核心最短路径)运行原course，源码editable安装不要求前端、PG或云配置。需要工作台网页或构建正式Python安装包时，再按[frontend](frontend/README.md)用Node22.12以上执行`npm ci`、`npm run build`；Python应用同源服务built，云安装不运行Node常驻服务。
 
-关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)；M32结构迁移只做离线等价验收，旧完整发布继续绑定其原安装字节。
+真实业务启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate；关系事实统一PG，M26审批使用官方保存器。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，旧完整发布绑定其原安装字节。入口选择见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md#当前学习与运行入口)：基础`deephelp_app serve`装配业务，完整`deephelp_tools.learning.workbench serve`复用同一引擎并添加学习路由；访问已有云教学只需personal隧道。
 
 Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。
 
@@ -618,6 +618,8 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 正式运行配置DEEPHELP_LANGFUSE_CONFIG与各进程DEEPHELP_METRICS_PORT，trace直接进入Langfuse，度量由Prometheus抓取；W3C/内部OTel及身份/session守卫保持。旧OTLP装配与Tempo查询已经退役，未登记历史显示retired；旧数据与bak/mysql-otel保留。入口及指标含义见[观测说明](../../infra/observability/README.md)，个人云安装/恢复见[部署入口](../../infra/deployment/README.md)。
 
 ## M22浏览器工作台
+
+本节基础`deephelp_app serve`提供业务对话、资料、持久历史与原run解释；完整协议/图/检索/记忆/评测学习使用`deephelp_tools.learning.workbench serve`，参数及可选配置见[工具包](../deephelp-tools/README.md#浏览器学习扩展)。相同Vue页面由同源built提供，学习API是否可用取决于服务端明确装配。已部署完整云教学直接按[当前云入口](../../docs/LOCAL_SETUP.md#当前云端个人入口)访问，不需本机再启动serve。
 
 业务serve不需要前端常驻进程；显式配置`--personal-identity`后访问 `http://127.0.0.1:8000/`直接进入。刷新/服务重启自动建立同owner会话并读取PG历史。原三视图在 `/debug`，Bearer客户端保持兼容；当前仅支持loopback/SSH私有入口。
 

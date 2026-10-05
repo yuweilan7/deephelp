@@ -2,7 +2,7 @@
 
 规格：[Python与Agent源码的中文讲解和职责收口](../../docs/MODULES/M38_PYTHON_AGENT_READABILITY.md)。
 规划基线：`main` / `ae50fdf0cfd7c935d4e8e3921548deff8c7691d6`，开始时工作区干净；规划分支`feature/m37-m39-learning-finish-plan`。
-判断：`DECOMPOSE`，按主链、支撑路径两个顺序特性交付。当前等待M37完成后的实际路径与交接，未满足实施前置；不创建空handoff。命令均为待执行。
+判断：`DECOMPOSE`，按主链、支撑路径两个顺序特性交付。[M37实际交接](../../handoffs/M37.md)已具备，本地原核心路径与云M36安装边界可用；本M尚未启动，不创建空handoff。开始时重新核对实际状态，下面命令均待执行。
 
 ## 1. 做成什么
 

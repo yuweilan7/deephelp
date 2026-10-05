@@ -1,10 +1,29 @@
-# 当前本机入口
+# 当前学习与运行入口
 
-正式云应用通过`infra/client/tunnel.ps1 -Profile personal -Action start/health`访问18080；Grafana23000对应云13002。应用/两MCP只用显式PG配置与Langfuse配置；PG/Langfuse隧道分别由`infra/postgres/tunnel.ps1`及`infra/langfuse/tunnel.ps1`管理。基础infra转发仅Redis/Milvus；旧MySQL3306及Tempo/Collector已经退出正式消费，下面旧源资料是保留环境/迁移读取依据，不能直接启动双写。当前状态见PROJECT_STATE；M31默认关闭重排，开启版须完整channel/profile一起选择，见[M31运行入口](../modules/deephelp-app/README.md#m31-专用重排端口)。完整安装/访问/恢复见[deployment](../infra/deployment/README.md)。
+本地负责运行核心Python/Agent原理，云端保留完整线上教学。先选目的，再准备对应配置；不要求本机复制云端的组件、页面和数据。
+
+| 目的 | 入口 | 准备与证据边界 |
+|---|---|---|
+| 本地核心原理 | `python -m deephelp_tools.learning.course <topic>` | 新克隆、Python3.14.7、根uv.lock；不读旧.local/云配置，无Node或中间件要求；固定响应/内存状态证明机制 |
+| 已部署完整云教学 | personal隧道后浏览18080 | 本机浏览器/SSH；真实PG/模型/两个MCP与观测在云端；当前安装见STATE，历史读取0模型 |
+| 自行装配基础真实业务 | `python -m deephelp_app serve` | 明确选择业务MCP、PG/模型/身份/预算/检索与发布资产；提供业务/历史/解释，未装配的学习路由不能使用 |
+| 自行装配完整学习工作台 | `python -m deephelp_tools.learning.workbench serve` | 复用基础serve全部参数，另按需配置学习catalog/合成权益；缺配置保持实际空态，页面存在不代表功能已装配 |
+| 历史安装/数据恢复 | deployment与对应handoff | 原安装、清单、配置与当前PG须兼容；旧MySQL/Tempo资料仅供恢复，不作为默认入口 |
+
+本地最短命令：
+
+```powershell
+py -3.14 -m uv sync --locked --all-packages
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
+```
+
+准备依赖可能下载包；课程本身不联网，准备后可将`uv run --locked`改为`uv run --offline --locked`。无需`.env.local`、身份、累计预算、发布指针或SSH隧道。具体输入/状态/源码、其他topic和原审批反例见[课程最短路径](learning/README.md#本地核心最短路径)；11项topic不是每次运行清单。源码editable安装不要求前端built，需要本地网页或正式wheel/sdist时才按[前端入口](../modules/deephelp-app/frontend/README.md)先构建。
+
+完整云访问见[当前云端个人入口](#当前云端个人入口)。PG/Langfuse专用隧道仅供明确的本机实库/平台操作，普通课程及云工作台访问无需启动；基础infra转发仅Redis/Milvus。M31默认关闭重排，开启版须完整channel/profile一起选择，见[M31运行入口](../modules/deephelp-app/README.md#m31-专用重排端口)。安装/访问/恢复见[deployment](../infra/deployment/README.md)，状态只见PROJECT_STATE。
 
 # 本地启动与依赖交接
 
-新源码必须显式设置 `DEEPHELP_POSTGRES_CONFIG` 指向应用库五字段JSON，入口见[PG迁移与恢复](../infra/postgres/README.md)。执行app的 `migrate` 同时建立业务表和独立schema内的官方checkpoint迁移；serve只检查并打开已建立的保存器。下方旧P00 MySQL配置是退役源恢复资料，正式health只检查Redis/Milvus；不能用旧配置启动新源码。M26审批执行/恢复已接官方保存器，旧状态须显式转换；新完整发布需要新运行字节的适用证据。
+自行启动真实业务才需显式设置 `DEEPHELP_POSTGRES_CONFIG` 指向应用库五字段JSON，入口见[PG迁移与恢复](../infra/postgres/README.md)。执行app的 `migrate` 同时建立业务表和独立schema内的官方checkpoint迁移；serve只检查并打开已建立的保存器。旧P00 MySQL配置是退役源恢复资料，正式health只检查Redis/Milvus；不能用旧配置启动新源码。M26审批执行/恢复已接官方保存器，旧状态须显式转换；新完整发布需要新运行字节的适用证据。
 
 原生观测显式设置`DEEPHELP_LANGFUSE_CONFIG`指向服务器私有JSON，字段见[模板](../modules/deephelp-app/native-observation.example.json)。host/public_key/secret_key由已部署项目提供，首次配置生成32随机字节hex的redaction_key并持久保存；恢复必须使用同一密钥，模板零值须替换。enabled=false用于停用导出。配置同样传给两个MCP进程；原业务权限、模型请求/预算保持。旧OTLP参数会被拒绝，未登记到原生平台的旧run明确返回retired；旧部署/Tempo历史材料见M30交接，不启动旧后端查询。
 
@@ -49,14 +68,16 @@ py -3.14 -m uv --version
 py -3.14 -m pip install --upgrade "uv==0.12.13"
 ```
 
-首次准备依赖并启动业务（复用已配置身份、累计预算和已发布指针）：
+首次准备锁定依赖并运行核心课程：
 
 ```powershell
 py -3.14 -m uv sync --locked --all-packages
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json --auth .local/m08/auth.json --personal-identity .local/personal-identity.json --budget-state .local/m08/session-budget.json
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 ```
 
-配置只从环境读取，不自动发现 dotenv。业务serve显式组装真实端口；已有身份/预算不重置，新机器先按M08入口init/migrate。当前demo必须安装deephelp-tools并明确指定MCP模块，Hybrid语料也须显式选择；MySQL业务后端与独立检索通过上述M20服务选择，依赖故障关闭，没有自动JSON回退。仅学习骨架使用 `uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501；fake回放由独立工具包明确装配。业务启动不导入工具/demo或读取冻结dev/test，包安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。
+配置只从环境读取，不自动发现dotenv；课程不读取业务配置。自行装配真实服务时先看`py -3.14 -m uv run --locked python -m deephelp_app serve --help`及[业务入口](../modules/deephelp-app/README.md#业务启动入口)，身份/预算仅新环境使用init，已有文件不重置；业务/官方saver迁移按PG入口。选择PG业务资料和独立检索时启动[两个MCP服务](../modules/deephelp-services/README.md)，原身份与委托凭据必须匹配；显式stdio demo仍需tools与包内合成资料。Hybrid选取对应发布语料/指针，正式运行另绑定完整release channel，不能直接借用旧.local/m08、m09路径或旧manifest。完整学习路由使用workbench入口，catalog及权益配置见[学习扩展](../modules/deephelp-tools/README.md#浏览器学习扩展)。
+
+依赖故障关闭，没有自动JSON/回放回退。仅M01生命周期骨架使用`uvicorn deephelp_app.api.app:create_app --factory --host 127.0.0.1 --port 8000`，`/converse`保持501，不作为客诉/完整学习启动入口。业务启动不导入冻结dev/test，安装与离线命令见[工具包](../modules/deephelp-tools/README.md)。
 
 解释器核验：`py -3.14 -m uv run --locked python -c "import sys; assert sys.version_info[:3] == (3, 14, 7); print(sys.executable)"`。旧启动入口的历史验证原文保留 Git 历史，当前运行命令统一使用 3.14.7。uv 为独立工具；版本门禁不会降低应用的 Python 要求。
 
@@ -69,7 +90,7 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 .\infra\client\tunnel.ps1 -Action health
 ```
 
-`health` 做 MySQL SELECT、Redis PING、Milvus 版本/数据库/集合列表读取，报告为 `.local/infra-health/client-health.json`。`check` 只测端口；用 `-Action stop` 关闭本脚本管理的隧道。POSIX 入口、备份和恢复见 [infra](../infra/README.md) 与 [运维说明](../infra/OPERATIONS.md)。
+基础`health`做Redis鉴权PING、Milvus版本/数据库/集合列表读取，报告为`.local/infra-health/client-health.json`；PG与Langfuse用各自专用入口。`check`只测端口；用`-Action stop`关闭对应profile管理的隧道。POSIX入口、备份和恢复见[infra](../infra/README.md)与[运维说明](../infra/OPERATIONS.md)。
 
 当前是单人学习环境，三个中间件应用账号采用完整权限，不保留P00的命令/键前缀/角色及账号连接配额限制。权限更新和内容验收见[运维入口](../infra/OPERATIONS.md#学习环境权限)。这与应用代码中的用户归属、幂等和业务事实校验分别维护。
 
@@ -77,7 +98,7 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 先读 `.local/model-pool-summary.md`，再查询 `.local/model-pool.json` 中所需候选；原始目录/额度/用量快照由该索引引用。核对快照时间、到期时间和当前账户额度；已验证范围见 PROJECT_STATE，不将两个候选的实测外推到全部目录。
 
-候选保留额度状态及观察时间；模型使用遵循 [AGENTS](../AGENTS.md)。免费额度用完可换用能力合适的候选，也可使用账号余额继续调用；当前代码尚未实现自动切换，须显式更新模型配置并完成对应真实验收。Embedding签名变化必须新版本集合与重建，不能将同维模型静默混入旧集合。目录和额度快照不能替代实际可调用性与能力验证。
+候选保留额度状态及观察时间；模型使用遵循[AGENTS](../AGENTS.md)。通用Chat长期固定qwen3.8-flash，免费额度用完可用余额，不自动换其他通用模型；归属/强判、Embedding与Rerank按各自明确配置。当前实际选择见STATE，摘要中的历史额度不代表今日余额。Embedding签名变化必须新版本集合与重建，不能将同维模型静默混入旧集合；目录/额度快照不代替实际能力验证。
 
 ## M03 受控真实验收
 
@@ -128,7 +149,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evalu
 
 新版本使用新的dataset-version/manifest，`activate`回读验证后切本机指针，`rollback`复验上版再回退；指针只保留一层上一版本。`verify`要求已有完整manifest，不导入/修复数据，用新进程检查完整记录、逐条FP32向量哈希和真实查询；它不自行重启服务。真正重启按[运维](../infra/OPERATIONS.md)与AGENTS授权执行后再verify，记录前后容器StartedAt，不能以重连代替重启。维护删除为`delete --allow-delete-synthetic --doc-id`，只删除指定scope内已有合成记录；恢复用同语料的新manifest，不覆盖旧验证证据。
 
-输出/预算/manifest/指针应使用不同.local路径；必要最终内容证据、有效诊断与累计预算只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务MySQL/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。
+输出/预算/manifest/指针应使用不同.local路径；必要最终内容证据、有效诊断与累计预算只留.local。公共仓库只含机制、合成数据及必要交接。该入口不访问业务PG/Redis、不运行P00 full/MCP/SOP；实际限制见PROJECT_STATE。
 
 ## M07真实模型与SOP验收
 
@@ -149,9 +170,9 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 
 ## M08闭环启动与验收
 
-先按上文health检查既有隧道/云库，核对选定chat/Embedding可调用性；Dense默认`.local/m05/active.json`，签名变化不得直接复用。初始化/迁移/服务/CLI提问见[应用README](../modules/deephelp-app/README.md#m08单条完整问题闭环)。复用现有MySQL/Milvus应用账号、千问配置及本机正式SDK合成MCP，不运行P00 full，不重建服务。
+本节仅在明确启动原单消息探针时使用；本地学习先选course，完整云教学访问既有工作台。真实探针先核对显式PG配置、Milvus、模型及对应发布语料/指针，初始化/迁移/服务/提问见[应用README](../modules/deephelp-app/README.md#m08单条完整问题闭环)。原探针Dense默认`.local/m05/active.json`只是该入口历史默认，接手须指定实际有效资产，签名变化不得复用旧集合。它使用正式SDK合成MCP，不运行P00 full或重建服务。
 
-同机已有`.local/m08/auth.json`和`session-budget.json`可复用；独立演示或新机器用mvp_cli init创建新的文件，设本次足够上限。auth须包含样本请求者固定身份。累计格式沿M03计数/上界，恢复不清零；只有serve和显式probe --live联网。
+只有原身份/资产/预算仍适用时才复用旧探针文件；新探针用mvp_cli init创建明确的新auth/累计路径，设本次足够上限，auth匹配固定样本请求者。累计格式沿M03计数/上界，恢复不清零；本地核心course不需要这些文件。
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.commands.mvp_cli --help
@@ -161,7 +182,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 # 恢复当前特性的验收时沿用累计预算，换新输出文件。
 ```
 
---auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；以下两条live是不同可选范围，不要求连续执行。明确完整M08验收时验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/ledger、MySQL终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出。报告PASS和退出0同时满足才验收。
+--auth/--budget-state/--pointer/--providers可指定；输出须新文件且不与控制文件及派生锁/trace冲突。默认离线跑完整36条，保留旧预期差异；上面两条live是不同可选范围，不要求连续执行。明确完整M08验收时验三类、Dense、缺槽位、未知、下游500、注入、过期券、空活动，另选12条原始固定样本。检查实际HTTP、事实/证据/PG终态、重投/冲突、8并发唯一接收、身份隔离、新资源回放和退出；报告PASS和退出0同时满足才验收。历史MySQL通过记录留原handoff，不代表当前探针重新验证。
 
 ## M09中文BM25与融合对照
 
@@ -175,7 +196,7 @@ M08运行命令追加`--pointer .local/m09/active.json`即可用同一600 Hybrid
 
 ## M10 多问题记忆
 
-M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行增量`mvp_cli migrate`，serve/ask接入显式问题续接，Redis窗口会在读取时恢复。Milvus事件投影用独立`memory_cli project`运行，`memory_cli show --query`检索后回查MySQL；完整命令见[应用README](../modules/deephelp-app/README.md#m10多问题记忆)。不要把原意图集合用作用户历史，也不要重置累计预算。
+当前源码以PostgreSQL保存原消息/问题/receipt，Redis窗口可重建，Milvus事件投影按选定Embedding签名隔离。`migrate`使用显式PG配置；`memory_cli project`投影、`memory_cli show --query`检索后回查PG，完整命令见[应用README](../modules/deephelp-app/README.md#m10多问题记忆)。旧MySQL证据只看handoff；本地原理选择`course memory`，无需启动这些依赖。不要把原意图集合当用户历史或重置累计预算。
 
 ## M14 SOP治理
 
@@ -183,15 +204,15 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 
 ## M18 反馈演示
 
-完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。使用现有专用MySQL的四张增量反馈表、Milvus新版本集合、M13 CPU训练接口及正式SDK合成只读工具；不新增依赖或改根锁。通用Chat按用户授权改为qwen3.8-max，切换先验chat/schema/tool；Embedding仍为原qwen3.7-text-embedding-flash签名。初始化独立累计预算和稳定脱敏key，恢复沿用原文件，报告和资产用新目录。构建检查保留双版本的实际容量，所有模型/云资源工件留.local。默认M09指针不换；本机演示active是独立控制文件；完整发布使用release_cli/MySQL单一active，参见应用入口。
+当前反馈/审核/完整发布以PG为事实源，Milvus候选资产、M13训练及合成工具沿用原接口，完整操作见[应用入口](../modules/deephelp-app/README.md#m18-审核后的反馈闭环)。通用Chat固定qwen3.8-flash，归属/强判、Embedding与Rerank使用各自明确绑定；实际配置见STATE，不沿用旧M18 Max说明。浏览冻结差例0模型，构建/验证/发布分别明确启动并复用共享累计预算。新环境配置稳定脱敏key，恢复保留原key/预算/不可变工件；新资产与报告用新路径，不替换正式指针。完整发布使用PG release_cli/CAS；本地原理见课程14，旧MySQL证据仅供历史追溯。
 
 ## M15 持久审批
 
-运行/明确批准/恢复与两个进程saver门禁见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)。先health，再用增量015迁移创建现有MySQL上的独立审批、操作、checkpoint及合成效果表。LangGraph及其saver协议版本由根uv.lock锁定，使用应用自建MySQL适配，无新增数据库或云服务。loopback合成下游与应用需保留同一32-byte服务key；真实模型/HTTP验收继续原模型、M09指针和独立任务累计预算。恢复不重置预算，报告用新.local路径。进程恢复只覆盖已登记审批工作流，企业支付/退款/补偿或通用RUNNING自动领取未启用。
+当前运行/明确批准/恢复见[应用入口](../modules/deephelp-app/README.md#m15-持久审批与恢复)，持久图使用根锁定的官方AsyncPostgresSaver；app migrate建立PG业务与官方checkpoint表，旧MySQL状态只按M26转换/恢复流程读取。loopback合成下游与应用保留原32-byte服务key、身份/操作/版本绑定；UNKNOWN先对账，普通消息不批准旧操作。恢复保留原预算/资产，不接管他人操作。进程恢复只覆盖已登记审批工作流，企业支付或通用RUNNING重领未启用。本地学习按[课程12](learning/12-approval.md)执行原内存saver/UNKNOWN反例，不需持久平台。
 
-## M23 个人云入口
+## 当前云端个人入口
 
-部署、版本切换、受保护配置和隔离恢复见[服务器运行入口](../infra/deployment/README.md)，实际证据见[M23交接](../handoffs/M23.md)。本机只运行浏览器和现有 SSH 隧道；应用及两个 HTTP MCP 在服务器运行，不需要本机前端或业务进程。
+部署、版本切换、受保护配置与恢复见[服务器运行入口](../infra/deployment/README.md)，当前事实见PROJECT_STATE，[M37交接](../handoffs/M37.md)记录当前只读观察，完整八场景/安装/恢复证据见[M36](../handoffs/M36.md)。M23为旧MySQL/Tempo路线历史。本机只运行浏览器和现有SSH隧道，应用/两个HTTP MCP/中间件在服务器运行，无需本机前端或业务进程。
 
 ```powershell
 ./infra/client/tunnel.ps1 -Profile personal -Action start
@@ -199,3 +220,7 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 ```
 
 工作台 `http://127.0.0.1:18080/`；Grafana `http://127.0.0.1:23000/`。personal 与默认 infra profile 分别管理进程/端口/状态文件。私有入口使用既有严格 known_hosts 的 SSH 加密链路，没有公网 TLS。M34工作台直接进入显式配置的原个人身份，无需寻找令牌；刷新/服务重启后自动重建会话，PG历史仍从原账本读取。服务端`DEEPHELP_PERSONAL_IDENTITY`唯一匹配原auth文件，浏览器不持有其中Bearer令牌。云端累计预算为独立持久 writer，不能用过期的本机预算副本覆盖它。新安装及兼容回退入口见[部署说明](../infra/deployment/README.md#m34-固定个人入口配置)，当前安装/发布见PROJECT_STATE。
+
+先在“对话与全过程”刷新持久历史、选择已有消息，读取事实/时间线/不可变Business证据，再去“观测诊断”读取同次run；“识别与检索”“多轮与记忆”“工具与工作流”沿原记录学习，“评测与改进”只读取受控报告与版本即可。当前数据为可维护的合成学习资料，PG/MCP/模型协议为真实执行；浏览不是重新执行。明确提问、真实检索比较、任务构建/验证或审批/恢复才执行对应动作，页面会说明预算和边界。
+
+完整教学不表示所有可选配置都已具备：个人身份不接管synthetic审批练习；当前catalog未配置Langfuse历史映射，页面保持未配置/按钮禁用，原run的原生Langfuse诊断仍可读。原13段主链不全由LangGraph运行，图定义也不证明某操作已经走过。未登记旧观测为retired、缺span/usage/CPU/排队按实未知；不为补观测重发业务或在云依赖失败时切成本地回放。新机器缺SSH配置按上方模板准备，隧道health只证明入口可达，事实/解释以原记录核对。
