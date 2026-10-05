@@ -371,3 +371,14 @@ prepare调用原prepare_manifest/ReleaseStore.register。POST /release收publish
 `EvaluationCatalog.prompt_artifact`可选服务器路径，原validate/prepare复用。验证只写任务报告，不覆盖被完整版本引用的资产验证文件；准备绑定所选资产最近验证任务，只有SUCCEEDED/PASS继续，原精确门禁再核验；稳定版本名绑定准备任务ID，避免同资产的不同Prompt冲突。GET `/candidates/{hash}/platform`仍先owner；导出核对整份候选revision摘要、结束观察、输入/输出及trace/observation。POST `/tasks`增加`platform_candidate`，仅一个已知candidate_id及确切candidate_revision、confirmed；其他action不接受该revision。平台非幂等Prompt/评分配置POST结果未知不自动重发，GET/确定性映射继续有限重试。SDK写入独立子进程，原取消/恢复槽位守卫保持。
 
 POST原review可附`platform_score_id`，只允许v3 Score的ANNOTATION、有作者、当前revision具体observation、m29_intent_label/CATEGORICAL支持标签。v3 subject/value/annotation字段显式适配；trace级、API/EVAL、数值高分不成为独立标签。选中score与本次独立label必须一致；仍要求人工review、留出隔离、reason、confirmed，审核者来自owner；原事务CAS防读回后的revision竞争。审核理由绑定score ID/摘要和原revision。平台读回/导出均0模型，不自动review、派生或发布，修改revision后旧证据失效。
+
+
+## M40 受控专业Agent委托
+
+`ConverseInput.execution_mode`默认为single，显式collaboration才启用；server仍须装配已登记角色资产。默认single不改变旧message payload_hash，显式模式进入原hash，重投不能换模式。`VersionManifest.collaboration`为角色/策略完整摘要，默认null兼容历史记录；当前问题绑定与安装资产不符拒绝。
+
+唯一`AgentTask`固定task_id（父run与SOP节点生成）、parent_run/question、主体/session、question输入版本、角色/version、策略摘要、goal、已确认Entity与来源、单工具许可、参数、有效版本及原budget_ref/派发快照。模型仅建议当前delegate_task，不能正文注册角色/URL/代码或扩权。`validate_agent_task`回查全部可信上下文，深度限1，任务数有界。主分类仍只在600，子任务不能改问题/终态/审批。
+
+专业角色独立指令与上下文，以原生工具建议进入原SOPExecutor._lookup（schema/参数/实际call/证据及共享计量守卫），成功后仅return_evidence原task/status/实际全部证据ID。`AgentReceipt`保存公开模型动作call/provider/model/已知usage、实际ToolResult、起止及COMPLETED/NEEDS_INPUT/REFUSED/FAILED/CANCELLED/UNKNOWN；没有隐藏推理。模型结论不是事实，证据回收失败不输出已解决。原SOP继续跨源冲突/分支/审批，权限只能收窄。
+
+`SOPResult.agent_receipts`与`ResponseEnvelope.agent_receipts`默认空兼容旧消费者；终态随原PG response事务保存，回执必须属于同run/question、固定策略和已记录工具call。`run-explanation-v1.agent_receipts`直接投影原receipt，原页面读取0模型，不用诊断或新的模型故事补回执。取消继续向父请求传播，异步资源由原适配器拥有，未终态任务无回执时保持未知，不自动重领RUNNING或恢复旧审批。

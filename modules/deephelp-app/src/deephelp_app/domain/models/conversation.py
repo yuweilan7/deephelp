@@ -39,6 +39,7 @@ class ConverseInput(DTO):
     occurred_at: AwareDatetime
     question_hint: Identifier | None = None
     expected_question_version: PositiveCount | None = None
+    execution_mode: Literal["single", "collaboration"] = "single"
 
     @model_validator(mode="after")
     def continuation_version(self) -> ConverseInput:

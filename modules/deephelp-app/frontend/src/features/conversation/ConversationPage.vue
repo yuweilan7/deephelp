@@ -19,6 +19,7 @@ const sessions = ref<SessionSummary[]>([]),
   messages = ref<HistoryMessage[]>([]),
   search = ref(""),
   text = ref("");
+const collaboration = ref(false);
 const sessionNext = ref<number | null>(null),
   messageNext = ref<number | null>(null);
 const hint = ref<Question | null>(null),
@@ -130,7 +131,10 @@ async function send(payload: MessageInput) {
 }
 function submit() {
   if (text.value.trim() && !workspace.pending)
-    void send(newMessage(workspace.session, text.value, hint.value));
+    void send({
+      ...newMessage(workspace.session, text.value, hint.value),
+      execution_mode: collaboration.value ? "collaboration" : "single",
+    });
 }
 function selectRun(message: HistoryMessage) {
   incomplete.value = message.response ? null : message;
@@ -197,6 +201,21 @@ onBeforeUnmount(() => {
     </aside>
     <section class="card chat">
       <h2>当前会话</h2>
+      <el-checkbox
+        v-model="collaboration"
+        :disabled="
+          !workspace.connection?.execution.collaboration_available ||
+          workspace.sending ||
+          !!workspace.pending
+        "
+      >
+        显式选择专业 Agent 协作
+      </el-checkbox>
+      <p>
+        默认沿原单 Agent
+        路径。协作会增加委托与证据回收模型步骤，共享本次预算；缺槽先补充，浏览历史仍为
+        0 模型。
+      </p>
       <p class="identifier">{{ workspace.session }}</p>
       <StateNotice :error="error" :loading="loading" />
       <article v-for="m in messages" :key="m.input.message_id" class="turn">

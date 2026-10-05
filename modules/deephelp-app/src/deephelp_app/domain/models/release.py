@@ -35,6 +35,7 @@ class VersionManifest(DTO):
     sop_prompt: Identifier | None = None
     tool_schema: Identifier | None = None
     release_manifest: Identifier | None = None
+    collaboration: Identifier | None = None
 
 
 class ReleaseManifest(DTO):

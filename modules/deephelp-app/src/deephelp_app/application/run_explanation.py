@@ -82,6 +82,9 @@ def explain_run(
         "stages": stages,
         "tools": data.get("tools"),
         "sop_nodes": data.get("sop_nodes"),
+        "agent_receipts": [r.model_dump(mode="json") for r in receipt.agent_receipts]
+        if receipt
+        else None,
         "retrievals": data.get("retrievals"),
         "memory_activity": data.get("memory_activity"),
         "gaps": gaps,

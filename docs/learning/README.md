@@ -77,3 +77,6 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.evaluati
 按[当前云入口](../LOCAL_SETUP.md#当前云端个人入口)启动personal隧道并访问18080。先刷新持久历史，选自己的已有原run，读取事实/不可变证据/13段与解释，再沿观测、记忆、检索、工具和评测页面对照本课程。服务端完整workbench使用同一核心，不要求本地也有全部组件；普通阅读0模型，页面内明确执行的真实动作才走原预算。
 
 云端数据是可维护合成资料，持久协议和模型为真实执行；原run诊断、历史版本、固定本地回放分别理解。个人身份不能接管独立synthetic审批，未配置平台历史映射保持实际空态；已验范围/当前只读观察见[M36](../../handoffs/M36.md)/[M37](../../handoffs/M37.md)，当前安装见STATE。基础业务serve和完整workbench、离线course与历史恢复的选择统一见LOCAL_SETUP。
+
+
+M40专业Agent的任务上下文、独立决策/证据回收与Java边界见[09章新增委托实验](09-agent-basics.md#受控专业-agent委托m40)，命令topic为collaboration，默认离线/远程模型0次。

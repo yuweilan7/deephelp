@@ -8,6 +8,7 @@ import { statusLabel, factLabel } from "../../content/navigation";
 import StateNotice from "../../components/StateNotice.vue";
 import RawDetails from "../../components/RawDetails.vue";
 import MechanismGuide from "../../components/MechanismGuide.vue";
+import AgentReceipts from "../tools/AgentReceipts.vue";
 const read = useRead<Explanation>();
 const props = defineProps<{
   target?: { run_id: string; session_id: string };
@@ -146,6 +147,7 @@ watch(
       阶段未记录；没有用预设动画补全路径。
     </p>
     <h3>哪些内容可以确定</h3>
+    <AgentReceipts :receipts="read.data.value.agent_receipts" />
     <p>
       模型动作是建议，工具结果是下游记录；代码核验后才进入原
       receipt。下方不可变证据可继续读回。

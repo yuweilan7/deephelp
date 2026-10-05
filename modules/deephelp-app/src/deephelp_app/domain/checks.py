@@ -134,4 +134,5 @@ def response_from_sop(
         budget_used=budget_used,
         sop_plan=result.plan,
         sop_node_path=result.node_path,
+        agent_receipts=result.agent_receipts,
     )
