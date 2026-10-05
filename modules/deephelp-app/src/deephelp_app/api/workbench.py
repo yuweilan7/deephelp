@@ -15,6 +15,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import Field
 
 from deephelp_app.adapters.persistence.history import PostgresHistory
+from deephelp_app.application.debug import scope_hash
+from deephelp_app.application.run_explanation import explain_run
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 
@@ -162,6 +164,31 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
         identity = auth(request)
         page = await history(request).sessions(identity, offset, limit)
         return no_store(page.model_dump(mode="json"))
+
+    @router.get("/history/runs/{run_id}/explanation")
+    async def explanation(
+        request: Request,
+        run_id: Annotated[str, Field(min_length=1, max_length=128, pattern=r"^\S+$")],
+        session_id: Annotated[str, Query(min_length=1, max_length=128, pattern=r"^\S+$")],
+    ) -> JSONResponse:
+        identity = auth(request)
+        # Authorize against the durable ledger before reading any optional trace.
+        row = await history(request).run(identity, session_id, run_id)
+        sink = request.app.state.resources.trace
+        reader, key = getattr(sink, "read_debug", None), getattr(sink, "debug_key", None)
+        snapshot = None
+        if reader and isinstance(key, bytes):
+            try:
+                snapshot = await reader(scope_hash(key, identity, session_id), run_id)
+            except Exception:
+                # Diagnostics are optional; cancellation still propagates.
+                pass
+        if snapshot is not None and (
+            snapshot.run_id != row.run_id
+            or (row.response is not None and snapshot.trace_id != row.response.trace_id)
+        ):
+            snapshot = None
+        return no_store(explain_run(row, snapshot, dropped=getattr(sink, "dropped", 0)))
 
     @router.get("/history/sessions/{session_id}/messages")
     async def messages(

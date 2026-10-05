@@ -1,8 +1,8 @@
 # M36实施计划
 
-基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD f7bbc336b6ab0594b6b4ca71d2d075b95c8110c4。
+基线：2026-10-05，同步main `7b2eafe`；M33/M35全部已交付，通用Chat固定qwen3.8-flash。
 
-**decision=DECOMPOSE；readiness=BLOCKED（等待M35组件/数据读取入口；M33完整课程已交付，尚未启动本M）。** [规格](../../docs/MODULES/M36_EXPLAINABLE_WORKBENCH.md)定义run投影、机制实验及完整学习场景三项特性。已存在原决策/账本/原生观测，未知字段覆盖须先核对，不能假设全部span完整。
+**decision=DECOMPOSE；readiness=READY。** [规格](../../docs/MODULES/M36_EXPLAINABLE_WORKBENCH.md)定义run投影、机制实验及完整学习场景三项特性。已存在原决策/账本/原生观测，未知字段覆盖须先核对，不能假设全部span完整。
 
 ## 这次做成什么、从哪里改
 
@@ -12,7 +12,7 @@
 
 | 顺序/分支 | 内容 | 独立验收 |
 |---|---|---|
-| 1 feature/m36-run-explanation | 同run摘要、13段路径/实体归属/事实证据/真实时间线及失败状态 | 原数据来源可追溯，外身份先拒绝，读取0模型，不把旧trace当本次执行 |
+| 1 feature/m36-run-explanation（已验收） | 同run摘要、13段路径/实体归属/事实证据/真实时间线及失败状态 | 证据见handoffs/M36.md；后续特性复用 |
 | 2 feature/m36-mechanism-labs | 同候选四路检索、记忆/outbox、MCP双端、图恢复、generation/指标分母的可读页面 | 真实分支/分数/调用去重/UNKNOWN/不完整观测均可解释，与教程链接一致 |
 | 3 feature/m36-learning-delivery | 完整场景引导、实际浏览器阅读核验、精确新发布/安装/恢复及清理 | 规格8场景逐项闭合；课程/页面/代码入口对应，个人云可直接使用 |
 
