@@ -26,6 +26,7 @@ class ModelGateway(Protocol):
 
 
 class ChatPort(Protocol):
+    # 结构类型：有匹配chat签名即可；这里不创建连接，也不提供默认模型。
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult: ...
 
 

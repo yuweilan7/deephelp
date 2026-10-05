@@ -1,8 +1,8 @@
 # M33实施计划
 
-基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD f7bbc336b6ab0594b6b4ca71d2d075b95c8110c4；本轮只写计划。
+实施基线：2026-10-05，同步干净main `7be2d6e`；M32三项实际交接已核对，沿最终职责路径实施。
 
-**decision=DECOMPOSE；readiness=BLOCKED（等待M32最终路径/职责交接）。** 课程大纲已能规划，源码绑定与最终注释必须基于M32实际交付；不提前把拟议路径写成已存在接口。[规格](../../docs/MODULES/M33_JAVA_LEARNING_COURSE.md)定义完整14主题和三项交付。
+**decision=DECOMPOSE；readiness=READY。** [规格](../../docs/MODULES/M33_JAVA_LEARNING_COURSE.md)定义完整14主题和三项交付。复用ReplayAssembly、唯一Conversation和原stdio demo；新增course只组织固定动作/可观察断言，不实现第二套业务引擎。
 
 ## 这次做成什么、从哪里改
 
@@ -15,6 +15,8 @@
 | 1 feature/m33-request-course | 总入口/上手、类型与高级写法、请求主线与Agent基本概念；注释入口/DTO/关键调用 | 读者从离线请求定位到回复/事实，命令实际可运行，高级用法首次出现即解释 |
 | 2 feature/m33-async-course | Task/Future、协调/异常/超时/取消、池/事务/stdio资源；复用现有experiments扩展受控实验 | 实际事件/时序断言、任务/资源拥有者、失败和取消后清理均可讲清 |
 | 3 feature/m33-agent-course | 检索/记忆/审批/观测/评测发布完整教程与相应代码注释；练习答案/交叉链接 | 14主题全部落盘，无待写章节；课程/源码/离线例子一致 |
+
+首项已完成适用离线验收，证据归handoffs/M33；Git交付后继续第2项，不重跑首项相同证据。
 
 ## 怎样证明
 

@@ -56,6 +56,7 @@ from .tracking import DISABLED, STAGES, EventClarification, RunTrace, current_ru
 
 
 class Conversation:
+    # 从职责模块绑定方法；实例调用自动传self，只有同一套用例引擎。
     stage = stage
     emit = emit
     prepare = prepare
@@ -105,6 +106,7 @@ class Conversation:
 
     @observed("conversation.run")
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
+        # 当前Task的可信委托上下文；嵌套适配器读取它，退出必须恢复原token。
         from deephelp_app.domain.execution import request_execution
 
         token = request_execution.set(request)
@@ -154,6 +156,7 @@ class Conversation:
             }
         )
         if not receipt.acquired:
+            # 未领取新执行就读原receipt；本次不再进入600、模型或工具路径。
             annotate(**{"deephelp.replayed": True})
             await self.trace.emit(
                 TraceEvent(
@@ -332,6 +335,7 @@ class Conversation:
                             if question.versions.sop != definition.version:
                                 raise AppError(ErrorCode.VERSION_CONFLICT, "SOP version changed")
                         if missing:
+                            # 缺槽只构造澄清值；工具执行在else内，不能让模型猜参数。
                             result = SOPResult(
                                 status=SOPStatus.WAITING_SLOT,
                                 sop_id=definition.sop_id,

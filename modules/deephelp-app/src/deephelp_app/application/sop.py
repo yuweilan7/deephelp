@@ -42,6 +42,7 @@ CONTROL_SCHEMA: dict[str, object] = {
 
 
 class SOPExecutor:
+    # 模型只建议动作；本用例强制身份/参数/版本/事实和有界退出。
     def __init__(
         self,
         model: ChatPort,
@@ -127,6 +128,7 @@ class SOPExecutor:
         if question.status not in {QuestionStatus.ACTIVE, QuestionStatus.WAITING_SLOT}:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Question cannot enter SOP execution")
         values = {e.name.value: e.value for e in question.entities}
+        # expected来自已确认槽位，模型建议不能覆盖订单号或引入其他主体参数。
         unresolved = {c.previous.name for c in question.conflicts if c.resolution == "unresolved"}
         missing = tuple(
             s for s in definition.required_slots if s.value not in values or s in unresolved

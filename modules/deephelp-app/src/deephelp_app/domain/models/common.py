@@ -14,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+# Annotated附加校验元数据；只有Pydantic等消费者读取它时才执行规则。
 Identifier = Annotated[str, Field(strict=True, min_length=1, max_length=128, pattern=r"^\S+$")]
 
 
@@ -36,6 +37,7 @@ POLICY_VERSION: Final = "slot-policy-v1"
 
 
 def decimal_input(value: object) -> object:
+    # 先拒绝float，避免把二进制近似值当业务金额；不静默舍入或修正。
     if not isinstance(value, (str, Decimal)):
         raise ValueError("Use a decimal string or Decimal, never binary float")
     return value
@@ -45,6 +47,7 @@ DecimalValue = Annotated[Decimal, BeforeValidator(decimal_input), Field(ge=0, al
 
 
 class DTO(BaseModel):
+    # frozen拒绝字段重赋值，不递归冻结嵌套集合；连接/锁属于运行对象，不属于DTO。
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 

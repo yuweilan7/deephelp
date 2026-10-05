@@ -22,6 +22,7 @@ CLOSINGS = {"none": "", "help": "如需进一步核实，可联系人工。"}
 
 
 def fact_reply(result: SOPResult, *, continuation: bool = False) -> str:
+    # 数字从校验后的Fact/Money渲染；语气模型没有自由编写事实的入口。
     if result.status == SOPStatus.WAITING_SLOT:
         names = "、".join(s.value for s in result.missing_slots)
         return f"缺少或无法确认 {names}。" + (

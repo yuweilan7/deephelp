@@ -1,10 +1,20 @@
-# DeepHelp 机制学习导航
+# 从Java经验读懂DeepHelp
 
 先读[从一条消息找到代码](source-navigation.md)，再按下表进入具体机制。
 
 保留一套引擎。先用离线样本观察实际类型、决策、事实与trace，再由明确live入口运行真实模型；浏览文档、帮助、预览和pytest不会自动调用模型。开始异步基础可先读[M01指南](M01_ASYNC_GUIDE.md)。运行、工具和demo安装说明见[工具包](../../modules/deephelp-tools/README.md)。
 
-当前这里提供异步说明、源码职责导航和机制索引，尚未达到面向Java开发者的详细课程目标。2026-10-05新增[M33课程规格](../MODULES/M33_JAVA_LEARNING_COURSE.md)和[实施计划](../../planning/M33/PLAN.md)：先读懂一次请求/类型/高级写法，再跑异步时序/取消/资源实验，最后学习Agent、检索、记忆、审批和发布；核心源码注释与实验同步交付。[M32](../MODULES/M32_CODE_ORGANIZATION.md)已整理职责与路径，[M35](../MODULES/M35_FRONTEND_FOUNDATION.md)/[M36](../MODULES/M36_EXPLAINABLE_WORKBENCH.md)将让教程与实际页面/run对应。以下是当前可用入口，新增课程尚未实施。
+课程面向资深Java开发者、Python语法入门者与Agent新人。先运行再读源码，每章都有前置、解释、类比边界、反例和练习答案；实验复用同一Conversation/领域类型。正常阅读和默认实验远程模型0次。当前第一批五章已交付，异步4–7与深化10–14按[唯一PLAN](../../planning/M33/PLAN.md)继续；完整标准见[M33规格](../MODULES/M33_JAVA_LEARNING_COURSE.md)。
+
+| 章 | 学习问题 | 实验 |
+|---|---|---|
+| [01 上手](01-start.md) | 包、入口、对象如何装配 | course request |
+| [02 值与类型](02-values.md) | 注解/校验/金额/Protocol | course types |
+| [03 Python写法](03-python-patterns.md) | 生成器/闭包/装饰器/解包 | course syntax |
+| [08 客诉主线](08-message-path.md) | 13段、槽位、原receipt | 同01的request输出 |
+| [09 Agent基础](09-agent-basics.md) | 模型建议与代码守卫 | 同01的request输出 |
+
+从根运行 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request`。第一次先看missing→answered→replay→unknown，再沿每章的当前源码链接阅读。M35/M36将消费同一课程；此处不配置云端或激活新发布。下面保留已有机制入口，历史M01指南是补充阅读。
 
 | 机制 | 调用入口与核心函数 | 最小离线样本 | 观察点 |
 |---|---|---|---|

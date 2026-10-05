@@ -25,7 +25,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release
 
 仓库中冻结数据唯一来源为[ datasets ](../../datasets/README.md)，demo事实唯一来源为[demo/data](../../demo/README.md)。构建tools wheel时将同一份字节纳入包资源，安装后不依赖仓库路径。学习数据放在本包resources/learning。工作区中的路径与安装wheel中的资源选择顺序详见assets.py。
 
-学习路线见[机制导航](../../docs/learning/README.md)，各模块既有运行与验收参数继续见[应用README](../deephelp-app/README.md)。pytest的收集前网络守卫禁止远程DNS/TCP，允许loopback/受控stdio；它不声称覆盖任意子进程、代理或未来传输。demo子进程只加载合成服务和业务类型，模型执行仍由明确live入口及共享预算控制。
+学习路线见[Java课程](../../docs/learning/README.md)，安装后可执行 `python -m deephelp_tools.learning.course request`（types/syntax同入口）。课程在事件循环初始化后封住业务网络，复用原13段用例与受控stdio合成服务；不加载云配置。各模块既有运行与验收参数见[应用README](../deephelp-app/README.md)。pytest收集前守卫禁止远程DNS/TCP，允许loopback/受控stdio；不是任意子进程的网络沙箱。真实模型由明确live入口及共享预算控制。
 
 ## 浏览器学习扩展
 
