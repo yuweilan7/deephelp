@@ -10,6 +10,7 @@ import pytest
 from deephelp_app.adapters.persistence.ledger import new_receipt
 from deephelp_app.adapters.releases.release_assets import release_hash, verify_release
 from deephelp_app.adapters.releases.release_store import ReleaseMismatch, ReleaseRepository
+from deephelp_app.application.collaboration import load_agent_policy, policy_release_binding
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.sop_governance import bundled_registry
 from deephelp_app.domain.errors import ConfigurationError
@@ -71,6 +72,7 @@ def release(tmp_path, monkeypatch):
                 sop_snapshot=bundled_registry().snapshot_hash,
                 code_digest="fixed-code",
                 code_integrity_scope="runtime-v2",
+                collaboration_policy_digest=load_agent_policy().digest,
                 tooling_digest="fixed-tooling",
                 judge_providers_digest=file_digest(tmp_path / "event-judge.example.json"),
                 providers_digest=file_digest(paths["providers"]),
@@ -336,3 +338,21 @@ def test_platform_prompt_binds_local_version_and_exact_validated_requests(releas
     path.write_text(path2.read_text(), encoding="utf-8")
     with pytest.raises(ConfigurationError, match="artifact changed"):
         verify_release(bound)
+
+
+def test_complete_release_explicitly_binds_agent_role_policy_asset(release):
+    binding = policy_release_binding()
+    assert release.prompts[binding["resource"]] == binding["sha256"]
+    validation = Path(release.validation_path)
+    body = json.loads(validation.read_text(encoding="utf-8"))
+    body["collaboration_policy_digest"] = "sha256:changed-policy"
+    validation.write_text(json.dumps(body), encoding="utf-8")
+    # 报告即使标PASS并重算文件摘要，角色/许可实际绑定变化仍不能发布。
+    changed = release.model_copy(
+        update={
+            "files": release.files | {str(validation.resolve()): file_digest(validation)},
+            "validation_digest": digest(body),
+        }
+    )
+    with pytest.raises(ConfigurationError, match="Agent role/policy"):
+        verify_release(changed)

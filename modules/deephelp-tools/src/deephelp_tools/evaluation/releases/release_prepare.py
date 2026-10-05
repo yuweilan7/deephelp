@@ -13,6 +13,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 )
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
+from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.intent_prompt import (
     ROLE,
@@ -56,6 +57,10 @@ def prepare_manifest(
     prompts = {
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }
+    collaboration = policy_release_binding()
+    prompts[collaboration["resource"]] = collaboration["sha256"]
+    if validation.get("collaboration_policy_digest") != collaboration["policy_digest"]:
+        raise ConfigurationError("Agent policy has no matching exact content validation")
     code = provenance()
     if not code["git_commit"] or code["dirty_worktree"] is None:
         raise ConfigurationError("Complete release preparation requires source Git provenance")
@@ -73,6 +78,12 @@ def prepare_manifest(
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)
+    if observed := validation.get("observed_source"):
+        # 只读复核报告也绑定原采集字节；原FAIL保留，不把采集器错误改写成当时PASS。
+        source_path = Path(observed["path"])
+        if file_digest(source_path) != observed["sha256"]:
+            raise ConfigurationError("Reviewed original content report changed")
+        files[str(source_path.resolve())] = observed["sha256"]
     if prompt_artifact:
         prompt = read_prompt(prompt_artifact)
         if validation.get("intent_prompt_request_digest") != prompt.request_digest:

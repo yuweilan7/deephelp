@@ -89,6 +89,18 @@ def load_agent_policy(path: Path | None = None) -> AgentPolicy:
     return AgentPolicy.model_validate_json(source.read_text(encoding="utf-8"))
 
 
+def policy_release_binding() -> dict[str, str]:
+    """把同一角色/策略/许可JSON显式绑定到原发布prompts映射，不另建资产系统。"""
+    relative = "resources/sop_data/agent-policy-v2.json"
+    content = files("deephelp_app").joinpath(relative).read_bytes()
+    policy = AgentPolicy.model_validate_json(content)
+    return {
+        "resource": relative,
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "policy_digest": policy.digest,
+    }
+
+
 def validate_agent_task(
     task: AgentTask, question: Question, context: RequestEnvelope, run_id: str, policy: AgentPolicy
 ) -> None:

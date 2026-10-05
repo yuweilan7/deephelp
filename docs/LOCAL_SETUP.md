@@ -17,7 +17,7 @@ py -3.14 -m uv sync --locked --all-packages
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 ```
 
-准备依赖可能下载包；课程本身不联网，准备后可将`uv run --locked`改为`uv run --offline --locked`。无需`.env.local`、身份、累计预算、发布指针或SSH隧道。具体输入/状态/源码、其他topic和原审批反例见[课程最短路径](learning/README.md#本地核心最短路径)；11项topic不是每次运行清单。源码editable安装不要求前端built，需要本地网页或正式wheel/sdist时才按[前端入口](../modules/deephelp-app/frontend/README.md)先构建。
+准备依赖可能下载包；课程本身不联网，准备后可将`uv run --locked`改为`uv run --offline --locked`。无需`.env.local`、身份、累计预算、发布指针或SSH隧道。具体输入/状态/源码、其他topic和原审批反例见[课程最短路径](learning/README.md#本地核心最短路径)；12项topic（含协作）不是每次运行清单。源码editable安装不要求前端built，需要本地网页或正式wheel/sdist时才按[前端入口](../modules/deephelp-app/frontend/README.md)先构建。
 
 完整云访问见[当前云端个人入口](#当前云端个人入口)。PG/Langfuse专用隧道仅供明确的本机实库/平台操作，普通课程及云工作台访问无需启动；基础infra转发仅Redis/Milvus。M31默认关闭重排，开启版须完整channel/profile一起选择，见[M31运行入口](../modules/deephelp-app/README.md#m31-专用重排端口)。安装/访问/恢复见[deployment](../infra/deployment/README.md)，状态只见PROJECT_STATE。
 
@@ -119,7 +119,7 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 ## 当前云端个人入口
 
-部署、版本切换、受保护配置与恢复见[服务器运行入口](../infra/deployment/README.md)，当前事实见PROJECT_STATE，[M37交接](../handoffs/M37.md)记录当前只读观察，完整八场景/安装/恢复证据见[M36](../handoffs/M36.md)。M23为旧MySQL/Tempo路线历史。本机只运行浏览器和现有SSH隧道，应用/两个HTTP MCP/中间件在服务器运行，无需本机前端或业务进程。
+部署、版本切换、受保护配置与恢复见[服务器运行入口](../infra/deployment/README.md)，当前事实见PROJECT_STATE，[M37交接](../handoffs/M37.md)记录当前只读观察，原八场景见[M36](../handoffs/M36.md)，当前协作/精确安装/恢复证据见[M40](../handoffs/M40.md)。M23为旧MySQL/Tempo路线历史。本机只运行浏览器和现有SSH隧道，应用/两个HTTP MCP/中间件在服务器运行，无需本机前端或业务进程。
 
 ```powershell
 ./infra/client/tunnel.ps1 -Profile personal -Action start

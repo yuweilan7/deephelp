@@ -386,3 +386,6 @@ POST原review可附`platform_score_id`，只允许v3 Score的ANNOTATION、有作
 M40有界协作：角色策略agent-policy-v2登记order-benefits/get_order_benefits与coupon-status/check_coupon，depth=1、max_tasks=2、每任务max_task_attempts=6（含网关修复/工具重试）、task_seconds=80、total_seconds=90。原ExecutionBudget不复制额度；同请求顺序委托。dh_m40_agent_tasks外键原run，唯一(task_id)/(run,node)/(run,query_hash)，原消息hash、双侧主体/session/输入问题版本通过后短事务领取，claim_token CAS单调更新。终态不可改写，已完成同绑定只读复用；未完成/UNKNOWN/取消不得重领。原终态消息仍按原账本重放。
 
 原GET history/runs/{run_id}/explanation保持先PG归属鉴权；新增agent_tasks及agent_tasks_source读取实际持久进度，不返回claim_token、不消费模型或工具。agent_receipts仍来自原response，两者不能合成为伪造终态；任务表不可用标unavailable/gap。空列表代表确无任务，null代表未配置/不可读。普通会话不提供任意RUNNING恢复或旧审批授权。
+
+
+M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额外进入prompts，内容报告必须核对collaboration_policy_digest；runtime-v2包含应用与同源built，tooling另绑。单路径默认不变，协作内容门禁适用范围见M40交接。M36旧DTO严格拒绝M40新字段，因此旧安装恢复只读旧记录，新记录保留原值且需回M40读取；不把新回执降格、修改旧manifest或覆写预算换兼容。

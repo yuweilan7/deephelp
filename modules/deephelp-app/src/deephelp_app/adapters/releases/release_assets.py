@@ -16,6 +16,7 @@ from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.application.artifact_paths import resolve_artifact
+from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.intent_prompt import (
     ROLE,
@@ -56,6 +57,11 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     prompts = {
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }
+    collaboration = policy_release_binding()
+    if collaboration["resource"] in manifest.prompts:
+        prompts[collaboration["resource"]] = collaboration["sha256"]
+        if validation.get("collaboration_policy_digest") != collaboration["policy_digest"]:
+            raise ConfigurationError("Agent role/policy validation differs from immutable release")
     if binding := published_prompt(manifest):
         prompts[ROLE] = file_digest(binding[0])
         if validation.get("intent_prompt_request_digest") != binding[1].request_digest:
