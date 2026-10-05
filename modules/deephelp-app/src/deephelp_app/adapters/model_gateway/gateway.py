@@ -440,7 +440,12 @@ class QianwenGateway:
                 raise ValueError
             tools = {tool.name: tool for tool in request.tools}
             tool_calls = []
-            for call in message.get("tool_calls", []):
+            native_calls = message.get("tool_calls")
+            if native_calls is None:
+                native_calls = []
+            if not isinstance(native_calls, list):
+                raise ValueError
+            for call in native_calls:
                 function = call["function"]
                 if call["type"] != "function" or function["name"] not in tools:
                     raise ValueError
@@ -454,8 +459,10 @@ class QianwenGateway:
                 )
             if len({call.call_id for call in tool_calls}) != len(tool_calls):
                 raise ValueError
-            if request.tool_choice and (
-                len(tool_calls) != 1 or tool_calls[0].name != request.tool_choice
+            if (
+                request.tool_choice
+                and tool_calls
+                and (len(tool_calls) != 1 or tool_calls[0].name != request.tool_choice)
             ):
                 raise ValueError
             result = ChatResult(
@@ -496,6 +503,7 @@ class QianwenGateway:
         for tool in request.tools:
             validate_schema(tool.parameters)
         result = await self._chat_once(request, budget)
+        result = await self._native_choice(request, budget, result)
         first_usage = result.usage
         for repair in range(2 if request.repair_once and validator is not None else 1):
             try:
@@ -526,6 +534,44 @@ class QianwenGateway:
                     }
                 )
         raise invalid_output()  # unreachable defensive boundary
+
+    async def _native_choice(
+        self, request: ChatRequest, budget: ExecutionBudget, result: ChatResult
+    ) -> ChatResult:
+        if not request.tool_choice or result.tool_calls:
+            return result
+        # Only a definitely returned text response with no native action may be
+        # corrected once. Text is never converted into a tool call or business fact.
+        if not request.repair_once or result.finish_reason != "stop" or not result.content:
+            raise invalid_output(result.provider_request_id)
+        corrected = request.model_copy(
+            update={
+                "messages": [
+                    *request.messages,
+                    ChatMessage(role="assistant", content=result.content),
+                    ChatMessage(
+                        role="system",
+                        content="The previous response did not invoke the required native "
+                        "function. Invoke exactly one tool_calls function named "
+                        + request.tool_choice
+                        + " using the original verified parameters. Do not return "
+                        "the action as text, JSON or a code block.",
+                    ),
+                ],
+                "repair_once": False,
+            }
+        )
+        replacement = await self._chat_once(corrected, budget)
+        if not replacement.tool_calls:
+            raise invalid_output(replacement.provider_request_id)
+        return replacement.model_copy(
+            update={
+                "usage": ModelUsage(
+                    input_tokens=result.usage.input_tokens + replacement.usage.input_tokens,
+                    output_tokens=result.usage.output_tokens + replacement.usage.output_tokens,
+                )
+            }
+        )
 
     def _cache_key(self, text: str) -> str:
         return hashlib.sha256((self.signature.fingerprint + "\0" + text).encode()).hexdigest()

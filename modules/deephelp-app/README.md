@@ -625,11 +625,11 @@ M26官方保存器试验使用上述显式隔离PG配置和独立schema；源转
 
 可以先在业务资料创建订单，再提问“我的订单没有享受优惠”，在缺槽位结果点“补充此问题”填订单号；续接绑定question/version。刷新页面后从左侧打开持久会话；点击结果读取事实/不可变Business证据/13段及同run诊断。诊断轮转丢失会明确显示，持久历史仍来自PostgreSQL。网络失败用“重试原消息”，沿用原ID/正文/时间；新问题另建message_id。重放的本次计数与历史阶段计数分开显示。
 
-资料页支持订单/券/活动及订单活动关系。完整更新使用当前expected_version，冲突后重新读取；金额输入十进制字符串。更新后新消息读取新资料，重投旧消息返回旧事实与证据。维护不属于会话退款/发券，两个MCP工具仍只读。M22四个顺序特性已验收；协议、工作流、意图/检索/记忆/观测以及评测飞轮使用[可选学习扩展](../deephelp-tools/README.md#浏览器学习扩展)。源码位于`frontend/`，直接同源运行并随app包打包，不需要Node或npm构建；详情见[M22交接](../../handoffs/M22.md)。
+资料页支持订单/券/活动及订单活动关系。完整更新使用当前expected_version，冲突后重新读取；金额输入十进制字符串。更新后新消息读取新资料，重投旧消息返回旧事实与证据。维护不属于会话退款/发券，两个MCP工具仍只读。M22的协议、工作流、意图/检索/记忆/观测以及评测飞轮继续使用[可选学习扩展](../deephelp-tools/README.md#浏览器学习扩展)。M35将全部能力迁入Vue组件，唯一源码位于`frontend/src`，本机构建后由app安装包同源提供built，云端运行无需Node。构建与职责见[前端入口](frontend/README.md)，迁移及正式安装证据见[M35交接](../../handoffs/M35.md)。
 
-## 当前Flash模型与完整发布
+## 模型配置与完整发布
 
-通用与归属判断模板当前均为qwen3.7-flash；实际切换见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。当前默认完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
+通用与归属判断示例模板仍为qwen3.7-flash；早期切换证据见[M03](../../handoffs/M03.md#qwen37-flash切换2026-10-05)，实际个人安装采用完整清单绑定的配置，当前事实以[STATE](../../docs/PROJECT_STATE.md)为准。直接改模型文件会改变完整版本指纹，须生成新assets描述和新内容证据，不能修改旧manifest。完整发布另绑定[intent-fallback.example.json](intent-fallback.example.json)的当前诉求/召回样例范围边界，沿用M29 PromptArtifact，不改变请求schema。
 
 使用release_cli validate和prepare时均追加同一--prompt-artifact路径；validate的11会话14消息通过后才prepare/register/CAS-switch。云端应用与Retrieval进程需采用同一显式providers，启动后查实际内容、历史重放与同run模型记录。历史版本、旧审批、UNKNOWN和已绑定工件原样保留；当前状态及恢复见[STATE](../../docs/PROJECT_STATE.md)和[部署入口](../../infra/deployment/README.md)。
 

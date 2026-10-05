@@ -16,4 +16,4 @@ src/app管理路由，features管理页面，components承载共用展示，api�
 
 页面刷新/历史/诊断0模型，写操作不会自动重试。网络发送不确定时在当前工作台保留原message_id/正文/时间，先明确核对原消息；关闭页面后可从持久历史核对，不能把浏览器取消等待当服务器取消。
 
-第一项交付期间，/legacy/index.html保留原全部功能；第二项迁移完成后删除该入口。官方要求依据：[Vite](https://vite.dev/guide/)、[Vue](https://vuejs.org/guide/quick-start.html)、[Element Plus](https://element-plus.org/en-US/guide/installation.html)。
+全部原工作台能力已迁入八个学习任务入口，旧HTML/JS/CSS与legacy路由已删除。业务资料复用原CAS；评测继续使用受控目录、唯一任务、累计预算和显式发布。个人身份不能接管独立合成审批练习，未配置的平台映射给出实际空态。官方要求依据：[Vite](https://vite.dev/guide/)、[Vue](https://vuejs.org/guide/quick-start.html)、[Element Plus](https://element-plus.org/en-US/guide/installation.html)。

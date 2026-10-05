@@ -2,7 +2,7 @@ export interface Execution {
   mode: string;
   business_source: string;
   business_maintenance: boolean;
-  expected_calls_per_message: number;
+  expected_calls_per_message: number | string;
   remaining_calls: number;
   max_tokens: number;
   charged_tokens: number;
@@ -70,7 +70,7 @@ export interface Page<T> {
 export interface Flow {
   run_id: string;
   trace_id: string;
-  data: Record<string, unknown>;
+  data: { response?: RunResponse; [key: string]: unknown };
   incomplete?: string[];
   dropped_events?: number;
 }

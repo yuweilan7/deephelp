@@ -117,3 +117,30 @@ sudo bash /opt/deephelp-app/bin/switch.sh m31-rerank-v1
 ```
 
 `RETAINED_OLD_HASH`取受保护recovery.json记录的原active，`OBSERVED_REVISION`取刚刚status的结果。恢复新免登录版同样停写，使用new-runtime.env和原pointer.json，换成m34-personal-v1的CLI，重新读取revision并激活其完整hash后switch。两次切换都核对当前PG新订单/历史/原receipt/原审批，不恢复旧数据库、不覆写累计预算、不重放副作用；旧安装恢复原登录界面属于该保留版本的既有行为。配置/安装/完整发布须成套匹配，不能只切symlink。
+
+## M35 Vue同源交付与恢复
+
+先按[前端入口](../../modules/deephelp-app/frontend/README.md)在本机安装锁定依赖、测试并build，再构建app的sdist/wheel；wheel只带built。三包/依赖锁/start.sh构成原安装bundle，云端仅启动Python同源服务。新静态字节改变runtime-v2，内容报告、完整清单及独立安装必须对应同一构建，不能将旧内容PASS改hash后挪给新包。当前已验版本与完整hash见PROJECT_STATE。
+
+发布CLI使用原ubuntu应用用户，保留管理员加载的既有runtime.env环境；管理员root写入0600预算文件会使应用无法读取。停写后用sudo安装配置，随后用sudo -u ubuntu -E执行CLI，不改预算内容/上限或建立新账号。M35恢复闭包保留在受保护recovery/m35-vue-v2（原M34配置）及recovery/m35-vue-v3（最终新配置/安装bundle/前后域快照）。历史run仍引用的旧安装、清单与工件继续保留。
+
+恢复M34使用m35-vue-v2的runtime.env、learning-catalog.json、pointer.json；恢复最终M35使用m35-vue-v3的new-runtime.env、new-learning-catalog.json、pointer.json。均先control.sh stop，逐文件sudo install -o ubuntu -g ubuntu -m 600到原config/state对应位置，再重新source runtime.env。M34安装的旧CLI入口是deephelp_app.bootstrap.release_cli；M35入口是deephelp_app.bootstrap.commands.release_cli。不要把源码移动后的模块路径套到未更新的保留安装。
+
+读取对应CLI status的实际revision后，使用该安装的完整hash执行CAS activate；新版本示例如下，参数取当前受保护清单/recovery记录：
+
+```bash
+cd /srv/deephelp-modern
+set -a
+source config/runtime.env
+set +a
+sudo -u ubuntu -E /opt/deephelp-app/releases/m35-vue-v3/.venv/bin/python \
+  -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal
+sudo -u ubuntu -E /opt/deephelp-app/releases/m35-vue-v3/.venv/bin/python \
+  -m deephelp_app.bootstrap.commands.release_cli activate --live --channel m30-personal \
+  --release RETAINED_NEW_HASH --expected-revision OBSERVED_REVISION \
+  --budget-state /srv/deephelp-modern/state/budget.json
+sudo bash /opt/deephelp-app/bin/switch.sh m35-vue-v3
+sudo bash /opt/deephelp-app/bin/control.sh health
+```
+
+重启/旧新恢复只读取已有会话和原receipt核对，不重跑大模型。比较新订单版本、原receipt整体hash、审批/审计/唯一效果/调用及累计预算；平台诊断不可用不能改变业务结果或触发重放。详细通过范围与失败修复见M35交接。

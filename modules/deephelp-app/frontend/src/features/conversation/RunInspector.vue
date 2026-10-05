@@ -6,6 +6,7 @@ import { workspace } from "../../composables/workspace";
 import { LatestRead } from "../../composables/latest";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import { statusLabel, factLabel } from "../../content/navigation";
 const read = new LatestRead();
 const flow = ref<Flow | null>(null),
   error = ref(""),
@@ -72,10 +73,10 @@ onBeforeUnmount(() => read.cancel());
         会话 {{ workspace.selected.session_id }}<br />run
         {{ workspace.selected.response.run_id }}
       </p>
-      <el-tag>{{ workspace.selected.response.outcome }}</el-tag>
+      <el-tag>{{ statusLabel(workspace.selected.response.outcome) }}</el-tag>
       <dl class="facts">
         <template v-for="(f, i) in workspace.selected.response.facts" :key="i"
-          ><dt>{{ f.name }}</dt>
+          ><dt>{{ factLabel(f.name) }}</dt>
           <dd>
             {{
               typeof f.value === "object" ? JSON.stringify(f.value) : f.value
