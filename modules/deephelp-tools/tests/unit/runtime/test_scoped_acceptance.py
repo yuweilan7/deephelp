@@ -51,26 +51,37 @@ def test_loopback_protocol_tests_remain_available():
 
 
 @pytest.mark.parametrize(
-    "module",
+    "public_module, implementation_module",
     [
-        "deephelp_app.bootstrap.commands.mvp_cli",
-        "deephelp_tools.evaluation.retrieval.dense_cli",
-        "deephelp_tools.evaluation.retrieval.hybrid_cli",
-        "deephelp_tools.probes.models.live_probe",
-        "deephelp_tools.probes.models.text_entity_probe",
-        "deephelp_tools.evaluation.quality.evaluation_cli",
-        "deephelp_tools.probes.releases.release_probe",
-        "deephelp_tools.evaluation.feedback.flywheel_cli",
+        ("deephelp_app.bootstrap.mvp_cli", "deephelp_app.bootstrap.commands.mvp_cli"),
+        ("deephelp_tools.evaluation.dense_cli", "deephelp_tools.evaluation.retrieval.dense_cli"),
+        ("deephelp_tools.evaluation.hybrid_cli", "deephelp_tools.evaluation.retrieval.hybrid_cli"),
+        ("deephelp_tools.probes.live_probe", "deephelp_tools.probes.models.live_probe"),
+        (
+            "deephelp_tools.probes.text_entity_probe",
+            "deephelp_tools.probes.models.text_entity_probe",
+        ),
+        (
+            "deephelp_tools.evaluation.evaluation_cli",
+            "deephelp_tools.evaluation.quality.evaluation_cli",
+        ),
+        ("deephelp_tools.probes.release_probe", "deephelp_tools.probes.releases.release_probe"),
+        (
+            "deephelp_tools.evaluation.flywheel_cli",
+            "deephelp_tools.evaluation.feedback.flywheel_cli",
+        ),
     ],
 )
-def test_import_and_help_do_not_request_models(module, monkeypatch):
+def test_import_and_help_do_not_request_models(public_module, implementation_module, monkeypatch):
     def forbid_request(*args, **kwargs):
         pytest.fail("Import/help must not request a model")
 
     monkeypatch.setattr(QianwenGateway, "chat", forbid_request)
     monkeypatch.setattr(QianwenGateway, "embed", forbid_request)
-    imported = importlib.import_module(module)
-    monkeypatch.setattr(sys, "argv", [module, "--help"])
+    imported = importlib.import_module(public_module)
+    implementation = importlib.import_module(implementation_module)
+    assert imported.main is implementation.main
+    monkeypatch.setattr(sys, "argv", [public_module, "--help"])
     with pytest.raises(SystemExit) as exited:
         imported.main()
     assert exited.value.code == 0

@@ -514,7 +514,7 @@ async def test_external_schema_reference_disabled_before_call():
 
 
 async def test_fake_fixture_replays_chat_and_embedding_with_zero_cost():
-    fixture = json.loads((Path(__file__).parents[1] / "fixtures/m03-synthetic.json").read_text())
+    fixture = json.loads((Path(__file__).parents[2] / "fixtures/m03-synthetic.json").read_text())
     g = FakeGateway(fixture["responses"])
     try:
         b = budget()
