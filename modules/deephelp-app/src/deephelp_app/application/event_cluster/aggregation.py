@@ -1,4 +1,9 @@
-"""Event membership aggregation; never classify main intent or execute SOP tools."""
+"""500阶段判断这条消息属于哪个问题，不做主意图分类或执行SOP。
+
+输入是可信请求、当前实体观察及授权历史窗口；输出包含归属建议、证据和期望问题版本。
+aggregate只计算，原子领取与最终保存由Conversation或PersistentEventAggregation负责。
+多诉求、实体冲突、证据不足时澄清；模型引用必须同时落在当前与目标历史原文。
+"""
 
 import asyncio
 
@@ -308,6 +313,8 @@ class EventAggregationService:
             # Explicit identifying slots and one compatible bound event are code facts.
             target, disposition = bound, "attached"
             diagnostics.append("unique_confirmed_missing_slot")
+        # 候选并不等于可绑定目标；模型还要给当前/历史原文引用，并经validate_judgement复验。
+        # 证据不足时澄清，不能让相似度或confidence字符串代替权限和事实。
         elif selected:
             scoped_messages = tuple(
                 m for m in historical if m.question_id in {c.question_id for c in selected}

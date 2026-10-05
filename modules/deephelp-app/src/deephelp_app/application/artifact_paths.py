@@ -1,4 +1,8 @@
-"""Explicit host bindings for immutable artifact references; never rewrite signed JSON."""
+"""把不可变资产引用映射到显式宿主目录，不重写签名JSON里的原路径。
+
+跨Windows/Linux恢复必须声明唯一来源根与目标根，拒绝路径逃逸、歧义及相对绑定。
+resolve_artifact只决定读取位置，消费者仍需校验原字节摘要与版本。
+"""
 
 import json
 import os

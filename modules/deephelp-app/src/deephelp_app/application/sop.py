@@ -1,4 +1,9 @@
-"""Bounded ReAct selection around deterministic parameters, evidence and closeout."""
+"""围绕固定SOP做有界工具选择，参数、分支、事实与收口均由代码守卫。
+
+Conversation传入已绑定意图/版本的问题、可信请求和原预算。execute先拒绝缺槽或错版本。
+_loop承接简单只读SOP，_flow执行已发布无环节点；_lookup统一工具派发、证据校验与有限重试。
+模型只提议当前允许的动作，不能自由改变已确认编号、下一分支或审批状态。
+"""
 
 import asyncio
 import json
@@ -117,6 +122,11 @@ class SOPExecutor:
         run_id: str,
     ) -> SOPResult:
         # Authorize before missing-slot reporting or model I/O. The entry point owns login auth.
+        """校验问题、版本与槽位后执行其固定SOP，返回已验证的观察与结论。
+
+        context是可信请求，run_id是原领取标识；调用和重试共用budget。
+        缺槽立即返回WAITING_SLOT，不消耗工具；超时或领域失败转换成失败结果，取消仍抛出。
+        """
         validate_question_access(context, question)
         definition = self.definition_for(question)
         if definition is None:
@@ -252,6 +262,8 @@ class SOPExecutor:
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT, "Tool is outside SOP whitelist"
                 ) from None
+            # 工具名来自白名单，参数必须与代码从已确认实体生成的expected完全相同。
+            # 模型多传、改号或猜号都在派发前拒绝；tool_choice只是请求约束，返回仍须检查。
             if name not in d.allowed_tools or action.arguments != expected:
                 raise AppError(
                     ErrorCode.INVALID_ARGUMENT, "Tool or parameters differ from verified SOP"
@@ -295,6 +307,11 @@ class SOPExecutor:
         parameters: ToolParameters,
         calls: list[str],
     ) -> ToolResult:
+        """执行一个只读工具并绑定实际派发ID、请求参数和证据。
+
+        ToolPort负责调用预留；此处只额外扣共享重试额度，避免同一次调用计费两次。
+        只重试明确限流/不可用的只读失败，未知或超时不通过模型决定重发。
+        """
         retries_at_start = budget.retries_used
         for retry in range(d.limits.retries_per_call + 1):
             if len(calls) >= d.limits.max_tool_calls:
@@ -495,6 +512,8 @@ class SOPExecutor:
                     )
                     current = node.success
                     node_observation["next_node"] = current
+                # 分支只读取已经成功工具产生的Fact，按发布条件确定下一节点。
+                # 失败边直接收口，模型不能在分支中编造事实或跳到尚未准备的lookup。
                 elif node.kind == "branch":
                     facts = {
                         key + "." + f.name: f.value
@@ -550,6 +569,8 @@ class SOPExecutor:
                             evidence_ids=tuple(r.evidence_id for r in evidence),
                         )
                     plan = None
+                    # 这里只形成绑定版本/参数/证据的提案。
+                    # 明确审批、唯一领取和下游执行由ApprovalService负责。
                     if node.status == SOPStatus.NEEDS_APPROVAL:
                         assert node.proposal and question.versions.sop_snapshot
                         parameters = ToolParameters(order_id=values["order_id"])

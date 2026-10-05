@@ -1,4 +1,8 @@
-"""Event membership window; never classify main intent or execute SOP tools."""
+"""从仓储读取同身份、同session的有界归属窗口。
+
+MessageWindowAssembler复验窗口中问题的归属，发现混入外主体即拒绝。
+它不凭相似度扩大权限；裁剪过的窗口由aggregation按证据不足处理。
+"""
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import (

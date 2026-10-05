@@ -1,4 +1,8 @@
-"""Canonical events values and validation; no runtime resources."""
+"""消息归属的候选、引用、关系边与结果；不包含600最终分类。
+
+attach必须指向目标且关系为同诉求/补充/更正；new和clarify不能偷偷带目标。
+类型只约束结构，引用原文及目标归属仍由aggregation和账本复验。
+"""
 
 from __future__ import annotations
 

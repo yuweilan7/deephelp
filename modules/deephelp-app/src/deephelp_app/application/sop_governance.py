@@ -1,4 +1,8 @@
-"""Declarative, acyclic SOPs and immutable content-addressed registry snapshots."""
+"""校验无环SOP节点并保存不可变注册表快照，执行器按问题绑定读取。
+
+拓扑校验同时检查可达性、步数和每条路径可用事实，避免分支读取尚未产生的证据。
+RegistryStore由一个本地writer更新指针，旧问题引用的快照继续保留；发布不修改运行中的对象。
+"""
 
 import hashlib
 import json

@@ -1,4 +1,9 @@
-"""Bounded 600 decision layers; source-specific scores never represent probabilities."""
+"""在600内部逐层收口意图：规则、当前召回、必要记忆召回、最终兜底。
+
+所有层共享原预算，命中可靠结论立即停止；不会每层都调用模型。
+不同来源的分数只使用对应校准阈值和间隔，重排顺序不能借用旧融合阈值。
+finish组合选择与槽位状态，retrieval_reason解释为何继续；网络/预算错误仍向上报告。
+"""
 
 import json
 import re
@@ -148,6 +153,11 @@ def require_attempt(budget: ExecutionBudget) -> None:
 
 
 def retrieval_reason(result: DenseResult, text: TextEntityResult, gate: ScoreGate | None) -> str:
+    """解释当前召回能否按该来源的校准门槛直接选择。
+
+    同时检查候选证据、实体约束、阈值与领先间隔；重排后的顺序须交最终兜底。
+    返回理由字符串供Cascade记录下一步，它不是新的模型判断。
+    """
     if result.rerank is not None and result.rerank.status == "passed":
         return "rerank_requires_semantic_confirmation"
     if not result.candidates:

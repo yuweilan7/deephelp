@@ -1,4 +1,8 @@
-"""Pure case summary, lifecycle and bounded history rules."""
+"""问题摘要、生命周期与历史裁剪的纯规则，供仓储和记忆共用。
+
+transition需期望版本和对应证据来源；关闭问题重新激活也要走显式命令。
+历史按UTF-8字节保守限制，截断文本标记仍保留，不能把残缺编号当完整实体。
+"""
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import ErrorCode, QuestionStatus

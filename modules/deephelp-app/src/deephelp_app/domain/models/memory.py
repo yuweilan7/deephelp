@@ -1,4 +1,7 @@
-"""Canonical memory values and validation; no runtime resources."""
+"""有界记忆窗口的值：原消息、当前问题与关闭摘要。
+
+窗口不拥有缓存或向量客户端；摘要可陈旧，使用前需回权威仓储核对版本/状态。
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,9 @@
-"""Resolve membership before the atomic message claim."""
+"""在原子领取消息前判定归属，供Conversation.prepare绑定为同一实例方法。
+
+先查旧receipt，再提取当前原文、读授权窗口并提出目标问题与期望版本。
+这些读取与模型建议不等于领取成功；最后accept做原子竞争，只有赢家进入后续业务。
+准备阶段暂存诊断，领取后才把它们绑定到真实run/question。
+"""
 
 from __future__ import annotations
 
@@ -25,7 +30,11 @@ async def prepare(
     budget: ExecutionBudget,
     stats: RunTrace,
 ) -> PreparedState:
-    """Select attribution before the atomic claim; emitted IDs are bound after acceptance."""
+    """返回领取后的receipt和准备结果；此阶段不执行主意图或工具。
+
+    准备失败中，权限/输入/版本冲突直接拒绝，其余错误随新领取记录进入主链终态。
+    取消不被Exception捕获，因此领取之前被取消不会继续accept。
+    """
     assert self.events is not None
     previous = await self.event_ledger.lookup(request)
     if previous:

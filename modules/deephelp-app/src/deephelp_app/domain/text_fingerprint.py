@@ -1,4 +1,7 @@
-"""Identifier-neutral text fingerprint shared by feedback and dataset audit."""
+"""反馈去重与冻结数据审计共用的编号中立文本指纹。
+
+canonical去掉样本编号差异以发现近似重复，不能用于改写真实用户原文或授权。
+"""
 
 import re
 import unicodedata

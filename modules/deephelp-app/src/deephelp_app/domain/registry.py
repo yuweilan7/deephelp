@@ -1,4 +1,8 @@
-"""Explicit, versioned intent hierarchy; no hierarchy inferred from code spelling."""
+"""显式版本化意图目录，实体、600与SOP共用同一层级和槽位定义。
+
+层级来自parent_code与label_path，不能靠编号拼写猜父子。
+complaint_registry按需构造，导入模块不读取外部文件或服务。
+"""
 
 from pydantic import model_validator
 

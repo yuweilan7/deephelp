@@ -1,4 +1,9 @@
-"""Explicit human decisions and restartable approval graph; PostgreSQL ledger is authority."""
+"""显式审批与可恢复图；操作事实属于PG账本，checkpoint只保存图进度。
+
+主链落账后调用pause；独立审批/恢复API调用decide与resume，普通新消息不会批准旧操作。
+先读resume的归属与领取，再读graph中的等待、执行和对账节点。
+IN_FLIGHT/UNKNOWN先查询同一操作，观察值通过绑定校验后才能提交完成。
+"""
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
@@ -170,6 +175,7 @@ class ApprovalService:
         @observed("graph.execute_operation")
         async def execute(state: ApprovalState) -> ApprovalState:
             op = await self.repo.get(state["operation_id"])
+            # 终态来自原业务账本；图重入或重复resume只能读取，不再派发下游。
             if op.status in TERMINAL:
                 return {"status": op.status.value, "effect": None}
             assert token is not None
@@ -188,6 +194,8 @@ class ApprovalService:
                 self.inject("after_tool")
                 assert result.effect is not None
                 return {"effect": result.effect.model_dump(), "status": "OBSERVED"}
+            # 派发后取消可能只丢了响应，不能证明下游未执行。
+            # 先尽力保存UNKNOWN再传播取消，下一次显式恢复按同operation查询。
             except asyncio.CancelledError:
                 await asyncio.shield(self.repo.unknown(op.plan.operation_id, token))
                 raise
@@ -262,6 +270,11 @@ class ApprovalService:
         command: ResumeCommand,
         budget: ExecutionBudget,
     ) -> OperationRecord:
+        """显式恢复一个已授权操作；审批与业务效果均从原repo读取。
+
+        command绑定session/run，acquire只允许一个恢复者取得token。
+        checkpoint缺口可从账本重建；IN_FLIGHT/UNKNOWN先查询下游，最后释放本次领取token。
+        """
         scoped = await self.repo.scoped(identity, command.session_id, command.run_id, operation_id)
         # scoped先校验可信归属，acquire原子领取；普通消息或trace ID均不能授权resume。
         links = await operation_link(self.repo.pool, operation_id)

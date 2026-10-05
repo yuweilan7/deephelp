@@ -1,4 +1,9 @@
-"""Facts are rendered by code. Optional model wording is a closed vocabulary."""
+"""把经过校验的SOP事实渲染为回复，供主链终态之前调用。
+
+fact_reply从Fact/Money生成金额与结论；可选语气模型只选择固定开头/结尾标识。
+compose返回正文和ReplyPresentation，后者解释模板、润色或降级的实际来源。
+可选润色失败保留原事实模板，调用者取消仍按取消处理。
+"""
 
 import asyncio
 from typing import Literal
@@ -63,6 +68,11 @@ class ReplyComposer:
     async def compose(
         self, result: SOPResult, budget: ExecutionBudget, *, continuation: bool = False
     ) -> tuple[str, ReplyPresentation]:
+        """返回事实正文与展示来源；可选润色只选择固定语气标识。
+
+        continuation决定缺槽提示，不能替换问题实体；budget仍是原请求预算。
+        语气失败可降级模板，取消不转换成成功回复。
+        """
         template = fact_reply(result, continuation=continuation)
         if self.model is None or result.status not in {SOPStatus.RESOLVED, SOPStatus.HANDED_OFF}:
             return template, ReplyPresentation(template=template)

@@ -1,4 +1,8 @@
-"""Canonical release values and validation; no runtime resources."""
+"""问题固定版本、完整发布清单与active指针的值。
+
+清单绑定不可变资产和runtime/tooling精确字节，不持有客户端或锁。
+ReleasePointer的revision用于持久CAS，切换清单不自动回滚业务事实或预算。
+"""
 
 from __future__ import annotations
 

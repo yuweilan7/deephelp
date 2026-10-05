@@ -1,4 +1,9 @@
-"""Same-query server-side retrieval. Fusion is a ranking score, never confidence."""
+"""同一查询向量比较Dense、BM25与融合，并可对宽召回做完整重排。
+
+IntentService或Retrieval服务调用retrieve，学习比较调用compare；两者共享同一实现。
+每个意图只保留最佳证据，重排先排全候选再取每意图最佳和最终K，原融合分数仍保留。
+融合值是排序值，不能写成分类置信度；重排无法找回没被召回的资料。
+"""
 
 import asyncio
 import math
@@ -213,6 +218,11 @@ class HybridRetriever:
     async def compare(
         self, text: str, scope: DenseScope, budget: ExecutionBudget, *, top_k: int = 3
     ) -> dict[str, DenseResult]:
+        """用一次Embedding观察值比较三路；显式配置重排时再加第四路。
+
+        top_k是最终意图数，limit可为更宽文档召回；所有路共用向量、签名与预算。
+        返回每路原证据，引用语料不符或scope漂移直接拒绝，不能用异样本凑对照。
+        """
         if not isinstance(scope, HybridScope):
             raise AppError(
                 ErrorCode.VERSION_CONFLICT, "Hybrid requires a signed intent HybridScope"

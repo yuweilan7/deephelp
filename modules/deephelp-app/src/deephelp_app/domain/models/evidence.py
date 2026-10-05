@@ -1,4 +1,8 @@
-"""Canonical evidence values and validation; no runtime resources."""
+"""事实与证据引用的共同契约，工具、SOP与最终回复逐层复验。
+
+FactKind决定值的实际类型，金额必须是Money；每条事实引用的证据ID必须存在且唯一。
+形状校验不代替持久查询，工具来源还需和实际call_id绑定。
+"""
 
 from __future__ import annotations
 

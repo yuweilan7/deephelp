@@ -1,4 +1,8 @@
-"""Three projections of one explicit, scoped trace snapshot; no hidden reasoning."""
+"""同一个授权、脱敏快照的三个视图，供工作台与诊断导出读取。
+
+sanitize先一致替换身份/业务编号，再移除敏感和隐藏字段；它不收集隐藏推理。
+project只换表示方式，未知用量保留未知；导出额外防表格公式，不执行任何业务请求。
+"""
 
 import hashlib
 import hmac

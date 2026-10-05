@@ -1,4 +1,8 @@
-"""Canonical intents values and validation; no runtime resources."""
+"""三类可执行业务意图、所需槽位与目录条目。
+
+RuleMatch只是当前原文中的候选，不授权执行工具；required_slots是代码统一的业务契约。
+目录层级与是否有SOP须一致，未注册标签不能变成新的业务能力。
+"""
 
 from __future__ import annotations
 

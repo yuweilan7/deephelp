@@ -1,4 +1,8 @@
-"""Canonical entities values and validation; no runtime resources."""
+"""实体与更正冲突的值；编号保留字符串，来源指向实际消息与原文片段。
+
+Entity是可用槽位，EntityConflict保留被替换值与当前值。
+显式更正必须来自不同消息，不能把同条含两个编号的歧义伪装成已解决更正。
+"""
 
 from __future__ import annotations
 

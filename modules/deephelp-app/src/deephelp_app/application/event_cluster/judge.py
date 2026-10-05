@@ -1,4 +1,8 @@
-"""Event membership judge; never classify main intent or execute SOP tools."""
+"""结构化模型只建议消息归属，输入范围由上层候选与历史窗口限定。
+
+judge返回ClusterJudgement，不修改问题或账本。引用与目标的一致性由aggregation继续复验；
+schema合法只说明形状正确，不能证明引用真实或有权访问该问题。
+"""
 
 import json
 

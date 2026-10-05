@@ -1,4 +1,8 @@
-"""Interpret actual observations without inventing waits, CPU time, or model usage."""
+"""解释实际观测的用量与时间关系，供原run只读展示。
+
+按原标识去重GENERATION，父级汇总不再相加；冲突或缺失字段保留未知。
+起止时间只能证明重叠与跨度，不能推断未采集的CPU、排队或线程运行时间。
+"""
 
 from math import isfinite
 from typing import Any

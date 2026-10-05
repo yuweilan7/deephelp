@@ -1,4 +1,9 @@
-"""Per-request counters and trace context; reset tokens after each run."""
+"""记录当前请求实际调用与阶段，不执行第二套会话逻辑。
+
+CountedModel、CountedRetriever和TrackedTools包住原Port，记录返回值与实际派发标识。
+ContextVar按Task传播，主链负责set/reset；它不是进程共享计数器。
+重投展示的旧事实与本次新增调用分开，预算差值来自同一个ExecutionBudget。
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,8 @@
-"""Event membership components; never classify main intent or execute SOP tools."""
+"""合并归属图的连通分量，拒绝通过间接桥接混入两个订单或问题锚点。
+
+union每次检查整个分量的对象集合，不能只看新连的两个节点。
+更正改变编号并不证明两个旧对象相等，调用者对更正只记录归属边，不做等价合并。
+"""
 
 from deephelp_app.domain.models.entities import EntityName
 from deephelp_app.domain.models.events import (

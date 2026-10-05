@@ -1,4 +1,8 @@
-"""Small declarative read-only SOP format; no expressions or executable configuration."""
+"""简单只读SOP的数据格式与包内装载入口。
+
+SOPDefinition绑定目录中的意图、必需槽位与允许工具；条件是受限值比较，不执行表达式。
+实际派发在SOPExecutor，load_sops只读当前包资源，不打开模型或数据库。
+"""
 
 import json
 from importlib.resources import files

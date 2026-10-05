@@ -1,4 +1,8 @@
-"""Canonical intent decisions values and validation; no runtime resources."""
+"""600最终选择、级联步骤和兜底结果的值。
+
+ACCEPT必须有注册意图与齐全槽位；越过第一候选必须有当前消息证据。
+FastText概率、规则值和模型类别选择保留各自来源，不能统称校准置信度。
+"""
 
 from __future__ import annotations
 

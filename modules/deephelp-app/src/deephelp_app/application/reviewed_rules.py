@@ -1,4 +1,8 @@
-"""Runtime literal rule interpretation using the authoritative review DTO."""
+"""运行时解释已审核的字面规则，不执行用户或规则里的表达式。
+
+只有approved且目录内可执行的标签可产生RuleMatch；排除词与否定先挡住误命中。
+保留当前原文片段和审核版本，最终选择仍交给600，候选规则不会自动生效为审批。
+"""
 
 import re
 from typing import Any

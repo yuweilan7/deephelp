@@ -1,4 +1,8 @@
-"""Pure contract guards; downstream services still need authenticated, durable reads."""
+"""纯函数验证身份、问题、工具和事实绑定，由主链及协议两端重复调用。
+
+这些检查不打开数据库；持久归属仍须仓储授权读取。
+response_from_sop只是状态映射，不能代替SOP执行或终态事务。
+"""
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import (
