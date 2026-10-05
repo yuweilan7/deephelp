@@ -6,6 +6,7 @@ import { useAction } from "../../composables/requests";
 import { workspace } from "../../composables/workspace";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import MechanismGuide from "../../components/MechanismGuide.vue";
 const text = ref("优惠券达到门槛却不能使用"),
   result = ref<RetrievalResult | null>(null),
   confirmed = ref(false),
@@ -26,6 +27,7 @@ function execute() {
 <template>
   <section class="card">
     <h2>同向量四路检索</h2>
+    <MechanismGuide mechanism="retrieval" />
     <p>
       Dense / BM25 / Hybrid / Hybrid + Rerank
       复用同一实际向量与召回入口，排名和分数保持原记录。
@@ -85,19 +87,60 @@ function execute() {
         </p>
         <details>
           <summary>原召回文档与重排分数</summary>
-          <p v-for="h in route.hits" :key="h.doc_id">
-            {{ h.doc_id }} · {{ h.intent_code }} · 原名次 {{ h.rank }} · 原
-            {{ h.score_kind }} {{ h.raw_score }} · rerank
-            {{
-              route.rerank?.result?.hits.find(
-                (r) => r.document.doc_id === h.doc_id,
-              )?.score ?? "未运行"
-            }}
-            · {{ h.content }}
-          </p>
+          <div class="table-scroll">
+            <table>
+              <caption>
+                同路原候选，原分数逐栏保留
+              </caption>
+              <thead>
+                <tr>
+                  <th>原文档/意图</th>
+                  <th>Dense余弦</th>
+                  <th>BM25</th>
+                  <th>融合</th>
+                  <th>Rerank</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="h in route.hits" :key="h.doc_id">
+                  <td>
+                    {{ h.doc_id }} / {{ h.intent_code }}
+                    <p>{{ h.content }}</p>
+                  </td>
+                  <td>
+                    {{
+                      h.raw_dense ??
+                      (h.score_kind === "cosine" ? h.raw_score : "未记录")
+                    }}
+                  </td>
+                  <td>
+                    {{
+                      h.raw_sparse ??
+                      (h.score_kind === "bm25" ? h.raw_score : "未记录")
+                    }}
+                  </td>
+                  <td>{{ h.fusion_score ?? "未运行" }}</td>
+                  <td>
+                    {{
+                      route.rerank?.result?.hits.find(
+                        (r) => r.document.doc_id === h.doc_id,
+                      )?.score ?? "无成功分数"
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </details>
       </div>
       <RawDetails :value="result"
     /></template>
+    <p>
+      Dense余弦比较向量方向；BM25比较词项相关性；融合是本策略归一后加权值；Rerank是另一模型的排序分数。它们不是同一量纲，也不是意图正确率。
+    </p>
+    <p>
+      先宽召回，再对原候选重排，按意图取最佳证据，最后截取top
+      K。input_doc_ids记录实际重排输入；召回缺失无法靠重排补回，排序改变也不能直接证明质量收益。
+    </p>
   </section>
 </template>

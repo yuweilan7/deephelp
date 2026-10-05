@@ -6,9 +6,11 @@ import type { MemoryResult } from "../../api/learning";
 import PageGuide from "../../components/PageGuide.vue";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import MechanismGuide from "../../components/MechanismGuide.vue";
+import { explanationPath, type Explanation } from "../../api/explanation";
 const session = ref(workspace.selected?.session_id || workspace.session),
   memory = useRead<MemoryResult>(),
-  turns = useRead<unknown>();
+  turns = useRead<Explanation>();
 watch(
   () => workspace.selected,
   () => {
@@ -24,9 +26,7 @@ watch(session, () => {
 function readTurns() {
   const s = workspace.selected;
   if (s?.response.run_id)
-    void turns.load(
-      `/debug/runs/${encodeURIComponent(s.response.run_id)}/turns?session_id=${encodeURIComponent(s.session_id)}`,
-    );
+    void turns.load(explanationPath(s.response.run_id, s.session_id));
 }
 </script>
 <template>
@@ -45,6 +45,7 @@ function readTurns() {
   />
   <div class="two-column">
     <section class="card">
+      <MechanismGuide mechanism="memory" />
       <form
         @submit.prevent="
           memory.load(
@@ -69,6 +70,24 @@ function readTurns() {
         {{ memory.data.value.outbox.length }} 条
       </p>
       <RawDetails v-if="memory.data.value" :value="memory.data.value" />
+      <template v-if="memory.data.value">
+        <p>
+          这里是本次读取的当前快照，可能晚于所选run。Redis
+          {{ memory.data.value.redis.status }} · TTL
+          {{ memory.data.value.redis.ttl_seconds ?? "未知" }}秒 · 与PG一致
+          {{
+            memory.data.value.redis.matches_authority ?? "未知"
+          }}。缺缓存不等于丢业务事实；读取不会重建投影。
+        </p>
+        <p v-for="o in memory.data.value.outbox" :key="o.event_id">
+          outbox {{ o.event_id }} → 问题 {{ o.question_id }} / 版本
+          {{ o.version }} · {{ o.done ? "worker已记录完成" : "仍待投影" }} ·
+          尝试 {{ o.attempts }} · {{ o.last_error ?? "无记录错误" }}
+        </p>
+        <p>
+          outbox完成是worker记录，未在浏览时执行Milvus相似检索或验证每条向量；checkpoint记录图进度，Langfuse记录诊断，均不能替代PG账本。
+        </p>
+      </template>
       <p v-else>未读取。先选择或填写一个自己的持久会话。</p>
     </section>
     <section class="card">
@@ -76,10 +95,41 @@ function readTurns() {
       <p>run {{ workspace.selected?.response.run_id || "未选择" }}</p>
       <el-button :disabled="!workspace.selected" @click="readTurns"
         >读取同次运行多轮归属</el-button
-      ><StateNotice
-        :error="turns.error.value"
-        :loading="turns.loading.value"
-      /><RawDetails v-if="turns.data.value" :value="turns.data.value" />
+      ><StateNotice :error="turns.error.value" :loading="turns.loading.value" />
+      <template v-if="turns.data.value"
+        ><p>原诉求：{{ turns.data.value.input.raw_text }}</p>
+        <p>
+          原问题
+          {{ turns.data.value.question_at_run?.question_id ?? "诊断缺失" }} /
+          版本
+          {{ turns.data.value.question_at_run?.version ?? "未知" }}；当前版本
+          {{ turns.data.value.question_now.version }}。
+        </p>
+        <p>
+          归属
+          {{
+            turns.data.value.event?.judgement?.relation ??
+            turns.data.value.event?.disposition ??
+            "未记录"
+          }}；未确定时不能替用户选事件。
+        </p>
+        <p v-for="(e, i) in turns.data.value.event?.edges" :key="i">
+          关联边 {{ e.accepted ? "采用" : "拒绝" }} · 已记录原因 {{ e.reason }}
+        </p>
+        <p v-for="c in turns.data.value.event?.candidates" :key="c.question_id">
+          候选问题 {{ c.question_id }} ·
+          {{ c.excluded_reason ?? "未排除，是否采用看最终归属" }}
+        </p>
+        <p
+          v-for="(c, i) in turns.data.value.event?.judgement?.citations"
+          :key="i"
+        >
+          原引用 {{ c.message_id }}：“{{ c.quote }}”
+        </p>
+        <RawDetails
+          title="归属候选、实体来源与排除记录"
+          :value="turns.data.value"
+      /></template>
     </section>
   </div>
 </template>

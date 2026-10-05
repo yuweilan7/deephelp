@@ -375,6 +375,24 @@ textarea {
 .card p {
   overflow-wrap: anywhere;
 }
+.mechanism-guide {
+  border-left: 3px solid #4c839d;
+  padding: 12px;
+  background: #f3f8fb;
+  margin: 12px 0;
+}
+.mechanism-guide code {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.observed-timeline {
+  padding-left: 22px;
+  border-left: 2px solid #bfd4df;
+}
 @media (max-width: 900px) {
   .two-column {
     grid-template-columns: 1fr;

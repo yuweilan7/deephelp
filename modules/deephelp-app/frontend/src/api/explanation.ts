@@ -22,8 +22,15 @@ export interface Explanation {
   question_at_run: Question | null;
   entities: { observations: EntityObservation[]; conflicts: unknown[] } | null;
   event: {
-    reason?: string;
-    relation?: string;
+    disposition: string;
+    judgement?: {
+      relation: string;
+      decision: string;
+      citations: { message_id: string; quote: string }[];
+    } | null;
+    diagnostics: string[];
+    edges: { reason: string; accepted: boolean }[];
+    candidates: { question_id: string; excluded_reason: string | null }[];
     target_question_id?: string;
   } | null;
   decision: {

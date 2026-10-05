@@ -132,3 +132,27 @@ async def test_invalid_native_identifier_never_queries(tmp_path):
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         reader = LangfuseRunClient(http, config(tmp_path))
         assert await reader.trace("../private") == ("unavailable", [])
+
+
+async def test_missing_end_is_unknown_duration_and_usage_summary_covers_all_pages(tmp_path):
+    identifier = uuid4().hex
+    records = [
+        {
+            **row(identifier, i),
+            "type": "GENERATION",
+            "endTime": None if i == 1 else "2026-10-04T12:00:01Z",
+            "usageDetails": {"input": 10, "output": 20},
+        }
+        for i in (1, 2)
+    ]
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"data": records}))
+    ) as http:
+        reader = LangfuseRunClient(http, config(tmp_path))
+        result = await reader.read(
+            Pool([(identifier, "a" * 16, "run", None, None)]), "authorized-run", None, 0, 1
+        )
+    assert result["spans"][0]["duration_ms"] is None
+    assert result["explanation"]["unique_generations"] == 2 and result["next_cursor"] == 1
+    assert result["explanation"]["known_token_subtotal"] == 60
+    assert result["explanation"]["actual_total_tokens"] is None and result["status"] == "incomplete"

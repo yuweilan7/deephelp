@@ -1,6 +1,7 @@
 """Native SDK observations at the existing explicit seams, with export-time guards."""
 
 import json
+import os
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -81,7 +82,11 @@ class NativeTelemetry(Telemetry):
         patches = {}
         for identifier, span in params.spans.items():
             attrs = span.attributes
-            metadata = {**safe_attributes(attrs), "service.name": self.service}
+            metadata = {
+                **safe_attributes(attrs),
+                "service.name": self.service,
+                "service.instance.id": str(os.getpid()),
+            }
             for field in ("deephelp.predecessor_trace_id", "deephelp.predecessor_span_id"):
                 if isinstance(attrs.get(field), str):
                     metadata[field] = attrs[field]

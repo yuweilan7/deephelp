@@ -96,7 +96,7 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
                 "trace_id": envelope.trace_id,
                 "receipt": receipt,
                 "code": [
-                    "adapters/retrieval_mcp.py:RemoteRetriever.compare",
+                    "adapters/mcp/retrieval/retrieval_mcp.py:RemoteRetriever.compare",
                     "application/hybrid.py:HybridRetriever.compare / result_for",
                 ],
                 "budget_used": budget.usage().model_dump(mode="json"),
@@ -163,7 +163,7 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
             "model_calls": 0,
             "code": [
                 "application/memory.py:MemoryService.load",
-                "adapters/cases.py:PostgresCaseRepository.snapshot",
+                "adapters/persistence/cases.py:PostgresCaseRepository.snapshot",
                 "application/memory.py:ProjectionWorker.once",
             ],
         }

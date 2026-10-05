@@ -57,6 +57,7 @@ ATTRIBUTES = frozenset(
         "deephelp.checkpoint_id",
         "deephelp.parent_checkpoint_id",
         "deephelp.pending_writes",
+        "service.instance.id",
         "deephelp.synthetic",
         "deephelp.outcome",
         "deephelp.input_length",

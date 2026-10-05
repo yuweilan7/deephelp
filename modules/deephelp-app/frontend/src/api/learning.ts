@@ -57,6 +57,9 @@ export interface RetrievalResult {
         raw_score: number;
         score_kind: string;
         rank: number;
+        raw_dense?: number | null;
+        raw_sparse?: number | null;
+        fusion_score?: number | null;
       }[];
       rerank?: {
         status: string;
@@ -78,9 +81,32 @@ export interface RetrievalResult {
 }
 export interface MemoryResult {
   authority: string;
-  window: { generation: number };
-  redis: { status: string };
-  outbox: unknown[];
+  window: {
+    generation: number;
+    questions?: {
+      question_id: string;
+      version: number;
+      status: string;
+      entities?: {
+        name: string;
+        value: string;
+        source: { message_id: string };
+      }[];
+    }[];
+  };
+  redis: {
+    status: string;
+    ttl_seconds?: number;
+    matches_authority?: boolean | null;
+  };
+  outbox: {
+    event_id: number;
+    question_id: string;
+    version: number;
+    done: boolean;
+    attempts: number;
+    last_error: string | null;
+  }[];
 }
 export interface Operation {
   session_id: string;
@@ -101,7 +127,12 @@ export interface Operation {
 export interface DemoResult {
   operation: Operation;
   effects: number;
-  checkpoints: unknown[];
+  checkpoints: {
+    id: string;
+    parent: unknown;
+    pending_writes: { task: string; channel: string }[];
+    metadata: unknown;
+  }[];
   next: string[];
 }
 export interface Observation {
@@ -111,8 +142,45 @@ export interface Observation {
   next_cursor: number | null;
   langfuse_url?: string;
   grafana_url?: string;
-  spans: { type: string; model?: string; usage?: unknown; version?: string }[];
-  associations: unknown[];
+  spans: {
+    type: string;
+    model?: string;
+    usage?: unknown;
+    version?: string;
+    span_id: string;
+    trace_id: string;
+    parent_span_id: string | null;
+    service: string;
+    name: string;
+    start_unix_ns: string;
+    duration_ms: number | null;
+    attributes: Record<string, unknown>;
+    input: unknown;
+    output: unknown;
+    incomplete: boolean;
+  }[];
+  associations: {
+    trace_id: string;
+    span_id: string;
+    kind: string;
+    predecessor_trace_id: string | null;
+    predecessor_span_id: string | null;
+  }[];
+  explanation?: {
+    unique_generations: number;
+    duplicates_removed: number;
+    conflicting_observations: number;
+    known_usage_attempts: number;
+    unknown_usage_attempts: number;
+    known_token_subtotal: number;
+    actual_total_tokens: number | null;
+    trace_extents: {
+      trace_id: string;
+      observed_extent_ms: number | null;
+      complete_intervals: boolean;
+    }[];
+    notes: string[];
+  };
 }
 export function safeUrl(url?: string): string | undefined {
   if (!url) return;
