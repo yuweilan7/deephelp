@@ -61,7 +61,7 @@ sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL
 
 只有新发布、云浏览器业务/历史/审批/同trace、幂等/越权、故障重启、隔离恢复与容量通过后才退役旧MySQL/Collector/Tempo容器及自启；数据卷、旧安装、源快照、Tempo/Grafana必要资料及bak分支保留。退役与删除恢复资料分别处理，不默认删卷或采购资源。
 
-当前已验兼容PG安装为A `m30-deployment-v1`、B `m30-retirement-v2`；两版代码不同且各有完整内容发布，实际B→A→B已通过。当前B active/A previous、channel `m30-personal` revision4。回滚须先停止全部写者，用目标安装的CLI核对实际revision并激活它对应的已验manifest，再切安装；下面REV是status现场读取的值，不能沿用历史revision：
+M30当时已验兼容PG安装为A `m30-deployment-v1`、B `m30-retirement-v2`；两版代码不同且各有完整内容发布，实际B→A→B已通过，当时B active/A previous、channel `m30-personal` revision4。今日安装/发布以PROJECT_STATE为准；这段保留旧版本恢复关系。回滚须先停止全部写者，用目标安装的CLI核对实际revision并激活它对应的已验manifest，再切安装；下面REV是status现场读取的值，不能沿用历史revision：
 
 ```bash
 sudo -i
@@ -93,4 +93,27 @@ metrics.tar.gz、retained-installations.tar.gz及整体SHA256SUMS；对应Langfu
 
 `start.sh app`要求`DEEPHELP_PERSONAL_IDENTITY`指向受保护JSON，仅含现有`tenant_id/user_id`（[模板](../../modules/deephelp-app/personal-identity.example.json)），必须唯一匹配`state/auth.json`的一条身份。不增加新token/owner；原历史、学习catalog owner、审批绑定、MCP委托及预算不变。其他服务继续使用原独立凭据，个人入口不替代服务鉴权。
 
-本机/SSH同源工作台直接进入；重启/过期由`GET /auth/session`协商新的HttpOnly会话与CSRF，写操作仍需有效标记，原Bearer API继续可用。安装切换须同时保留对应完整release及runtime.env，旧安装配置不得直接套给新安装。实际正式安装与恢复证据待M34第二特性交付。
+本机/SSH同源工作台直接进入；重启/过期由`GET /auth/session`协商新的HttpOnly会话与CSRF，写操作仍需有效标记，原Bearer API继续可用。当前个人identity来自既有learning catalog owner，不能按auth行顺序猜选。`install.sh`在sudo安装时将新版本目录交给systemd原`ubuntu`用户，并且不跟随Python链接；0700私有安装不能保持root独占导致服务203/EXEC。
+
+M34正式安装/真实浏览器业务、维护CAS/外身份守卫、应用重启及m34→m31→m34兼容回退已通过，[交接](../../handoffs/M34.md)记录证据边界。当前安装/完整release/hash/revision只写PROJECT_STATE。入口仍是原personal隧道；页面/历史/受保护观测只读不调用模型，显式执行业务问题才调用。已有synthetic审批继续归原身份，个人页面不会接管别人的审批。
+
+恢复闭包`/srv/deephelp-modern/recovery/m34-personal-v1`保留原runtime.env、pointer.json、artifact-map.json、原安装/release及新的new-runtime.env。回退旧版先停止四单元和其他写者，恢复该闭包的原runtime.env/pointer.json（0600，ubuntu可读），导出runtime.env，使用**目标旧安装**的CLI读取当前PG revision，再激活闭包记录的原完整release，最后切旧安装：
+
+```bash
+sudo bash /opt/deephelp-app/bin/control.sh stop
+cd /srv/deephelp-modern
+sudo install -o ubuntu -g ubuntu -m 600 recovery/m34-personal-v1/runtime.env config/runtime.env
+sudo install -o ubuntu -g ubuntu -m 600 recovery/m34-personal-v1/pointer.json state/pointer.json
+set -a
+source config/runtime.env
+set +a
+/opt/deephelp-app/releases/m31-rerank-v1/.venv/bin/python \
+  -m deephelp_app.bootstrap.release_cli status --live --channel m30-personal
+/opt/deephelp-app/releases/m31-rerank-v1/.venv/bin/python \
+  -m deephelp_app.bootstrap.release_cli activate --live --channel m30-personal \
+  --release RETAINED_OLD_HASH --expected-revision OBSERVED_REVISION \
+  --budget-state /srv/deephelp-modern/state/budget.json
+sudo bash /opt/deephelp-app/bin/switch.sh m31-rerank-v1
+```
+
+`RETAINED_OLD_HASH`取受保护recovery.json记录的原active，`OBSERVED_REVISION`取刚刚status的结果。恢复新免登录版同样停写，使用new-runtime.env和原pointer.json，换成m34-personal-v1的CLI，重新读取revision并激活其完整hash后switch。两次切换都核对当前PG新订单/历史/原receipt/原审批，不恢复旧数据库、不覆写累计预算、不重放副作用；旧安装恢复原登录界面属于该保留版本的既有行为。配置/安装/完整发布须成套匹配，不能只切symlink。
