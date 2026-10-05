@@ -43,6 +43,7 @@ def result_for(
 ) -> DenseResult:
     # Max evidence per intent, never summed by class population. All routes use the same K.
     best: dict[str, DenseHit] = {}
+    # 一个意图只取最高分证据，不能把同类资料分数相加偏向资料多的类。
     for hit in hits:
         code = hit.intent_code.value
         if code not in best or hit.raw_score > best[code].raw_score:
@@ -135,6 +136,7 @@ async def rerank_result(
                 raise
             status, reason, error_code = "fallback", "upstream_unavailable", exc.code
     hits = tuple(original[hit.index] for hit in result.hits) if result else original
+    # 重排只改变顺序，原融合分数/本地文档保持；先按意图取最佳证据，再裁最终K。
     best: dict[str, DenseHit] = {}
     for hit in hits:
         best.setdefault(hit.intent_code.value, hit)  # Ranked best evidence, never class sums.
@@ -226,6 +228,7 @@ class HybridRetriever:
             raise ValueError("Recall budget is below final top_k")
         async with asyncio.timeout(budget.remaining_seconds()):
             embedded = await self.embeddings.embed([text], budget)
+            # 同一查询向量交给三路对照；不能各取一次随机/漂移向量后宣称公平比较。
             if embedded.signature != scope.signature or len(embedded.vectors) != 1:
                 raise AppError(
                     ErrorCode.VERSION_CONFLICT, "Hybrid query embedding signature mismatch"

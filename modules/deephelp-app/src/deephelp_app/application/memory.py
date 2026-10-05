@@ -44,12 +44,13 @@ class MemoryService:
         query: str | None = None,
     ) -> MemoryWindow:
         budget.remaining_seconds()
-        # A consistent bounded DB snapshot is the authority, including TTL/time trimming.
+        # await等原仓储授权快照；PG是权威，Redis/Milvus不能自行决定归属或事实。
         window = await self.repository.snapshot(identity, session)
         if self.index and query:
             candidates = await self.index.search(identity, session, query, budget)
             verified = []
             for candidate in candidates:
+                # 索引命中只是候选，逐项回PG核对当前版本/状态，拒绝陈旧或外主体摘要。
                 current = await self.repository.question(identity, session, candidate.question_id)
                 if (
                     current
@@ -91,7 +92,7 @@ class ProjectionWorker:
                 return "lease_lost"
             return "projected"
         except asyncio.CancelledError:
-            # Lease expiry permits restart recovery; never acknowledge an uncertain write.
+            # 投影写入未知时不能ack成功；保留lease由到期后续跑，不重做业务工具。
             raise
         except Exception as exc:
             await self.repository.acknowledge(eid, token, error=type(exc).__name__[:64])

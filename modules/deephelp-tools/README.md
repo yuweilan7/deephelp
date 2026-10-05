@@ -27,6 +27,8 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release
 
 学习路线见[Java课程](../../docs/learning/README.md)，安装后可执行 `python -m deephelp_tools.learning.course request`（types/syntax同入口）。课程在事件循环初始化后封住业务网络，复用原13段用例与受控stdio合成服务；不加载云配置。各模块既有运行与验收参数见[应用README](../deephelp-app/README.md)。pytest收集前守卫禁止远程DNS/TCP，允许loopback/受控stdio；不是任意子进程的网络沙箱。真实模型由明确live入口及共享预算控制。
 
+课程完整topic为types、syntax、request、awaitables、coordination、cancellation、resources、retrieval、memory、observations、evaluation。命令帮助和普通实验都没有live入口；审批章直接复用原测试中的ApprovalService/真实LangGraph，安装后的课程不依赖测试包。任务结束不产生新云发布、正式PG事实或模型质量结论。
+
 ## 浏览器学习扩展
 
 安装tools后，以 `python -m deephelp_tools.learning.workbench.app serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
@@ -50,7 +52,7 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 
 学习页按原operation/session/run读取本主体的官方checkpoint和实际审批图；显式配置合成权益服务并使用专用演示身份后，可创建固定练习、批准/拒绝/撤销及恢复同一原操作。普通消息仍不能批准旧操作，UNKNOWN先对账；synthetic_rights不改M20资料、不表示真实退款。页面不允许直接写checkpoint，也不暴露任意MCP、SQL或文件接口。旧reader仅供迁移资格验证，正式app不包含旧自建codec；转换与历史逐状态恢复见[M26交接](../../handoffs/M26.md)。
 
-扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测先校验已保存run的主体与session，再读取已登记的Langfuse观测；显示来源、实际generation用量、版本及暂停/恢复前序，管理员平台独立登录。未登记原生观测的历史明确标为legacy-tempo，保留[M21历史入口](../../infra/observability/README.md#平台与访问)。平台故障明确显示，不重跑业务。
+扩展还提供零模型实体规则练习、同一原run的意图/归属视图、显式同向量三路检索与只读记忆投影。三路查询使用当前Retrieval服务发布profile及原共享预算，预计一次Embedding、缓存命中可为0；不改变训练资产/门限。原文span在debug脱敏前定位，原始内容从授权历史核对。运行观测先校验已保存run的主体与session，再读取已登记的Langfuse观测；显示来源、实际generation用量、版本及暂停/恢复前序，管理员平台独立登录。未登记原生观测的历史明确标为legacy-tempo，保留[M21历史入口](../../handoffs/M21.md)。平台故障明确显示，不重跑业务。
 
 ## M28 原生观测验收入口
 

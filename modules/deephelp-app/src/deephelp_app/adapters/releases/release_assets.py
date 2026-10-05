@@ -30,6 +30,7 @@ def release_hash(manifest: ReleaseManifest) -> str:
 
 
 def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
+    # PASS文字不够：实际代码/配置/资产/最终Prompt请求及审核来源必须匹配当前清单。
     if any(file_digest(Path(path)) != value for path, value in manifest.files.items()):
         raise ConfigurationError("Immutable release artifact changed or disappeared")
     data = verify_files(Path(manifest.assets_path), validation_inputs=False)

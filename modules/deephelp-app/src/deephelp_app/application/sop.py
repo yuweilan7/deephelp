@@ -222,6 +222,7 @@ class SOPExecutor:
             try:
                 async with asyncio.timeout(min(d.limits.model_seconds, budget.remaining_seconds())):
                     selected = await self.model.chat(
+                        # 等模型建议，当前请求Task让出loop；返回后仍逐项验证动作与参数。
                         ChatRequest(
                             messages=messages,
                             tools=tools,
@@ -338,7 +339,12 @@ class SOPExecutor:
                     min(d.limits.tool_seconds + 0.1, budget.remaining_seconds())
                 ):
                     result = await self.tools.execute(
-                        request, question, budget, context=context, on_dispatch=remember
+                        # 等正式工具观察值；不能将模型正文当工具事实，也不能跳过结果守卫。
+                        request,
+                        question,
+                        budget,
+                        context=context,
+                        on_dispatch=remember,
                     )
             except TimeoutError:
                 raise AppError(ErrorCode.TIMEOUT, "SOP tool timed out") from None

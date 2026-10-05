@@ -581,6 +581,7 @@ def capability_eligible(route: dict[str, Any], row: dict[str, Any]) -> bool:
 
 def targeted_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[str, Any]:
     """Keep content/safety gates for selected routes without inventing ablation evidence."""
+    # selected范围只证明实际所选样本；中断/空范围/安全反例不能用历史PASS补齐。
     checks = {
         "all_requested_rows_completed": complete and bool(routes),
         "selected_content": all(

@@ -2,7 +2,7 @@
 
 基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD f7bbc336b6ab0594b6b4ca71d2d075b95c8110c4。
 
-**decision=DECOMPOSE；readiness=BLOCKED（M35组件/数据读取入口及M33完整课程未交付）。** [规格](../../docs/MODULES/M36_EXPLAINABLE_WORKBENCH.md)定义run投影、机制实验及完整学习场景三项特性。已存在原决策/账本/原生观测，未知字段覆盖须先核对，不能假设全部span完整。
+**decision=DECOMPOSE；readiness=BLOCKED（等待M35组件/数据读取入口；M33完整课程已交付，尚未启动本M）。** [规格](../../docs/MODULES/M36_EXPLAINABLE_WORKBENCH.md)定义run投影、机制实验及完整学习场景三项特性。已存在原决策/账本/原生观测，未知字段覆盖须先核对，不能假设全部span完整。
 
 ## 这次做成什么、从哪里改
 

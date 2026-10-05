@@ -63,3 +63,10 @@ async def test_resource_child_startup_failure_is_joined_and_process_exits(monkey
         await run_topic("resources")
     assert processes and processes[0].returncode == 0
     assert set(asyncio.all_tasks()) == before
+
+
+@pytest.mark.parametrize("topic", ["retrieval", "memory", "observations", "evaluation"])
+async def test_agent_course_runs_only_fixed_offline_evidence(topic):
+    result = await run_topic(topic)
+    assert result["remote_model_calls"] == 0
+    assert str(result["evidence_kind"]).startswith(("synthetic", "frozen_data"))
