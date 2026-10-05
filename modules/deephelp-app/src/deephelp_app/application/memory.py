@@ -11,7 +11,9 @@ from deephelp_app.adapters.redis_memory import scope_key as scope_key
 from deephelp_app.adapters.telemetry import observed
 from deephelp_app.domain.cases import CLOSED, summary
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import CaseSummary, MemoryWindow, Question, VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.conversation import Question
+from deephelp_app.domain.models.memory import CaseSummary, MemoryWindow
 from deephelp_app.domain.ports import CaseRepository
 
 

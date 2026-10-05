@@ -178,7 +178,7 @@ async def test_metrics_have_distinct_outcomes_technical_failures_and_unknown_usa
 
     from deephelp_app.adapters.telemetry import stage_event
     from deephelp_app.domain.errors import AppError
-    from deephelp_app.domain.models import ErrorCode
+    from deephelp_app.domain.models.common import ErrorCode
 
     reader = InMemoryMetricReader()
     runtime = Telemetry("metrics", InMemorySpanExporter(), reader=reader)

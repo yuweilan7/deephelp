@@ -19,29 +19,28 @@ from deephelp_app.adapters.langfuse_query import LangfuseRunClient, retired_obse
 from deephelp_app.adapters.telemetry import ObservabilityMiddleware, annotate, environment
 from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, TraceSink, request_context
 from deephelp_app.application.approval import ApprovalService
-from deephelp_app.application.conversation import Conversation
+from deephelp_app.application.conversation.orchestrator import Conversation
 from deephelp_app.application.debug import DebugView, export_json, project, sanitize, scope_hash
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    ApprovalCommand,
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
+from deephelp_app.domain.models.common import (
     BudgetUsed,
-    ConverseInput,
-    DebugSnapshot,
     ErrorCode,
     ErrorDetail,
-    LifecycleCommand,
-    MemoryWindow,
     NextAction,
-    OperationRecord,
     Outcome,
-    Question,
-    RequestEnvelope,
-    ResponseEnvelope,
-    ResumeCommand,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import (
+    ConverseInput,
+    LifecycleCommand,
+    Question,
+    RequestEnvelope,
+)
+from deephelp_app.domain.models.memory import MemoryWindow
+from deephelp_app.domain.models.responses import DebugSnapshot, ResponseEnvelope
 from deephelp_app.domain.ports import ModelGateway, Repository
 
 

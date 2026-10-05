@@ -1,4 +1,4 @@
-from deephelp_app.domain.models import ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
 
 HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.INVALID_ARGUMENT: 422,

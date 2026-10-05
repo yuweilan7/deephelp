@@ -12,16 +12,12 @@ from pydantic import Field, model_validator
 
 from deephelp_app.adapters.mcp_protocol import canonical, registered_tools, tool_schema
 from deephelp_app.application.sop_config import SOPLimits
-from deephelp_app.domain.models import (
-    DTO,
-    EntityName,
-    Identifier,
-    IntentCode,
-    Money,
-    SOPStatus,
-    ToolName,
-    VersionManifest,
-)
+from deephelp_app.domain.models.common import DTO, Identifier, Money
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.sop import SOPStatus
+from deephelp_app.domain.models.tools import ToolName
 from deephelp_app.domain.registry import complaint_registry
 
 # A configuration can select within these grants, never extend them.

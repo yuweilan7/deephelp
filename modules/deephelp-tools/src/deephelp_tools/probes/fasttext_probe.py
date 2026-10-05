@@ -22,7 +22,7 @@ from deephelp_app.adapters.fasttext_runtime import (
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
 from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.application.cascade import StructuredFallback
-from deephelp_app.application.conversation import STAGES
+from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.application.dense import atomic_json, load_json
 from deephelp_app.application.fasttext_preprocess import digest
 from deephelp_app.application.text_entity import TextEntityProcessor
@@ -35,7 +35,9 @@ from deephelp_app.bootstrap.mvp_runtime import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import IntentCode, Outcome, ResponseEnvelope
+from deephelp_app.domain.models.common import Outcome
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_app.domain.ports import FallbackPort
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.fasttext_training import audit, metrics

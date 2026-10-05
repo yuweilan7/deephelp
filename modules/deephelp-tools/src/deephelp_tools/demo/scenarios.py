@@ -3,15 +3,11 @@
 from pydantic import Field
 
 from deephelp_app.application.sop_governance import SOPRegistry, bundled_registry
-from deephelp_app.domain.models import (
-    DTO,
-    EntityName,
-    ErrorCode,
-    IntentCode,
-    Money,
-    SOPStatus,
-    ToolName,
-)
+from deephelp_app.domain.models.common import DTO, ErrorCode, Money
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.sop import SOPStatus
+from deephelp_app.domain.models.tools import ToolName
 from deephelp_tools.demo.fixtures import BusinessFixtures, load_business_fixtures
 from deephelp_tools.demo.tool_config import FaultSpec
 

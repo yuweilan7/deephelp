@@ -37,13 +37,9 @@ from deephelp_app.adapters.mcp_protocol import (
 from deephelp_app.adapters.telemetry import environment, server_call
 from deephelp_app.domain.checks import require_owner
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    DTO,
-    ErrorCode,
-    EvidenceRef,
-    EvidenceSource,
-    Fact,
-    FactKind,
+from deephelp_app.domain.models.common import DTO, ErrorCode
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource, Fact, FactKind
+from deephelp_app.domain.models.tools import (
     ToolInvocationEnvelope,
     ToolInvocationRecord,
     ToolName,

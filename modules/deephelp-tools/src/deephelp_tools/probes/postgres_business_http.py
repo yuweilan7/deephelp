@@ -12,7 +12,7 @@ from uuid import uuid4
 from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient, ServiceCredentials
 from deephelp_app.adapters.postgres import PostgresConfig
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import ToolInvocationEnvelope, ToolResult
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolResult
 from deephelp_services.business_store import BusinessRepository
 from deephelp_services.http_transport import initialize_credentials
 from deephelp_tools.evaluation.postgres_migration import canonical, read_snapshot, untyped, verify

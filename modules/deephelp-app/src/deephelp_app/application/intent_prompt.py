@@ -8,7 +8,8 @@ from pydantic import Field
 
 from deephelp_app.application.corpus import digest
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DTO, Identifier, ReleaseManifest
+from deephelp_app.domain.models.common import DTO, Identifier
+from deephelp_app.domain.models.release import ReleaseManifest
 
 ROLE = "langfuse:intent-fallback"
 

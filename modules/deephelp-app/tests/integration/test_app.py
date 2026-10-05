@@ -11,7 +11,7 @@ from deephelp_app.adapters.trace import JsonlTrace, MemoryTrace, request_context
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
 
 pytestmark = pytest.mark.integration
 

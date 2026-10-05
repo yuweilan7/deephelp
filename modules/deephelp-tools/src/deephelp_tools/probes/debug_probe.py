@@ -23,7 +23,8 @@ from deephelp_app.bootstrap.mvp_runtime import (
 )
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import RequestEnvelope, ResponseEnvelope
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
 from deephelp_tools.evaluation.mvp_acceptance import api_client

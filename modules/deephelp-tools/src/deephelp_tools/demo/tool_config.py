@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from deephelp_app.domain.models import DTO
+from deephelp_app.domain.models.common import DTO
 from deephelp_tools.demo.fixtures import BusinessFixtures
 
 

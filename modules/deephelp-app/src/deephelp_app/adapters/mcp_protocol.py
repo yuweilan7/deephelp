@@ -11,16 +11,9 @@ from pydantic import ValidationError
 
 from deephelp_app.adapters.telemetry import carrier, checked
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    DTO,
-    ErrorCode,
-    FactKind,
-    Money,
-    ToolName,
-    ToolParameters,
-    ToolRequest,
-    ToolResult,
-)
+from deephelp_app.domain.models.common import DTO, ErrorCode, Money
+from deephelp_app.domain.models.evidence import FactKind
+from deephelp_app.domain.models.tools import ToolName, ToolParameters, ToolRequest, ToolResult
 
 TOOL_VERSION = "m06-readonly-v1"
 META_KEY = "deephelp/internal"

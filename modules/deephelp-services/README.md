@@ -37,7 +37,7 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve -
 | `GET/PUT /business/orders/{id}/activities` | 关系读取/整体替换；写入需expected_version，订单版本递增 |
 | `GET /business/evidence/{evidence_id}` | 原查询的不可变记录版本快照与ToolResult，仅原主体可读 |
 
-订单创建示例：`{"order_id":"M20-001","paid":{"amount":"173.45"},"discount":{"amount":"12.30"},"discount_status":"applied","sku_ids":["SKU-1"]}`。券另含coupon_id/order_id/status/minimum_spend/带时区valid_from与valid_until；活动含activity_id/label/rules/owner scope/status/有效期。请求的完整schema由应用OpenAPI提供，唯一类型在[domain/models.py](../deephelp-app/src/deephelp_app/domain/models.py)。金额只接受十进制字符串，CNY最多两位，SQL使用DECIMAL(20,2)。停用通过显式状态；没有删除接口。
+订单创建示例：`{"order_id":"M20-001","paid":{"amount":"173.45"},"discount":{"amount":"12.30"},"discount_status":"applied","sku_ids":["SKU-1"]}`。券另含coupon_id/order_id/status/minimum_spend/带时区valid_from与valid_until；活动含activity_id/label/rules/owner scope/status/有效期。请求的完整schema由应用OpenAPI提供，唯一类型在[domain/models.py](../deephelp-app/src/deephelp_app/domain/models/__init__.py)。金额只接受十进制字符串，CNY最多两位，SQL使用DECIMAL(20,2)。停用通过显式状态；没有删除接口。
 
 订单、券和活动关联均校验完整tenant/user，关系事务与查询快照有一致读取边界。券返回当前状态/有效期/门槛下的可用性；工具活动事实沿用既有IDs和名称schema，详细规则/有效期由维护详情查看。维护订单版本、券版本及活动版本会保存在查询快照，content_hash校验返回事实；更新后新message_id读取新记录，重投旧message_id返回原receipt/事实/证据及本次零用量。
 

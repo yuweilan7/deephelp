@@ -27,17 +27,15 @@ from deephelp_app.bootstrap.mvp_runtime import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import (
-    LifecycleCommand,
+from deephelp_app.domain.models.common import (
     NextAction,
     Outcome,
-    Question,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import LifecycleCommand, Question, RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.mvp_acceptance import api_client
 

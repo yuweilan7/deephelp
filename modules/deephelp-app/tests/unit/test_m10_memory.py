@@ -11,17 +11,16 @@ from deephelp_app.adapters.ledger import payload_hash
 from deephelp_app.application.memory import MemoryService, RedisMemory, scope_key
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    LifecycleCommand,
-    MemoryMessage,
+from deephelp_app.domain.models.common import (
     NextAction,
     Outcome,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import LifecycleCommand, RequestEnvelope
+from deephelp_app.domain.models.memory import MemoryMessage
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.learning.cases_fake import MemoryCaseRepository
 
 pytestmark = pytest.mark.unit

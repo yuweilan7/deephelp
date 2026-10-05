@@ -7,14 +7,11 @@ from typing import Literal
 from jsonschema import Draft202012Validator
 from pydantic import Field, model_validator
 
-from deephelp_app.domain.models import (
-    DTO,
-    EntityName,
-    Identifier,
-    IntentCode,
-    SOPStatus,
-    ToolName,
-)
+from deephelp_app.domain.models.common import DTO, Identifier
+from deephelp_app.domain.models.entities import EntityName
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.sop import SOPStatus
+from deephelp_app.domain.models.tools import ToolName
 from deephelp_app.domain.registry import complaint_registry
 
 PROMPT_VERSION = "sop-react-v1"

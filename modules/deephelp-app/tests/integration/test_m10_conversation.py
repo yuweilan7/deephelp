@@ -8,7 +8,7 @@ import pytest
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
-from deephelp_app.domain.models import VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
 from deephelp_tools.learning.cases_fake import MemoryCaseRepository
 from deephelp_tools.learning.mvp_replay import ReplayAssembly
 

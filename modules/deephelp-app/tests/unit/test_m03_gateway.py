@@ -10,7 +10,8 @@ from deephelp_app.adapters.gateway import QianwenGateway
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import ChatMessage, ChatRequest, ErrorCode, ModelTool
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest, ModelTool
 from deephelp_tools.learning.model_fakes import FakeGateway
 
 pytestmark = pytest.mark.unit

@@ -16,7 +16,7 @@ from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, validate_control_paths
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DenseResult, HybridScope
+from deephelp_app.domain.models.retrieval import DenseResult, HybridScope
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.hybrid_eval import RetrievalQuery

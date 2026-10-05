@@ -10,11 +10,9 @@ from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.milvus_dense import create_client
 from deephelp_app.adapters.milvus_memory import MilvusEventIndex
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig, create_gateway
-from deephelp_app.application.event_cluster import (
-    EventAggregationService,
-    PersistentEventAggregation,
-    StructuredClusterJudge,
-)
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
+from deephelp_app.application.event_cluster.judge import StructuredClusterJudge
+from deephelp_app.application.event_cluster.persistence import PersistentEventAggregation
 from deephelp_app.application.memory import MemoryService, ProjectionWorker, RedisMemory
 from deephelp_app.application.text_entity import TextEntityProcessor
 from deephelp_app.domain.execution import AsyncCalls

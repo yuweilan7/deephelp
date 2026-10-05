@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 
 from pydantic import ValidationError
 
-from deephelp_app.domain.models import CorpusRecord
+from deephelp_app.domain.models.retrieval import CorpusRecord
 
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 1000

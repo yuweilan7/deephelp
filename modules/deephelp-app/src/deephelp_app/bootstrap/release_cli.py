@@ -16,7 +16,7 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, live_app
 from deephelp_app.bootstrap.release_runtime import ReleaseRuntime
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ReleaseManifest
+from deephelp_app.domain.models.release import ReleaseManifest
 
 
 async def run(args: argparse.Namespace) -> int:

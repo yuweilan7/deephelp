@@ -9,7 +9,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver, CheckpointTuple, get_
 from deephelp_app.adapters.checkpoints import configuration
 from deephelp_app.adapters.telemetry import annotate, observed
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
 
 
 class LegacyCheckpointArchive(BaseCheckpointSaver[int]):

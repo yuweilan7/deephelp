@@ -19,7 +19,7 @@ from pydantic import Field, SecretStr
 from deephelp_app.adapters.mcp_protocol import sign_metadata, verify_metadata
 from deephelp_app.adapters.telemetry import META_KEY, carrier, checked, observed
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import DTO, ErrorCode
+from deephelp_app.domain.models.common import DTO, ErrorCode
 
 
 class ServiceCredentials(DTO):

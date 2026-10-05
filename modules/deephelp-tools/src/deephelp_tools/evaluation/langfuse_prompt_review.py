@@ -23,7 +23,7 @@ from deephelp_app.application.intent_prompt import (
 )
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.feedback import FeedbackCandidate
-from deephelp_app.domain.models import IntentCode
+from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.evaluation.flywheel_store import FeedbackStore
 from deephelp_tools.evaluation.langfuse_mapping import (
     ImportIds,

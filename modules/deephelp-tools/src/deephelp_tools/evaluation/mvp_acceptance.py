@@ -14,16 +14,16 @@ from fastapi import FastAPI
 
 from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import (
     ErrorCode,
     NextAction,
     Outcome,
     QuestionStatus,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 @asynccontextmanager

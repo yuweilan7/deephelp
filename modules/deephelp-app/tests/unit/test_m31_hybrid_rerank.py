@@ -11,20 +11,17 @@ from deephelp_app.application.retrieval_policy import validate_published_selecti
 from deephelp_app.application.text_entity import TextPolicy, clean_text
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    DemandType,
-    DenseHit,
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import (
     EmbeddingResult,
     EmbeddingSignature,
-    ErrorCode,
-    HybridScope,
-    IntentCode,
     ModelUsage,
     RerankHit,
-    RerankPolicy,
     RerankResult,
-    TextEntityResult,
 )
+from deephelp_app.domain.models.retrieval import DenseHit, HybridScope, RerankPolicy
+from deephelp_app.domain.models.text import DemandType, TextEntityResult
 from deephelp_tools.evaluation.hybrid_eval import dataset, query_digest
 from deephelp_tools.evaluation.rerank_cli import OPTIONS, choose
 

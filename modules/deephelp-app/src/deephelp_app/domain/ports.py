@@ -2,29 +2,23 @@ from collections.abc import Callable
 from typing import Protocol
 
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.conversation import LifecycleCommand, Question, RequestEnvelope
+from deephelp_app.domain.models.events import ClusterJudgement, EventCandidate, EventMessage
+from deephelp_app.domain.models.intent_decisions import FallbackResult
+from deephelp_app.domain.models.memory import MemoryWindow
+from deephelp_app.domain.models.model_io import (
     ChatRequest,
     ChatResult,
-    ClusterJudgement,
-    DenseResult,
-    DenseScope,
     EmbeddingResult,
-    EventCandidate,
-    EventMessage,
-    FallbackResult,
-    LifecycleCommand,
-    MemoryWindow,
-    Question,
-    RequestEnvelope,
     RerankRequest,
     RerankResult,
-    ResponseEnvelope,
-    SOPResult,
-    TextEntityResult,
-    ToolRequest,
-    ToolResult,
-    VerifiedIdentity,
 )
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.retrieval import DenseResult, DenseScope
+from deephelp_app.domain.models.sop import SOPResult
+from deephelp_app.domain.models.text import TextEntityResult
+from deephelp_app.domain.models.tools import ToolRequest, ToolResult
 
 
 class ModelGateway(Protocol):

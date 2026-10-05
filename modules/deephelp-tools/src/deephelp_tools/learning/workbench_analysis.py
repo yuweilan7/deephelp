@@ -24,7 +24,8 @@ from deephelp_app.application.text_entity import (
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import request_execution
-from deephelp_app.domain.models import DTO, ErrorCode, Identifier, RequestEnvelope
+from deephelp_app.domain.models.common import DTO, ErrorCode, Identifier
+from deephelp_app.domain.models.conversation import RequestEnvelope
 
 
 class Practice(DTO):

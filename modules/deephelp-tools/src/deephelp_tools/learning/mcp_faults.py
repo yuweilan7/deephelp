@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
 from deephelp_tools.demo.tool_config import FaultSpec
 
 

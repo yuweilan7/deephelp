@@ -4,7 +4,7 @@ import json
 from collections.abc import Sequence
 
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import ChatRequest, ChatResult, ModelToolCall, ModelUsage
+from deephelp_app.domain.models.model_io import ChatRequest, ChatResult, ModelToolCall, ModelUsage
 from deephelp_tools.assets import asset_path
 
 

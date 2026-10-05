@@ -19,7 +19,8 @@ import httpx
 from deephelp_app.application.dense import load_json
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import BusinessOrderInput, BusinessRecord, ResponseEnvelope
+from deephelp_app.domain.models.business import BusinessOrderInput, BusinessRecord
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.assets import asset_path
 
 SUBPROCESS_FLAGS = 0
@@ -565,7 +566,7 @@ async def resume_restart(args: argparse.Namespace) -> int:
     from deephelp_app.adapters.network_mcp import HTTPMCPConfig, NetworkMCPClient
     from deephelp_app.adapters.tool_gateway import ToolGateway
     from deephelp_app.domain.execution import ExecutionBudget
-    from deephelp_app.domain.models import ConverseInput, RequestEnvelope
+    from deephelp_app.domain.models.conversation import ConverseInput, RequestEnvelope
     from deephelp_tools.probes.mcp_smoke import synthetic_request
 
     source = Path(args.resume_report)

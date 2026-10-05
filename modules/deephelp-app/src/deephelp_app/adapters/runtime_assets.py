@@ -13,7 +13,7 @@ from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import load_json, verify_manifest_rows
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DenseScope, HybridScope
+from deephelp_app.domain.models.retrieval import DenseScope, HybridScope
 
 
 def read_data(path: Path) -> dict[str, Any]:

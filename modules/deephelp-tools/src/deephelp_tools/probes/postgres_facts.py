@@ -24,21 +24,21 @@ from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.corpus import digest
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.feedback import RouteReview
-from deephelp_app.domain.models import (
-    ApprovalCommand,
-    BusinessOrderInput,
+from deephelp_app.domain.models.approval import ApprovalCommand
+from deephelp_app.domain.models.business import BusinessOrderInput
+from deephelp_app.domain.models.common import (
     ErrorCode,
-    IntentCode,
     Money,
     NextAction,
     Outcome,
     QuestionStatus,
-    ReleaseManifest,
-    RequestEnvelope,
-    ResponseEnvelope,
     RunStatus,
     VerifiedIdentity,
 )
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import ReleaseManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_services.business_store import BusinessRepository
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.approval_prepare import prepare

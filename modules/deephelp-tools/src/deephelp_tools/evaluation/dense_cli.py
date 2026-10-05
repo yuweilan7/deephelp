@@ -30,7 +30,8 @@ from deephelp_app.application.dense import (
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import DenseScope, ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.retrieval import DenseScope
 from deephelp_tools.evaluation.corpus_preview import frozen_preview
 
 

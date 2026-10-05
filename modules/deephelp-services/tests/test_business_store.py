@@ -9,13 +9,13 @@ import pytest
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.business import (
     BusinessCouponInput,
     BusinessOrderInput,
     BusinessRecord,
     BusinessRelations,
-    ToolInvocationEnvelope,
 )
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope
 from deephelp_services.business_store import BusinessRepository
 from deephelp_tools.probes.business_probe import Processes, port, reclaim_owned_lock
 from deephelp_tools.probes.mcp_smoke import synthetic_request

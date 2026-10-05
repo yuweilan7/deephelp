@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import ErrorCode
+from deephelp_app.domain.models.common import ErrorCode
 
 Runner = Callable[[dict[str, Any], Path], Awaitable[dict[str, Any]]]
 

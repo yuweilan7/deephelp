@@ -9,7 +9,8 @@ from typing import Any
 from redis.asyncio import Redis
 
 from deephelp_app.adapters.milvus_dense import local_connection
-from deephelp_app.domain.models import MemoryWindow, VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.memory import MemoryWindow
 
 
 def scope_key(identity: VerifiedIdentity, session: str) -> str:

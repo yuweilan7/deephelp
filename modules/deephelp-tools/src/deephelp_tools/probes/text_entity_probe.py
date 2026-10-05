@@ -18,15 +18,10 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    Entity,
-    EntityName,
-    EntitySource,
-    ErrorCode,
-    RequestEnvelope,
-    TextEntityResult,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.text import TextEntityResult
 from deephelp_tools.assets import asset_path
 from deephelp_tools.probes.usage import api_records, summarize_usage
 

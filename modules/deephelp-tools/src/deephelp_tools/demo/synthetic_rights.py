@@ -19,7 +19,8 @@ from deephelp_app.adapters.synthetic_rights import (
     signature,
 )
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import ApprovalStatus, OperationRecord, OperationStatus
+from deephelp_app.domain.models.approval import OperationRecord
+from deephelp_app.domain.models.common import ApprovalStatus, OperationStatus
 from deephelp_tools.demo.scenarios import fixtures
 
 

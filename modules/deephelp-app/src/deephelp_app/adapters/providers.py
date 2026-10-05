@@ -13,7 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import DecimalValue, EmbeddingSignature
+from deephelp_app.domain.models.common import DecimalValue
+from deephelp_app.domain.models.model_io import EmbeddingSignature
 
 if TYPE_CHECKING:
     from deephelp_app.adapters.gateway import QianwenGateway

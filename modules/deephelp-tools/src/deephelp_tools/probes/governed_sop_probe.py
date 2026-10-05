@@ -15,7 +15,7 @@ from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.providers import ProviderConfig, create_gateway
 from deephelp_app.adapters.tool_gateway import ToolGateway as RuntimeToolGateway
 from deephelp_app.adapters.tool_gateway import process_alive
-from deephelp_app.application.conversation import STAGES
+from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import RegistryStore, bundled_registry
 from deephelp_app.bootstrap.local_paths import local_path
@@ -27,7 +27,9 @@ from deephelp_app.bootstrap.mvp_runtime import (
 )
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import ModelToolCall, ResponseEnvelope, SOPStatus
+from deephelp_app.domain.models.model_io import ModelToolCall
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.sop import SOPStatus
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.evaluation.business_catalog import (

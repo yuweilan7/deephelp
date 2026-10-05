@@ -10,7 +10,8 @@ from decimal import Decimal
 import httpx
 
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import BudgetSnapshot, BudgetUsed, ErrorCode, RequestEnvelope
+from deephelp_app.domain.models.common import BudgetSnapshot, BudgetUsed, ErrorCode
+from deephelp_app.domain.models.conversation import RequestEnvelope
 
 request_execution: ContextVar[RequestEnvelope | None] = ContextVar(
     "request_execution", default=None

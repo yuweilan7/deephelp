@@ -13,12 +13,8 @@ import httpx
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    DTO,
-    ErrorCode,
-    Identifier,
-    OperationRecord,
-)
+from deephelp_app.domain.models.approval import OperationRecord
+from deephelp_app.domain.models.common import DTO, ErrorCode, Identifier
 
 
 def binding_hash(op: OperationRecord) -> str:

@@ -2,15 +2,9 @@
 
 from pydantic import AwareDatetime
 
-from deephelp_app.domain.models import (
-    DTO,
-    ConverseInput,
-    Count,
-    Identifier,
-    Question,
-    ResponseEnvelope,
-    RunStatus,
-)
+from deephelp_app.domain.models.common import DTO, Count, Identifier, RunStatus
+from deephelp_app.domain.models.conversation import ConverseInput, Question
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 class SessionSummary(DTO):

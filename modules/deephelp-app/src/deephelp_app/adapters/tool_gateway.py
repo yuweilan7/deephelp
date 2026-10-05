@@ -38,11 +38,9 @@ from deephelp_app.domain.checks import (
 )
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    ErrorCode,
-    ErrorDetail,
-    Question,
-    RequestEnvelope,
+from deephelp_app.domain.models.common import ErrorCode, ErrorDetail
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.tools import (
     ToolInvocationEnvelope,
     ToolInvocationRecord,
     ToolRequest,

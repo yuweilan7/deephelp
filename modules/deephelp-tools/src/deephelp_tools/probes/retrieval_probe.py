@@ -26,13 +26,10 @@ from deephelp_app.application.hybrid import HybridRetriever
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import request_execution
-from deephelp_app.domain.models import (
-    BusinessOrderInput,
-    BusinessRecord,
-    EmbeddingResult,
-    RequestEnvelope,
-    ResponseEnvelope,
-)
+from deephelp_app.domain.models.business import BusinessOrderInput, BusinessRecord
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.model_io import EmbeddingResult
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.probes.business_probe import (
     Processes,
     cleanup_logs,

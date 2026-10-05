@@ -18,24 +18,22 @@ from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.approval import ApprovalCommand, ResumeCommand
+from deephelp_app.domain.models.common import (
     DTO,
-    ApprovalCommand,
-    Entity,
-    EntityName,
-    EntitySource,
     ErrorCode,
     Identifier,
-    IntentCode,
-    Question,
     QuestionStatus,
-    RequestEnvelope,
-    ResumeCommand,
+    VerifiedIdentity,
+)
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.tools import (
     ToolInvocationEnvelope,
     ToolName,
     ToolParameters,
     ToolRequest,
-    VerifiedIdentity,
     tool_parameters_hash,
 )
 from deephelp_tools.demo.approval_prepare import prepare
@@ -163,7 +161,7 @@ def learning_router(
             ]
         )
         intent = IntentCode.COUPON_UNUSABLE if params.coupon_id else IntentCode.DISCOUNT_MISSING
-        from deephelp_app.domain.models import VersionManifest
+        from deephelp_app.domain.models.release import VersionManifest
 
         question = Question(
             question_id=question_id,

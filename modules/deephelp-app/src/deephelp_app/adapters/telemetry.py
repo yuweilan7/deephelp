@@ -372,7 +372,7 @@ def observed(
 
 
 def result_error_code(result: Any) -> str:
-    from deephelp_app.domain.models import ErrorCode
+    from deephelp_app.domain.models.common import ErrorCode
 
     code = str(getattr(getattr(result, "error", None), "code", ""))
     content = getattr(result, "structured_content", None)

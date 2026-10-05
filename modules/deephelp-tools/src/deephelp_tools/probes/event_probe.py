@@ -9,18 +9,13 @@ from uuid import uuid4
 
 from deephelp_app.adapters.cases import PostgresCaseRepository
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig
-from deephelp_app.application.event_cluster import PersistentEventAggregation
+from deephelp_app.application.event_cluster.persistence import PersistentEventAggregation
 from deephelp_app.bootstrap.event_runtime import live_events
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import (
-    ErrorCode,
-    LifecycleCommand,
-    QuestionStatus,
-    RequestEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, QuestionStatus, VerifiedIdentity
+from deephelp_app.domain.models.conversation import LifecycleCommand, RequestEnvelope
 from deephelp_tools.learning.event_replay import envelope, sequences
 
 

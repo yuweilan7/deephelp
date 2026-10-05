@@ -11,16 +11,10 @@ from deephelp_app.adapters.ledger import (
     payload_hash,
 )
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    ErrorCode,
-    LifecycleCommand,
-    MemoryMessage,
-    MemoryWindow,
-    Question,
-    RequestEnvelope,
-    ResponseEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import LifecycleCommand, Question, RequestEnvelope
+from deephelp_app.domain.models.memory import MemoryMessage, MemoryWindow
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 class MemoryCaseRepository(MemoryLedger):

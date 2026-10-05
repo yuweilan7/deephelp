@@ -25,7 +25,7 @@ from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LiveAssembly
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.feedback import Route, RouteReview
-from deephelp_app.domain.models import DTO, ErrorCode, Identifier, VerifiedIdentity
+from deephelp_app.domain.models.common import DTO, ErrorCode, Identifier, VerifiedIdentity
 from deephelp_tools.evaluation.core import DATA, MANIFEST, audit
 from deephelp_tools.evaluation.evaluation_cli import run as evaluate
 from deephelp_tools.evaluation.flywheel_assets import build, exports, verify_files

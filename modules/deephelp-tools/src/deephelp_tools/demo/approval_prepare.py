@@ -7,19 +7,13 @@ from deephelp_app.adapters.approval_store import ApprovalRepository
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    Entity,
-    EntityName,
-    EntitySource,
-    IntentCode,
-    ModelToolCall,
-    OperationRecord,
-    Outcome,
-    QuestionStatus,
-    ResponseEnvelope,
-    RunStatus,
-    VersionManifest,
-)
+from deephelp_app.domain.models.approval import OperationRecord
+from deephelp_app.domain.models.common import Outcome, QuestionStatus, RunStatus
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import ModelToolCall
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.scenarios import proposal_registry
 from deephelp_tools.learning.event_replay import envelope

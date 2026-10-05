@@ -17,16 +17,16 @@ from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import (
     ChatMessage,
     ChatRequest,
-    CorpusRecord,
-    ErrorCode,
-    IntentCode,
     ModelTool,
     RerankDocument,
     RerankRequest,
 )
+from deephelp_app.domain.models.retrieval import CorpusRecord
 from deephelp_tools.assets import asset_path
 from deephelp_tools.probes.usage import api_records, summarize_usage
 

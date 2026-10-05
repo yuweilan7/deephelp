@@ -13,15 +13,9 @@ from deephelp_app.domain.cases import bounded_history as bounded_history
 from deephelp_app.domain.cases import summary as summary
 from deephelp_app.domain.cases import validate_transition as validate_transition
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
-    ErrorCode,
-    LifecycleCommand,
-    MemoryMessage,
-    MemoryWindow,
-    Question,
-    RequestEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import LifecycleCommand, Question, RequestEnvelope
+from deephelp_app.domain.models.memory import MemoryMessage, MemoryWindow
 
 
 class PostgresCaseRepository(PostgresLedger):

@@ -41,14 +41,9 @@ from deephelp_app.adapters.network_mcp import (
 )
 from deephelp_app.adapters.telemetry import environment, server_call
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import (
-    BusinessInput,
-    BusinessRelations,
-    BusinessUpdate,
-    ErrorCode,
-    ToolInvocationEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.business import BusinessInput, BusinessRelations, BusinessUpdate
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope
 from deephelp_services.business_store import BusinessRepository, Kind
 from deephelp_services.http_transport import (
     initialize_credentials,

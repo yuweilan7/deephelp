@@ -25,7 +25,8 @@ from deephelp_app.application.dense import (
 )
 from deephelp_app.application.hybrid import ANALYZER, normalized_fusion
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import DenseHit, DenseScope, ErrorCode, HybridScope
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.retrieval import DenseHit, DenseScope, HybridScope
 
 
 class MilvusHybridStore(MilvusDenseStore):

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
-from deephelp_app.domain.models import VerifiedIdentity
+from deephelp_app.domain.models.common import VerifiedIdentity
 from deephelp_tools.learning.workbench_protocol import ProtocolAction, learning_router
 
 pytestmark = pytest.mark.integration

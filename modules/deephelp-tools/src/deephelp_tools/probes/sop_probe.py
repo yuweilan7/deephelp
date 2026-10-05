@@ -18,15 +18,11 @@ from deephelp_app.application.sop_config import load_sops
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    ErrorCode,
-    IntentCode,
-    Money,
-    Question,
-    RequestEnvelope,
-    SOPStatus,
-    VersionManifest,
-)
+from deephelp_app.domain.models.common import ErrorCode, Money
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.sop import SOPStatus
 from deephelp_app.domain.ports import ChatPort
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig

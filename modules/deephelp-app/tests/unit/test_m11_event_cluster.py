@@ -3,28 +3,22 @@ from datetime import timedelta
 
 import pytest
 
-from deephelp_app.application.event_cluster import (
-    ClusterPolicy,
-    ConstrainedUnionFind,
-    EventAggregationService,
-    PersistentEventAggregation,
-)
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
+from deephelp_app.application.event_cluster.components import ConstrainedUnionFind
+from deephelp_app.application.event_cluster.persistence import PersistentEventAggregation
+from deephelp_app.application.event_cluster.policy import ClusterPolicy
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode, QuestionStatus, VerifiedIdentity
+from deephelp_app.domain.models.conversation import LifecycleCommand
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.events import (
     ClusterCitation,
     ClusterJudgement,
-    DemandType,
-    Entity,
-    EntityName,
-    EntitySource,
-    ErrorCode,
     EventCandidate,
     EventMessage,
-    LifecycleCommand,
-    QuestionStatus,
-    VerifiedIdentity,
 )
+from deephelp_app.domain.models.text import DemandType
 from deephelp_tools.learning.cases_fake import MemoryCaseRepository
 from deephelp_tools.learning.event_replay import ReplayJudge, envelope, sequences
 

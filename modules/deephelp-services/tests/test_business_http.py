@@ -25,16 +25,14 @@ from deephelp_app.adapters.tool_gateway import ToolGateway
 from deephelp_app.api.business import business_router
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.business import (
     BusinessActivityInput,
     BusinessCouponInput,
     BusinessOrderInput,
     BusinessRecord,
-    ErrorCode,
-    ToolInvocationEnvelope,
-    ToolStatus,
-    VerifiedIdentity,
 )
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolStatus
 from deephelp_services.business import create_business_app
 from deephelp_services.business_store import BusinessRepository
 from deephelp_tools.demo.mcp_server import MockBackend

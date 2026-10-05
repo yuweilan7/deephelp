@@ -11,7 +11,8 @@ from deephelp_app.adapters.trace import JsonlTrace, MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.mvp_runtime import LocalAuth
 from deephelp_app.bootstrap.settings import Settings
-from deephelp_app.domain.models import IntentCandidate, IntentDecision
+from deephelp_app.domain.models.intent_decisions import IntentDecision
+from deephelp_app.domain.models.retrieval import IntentCandidate
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
 from deephelp_tools.learning.cases_fake import MemoryCaseRepository
 from deephelp_tools.learning.event_replay import ReplayJudge

@@ -17,24 +17,21 @@ from pydantic import ValidationError
 from deephelp_app.adapters.ledger import PostgresLedger
 from deephelp_app.adapters.mcp_protocol import TOOL_VERSION, canonical
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.business import (
     BusinessActivityInput,
     BusinessCouponInput,
     BusinessInput,
     BusinessOrderInput,
     BusinessRecord,
     BusinessRelations,
-    ErrorCode,
-    EvidenceRef,
-    EvidenceSource,
-    Fact,
-    FactKind,
-    Money,
+)
+from deephelp_app.domain.models.common import ErrorCode, Money, VerifiedIdentity
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource, Fact, FactKind
+from deephelp_app.domain.models.tools import (
     ToolInvocationEnvelope,
     ToolName,
     ToolResult,
     ToolStatus,
-    VerifiedIdentity,
 )
 
 Kind = Literal["orders", "coupons", "activities"]

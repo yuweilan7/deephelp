@@ -8,7 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from deephelp_app.adapters.providers import EndpointConfig, ProviderConfig
-from deephelp_app.application.event_cluster import EventAggregationService
+from deephelp_app.application.event_cluster.aggregation import EventAggregationService
 from deephelp_app.bootstrap.event_runtime import live_events
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession, validate_control_paths

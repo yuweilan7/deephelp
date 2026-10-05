@@ -7,14 +7,13 @@ from fastapi import APIRouter, Query, Request
 
 from deephelp_app.adapters.business_client import BusinessClient, record_path
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.business import (
     BusinessInput,
     BusinessRecord,
     BusinessRelations,
     BusinessUpdate,
-    ErrorCode,
-    VerifiedIdentity,
 )
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 
 Kind = Literal["orders", "coupons", "activities"]
 

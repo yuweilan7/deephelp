@@ -20,33 +20,25 @@ from deephelp_app.adapters.synthetic_rights import (
 from deephelp_app.application.approval import ApprovalService, effect_response
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    ApprovalCommand,
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
+from deephelp_app.domain.models.common import (
     ApprovalStatus,
-    Entity,
-    EntityName,
-    EntitySource,
     ErrorCode,
-    EvidenceRef,
-    EvidenceSource,
-    Fact,
-    FactKind,
-    IntentCode,
     NextAction,
-    OperationRecord,
     OperationStatus,
     Outcome,
-    Question,
     QuestionStatus,
-    ResponseEnvelope,
-    ResumeCommand,
     RunStatus,
-    SOPPlan,
-    ToolParameters,
     VerifiedIdentity,
-    VersionManifest,
-    tool_parameters_hash,
 )
+from deephelp_app.domain.models.conversation import Question
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.evidence import EvidenceRef, EvidenceSource, Fact, FactKind
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.sop import SOPPlan
+from deephelp_app.domain.models.tools import ToolParameters, tool_parameters_hash
 
 
 @pytest.fixture

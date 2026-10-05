@@ -19,7 +19,7 @@ from deephelp_app.application.intent_prompt import (
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import ReleaseManifest
+from deephelp_app.domain.models.release import ReleaseManifest
 
 
 def release_hash(manifest: ReleaseManifest) -> str:

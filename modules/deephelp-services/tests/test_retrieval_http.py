@@ -20,23 +20,22 @@ from deephelp_app.application.corpus import read_corpus
 from deephelp_app.application.hybrid import normalized_fusion, rerank_result, result_for
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget, request_execution
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.model_io import ModelUsage, RerankHit, RerankResult
+from deephelp_app.domain.models.retrieval import (
     DenseCandidate,
     DenseHit,
     DenseResult,
     DenseScope,
-    ErrorCode,
     HybridScope,
-    ModelUsage,
-    RerankHit,
     RerankPolicy,
-    RerankResult,
+)
+from deephelp_app.domain.models.retrieval_protocol import (
     RetrievalAction,
     RetrievalContext,
     RetrievalDelegation,
     RetrievalQuery,
     RetrievalWire,
-    VerifiedIdentity,
 )
 from deephelp_services.retrieval import create_retrieval_app
 from deephelp_tools.assets import asset_path

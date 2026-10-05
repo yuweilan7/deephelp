@@ -11,22 +11,17 @@ from uuid import uuid4
 from deephelp_app.adapters.mcp_protocol import TOOL_VERSION, registered_tools
 from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
-    Entity,
-    EntityName,
-    EntitySource,
-    IntentCode,
-    Money,
-    Question,
-    QuestionStatus,
-    RequestEnvelope,
+from deephelp_app.domain.models.common import Money, QuestionStatus, VerifiedIdentity
+from deephelp_app.domain.models.conversation import Question, RequestEnvelope
+from deephelp_app.domain.models.entities import Entity, EntityName, EntitySource
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.release import VersionManifest
+from deephelp_app.domain.models.tools import (
     ToolName,
     ToolParameters,
     ToolRequest,
     ToolResult,
     ToolStatus,
-    VerifiedIdentity,
-    VersionManifest,
     tool_parameters_hash,
 )
 from deephelp_tools.assets import asset_path

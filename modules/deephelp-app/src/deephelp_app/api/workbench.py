@@ -16,7 +16,7 @@ from pydantic import Field
 
 from deephelp_app.adapters.history import PostgresHistory
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 
 COOKIE = "deephelp_session"
 

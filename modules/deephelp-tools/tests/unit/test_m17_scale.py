@@ -6,10 +6,11 @@ import pytest
 
 from deephelp_app.api.app import create_app
 from deephelp_app.application.corpus import digest
-from deephelp_app.application.event_cluster import fragments, function_of
+from deephelp_app.application.event_cluster.fragments import fragments, function_of
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_app.domain.models import DemandType, ResponseEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.text import DemandType
 from deephelp_tools.evaluation.business_catalog import business_cases, validate_catalog
 from deephelp_tools.evaluation.core import DATA, audit
 from deephelp_tools.evaluation.evaluation_runtime import EvaluationAssembly

@@ -19,16 +19,18 @@ from deephelp_app.application.dense import load_json, reference_matches
 from deephelp_app.application.hybrid import normalized_fusion, result_for
 from deephelp_app.application.retrieval_policy import validate_published_selection
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.retrieval import (
     CorpusRecord,
     DenseCandidate,
     DenseHit,
     DenseResult,
     DenseScope,
-    ErrorCode,
     HybridScope,
-    IntentCode,
     RerankPolicy,
+)
+from deephelp_app.domain.models.retrieval_protocol import (
     RetrievalAllowance,
     RetrievalQuery,
     RetrievalWire,

@@ -8,7 +8,7 @@ import pytest
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import BudgetUsed
+from deephelp_app.domain.models.common import BudgetUsed
 
 
 async def test_receipt_refund_updates_existing_cumulative_writer_without_reset(tmp_path):

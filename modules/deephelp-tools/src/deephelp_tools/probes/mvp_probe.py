@@ -13,7 +13,7 @@ from uuid import uuid4
 from deephelp_app.adapters.tool_gateway import process_alive
 from deephelp_app.adapters.trace import MemoryTrace
 from deephelp_app.api.app import create_app
-from deephelp_app.application.conversation import STAGES
+from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.bootstrap.local_paths import local_path
 from deephelp_app.bootstrap.mvp_runtime import (
     BudgetSession,
@@ -23,13 +23,10 @@ from deephelp_app.bootstrap.mvp_runtime import (
 )
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import (
-    ConverseInput,
-    RequestEnvelope,
-    ResponseEnvelope,
-    ToolInvocationRecord,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import VerifiedIdentity
+from deephelp_app.domain.models.conversation import ConverseInput, RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_app.domain.models.tools import ToolInvocationRecord
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
 from deephelp_tools.evaluation.mvp_acceptance import api_client, postgresql_claim_checks
@@ -364,7 +361,7 @@ def live_content(
 ) -> bool:
     from decimal import Decimal
 
-    from deephelp_app.domain.models import Money
+    from deephelp_app.domain.models.common import Money
 
     if name in {"discount", "dense"}:
         paid, discount = facts.get("paid"), facts.get("discount")

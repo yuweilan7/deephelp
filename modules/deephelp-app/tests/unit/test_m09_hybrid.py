@@ -15,18 +15,15 @@ from deephelp_app.application.dense import atomic_json, load_json
 from deephelp_app.application.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
-from deephelp_app.domain.models import (
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.model_io import (
     ChatResult,
-    DenseHit,
-    DenseResult,
-    DenseScope,
     EmbeddingResult,
     EmbeddingSignature,
-    ErrorCode,
-    HybridScope,
-    IntentCode,
     ModelUsage,
 )
+from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope, HybridScope
 from deephelp_tools.evaluation.hybrid_cli import validate_selection
 from deephelp_tools.evaluation.hybrid_eval import (
     choose_weight,

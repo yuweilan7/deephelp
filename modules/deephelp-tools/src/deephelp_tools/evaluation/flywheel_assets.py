@@ -22,7 +22,7 @@ from deephelp_app.application.dense import (
 from deephelp_app.bootstrap.mvp_runtime import BudgetSession
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls
-from deephelp_app.domain.models import DenseScope
+from deephelp_app.domain.models.retrieval import DenseScope
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.flywheel import FeedbackCandidate, neutral, snapshot

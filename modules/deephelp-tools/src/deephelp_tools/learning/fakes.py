@@ -4,12 +4,9 @@ import json
 
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
-from deephelp_app.domain.models import (
-    ErrorCode,
-    RequestEnvelope,
-    ResponseEnvelope,
-    VerifiedIdentity,
-)
+from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
 class FakeModelGateway:

@@ -13,7 +13,9 @@ from deephelp_app.adapters.feedback_store import FeedbackReader
 from deephelp_app.adapters.ledger import Receipt
 from deephelp_app.adapters.release_assets import release_hash, verify_release
 from deephelp_app.domain.errors import AppError, ConfigurationError
-from deephelp_app.domain.models import ErrorCode, ReleaseManifest, ReleasePointer, RequestEnvelope
+from deephelp_app.domain.models.common import ErrorCode
+from deephelp_app.domain.models.conversation import RequestEnvelope
+from deephelp_app.domain.models.release import ReleaseManifest, ReleasePointer
 
 
 class ReleaseMismatch(AppError):
