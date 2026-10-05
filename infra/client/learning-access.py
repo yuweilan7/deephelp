@@ -1,5 +1,10 @@
 """Apply or verify Redis and Milvus application access in the private learning environment."""
 
+# 旧基础设施显式apply/verify入口，复用原应用账号与认证来源。
+#
+# apply修改原权限后verify实际协议，读取不等于应用业务验收；SSH命令由当前入口拥有。
+# 源码注释不触发权限变更，本轮没有执行apply。
+
 import argparse
 import importlib.util
 import json

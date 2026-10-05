@@ -1,7 +1,8 @@
-"""Business approval/operation authority. Session, case and operation lock in that order.
+"""审批、领取和效果的权威PG记录，checkpoint可从这些事实恢复。
 
-All locks are short PostgreSQL transactions. HTTP, graph persistence and human waits
-take place after commit. The checkpoint can be reconstructed from these records.
+锁顺序固定为session、question、operation，只有短事务；人工等待、HTTP和图保存都在提交之后。
+decide校验原审批，acquire发唯一token，dispatch先持久标记尝试，complete绑定效果与终态。
+UNKNOWN仍保留原参数/尝试及审计，不能通过重置checkpoint抹掉或盲目重发。
 """
 
 import json
@@ -154,6 +155,11 @@ class ApprovalRepository(PostgresCaseRepository):
     async def locked(
         self, operation_id: str
     ) -> AsyncIterator[tuple[Any, OperationRecord, Question, Any]]:
+        """按固定顺序锁session、question、operation，yield同事务的记录与领取状态。
+
+        调用者只在此范围内更新事实并commit；异常/取消rollback后归还连接。
+        不在yield范围里等待HTTP或人工，防止长时间占行锁。
+        """
         initial = await self.get(operation_id)
         async with self.pool.acquire() as conn:
             try:

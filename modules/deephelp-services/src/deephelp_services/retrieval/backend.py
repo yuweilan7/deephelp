@@ -1,4 +1,8 @@
-"""Owned published-corpus retrieval through the official Streamable HTTP MCP SDK."""
+"""Retrieval服务实际调用原Dense/Hybrid引擎，并记录真实Embedding/Milvus/Rerank动作。
+
+open按冻结绑定验集合，退出栈关闭HTTP与Milvus；execute用同查询/向量比较各路。
+slots限制当前进程重任务，候选/签名/重排语义仍由原用例校验，不复制检索算法。
+"""
 
 import asyncio
 import time

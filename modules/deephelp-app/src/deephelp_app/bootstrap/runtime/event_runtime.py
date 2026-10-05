@@ -1,4 +1,8 @@
-"""Independent M11 runtime; its resources do not include main classification or tools."""
+"""显式归属学习/探针装配，资源不含主意图服务或SOP工具。
+
+复用原PG窗口、文本提取与事件归属，AsyncExitStack负责依赖生命周期。
+这条独立入口只证明归属机制，不冒称完整十三段业务闭环。
+"""
 
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager

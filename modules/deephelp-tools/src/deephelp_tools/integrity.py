@@ -1,4 +1,7 @@
-"""Runtime and independent tool/input provenance for exact content acceptance."""
+"""显式工具侧来源/字节完整性辅助，复用运行端的唯一校验能力。
+
+只解释安装/源码来源与资源摘要，不触发模型、发布切换或数据库效果。
+"""
 
 from pathlib import Path
 

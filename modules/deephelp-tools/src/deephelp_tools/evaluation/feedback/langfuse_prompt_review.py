@@ -1,5 +1,10 @@
 """Immutable Prompt export and revision-bound annotation evidence; no auto-review."""
 
+# 导出不可变Prompt和绑定候选revision的原平台注解，不能自动审核。
+#
+# 平台Score只是外部证据，require_annotation核对主体/候选/来源后仍需用户明确label与CAS。
+# Prompt版本与请求contract都写进摘要，历史版本不被新导出覆盖；SDK队列由本次入口关闭。
+
 import argparse
 import asyncio
 import json

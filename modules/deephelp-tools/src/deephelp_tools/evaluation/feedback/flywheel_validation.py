@@ -1,4 +1,8 @@
-"""M17 frozen business gold plus separately frozen M18 release inputs, using real HTTP."""
+"""用独立冻结发布输入与原业务链验证候选，生成精确资产内容证据。
+
+先验来源/远程资产，再用真实HTTP读取事实、状态与重放；模型质量与确定性守卫分别记录。
+专用event集合在finally清理，原受引用资产/累计预算保持；中断不能登记PASS。
+"""
 
 import asyncio
 from datetime import UTC, datetime

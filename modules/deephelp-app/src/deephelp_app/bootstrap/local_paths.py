@@ -1,4 +1,8 @@
-"""Local control/evidence paths shared by business commands and explicit tooling."""
+"""把显式控制/证据路径约束到当前state根，供业务命令和工具共用。
+
+.local相对路径映射到state_root，resolve后再检查归属；不能用路径参数逃到任意目录。
+local_path创建必要父目录但不读取凭据、不清理现有运行资产。
+"""
 
 from pathlib import Path
 

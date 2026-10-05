@@ -1,5 +1,10 @@
 """Fixed M16 content acceptance over authenticated loopback HTTP and owned stdio."""
 
+# 经鉴权HTTP读取同一次运行的三视图，固定内容路径与原stdio工具共用。
+#
+# 确认事实模板、原run/调用/证据与脱敏一致，读取/重投不增加模型调用。
+# 平台/诊断失败不改变原账本，旧版本和重启读取保持各自实际来源。
+
 import argparse
 import asyncio
 import json

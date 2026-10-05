@@ -1,4 +1,8 @@
-"""Synthetic downstream facts; independent of gold cases and evaluation."""
+"""包内合成业务资料及其引用关系校验，供显式demo与验收共用。
+
+载入时核对唯一ID、订单/优惠券归属和活动引用；工具调用仍需在派发处绑定参数与证据。
+这些fixture是合成内容来源，不能用静态样本证明真实数据库协议。
+"""
 
 from typing import Literal
 

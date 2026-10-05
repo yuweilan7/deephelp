@@ -4,6 +4,11 @@ Input is a completed, checksum-validated read-only MySQL snapshot from M25.
 Run with the destination offline; never import over an executing thread.
 """
 
+# 通过官方aput/aput_writes无损转换已校验旧checkpoint快照。
+#
+# 源是只读归档，目标必须停执行，不能覆盖正在运行thread；按稳定ID/类型/写顺序核对。
+# 恢复探针再读原批准与效果记录，checkpoint转换不代表业务切换或新的模型验收。
+
 import argparse
 import asyncio
 import copy
@@ -39,6 +44,11 @@ from deephelp_tools.probes.migration.postgres_probe import require_isolated
 
 
 def normalized(value: Any) -> Any:
+    """为迁移前后比较生成稳定结构，不改变官方序列化或已存checkpoint。
+
+    字典键排序消除排列差异，tuple/list/bytes和时间保留类型标签，避免值相似就误判一致。
+    未资格验证的任意对象拒绝，不用repr掩盖未知编码。
+    """
     if isinstance(value, dict):
         return {k: normalized(v) for k, v in sorted(value.items())}
     if isinstance(value, (list, tuple)):
@@ -64,7 +74,11 @@ def fingerprint(value: Any) -> str:
 
 
 def ordered_writes(rows: list[tuple[int, str, Any, str]]) -> tuple[list[tuple[str, Any]], str]:
-    """Place reserved writes in ordinal gaps; preserve every positive/negative idx."""
+    """把原写序列转换成官方aput_writes可表达的顺序，并保留每个idx及唯一task_path。
+
+    普通channel的索引来自列表位置；保留channel由官方WRITES_IDX_MAP决定负索引。
+    只能用实际保留写填普通位置的空位，不捏造占位数据；路径混合或不可表达的稀疏序列拒绝。
+    """
     if len({row[3] for row in rows}) != 1 or len({row[0] for row in rows}) != len(rows):
         raise ValueError("Task paths/indices cannot be represented by one public write call")
     reserved = []

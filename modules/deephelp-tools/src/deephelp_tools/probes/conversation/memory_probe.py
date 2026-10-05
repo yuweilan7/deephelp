@@ -1,4 +1,8 @@
-"""Explicit live M10 acceptance with dedicated identities, keys and event collection."""
+"""显式用专用主体/键/集合验PG事实与Redis/Milvus投影。
+
+同消息唯一领取、版本CAS、生命周期、重启与投影失败分别核对；固定动作不经模型。
+restarted用独立进程读回原事实，缓存缺失可重建，数据库故障不返回样例。
+"""
 
 import argparse
 import asyncio

@@ -1,3 +1,8 @@
+"""重任务取消/进程中断/显式恢复、原预算与catalog归属的独立断言。
+
+进程SUCCEEDED与证据PASS分开，取消必须等清理；平台上传也不能借Score自动审核或发布。
+"""
+
 import asyncio
 import json
 from pathlib import Path

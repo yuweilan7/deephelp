@@ -1,5 +1,10 @@
 """Explicit M31 frozen-candidate dev selection and held-out acceptance, resumable per action."""
 
+# 显式冻结候选的dev选择与heldout验收，每个动作可续跑。
+#
+# 不同重排配置共用同一次召回/实际向量，先排全部候选，再按意图取最佳与最终K。
+# test不选配置，原融合证据保持，失败行仅局部重验而不改写早期失败。
+
 import argparse
 import asyncio
 import json

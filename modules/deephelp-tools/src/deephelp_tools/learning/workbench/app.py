@@ -1,4 +1,7 @@
-"""Explicit optional browser learning extension; production app never imports tools."""
+"""显式可选学习扩展安装，生产app不反向导入tools。
+
+install组合原协议、分析和评测router，读页面不自动启动模型/实验；身份仍沿原入口。
+"""
 
 import os
 from pathlib import Path

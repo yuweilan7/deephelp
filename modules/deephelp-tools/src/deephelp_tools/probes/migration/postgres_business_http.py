@@ -1,5 +1,10 @@
 """Independent Business MCP process/restart against imported PG facts, model calls zero."""
 
+# 独立Business MCP进程重启后读取已导入PG事实，模型调用为零。
+#
+# 同schema、委托和实际记录/证据分别验证；取消观察原事务释放，不假定HTTP关闭即rollback。
+# 专用证据/进程按原拥有关系清理，旧源和正式库不回退演示。
+
 import argparse
 import asyncio
 import json

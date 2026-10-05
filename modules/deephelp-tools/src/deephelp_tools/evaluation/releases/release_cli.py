@@ -1,5 +1,9 @@
 """Explicit complete release preparation and exact content validation."""
 
+# 显式准备完整发布及精确内容验证，服务启动仍走app原发布入口。
+#
+# 命令先检查指定候选/配置/报告，不自动切换版本或复跑历史全量评测。
+
 import argparse
 import asyncio
 import json

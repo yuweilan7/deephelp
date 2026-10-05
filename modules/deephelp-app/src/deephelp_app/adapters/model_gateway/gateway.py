@@ -1,4 +1,9 @@
-"""Bounded QianWen adapter for Chat, Embedding and native text Rerank."""
+"""用显式供应商配置执行Chat、Embedding与原生Rerank，供原用例Port调用。
+
+先读_post的有界读取/usage结算，再读chat的schema及原生工具纠正，embed处理批次与向量签名。
+HTTP成功仅表示传输结束，模型名、结构、类型和证据还要验证。
+客户端生命周期由装配拥有；超时/未知usage保留原预算预留，不将估算写成实际消耗。
+"""
 
 import hashlib
 import json
@@ -89,6 +94,11 @@ class QianwenGateway:
         native_rerank: bool = False,
         repeated_input_bytes: int = 0,
     ) -> tuple[dict[str, object], ModelUsage | None, str | None]:
+        """发送一次有界HTTP请求并核对模型/usage，返回数据、可选已知用量与安全请求ID。
+
+        外层AsyncCalls先扣共享预留，每次重试仍计费；有完整可信usage才settle_model。
+        原生Rerank缺usage保持未知，其余结构不符拒绝；不把状态码成功当内容通过。
+        """
         if budget.token_limit is None or budget.cost_limit is None:
             raise ConfigurationError("Model calls require explicit token and cost limits")
         encoded = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
@@ -262,6 +272,11 @@ class QianwenGateway:
 
     @observed("model.rerank")
     async def rerank(self, request: RerankRequest, budget: ExecutionBudget) -> RerankResult:
+        """给已召回文档重排，返回与原输入文档一一绑定的top_n结果。
+
+        供应商index只用于定位原文，不可越界/重复；分数须有限且按降序返回。
+        同分时以原输入顺序稳定排序。没有可信usage就保留未知，不补造tokens。
+        """
         endpoint = self.config.rerank
         if endpoint is None or self._rerank_credentials is None:
             raise AppError(ErrorCode.MODEL_CAPABILITY_UNAVAILABLE, "Rerank is not configured")
@@ -357,6 +372,11 @@ class QianwenGateway:
         return result.content
 
     async def _chat_once(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
+        """把领域ChatRequest转成一次供应商请求，再还原内容或原生工具动作。
+
+        request显式值优先于配置；schema/tool能力在发送前拒绝不支持的组合。
+        这里只有协议转换与返回守卫，不批准工具，也不把普通文本解释成工具调用。
+        """
         messages: list[dict[str, object]] = []
         for message in request.messages:
             item: dict[str, object] = {"role": message.role, "content": message.content}
@@ -497,12 +517,20 @@ class QianwenGateway:
 
     @observed("model.chat")
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
+        """返回经本地schema/原生工具守卫的结果；允许时至多纠正一次输出。
+
+        两次请求共用budget，实际usage累加；纠正请求关闭repair_once，避免无限修复。
+        本地schema校验仍是必需的，供应商声称严格JSON不能替代返回内容检查。
+        业务参数、事实和工具白名单由上层SOP继续核对。
+        """
         validator = (
             validate_schema(request.output_schema) if request.output_schema is not None else None
         )
         for tool in request.tools:
             validate_schema(tool.parameters)
         result = await self._chat_once(request, budget)
+        # 要求原生tool_choice但只返回正文时，只能追加一次明确格式纠正。
+        # 正文中的JSON不能被解析成真实动作；之后仍由SOP验证工具名与确认参数。
         result = await self._native_choice(request, budget, result)
         first_usage = result.usage
         for repair in range(2 if request.repair_once and validator is not None else 1):
@@ -578,6 +606,11 @@ class QianwenGateway:
 
     @observed("model.embedding")
     async def embed(self, texts: list[str], budget: ExecutionBudget) -> EmbeddingResult:
+        """把文本按配置签名编码，结果按调用者原输入顺序还原。
+
+        NFC/去空白后的相同文本共用一次向量，缓存键包含签名以隔离向量空间。
+        供应商index/维度/数值逐批校验后才写缓存；重复文本仍在输出保留原位置。
+        """
         budget.remaining_seconds()
         if not texts or len(texts) > self.config.max_texts:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Embedding input count outside limit")

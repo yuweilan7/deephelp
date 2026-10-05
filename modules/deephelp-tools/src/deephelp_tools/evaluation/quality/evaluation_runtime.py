@@ -1,4 +1,8 @@
-"""Evaluation-only assemblies. Offline semantic replay never represents model quality."""
+"""评测专用装配，复用原Conversation，不作为生产依赖。
+
+OfflineModel/OfflineRetriever明确回放固定结果，只证明确定性机制；live.open才调用原依赖。
+消融按能力显式装配，不把禁用的自动归属当作能回答全部多轮样本。
+"""
 
 import json
 from collections.abc import AsyncIterator
@@ -62,11 +66,23 @@ class OfflineModel:
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
         budget.claim_attempt(retry=False)
         if request.tools:
-            data = json.loads(request.messages[-1].content or "{}")
+            # 旧循环SOP在首条system消息给已验证槽位，查询后显式选择finish_sop。
+            # 图SOP在末条system消息给ready动作：JSON后面还有原生调用说明，不能整段json.loads。
+            # 这里只回放代码已生成的请求，不改生产Prompt/网关，也不从用户正文猜工具或事实。
+            if request.tool_choice == "finish_sop":
+                name, arguments = "finish_sop", {}
+            elif request.tool_choice:
+                data, _ = json.JSONDecoder().raw_decode(request.messages[-1].content or "{}")
+                name, arguments = data["required_action"], data["verified_parameters"]
+            else:
+                name = request.tools[0].name
+                arguments = json.loads(
+                    (request.messages[0].content or "").split("\nVERIFIED SLOTS:\n", 1)[1]
+                )
             action = ModelToolCall(
                 call_id="replay-action",
-                name=data["required_action"],
-                arguments=data["verified_parameters"],
+                name=name,
+                arguments=arguments,
             )
             return ChatResult(
                 model="m17-synthetic-adapter",

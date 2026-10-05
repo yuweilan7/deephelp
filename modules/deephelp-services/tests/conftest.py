@@ -1,4 +1,7 @@
-"""Isolated HTTP credentials and cleanup of the SDK's process-lifetime SSE watcher."""
+"""服务测试拥有的独立凭据与SDK SSE watcher清理。
+
+fixture只取消本次新增watcher，await gather后才结束；不能误关其他测试或应用资源。
+"""
 
 import asyncio
 import json

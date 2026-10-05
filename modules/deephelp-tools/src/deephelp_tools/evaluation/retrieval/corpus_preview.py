@@ -1,4 +1,7 @@
-"""Explicit M02 frozen corpus preview."""
+"""显式读取M02冻结样本并预览index来源，供索引工具复用。
+
+预览不连接Milvus或模型，只有全行校验通过才进入实际导入。
+"""
 
 import hashlib
 

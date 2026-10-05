@@ -1,4 +1,8 @@
-"""Shared SDK lifecycle, loopback protection and persistent credential initialization."""
+"""两个独立服务共用的官方会话、loopback/origin保护与显式凭据初始化。
+
+只挂载可信MCP与维护入口，Bearer和受众委托由各服务继续验证。
+初始化保存长期服务凭据，导入不自动改密钥或启动监听。
+"""
 
 import hmac
 import json

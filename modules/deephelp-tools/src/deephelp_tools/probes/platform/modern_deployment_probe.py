@@ -1,5 +1,10 @@
 """Explicit read-only PG inventory and actual installed HTTP/metrics content checks."""
 
+# 当前安装的只读PG库存、HTTP内容与独立指标检查。
+#
+# inventory核对实际表/状态，health只证明可达，业务与历史需读取具体字段。
+# 此入口不发新模型请求，不把一次固定负载检查扩大为长期容量保证。
+
 import argparse
 import asyncio
 import hashlib

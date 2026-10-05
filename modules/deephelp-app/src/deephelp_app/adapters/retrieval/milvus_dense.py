@@ -1,9 +1,12 @@
-"""Async Milvus FP32/FLAT adapter. Credentials and operational targets stay local."""
+"""异步Milvus FP32/FLAT读写协议，供DenseImporter和DenseRetriever调用。
 
-import asyncio
+validate核对集合的字段、签名、版本与索引；ensure不修改已存在的错误集合。
+_rpc用原预算控制SDK调用，禁用SDK内层重试以免一次外层尝试暗中多次请求。
+共用连接配置在bootstrap.connections，SSH容量探针在tools的显式入口，业务模块不拥有它。
+"""
+
 import json
 import logging
-import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -16,7 +19,6 @@ from pymilvus import (  # type: ignore[import-untyped]
 
 from deephelp_app.adapters.observability.telemetry import observed
 from deephelp_app.application.dense import (
-    Capacity,
     DenseStore,
     atomic_json,
     existing_json,
@@ -24,6 +26,7 @@ from deephelp_app.application.dense import (
     validate_vector,
     verify_manifest_rows,
 )
+from deephelp_app.bootstrap.connections import local_connection
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
@@ -43,23 +46,6 @@ FIELDS = {
 OUTPUT = list(FIELDS) + ["metadata", "vector"]
 
 
-def read_env(path: Path) -> dict[str, str]:
-    return dict(
-        line.split("=", 1)
-        for line in path.read_text(encoding="utf-8-sig").splitlines()
-        if line and not line.startswith("#") and "=" in line
-    )
-
-
-def local_connection(root: Path) -> dict[str, str]:
-    values = read_env(root / "infra/config/connections.env")
-    secret = Path(
-        os.environ.get("DEEPHELP_SECRET_FILE", str(Path.home() / ".deephelp/.env.secret"))
-    )
-    values.update(read_env(secret))
-    return values
-
-
 def create_client(root: Path) -> AsyncMilvusClient:
     config = local_connection(root)
     # SDK exception logging can include request payloads; diagnostics use AppError codes instead.
@@ -71,69 +57,6 @@ def create_client(root: Path) -> AsyncMilvusClient:
         db_name=config["MILVUS_DATABASE"],
         timeout=15,
     )
-
-
-class SSHCapacity:
-    """Read-only checks against the existing P00 host; no deployment or restart command."""
-
-    def __init__(self, root: Path) -> None:
-        self.root, self.config = root, local_connection(root)
-        self.observations: list[dict[str, int]] = []
-
-    async def __call__(self) -> Capacity:
-        remote = (
-            "sudo python3 -c 'import json,shutil,subprocess; "
-            'd=json.loads(subprocess.check_output(["docker","inspect","deephelp-milvus"]))[0]; '
-            's=json.loads(subprocess.check_output(["docker","stats","--no-stream",'
-            '"--format","{{json .}}","deephelp-milvus"])) ; '
-            'units={"B":1,"KiB":1024,"MiB":1048576,"GiB":1073741824}; '
-            'v=s["MemUsage"].split("/")[0].strip(); '
-            'u=next(k for k in ("GiB","MiB","KiB","B") if v.endswith(k)); '
-            'a=int(next(l.split()[1] for l in open("/proc/meminfo") '
-            'if l.startswith("MemAvailable:")))*1024; '
-            'print(json.dumps({"root_free":shutil.disk_usage("/").free,'
-            '"milvus_data":int(subprocess.check_output(["du","-s","-B1","/srv/deephelp-data/milvus"]).split()[0]),'
-            '"memory_used":int(float(v[:-len(u)])*units[u]),"memory_limit":d["HostConfig"]["Memory"],'
-            '"host_available":a,"healthy":d["State"]["Health"]["Status"]=="healthy","oom":d["State"]["OOMKilled"]}))'
-            + "'"
-        )
-        d = self.config
-        process = await asyncio.create_subprocess_exec(
-            "ssh",
-            "-T",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "UserKnownHostsFile=" + str(self.root / "infra/client/known_hosts"),
-            "-o",
-            "ConnectTimeout=12",
-            "-i",
-            d["DEEPHELP_SSH_KEY_WINDOWS"],
-            "-p",
-            d["DEEPHELP_SSH_PORT"],
-            d["DEEPHELP_SSH_USER"] + "@" + d["DEEPHELP_SSH_HOST"],
-            remote,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            async with asyncio.timeout(30):
-                stdout, _ = await process.communicate()
-            if process.returncode:
-                raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Read-only capacity probe failed")
-            data = json.loads(stdout)
-            if not data.pop("healthy") or data.pop("oom"):
-                raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Milvus unhealthy or OOM detected")
-            capacity = Capacity(**data)
-            self.observations.append(data)
-            del self.observations[:-32]
-            return capacity
-        finally:
-            if process.returncode is None:
-                process.kill()
-                await process.communicate()
 
 
 class MilvusDenseStore(DenseStore):

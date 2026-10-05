@@ -1,4 +1,7 @@
-"""Explicit synthetic MCP fault injection; loaded only for configured faults."""
+"""显式配置才注入的合成MCP延迟与错误观察。
+
+故障只为验证取消、schema与证据守卫，不放进默认业务选择；delay仍可被取消。
+"""
 
 import asyncio
 from typing import Any

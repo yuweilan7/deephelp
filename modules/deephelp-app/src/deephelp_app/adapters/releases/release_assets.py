@@ -1,4 +1,8 @@
-"""Prepare and verify a complete immutable version before publication transactions."""
+"""发布事务之前验证完整不可变版本，业务启动不调用冻结评测。
+
+verify_release核对精确源码/工具/资产、报告目标和版本绑定，verify_complete另验实际远程资产。
+不能把旧成功报告套在新字节上；检查成功也不自动切换active。
+"""
 
 from pathlib import Path
 from typing import Any

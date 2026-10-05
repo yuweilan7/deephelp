@@ -1,4 +1,8 @@
-"""Dedicated PostgreSQL isolation checks and a real loopback server for explicit live probes."""
+"""显式验收的PG领取/隔离检查与有拥有者的本机HTTP服务。
+
+api_client可用ASGI或真实loopback传输，两者证据分别说明；本函数负责启动/关闭服务Task。
+postgresql_claim_checks用固定动作证明唯一领取/归属/重放，不调用模型。
+"""
 
 import asyncio
 import socket

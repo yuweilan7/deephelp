@@ -1,4 +1,9 @@
-"""Historical frozen evidence -> native v4 experiments; never execute a business row."""
+"""把冻结历史证据映射为原生平台实验，绝不重新执行业务行。
+
+plan_import绑定报告/样本/mode/项目，upload持久记录逐行状态并从原平台读回。
+稳定ID与锁允许同目标续传，平台已有正确行不再写；HTTP失败/取消保留部分状态。
+历史时间/用量仍是历史来源，不把上传时间或SDK请求数写成新模型消耗。
+"""
 
 import asyncio
 import importlib
@@ -352,6 +357,8 @@ async def _upload(plan: dict[str, Any], state_path: Path, platform: Platform) ->
     )
     if state["binding"] != binding:
         raise ConfigurationError("Upload state belongs to another source/project/selection")
+    # 先持久保存本次上传状态，后面只补平台缺失/不一致行。
+    # 来源/项目binding不符直接拒绝，不能把另一个实验的已上传状态复用为完成。
     state["status"] = "RUNNING"
     state.pop("error_type", None)
     atomic_json(state_path, state)

@@ -1,4 +1,8 @@
-"""Read existing PostgreSQL facts, never debug logs or model calls."""
+"""工作台历史只读原PG消息、问题和receipt，不读调试日志代替事实。
+
+查询绑定可信身份并分页，run/session均按原归属读取；读事务结束后归还连接。
+无终态仍展示原消息和原状态，读取历史不会重发模型或工具。
+"""
 
 from datetime import UTC
 from typing import Any

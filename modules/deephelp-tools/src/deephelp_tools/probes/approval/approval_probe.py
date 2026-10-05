@@ -4,6 +4,12 @@ Requires --live. Fixed-action MCP preparations test the recovery protocol, while
 the separately reported HTTP conversation uses the configured real model.
 """
 
+# 显式PG/HTTP/进程故障矩阵和独立真实模型会话验收。
+#
+# worker进程复用ApprovalService，matrix用固定动作验证唯一效果、取消、丢响应与UNKNOWN查询。
+# real_http才验证模型生成计划和最终内容；native_approval另读实际原生观测。
+# 人工批准、效果提交和checkpoint进度分开，恢复不能盲目重放或重置原累计预算。
+
 import argparse
 import asyncio
 import json

@@ -1,4 +1,8 @@
-"""Owned SDK stdio server: synthetic data, real MCP, no business writes or model calls."""
+"""官方SDK stdio合成只读服务，数据是样例、传输与双端校验是真实协议。
+
+工具schema固定，参数/签名委托/编号与事实证据逐项核对；显式故障才注入学习行为。
+当前进程拥有调用记录与资源，业务数据库失败不会调用本模块fallback。
+"""
 
 import asyncio
 import hashlib

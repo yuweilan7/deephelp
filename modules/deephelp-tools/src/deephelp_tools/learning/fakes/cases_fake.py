@@ -1,4 +1,8 @@
-"""Explicit offline case adapter. Tests of this adapter do not prove PostgreSQL durability."""
+"""显式内存问题仓储，课程/离线测试复用它和原Conversation。
+
+模拟版本、归属、成员与窗口规则，不证明PG事务/进程重启持久性。
+state和Task由本次装配拥有，真实数据库不可用不会自动切到此实现。
+"""
 
 from datetime import UTC, datetime, timedelta
 

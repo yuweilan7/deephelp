@@ -1,5 +1,9 @@
 """M11 stateless preview or explicit live persistent event aggregation."""
 
+# 默认无状态归属预览，显式live才保存原PG归属记录。
+#
+# 预览与持久过程共用EventAggregationService，二者都不运行600或SOP；输出按实际来源标注。
+
 import argparse
 import asyncio
 import json

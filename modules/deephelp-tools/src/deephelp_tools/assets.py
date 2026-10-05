@@ -1,4 +1,7 @@
-"""Independent tool resources, from the wheel or the single repository source."""
+"""工具包资源从安装wheel或仓库唯一datasets读取，供学习/评测显式调用。
+
+asset_path只接受允许名字，生产app不依赖冻结资源；安装缺资源直接报错。
+"""
 
 from pathlib import Path
 

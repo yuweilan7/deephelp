@@ -1,7 +1,7 @@
-"""Frozen business outcomes shared by SOP acceptance and end-to-end evaluation.
+"""SOP与端到端评测共用的冻结业务情境和预期事实。
 
-Each entry has actual synthetic downstream facts, tool order and an expected terminal
-node. Language variants alone do not define a new business scenario.
+情境绑定工具顺序、终节点与合成下游记录，语言换一种说法不算新业务覆盖。
+读取目录不执行模型、工具或数据库维护。
 """
 
 import json

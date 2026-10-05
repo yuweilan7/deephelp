@@ -1,4 +1,9 @@
-"""Frozen evaluation contracts, independent gold checks and denominator-aware metrics."""
+"""冻结评测契约、独立gold检查与带分母的指标，供显式评测入口调用。
+
+audit先核对split/同源泄漏；score比较事实、归属、工具和终态，不只看回复措辞。
+metrics保留未知与分母，targeted_gate只证明所选样本，release_gate还核对完整对照/安全边界。
+离线回放、部分完成和中断都不能包装成新模型质量或完整发布PASS。
+"""
 
 import json
 import math
@@ -579,6 +584,8 @@ def capability_eligible(route: dict[str, Any], row: dict[str, Any]) -> bool:
     )
 
 
+# 小范围验收只对实际选择的route/样本下结论；空范围或中断须由complete守卫拒绝。
+# 统计分母与能力例外保留，不能借历史PASS补齐未执行消息。
 def targeted_gate(routes: dict[str, dict[str, Any]], *, complete: bool) -> dict[str, Any]:
     """Keep content/safety gates for selected routes without inventing ablation evidence."""
     # selected范围只证明实际所选样本；中断/空范围/安全反例不能用历史PASS补齐。

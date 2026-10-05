@@ -1,4 +1,8 @@
-"""Summarize existing structural observations without triggering model requests."""
+"""汇总已有结构化API观察，不触发新的模型请求。
+
+实际input/output、未知usage与预算预留分别汇总，reasoning已含在output时不再相加。
+缺字段保留未知，不能从价格估算反推供应商实际用量。
+"""
 
 from typing import Any
 

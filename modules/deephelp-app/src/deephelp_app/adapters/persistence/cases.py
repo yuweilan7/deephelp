@@ -1,4 +1,9 @@
-"""PostgreSQL question facts and transactional outbox. Remote projections never hold row locks."""
+"""在原PG账本上扩展问题版本、授权窗口与事务outbox。
+
+同session先锁会话再锁问题；接收/生命周期变化递增generation并写投影事件。
+snapshot用一致只读快照，claim_event给worker租约；远程Redis/Milvus调用在事务之外。
+ack需同租约token，过期worker不能把另一个worker的事件写成成功。
+"""
 
 import json
 from datetime import UTC, datetime, timedelta

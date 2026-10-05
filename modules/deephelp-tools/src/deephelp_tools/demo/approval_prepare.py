@@ -1,4 +1,7 @@
-"""Fixed synthetic preparation shared by learning UI and recovery acceptance."""
+"""为明确合成审批练习准备绑定问题/版本/证据的原操作。
+
+prepare写原账本待审批事实，尚无批准或权益效果；普通新消息不能调用它恢复旧操作。
+"""
 
 from datetime import UTC, datetime
 from uuid import uuid4

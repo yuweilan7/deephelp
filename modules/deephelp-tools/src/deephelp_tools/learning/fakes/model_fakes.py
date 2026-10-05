@@ -1,4 +1,7 @@
-"""Replay only explicit synthetic fixtures; default network behavior stays offline."""
+"""只在明确选用时回放合成fixture，默认网络保持离线。
+
+FakeGateway复用原客户端接口并拥有aclose，不在真实依赖失败时自动替代业务。
+"""
 
 from collections.abc import Sequence
 from decimal import Decimal

@@ -1,4 +1,7 @@
-"""Offline registry validation, immutable publication and content-verified rollback."""
+"""离线校验与保存不可变SOP注册表，执行逻辑仍在SOPExecutor。
+
+publish/rollback更改原指针并保留引用版本，不执行模型、工具或旧审批。
+"""
 
 import argparse
 import json

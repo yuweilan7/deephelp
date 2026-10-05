@@ -1,4 +1,9 @@
-"""Independent Business MCP and the same owner's authenticated maintenance transactions."""
+"""独立Business MCP与同主体维护API，共用一个PG仓储实现。
+
+make_server显式注册只读schema，工具调用验证Bearer/签名委托/参数/预算后才查询。
+维护路由使用可信身份和版本CAS；lifespan拥有官方session manager与原仓储。
+协议真实不代表数据来自企业，数据库失败不回退demo。
+"""
 
 import argparse
 import asyncio
@@ -89,6 +94,7 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
                 min(req.budget.remaining_seconds, req.timeout_seconds or 30, 30)
             ):
                 result = await repository.query(envelope)
+            # 返回前再次核对原请求/金额/事实/证据绑定；MCP结构成功不等于业务内容可信。
             validate_observation(req, result, evidence_version="business-postgres-v1")
             data = result.model_dump(mode="json")
             return CallToolResult(

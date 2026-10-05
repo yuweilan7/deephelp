@@ -1,4 +1,8 @@
-"""Real HTTP content acceptance for the single M12 conversation graph."""
+"""针对同一M12会话引擎的真实HTTP内容验收。
+
+多问题交错、补槽/更正、歧义、记忆召回与600计数各有原断言；不把规则候选当主分类。
+同一预算控制全部步骤，专用事件集合在完成后回收，失败保留必要原观察。
+"""
 
 import argparse
 import asyncio

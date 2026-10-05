@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Give the private learning project's Redis app full access, preserving authentication."""
 
+# 专用学习账号的显式权限调整/恢复入口，保留原鉴权和其他用户。
+#
+# 先校验唯一账号与密码hash、保存私有备份，再沿原inode写入并ACL LOAD。
+# 失败恢复原字节并重新加载；预览不应用，本轮只审阅，不实际调整服务。
+
 import argparse
 import hashlib
 import json
@@ -53,6 +58,8 @@ def load_acl() -> None:
 def write_same_inode(data: bytes) -> None:
     # This file is bind-mounted read-only into Redis. Replacing its inode would leave
     # the running container mounted to the old file; rewrite the existing host inode.
+    # 容器bind挂载关联旧inode，原子替换路径会让运行容器继续读旧文件。
+    # 这里明确原位写/fync；调用者先备份，失败再恢复，不用通用atomic_json替换。
     with ACL_FILE.open("wb") as stream:
         stream.write(data)
         stream.flush()

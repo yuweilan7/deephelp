@@ -1,5 +1,10 @@
 """Explicit isolated M25 snapshot/import/verification; never writes the old source."""
 
+# 显式隔离快照导出/导入/逐行验证，旧源只读不改写。
+#
+# 导出保留类型和一致性摘要，导入按持久receipt续跑并验证完整checksum。
+# 目标库必须显式选择，进程/事务失败不把半份数据报迁移完成；不自动切业务active。
+
 import argparse
 import asyncio
 import gzip

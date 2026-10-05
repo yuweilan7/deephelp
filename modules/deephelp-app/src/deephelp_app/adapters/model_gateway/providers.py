@@ -1,4 +1,8 @@
-"""Explicit provider configuration; this file never discovers credentials or makes I/O."""
+"""显式模型端点、能力、价格和向量签名配置，供装配创建网关。
+
+load只读取指定配置；create_gateway才解析所需环境凭据并组合已打开的HTTP客户端。
+配置不自动发现模型或按额度切换，Chat/强判/Embedding/Rerank保留各自绑定。
+"""
 
 import os
 from collections.abc import Mapping

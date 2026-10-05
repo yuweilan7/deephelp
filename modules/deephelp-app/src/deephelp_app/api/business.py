@@ -1,4 +1,7 @@
-"""Manual business maintenance through the application's single trusted identity entry point."""
+"""手工业务维护路由只从应用可信入口取得身份，并代理到Business服务。
+
+原DTO约束输入，服务端负责归属、事务和expected_version CAS；这里没有第二套业务仓储。
+"""
 
 from collections.abc import Callable
 from typing import Any, Literal

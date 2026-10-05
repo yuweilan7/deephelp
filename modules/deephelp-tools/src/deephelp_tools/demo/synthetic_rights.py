@@ -1,5 +1,10 @@
 """Explicit synthetic rights HTTP server; effects are not enterprise writes."""
 
+# 合成权益下游进程，唯一效果和调用持久化，供审批恢复协议验证。
+#
+# execute验签名/批准绑定并按operation幂等，query用于丢响应后的原效果对账。
+# 它不修改Business订单表或企业支付；重启不清空已产生的效果。
+
 import argparse
 import hmac
 from collections.abc import AsyncIterator

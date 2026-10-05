@@ -1,4 +1,9 @@
-"""Explicit owner-only M17/M18 extension, with a server-owned artifact catalog."""
+"""只允许catalog原owner显式执行的评测/反馈扩展，路径由服务器配置。
+
+evaluation_router组合同owner的目录与帮助函数，LearningJobs独立拥有重任务生命周期。
+GET读原报告/候选/指针不调用模型；POST确认后仍走原构建、验证、精确发布门禁。
+SharedGate借用应用累计预算，SDK上传子进程单独拥有队列，不能关闭原生业务观测器。
+"""
 
 import argparse
 import asyncio
@@ -101,7 +106,10 @@ class Publish(DTO):
 
 
 class SharedGate(BudgetSession):
-    """The original build/validation APIs consume only request(); reuse the open writer."""
+    """向原构建/验证入口提供request接口，借用应用已打开的唯一预算writer。
+
+    factory返回同一累计预算边界下的新请求预算；这里不打开/重置文件，不拥有writer关闭。
+    """
 
     def __init__(self, factory: Callable[[], ExecutionBudget]):
         self.factory = factory
@@ -221,9 +229,17 @@ def evaluation_router(
                 return path
         raise AppError(ErrorCode.NOT_FOUND, "Candidate asset unavailable", 404)
 
+    # 这个闭包只选择catalog允许的原工具入口，长期任务调度由LearningJobs拥有。
+    # 保留在router工厂里便于看清config/owner/共享预算，不另建重复runner或模型引擎。
     async def run_job(row: dict[str, Any], output: Path) -> dict[str, Any]:
+        """执行catalog已允许的固定动作，结果写本任务attempt的独立目录。
+
+        owner/config来自当前router工厂，任务寿命由LearningJobs管理；普通GET不会运行它。
+        原评测/构建入口共用领域类型和预算，平台上传子进程只关闭自己创建的SDK队列。
+        """
         output.mkdir(parents=True, exist_ok=False)  # noqa: ASYNC240 -- bounded durable job path
         options, action = row["options"], row["options"]["action"]
+        # 借用应用已经打开的预算writer，仅提供request；任务恢复不能新建预算文件清零。
         gate = SharedGate(factory)
         if action in {"platform_upload", "platform_candidate"}:
             assert config.platform_config is not None

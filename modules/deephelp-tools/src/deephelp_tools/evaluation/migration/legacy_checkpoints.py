@@ -1,4 +1,7 @@
-"""Read-only legacy typed archive for explicit migration/audit tools."""
+"""显式迁移/审计才读取的旧typed checkpoint归档。
+
+只保留aget_tuple/alist读取，删除拒绝；原业务源码不再用它写新的图进度。
+"""
 
 from collections.abc import AsyncIterator
 from typing import Any

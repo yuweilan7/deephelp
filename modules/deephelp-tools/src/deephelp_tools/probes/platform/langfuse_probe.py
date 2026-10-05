@@ -1,5 +1,10 @@
 """Explicit synthetic platform proof; never imported by the business assembly."""
 
+# 显式合成平台协议/存储观察，不被业务装配导入。
+#
+# emit/verify核对原trace/Score内容，s3_proof检查同对象，cancellation_proof观察SDK关闭。
+# 平台可用不是业务质量验收，flush在线程中执行仍由拥有者等待回收。
+
 import argparse
 import asyncio
 import hashlib

@@ -1,5 +1,9 @@
 """Authenticated loopback reader. It never opens trace files or invokes business tools."""
 
+# 通过鉴权的本机API读取原run诊断，不直接打开日志或触发业务。
+#
+# 读取缺失按原状态报告，原trace ID不授予身份；模块docstring被CLI帮助消费，保留原文字。
+
 import argparse
 import asyncio
 

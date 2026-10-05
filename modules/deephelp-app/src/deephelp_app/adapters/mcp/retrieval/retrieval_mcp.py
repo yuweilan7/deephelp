@@ -1,4 +1,8 @@
-"""Original retrieval Ports over bounded, identity-bound official HTTP MCP calls."""
+"""把原检索Port接到受界限、归属与版本约束的官方HTTP MCP调用。
+
+open检查工具schema/profile/签名；_call在发送前持久预留远程上界。
+可信回执才能settle_remote释放余量，断连/未知usage保留预留；compare仍共享一次远程观察。
+"""
 
 import asyncio
 import hashlib
@@ -119,6 +123,11 @@ class RemoteRetriever:
     async def _call(
         self, name: str, text: str, scope: DenseScope, budget: ExecutionBudget, top_k: int
     ) -> dict[str, DenseResult]:
+        """预留远程上界并调用固定检索工具，校验回执后才结算。
+
+        text/scope/top_k须与冻结绑定一致；上下文来自当前可信请求而不是公开参数。
+        断连或无效签名/语义保留未知预留，不能释放预算再盲目请求。
+        """
         if not self.connected:
             raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Retrieval MCP is not connected")
         if scope != self.binding.scope:

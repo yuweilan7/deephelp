@@ -1,5 +1,10 @@
 """Real complete-release CAS/crash, running-version and M15 retention/reconciliation acceptance."""
 
+# 完整版本的CAS/进程中断、运行绑定与审批保留/对账验收。
+#
+# publisher/crash_publish是拥有者明确启动的进程，probe读取实际active/revision及旧run。
+# 切版本不回滚业务事实或共享预算，待审批/UNKNOWN资产不能随新版本删除。
+
 import argparse
 import asyncio
 import json

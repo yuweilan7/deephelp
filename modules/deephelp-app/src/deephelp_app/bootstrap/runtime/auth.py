@@ -1,4 +1,8 @@
-"""Explicit live assembly and cumulative budget gate. Importing this module does no I/O."""
+"""把显式本地身份映射或Bearer转换为唯一VerifiedIdentity。
+
+personal必须唯一匹配既有身份，不从正文、session或trace推断用户。
+这里只选择可信主体，后续仓储仍校验对象归属；错误只暴露静态字段说明。
+"""
 
 import hmac
 from pathlib import Path

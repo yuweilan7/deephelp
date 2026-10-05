@@ -1,5 +1,10 @@
 """Native fixed protocol proof or explicitly selected live business content."""
 
+# 显式固定协议观测或选定live业务内容，两个目标分别记录。
+#
+# 独立进程间确认同run、双MCP、实际generation与usage；query授权来自原主体而非trace。
+# 诊断故障不改变事实/效果，临时进程与集合由本次probe拥有并关闭。
+
 import argparse
 import asyncio
 import json

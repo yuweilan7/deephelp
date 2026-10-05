@@ -1,3 +1,10 @@
+"""可信HTTP入口与资源生命周期，未可信正文先校验再交原Conversation。
+
+create_app接收显式装配/身份提供者；lifespan退出栈拥有HTTP与trace，Middleware负责请求预算。
+业务成功取原receipt，异常映射安全错误；取消留给主链短保存后传播。
+历史/诊断/审批路由分别核对原对象，不因HTTP可达或trace ID存在就授权。
+"""
+
 import asyncio
 import os
 from collections.abc import AsyncIterator, Callable

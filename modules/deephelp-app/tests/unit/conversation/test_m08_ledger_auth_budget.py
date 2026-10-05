@@ -1,3 +1,8 @@
+"""会话账本、可信身份、共享预算与取消收口的确定性边界。
+
+调用者输入、原receipt和实际派发计数分别核对，重投成功不能掩盖新增模型/工具调用。
+"""
+
 import asyncio
 import json
 from datetime import UTC, datetime

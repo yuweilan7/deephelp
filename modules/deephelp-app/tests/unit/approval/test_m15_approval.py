@@ -1,4 +1,7 @@
-"""Offline authority guards and query-before-write recovery, separate from the live matrix."""
+"""固定审批图的唯一领取、UNKNOWN查询/执行、故障和恢复边界。
+
+repo/rights/saver是明确测试接缝，观察原operation与调用顺序，不逐故障调用真实模型。
+"""
 
 import asyncio
 from contextlib import asynccontextmanager

@@ -1,4 +1,8 @@
-"""Run all three experiments with python -m deephelp_tools.learning.experiments (offline)."""
+"""离线观察I/O重叠、取消清理与CPU调度，比较事件顺序而非脆弱耗时门槛。
+
+TaskGroup拥有并回收兄弟任务；CPU主loop与进程池分别观察heartbeat。
+实验Task不是线程，async不会把CPU代码自动并行，不证明真实服务性能。
+"""
 
 import asyncio
 import json

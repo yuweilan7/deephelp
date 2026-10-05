@@ -1,4 +1,8 @@
-"""Owned published-corpus retrieval through the official Streamable HTTP MCP SDK."""
+"""独立Retrieval MCP服务，公开工具只查询已发布冻结语料。
+
+签名上下文确认主体/受众/profile与预算额度；服务端重新校验请求，客户端还会复验结果。
+派发后的未知usage按上界回执，不能靠重启或HTTP200宣称消耗为零。
+"""
 
 import argparse
 import asyncio

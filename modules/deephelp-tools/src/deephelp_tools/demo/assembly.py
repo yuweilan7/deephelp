@@ -1,4 +1,7 @@
-"""Explicit optional demo composition, sharing the runtime client and engine."""
+"""显式合成demo装配，在原LiveAssembly边界扩展工具资料来源。
+
+只在用户选demo时读取包内事实，仍用同Conversation/权限/预算/SOP，不形成第二套引擎。
+"""
 
 import sys
 from pathlib import Path

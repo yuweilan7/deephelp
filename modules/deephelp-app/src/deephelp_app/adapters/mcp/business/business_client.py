@@ -1,4 +1,8 @@
-"""Application-authenticated maintenance proxy; no business transaction is duplicated here."""
+"""应用的可信维护代理，转发到独立Business仓储事务而不复制实现。
+
+身份由原入口提供，参数和响应按唯一DTO验证；连接/超时/无效内容分别报告。
+record_path编码对象路径，业务记录归属和CAS仍由服务端复验。
+"""
 
 import hashlib
 from typing import Any

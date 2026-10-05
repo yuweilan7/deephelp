@@ -2,7 +2,7 @@
 
 规格：[最终清理不必要的文件](../../docs/MODULES/M39_FINAL_FILE_CLEANUP.md)。
 规划基线：`main` / `ae50fdf0cfd7c935d4e8e3921548deff8c7691d6`，开始时工作区干净；规划分支`feature/m37-m39-learning-finish-plan`。
-判断：`VERIFY_EXISTING`，先核对最终消费者再实际清理。当前等待M37/M38全部交付，不能根据本次目录盘点提前删除。以下检查与删除均未执行。
+判断：`VERIFY_EXISTING`，先核对最终消费者再实际清理。[M37](../../handoffs/M37.md)/[M38](../../handoffs/M38.md)前置已完成，仍等待用户另行启动；不能根据历史目录盘点提前删除。以下检查与删除均未执行。
 
 ## 1. 做成什么
 

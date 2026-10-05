@@ -1,4 +1,7 @@
-"""Only legacy MySQL reader: explicit, read-only snapshot for the M25 exporter."""
+"""旧MySQL唯一显式只读源，供受校验快照导出使用。
+
+连接配置从通用装配读取，不因导入模块连接数据库；旧源保留，不提供业务写入口。
+"""
 
 import asyncio
 from pathlib import Path
@@ -6,7 +9,7 @@ from typing import Any
 
 import aiomysql  # type: ignore[import-untyped]
 
-from deephelp_app.adapters.retrieval.milvus_dense import local_connection
+from deephelp_app.bootstrap.connections import local_connection
 
 
 class MySQLSource:

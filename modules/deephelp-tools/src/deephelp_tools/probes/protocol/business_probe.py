@@ -1,4 +1,8 @@
-"""M20 explicit real-content acceptance: independent processes, PostgreSQL records and HTTP MCP."""
+"""显式启动独立进程，以PG记录和HTTP MCP验证原业务链。
+
+Processes拥有子进程/日志句柄，停止后等待实际退出；只有已死进程的原锁可回收。
+固定维护/权限/重启与模型内容分别记录，原消息重投仍读receipt；成功后清理等价过程日志。
+"""
 
 import argparse
 import asyncio

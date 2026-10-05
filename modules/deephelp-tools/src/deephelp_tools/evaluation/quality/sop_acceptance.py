@@ -1,4 +1,7 @@
-"""Frozen synthetic SOP mechanisms; shared offline/live cases, never enterprise data."""
+"""离线与live共用的小型合成SOP固定场景。
+
+scenarios返回明确动作/观察，scenario_config只生成工具资料配置；不冒称企业数据。
+"""
 
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.scenarios import SOPScenario, SOPScenarioSet, fixtures
