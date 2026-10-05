@@ -198,4 +198,4 @@ M10继续使用现有MySQL/Redis/Milvus与选定Embedding签名。升级执行�
 ./infra/client/tunnel.ps1 -Profile personal -Action health
 ```
 
-工作台 `http://127.0.0.1:18080/`；Grafana `http://127.0.0.1:23000/`。personal 与默认 infra profile 分别管理进程/端口/状态文件。私有入口使用既有严格 known_hosts 的 SSH 加密链路，没有公网 TLS。登录令牌来自受保护 auth 文件；服务重启后重新登录，MySQL 历史保持。云端累计预算为独立持久 writer，不能用过期的本机预算副本覆盖它。
+工作台 `http://127.0.0.1:18080/`；Grafana `http://127.0.0.1:23000/`。personal 与默认 infra profile 分别管理进程/端口/状态文件。私有入口使用既有严格 known_hosts 的 SSH 加密链路，没有公网 TLS。M34工作台直接进入显式配置的原个人身份，无需寻找令牌；刷新/服务重启后自动重建会话，PG历史仍从原账本读取。服务端`DEEPHELP_PERSONAL_IDENTITY`唯一匹配原auth文件，浏览器不持有其中Bearer令牌。云端累计预算为独立持久 writer，不能用过期的本机预算副本覆盖它。新安装及兼容回退入口见[部署说明](../infra/deployment/README.md#m34-固定个人入口配置)，当前安装/发布见PROJECT_STATE。

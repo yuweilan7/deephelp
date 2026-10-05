@@ -29,4 +29,9 @@ uv pip sync --python "$target/.venv/bin/python" --require-hashes \
 uv pip install --python "$target/.venv/bin/python" --no-deps "$target"/wheels/*.whl
 "$target/.venv/bin/python" -c 'import sys,fasttext,deephelp_app,deephelp_services,deephelp_tools,opentelemetry.sdk.trace; assert sys.version_info[:3] == (3,14,7)'
 chmod 700 -- "$target/start.sh"
+# The checked-in service runs as ubuntu. A sudo install must give that same user
+# access to this newly created private version; never follow its Python symlinks.
+if [[ "$EUID" == 0 ]]; then
+  chown -R --no-dereference ubuntu:ubuntu -- "$target"
+fi
 printf 'Installed %s. Complete release and browser acceptance are separate gates.\n' "$version"
