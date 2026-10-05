@@ -22,6 +22,7 @@ const sessions = ref<SessionSummary[]>([]),
 const sessionNext = ref<number | null>(null),
   messageNext = ref<number | null>(null);
 const hint = ref<Question | null>(null),
+  incomplete = ref<HistoryMessage | null>(null),
   error = ref(""),
   loading = ref(false),
   last = ref<MessageInput | null>(null),
@@ -82,6 +83,7 @@ function selectSession(id?: string) {
   historyRead.cancel();
   workspace.session = id || crypto.randomUUID();
   workspace.selected = null;
+  incomplete.value = null;
   messages.value = [];
   hint.value = null;
   last.value = null;
@@ -108,6 +110,7 @@ async function send(payload: MessageInput) {
     workspace.pending = null;
     last.value = payload;
     result.value = r;
+    incomplete.value = null;
     text.value = "";
     hint.value = null;
     workspace.selected = { session_id: payload.session_id, response: r };
@@ -128,6 +131,12 @@ async function send(payload: MessageInput) {
 function submit() {
   if (text.value.trim() && !workspace.pending)
     void send(newMessage(workspace.session, text.value, hint.value));
+}
+function selectRun(message: HistoryMessage) {
+  incomplete.value = message.response ? null : message;
+  workspace.selected = message.response
+    ? { session_id: workspace.session, response: message.response }
+    : null;
 }
 onMounted(async () => {
   await loadSessions();
@@ -202,15 +211,7 @@ onBeforeUnmount(() => {
           >{{ m.response?.outcome || m.status }} · run {{ m.run_id }}</small
         >
         <div class="actions">
-          <el-button
-            v-if="m.response"
-            @click="
-              workspace.selected = {
-                session_id: workspace.session,
-                response: m.response,
-              }
-            "
-            >事实 / 时间线</el-button
+          <el-button @click="selectRun(m)">事实 / 时间线</el-button
           ><el-button
             v-if="m.response"
             :disabled="!!workspace.pending || workspace.sending"
@@ -293,6 +294,6 @@ onBeforeUnmount(() => {
         </p>
       </div>
     </section>
-    <RunInspector />
+    <RunInspector :incomplete="incomplete" />
   </div>
 </template>

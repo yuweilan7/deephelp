@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from "vue";
 import { api } from "../../api/client";
-import type { Flow } from "../../api/types";
+import type { Flow, HistoryMessage } from "../../api/types";
 import { workspace } from "../../composables/workspace";
 import { LatestRead } from "../../composables/latest";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
 import { statusLabel, factLabel } from "../../content/navigation";
 import RunExplanation from "./RunExplanation.vue";
+defineProps<{ incomplete?: HistoryMessage | null }>();
 const read = new LatestRead();
 const flow = ref<Flow | null>(null),
   error = ref(""),
@@ -66,7 +67,21 @@ onBeforeUnmount(() => read.cancel());
 <template>
   <section class="card inspector">
     <h2>事实与执行证据</h2>
-    <p v-if="!workspace.selected" class="muted">
+    <template v-if="incomplete"
+      ><p>
+        原运行 {{ incomplete.run_id }} ·
+        {{
+          statusLabel(incomplete.status)
+        }}；尚无终态回执。读取不自动重领，也不推断效果或清理状态。
+      </p>
+      <RunExplanation
+        :target="{
+          run_id: incomplete.run_id,
+          session_id: incomplete.input.session_id,
+        }"
+        :returned="null"
+    /></template>
+    <p v-else-if="!workspace.selected" class="muted">
       选中一条结果的“事实 / 时间线”，沿用原 run 阅读。
     </p>
     <template v-else

@@ -2,7 +2,7 @@
 
 **来源：** 用户2026-10-05要求；现有原始表格/JSON和Langfuse链接不足以解释后端机制。
 **前置：** [M35组件工作台](M35_FRONTEND_FOUNDATION.md)、[M33课程](M33_JAVA_LEARNING_COURSE.md)实际交付；复用[M28原生观测](../../handoffs/M28.md)、[M29报告/Prompt](../../handoffs/M29.md)、[M31四路检索](../../handoffs/M31.md)。
-**实施：** [唯一PLAN](../../planning/M36/PLAN.md)。目标是语义清楚的教学产品，安装了Langfuse不构成此M验收。
+**实施：** 三个顺序特性已交付，实际场景、完整发布与恢复证据见[交接](../../handoffs/M36.md)。目标是语义清楚的教学产品，安装了Langfuse不构成此M验收。
 
 ## 一个run的阅读方式
 

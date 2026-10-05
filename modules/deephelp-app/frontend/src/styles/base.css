@@ -393,6 +393,15 @@ textarea {
   padding-left: 22px;
   border-left: 2px solid #bfd4df;
 }
+.span-bar-track {
+  height: 8px;
+  background: #e1ebf0;
+  margin-top: 8px;
+}
+.span-bar {
+  height: 8px;
+  background: #4c839d;
+}
 @media (max-width: 900px) {
   .two-column {
     grid-template-columns: 1fr;

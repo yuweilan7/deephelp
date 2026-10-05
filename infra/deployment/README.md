@@ -152,3 +152,13 @@ sudo bash /opt/deephelp-app/bin/control.sh health
 切换或恢复前先control.sh stop，让运行进程正常释放预算锁，再保存或安装对应runtime.env/catalog，source新环境并按实际revision执行CAS activate。control.sh start返回不等于端口已就绪；在本次设置的有界等待内检查/health实际status=ok，超时保存服务诊断并恢复匹配配置及完整发布。不能把正常运行的锁当作过期锁删除，也不覆盖数据库或累计预算。
 
 本次模型切换恢复闭包recovery/qwen38-flash-default-v1保存原M35 Max的runtime.env/learning-catalog.json/pointer.json，以及新new-runtime.env/new-learning-catalog.json/recovery.json和前后域核对。两者都复用m35-vue-v3及同一事实库；具体已验结果见M03交接，当前发布见PROJECT_STATE。
+
+## M36运行解释交付与恢复
+
+M36沿用三包、同源built和原个人身份/Flash配置。源码/静态字节变化后须新精确内容报告、完整清单和独立安装；最终状态标签修正的报告/安装独立于初版保留。实际八场景、包边界、重启与旧新切换见[M36交接](../../handoffs/M36.md)，当前安装/hash/revision只写PROJECT_STATE。
+
+最终恢复闭包`recovery/m36-explainable-v2`保存兼容原M35 Flash的runtime.env、learning-catalog.json、pointer.json与新new-runtime.env/new-learning-catalog.json；recovery.json标明对应完整hash/安装。原M36初版受历史运行引用，连同其闭包保留。回退先control.sh stop结束所有写者，逐文件用sudo install -o ubuntu -g ubuntu -m 600恢复原config/runtime.env、config/learning-catalog.json、state/pointer.json；恢复新版改用new-runtime.env/new-learning-catalog.json与原pointer.json。
+
+两次切换均重新source runtime.env，以原ubuntu用户执行**目标安装**的deephelp_app.bootstrap.commands.release_cli status，读现场revision；再activate该闭包对应的完整hash及--expected-revision，使用原state/budget.json，最后switch对应安装并有界等实际health。M35目标为m35-vue-v3，M36目标取PROJECT_STATE；不能只切symlink或沿用旧revision。登记新manifest须先原字节复制到state目录以满足路径守卫。
+
+重启与切换使用同一现行PG，只读已有会话/原receipt、审批原计划/审计/唯一效果/下游调用、官方checkpoint并核对表内容hash。最终核对摘要在受保护final-recovery.json；不覆盖累计预算、恢复旧数据库或为补观测重发业务。Langfuse缺失应保留PG事实和unknown，固定动作/取消产生的无终态记录继续按原归属保护。清理仅针对本次已关闭进程和已提取且无消费者的传输副本，安装、清单、配置、凭据与恢复资料保持。
