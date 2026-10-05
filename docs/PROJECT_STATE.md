@@ -43,14 +43,14 @@
 | M33 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[课程](learning/README.md) · [交接](../handoffs/M33.md) | 完整14章Java课程、11个安装可运行离线topic、原图UNKNOWN/反馈/发布实验及关键中文注释；屏障/取消/线程/子进程/共享候选/交错/证据门禁通过；模型0次；随后由M35/M36交付新正式安装，不代替用户学习或真实质量 |
 | M35 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M35.md) | Vue3/TS/Vite/Element Plus八任务入口、全部原能力迁移、唯一源码/前端锁及同源wheel；正式个人安装、14/14内容门禁、事实/重放/检索/记忆/观测、CAS、重启及M34→M35恢复通过；后续M36结果见下行 |
 | M36 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M36.md) | 原run确定性解释、同来源机制/观测与课程联动；八场景浏览器、14/14精确发布、正式安装/重启/M35→M36恢复通过；平台缺失/usage/CPU/排队按实未知，浏览0模型 |
-| M37 | IMPLEMENTED_OFFLINE_AND_CLOUD_READ_VERIFIED；全部两项完成；[交接](../handoffs/M37.md) | 干净目录七个核心实验/七个审批反例、75项相关回归通过；正式包仍要求前端；当前入口/云原记录及可选配置边界已核验，新增模型0次，云安装保持M36；系统临时核验环境清理被自动审批拒绝而暂留，功能交付与清理状态分别记录 |
+| M37 | IMPLEMENTED_OFFLINE_AND_CLOUD_READ_VERIFIED；全部两项完成；[交接](../handoffs/M37.md) | 干净目录七个核心实验/七个审批反例、75项相关回归通过；正式包仍要求前端；当前入口/云原记录及可选配置边界已核验，新增模型0次，云安装保持M36；系统临时核验环境当时因自动审批拒绝暂留，已由M39核对后实际删除；原历史证据保持 |
 | M38 | IMPLEMENTED_OFFLINE_VERIFIED；全部两项实现/验收完成；[交接](../handoffs/M38.md) | 主链及支撑路径中文契约/时序、全范围走查与现有导航完成；连接配置/SSH容量职责收口，旧诊断端口及评测回放兼容问题修复；最终1260 passed/2 skipped、infra 8项、三包内容与独立安装11课程通过；模型0次，新源码不等同于仍保留的M36云安装 |
-| M39 | IN_PROGRESS；受控清理已实施，忽略/临时清理续做；[交接](../handoffs/M39.md) | 删除已完成且被交接覆盖的M18 PLAN，源码/测试/资源保持；本模块不部署或发新完整版本 |
+| M39 | IMPLEMENTED_OFFLINE_VERIFIED；两项清理与保护核对完成；[交接](../handoffs/M39.md) | 删除完成M18/M39 PLAN及13487过程/临时文件（340929947字节）、2740空目录；1245保留hash不变，断连1项复验通过；模型0次，云未知用途对象保留 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 最终学习收尾规划
 
-2026-10-05按“完成M37的所有内容”完成[收尾路线](ROADMAP.md#最终学习收尾m37m39)中的M37两项：新克隆安装不再要求先构建前端，本地核心不依赖旧状态/云凭据，正式包保留前端守卫；根/应用/工具包README、LOCAL_SETUP与课程导航统一离线course、基础serve、完整workbench和历史恢复。当前只读观察确认云`m36-explainable-v2`及`m30-personal` revision26/active `a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`保持，runtime仍为M36的`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`；四服务active，配置通用Chat为qwen3.8-flash、原1024维Embedding与关闭Rerank。原PG记录实付181.23/优惠13.45、资料version3、同一不可变Business证据及13段/解释可读；原run的Langfuse available/85节点、去重GENERATION2/1082 tokens可读。评测catalog/完整发布/实际图定义可读，平台历史映射仍未配置、个人主体仍不能创建synthetic审批。页面/历史读取新增模型0次，云累计预算保持；复用适用M36完整场景/安装/恢复证据，本轮未部署、发新消息、执行重投/审批或重跑模型质量。M38前置已满足；用户随后明确启动其全部内容，两项实现/离线验收现已完成，结果见本次表格。本次没有更新云安装；用户随后启动M39全部内容，受控清理完成后继续忽略/临时清理，结果见本次表格和交接。
+2026-10-05按“完成M37的所有内容”完成[收尾路线](ROADMAP.md#最终学习收尾m37m39)中的M37两项：新克隆安装不再要求先构建前端，本地核心不依赖旧状态/云凭据，正式包保留前端守卫；根/应用/工具包README、LOCAL_SETUP与课程导航统一离线course、基础serve、完整workbench和历史恢复。当前只读观察确认云`m36-explainable-v2`及`m30-personal` revision26/active `a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`保持，runtime仍为M36的`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`；四服务active，配置通用Chat为qwen3.8-flash、原1024维Embedding与关闭Rerank。原PG记录实付181.23/优惠13.45、资料version3、同一不可变Business证据及13段/解释可读；原run的Langfuse available/85节点、去重GENERATION2/1082 tokens可读。评测catalog/完整发布/实际图定义可读，平台历史映射仍未配置、个人主体仍不能创建synthetic审批。页面/历史读取新增模型0次，云累计预算保持；复用适用M36完整场景/安装/恢复证据，本轮未部署、发新消息、执行重投/审批或重跑模型质量。M38前置已满足；用户随后明确启动其全部内容，两项实现/离线验收现已完成，结果见本次表格。本次没有更新云安装；用户随后启动M39全部内容，两项清理现已完成，结果见本次表格和交接。
 
 ## 现代路线实施与规划
 
