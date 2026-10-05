@@ -15,6 +15,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
+from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
@@ -31,7 +32,11 @@ from deephelp_app.domain.models.release import ReleaseManifest
 
 
 def release_hash(manifest: ReleaseManifest) -> str:
-    return digest(manifest.model_dump(mode="json"))
+    # 新可选字段为空时不进入旧清单身份；历史原字节/hash不改写。
+    omitted = {
+        key for key in ("skill_registry", "skill_review_path") if getattr(manifest, key) is None
+    }
+    return digest(manifest.model_dump(mode="json", exclude=omitted))
 
 
 def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
@@ -62,6 +67,29 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
         prompts[collaboration["resource"]] = collaboration["sha256"]
         if validation.get("collaboration_policy_digest") != collaboration["policy_digest"]:
             raise ConfigurationError("Agent role/policy validation differs from immutable release")
+    if manifest.skill_registry is not None:
+        from deephelp_app.application.skills import SkillRegistry
+
+        registry_skills = SkillRegistry.model_validate(manifest.skill_registry)
+        if not manifest.skill_review_path:
+            raise ConfigurationError("Skill registry requires its immutable review")
+        review_path = resolve_artifact(manifest.skill_review_path)
+        try:
+            reviewed, _ = read_skill_review(review_path)
+        except ValueError, KeyError:
+            raise ConfigurationError("Skill review is invalid") from None
+        if reviewed != registry_skills or validation.get("skills_digest") != reviewed.digest:
+            raise ConfigurationError("Skill content validation/approval differs from registry")
+        review_sha = file_digest(review_path)
+        if validation.get("skills_review_digest") != review_sha or not any(
+            resolve_artifact(p) == review_path and h == review_sha
+            for p, h in manifest.files.items()
+        ):
+            raise ConfigurationError("Skill review has no exact validation/file binding")
+        prompts["skills:registry"] = reviewed.digest
+        prompts["skills:review"] = review_sha
+    elif manifest.skill_review_path or validation.get("skills_digest"):
+        raise ConfigurationError("Validated Skill requires an approved release snapshot")
     if binding := published_prompt(manifest):
         prompts[ROLE] = file_digest(binding[0])
         if validation.get("intent_prompt_request_digest") != binding[1].request_digest:

@@ -51,6 +51,26 @@ async def test_skill_is_actual_original_lookup_with_source_and_fact_ids():
     assert budget.attempts_used == 2 and budget.tool_steps_used == 1
 
 
+async def test_registered_goal_reaches_original_model_without_replacing_ready_input():
+    seen = []
+
+    class Capture(RecordedSkillModel):
+        async def chat(self, request, budget):
+            seen.append(request)
+            return await super().chat(request, budget)
+
+    budget, gateway, executor, question, context = setup()
+    executor.model = Capture()
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="goal-test")
+    assert result.status == "RESOLVED"
+    assert any(
+        executor.skills.definitions[0].goal in m.content for m in seen[0].messages if m.content
+    )
+    assert '"ready_node"' in seen[0].messages[-1].content
+    assert [t.name for t in seen[0].tools] == ["get_order_benefits"]
+
+
 async def test_missing_slots_never_start_model_tool_or_skill():
     budget, _, executor, question, context = setup()
     result = await executor.execute(

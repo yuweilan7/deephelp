@@ -399,3 +399,7 @@ SkillDefinition机器契约只允许既有意图工具授予，schema必须匹�
 
 
 M41组合使用SkillStep精确子ID/version/hash与输入来源映射，SkillComposition固定机器输入/输出、意图/工具许可、有限步数/深度/attempts/时限。只允许直接只读叶子，递归组合/环拒绝；校验前序类型与完整依赖闭包，权限取父/意图/工具交集。单模式券诊断先订单→券，原SOP节点只读回收观察；组合与子共享同一ExecutionBudget/原重试上限，父id/children/input_sources/evidence_ids进入原SkillReceipt。审批SOPPlan.skills_digest绑定原问题版本，validate_binding同时核对；未开放写Skill，无新审批/UNKNOWN恢复协议。
+
+`/learning/skills`沿原catalog owner/BrowserAuth；GET详情和`/{digest}/diff`0模型。POST `/candidates`只收base_digest、已知skill_id、新version、goal、confirmed=true；依赖组合形成新版本。POST `/{digest}/review`收正revision、approve、reason、confirmed=true，短文件writer内CAS审核并保存不可变原件；不切业务active。客户端不可传路径/工具URL/代码。原评测JobInput.skill_candidate仅validate/prepare可用，必须选择已审核候选；prepare只接受同资产/候选的最新成功验证。浏览器试运行走原converse，新session/message产生实际行为，未知启动先核对pending，不自动重发。
+
+ReleaseManifest新增可选skill_registry/skill_review_path，空值在release_hash中省略以保持历史清单身份；有Skill时prompts保留keys `skills:registry`/`skills:review`，files绑定审核原件。内容报告skills_digest/skills_review_digest必须精确匹配审核与快照；模型/工具观察沿原runtime-v2/PG回执。生产只用清单快照；旧无Skill清单不启用默认Skill，管理明确501。运行时目标说明进入受信机器Skill系统消息，原工具schema/参数/事实许可不变；选择仍为确定性匹配。

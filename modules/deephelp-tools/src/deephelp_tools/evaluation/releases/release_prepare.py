@@ -13,6 +13,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 )
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
+from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.intent_prompt import (
@@ -36,6 +37,7 @@ def prepare_manifest(
     *,
     validation_path: Path | None = None,
     prompt_artifact: Path | None = None,
+    skill_review: Path | None = None,
 ) -> ReleaseManifest:
     data = verify_files(assets, validation_inputs=True)
     validation_path = validation_path or assets.parent / "validation.json"
@@ -78,6 +80,20 @@ def prepare_manifest(
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)
+    skills = None
+    if skill_review:
+        skills, _ = read_skill_review(skill_review)
+        review_sha = file_digest(skill_review)
+        if (
+            validation.get("skills_digest") != skills.digest
+            or validation.get("skills_review_digest") != review_sha
+        ):
+            raise ConfigurationError("Skill approval has no matching exact content validation")
+        files[str(skill_review.resolve())] = review_sha
+        prompts["skills:registry"] = skills.digest
+        prompts["skills:review"] = review_sha
+    elif validation.get("skills_digest"):
+        raise ConfigurationError("Validated Skill must provide its approved artifact")
     if observed := validation.get("observed_source"):
         # 只读复核报告也绑定原采集字节；原FAIL保留，不把采集器错误改写成当时PASS。
         source_path = Path(observed["path"])
@@ -118,4 +134,6 @@ def prepare_manifest(
         review_snapshot=data["source"],
         validation_path=str(validation_path.resolve()),
         validation_digest=digest(validation),
+        skill_registry=skills.content() if skills else None,
+        skill_review_path=str(skill_review.resolve()) if skill_review else None,
     )

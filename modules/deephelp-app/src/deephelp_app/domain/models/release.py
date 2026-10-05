@@ -64,6 +64,8 @@ class ReleaseManifest(DTO):
     review_snapshot: dict[str, Any]
     validation_path: str
     validation_digest: Identifier
+    skill_registry: dict[str, Any] | None = None
+    skill_review_path: str | None = None
 
 
 class ReleasePointer(DTO):

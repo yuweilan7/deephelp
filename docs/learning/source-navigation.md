@@ -106,3 +106,5 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m
 M40显式协作从原[SOPExecutor](../../modules/deephelp-app/src/deephelp_app/application/sop.py)的lookup进入[CollaborationSession](../../modules/deephelp-app/src/deephelp_app/application/collaboration.py)，领域值在[collaboration](../../modules/deephelp-app/src/deephelp_app/domain/models/collaboration.py)，角色资产在[sop_data](../../modules/deephelp-app/src/deephelp_app/resources/sop_data/agent-policy-v2.json)。阅读顺序与离线实验见[09章](09-agent-basics.md#受控专业-agent委托m40)；协调者/专业角色不改变原600、工具事实与审批权威。
 
 M41版本化Skill：[机器契约/执行](../../modules/deephelp-app/src/deephelp_app/application/skills.py) → [原SOP](../../modules/deephelp-app/src/deephelp_app/application/sop.py) → [09章实验](09-agent-basics.md#版本化业务skillm41)。
+
+管理阅读：[候选/审核原件](../../modules/deephelp-app/src/deephelp_app/adapters/releases/skill_store.py) → [原工作台管理](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/skills.py) → [完整发布](../../modules/deephelp-tools/src/deephelp_tools/evaluation/releases/release_prepare.py)。管理API无模型，试运行复用原converse/course；生产装配在原LiveAssembly消费审核后的清单快照。

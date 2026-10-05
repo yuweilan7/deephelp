@@ -70,6 +70,7 @@ class SOPExecutor:
         agent_journal: AgentTaskJournalPort | None = None,
         skills: SkillRegistry | None = None,
         skills_history: tuple[SkillRegistry, ...] = (),
+        skills_enabled: bool = True,
     ) -> None:
         if evidence_version not in {"business-fixtures-v1", "business-postgres-v1"}:
             raise ValueError("Unknown business evidence source")
@@ -80,6 +81,7 @@ class SOPExecutor:
         self.agent_journal = agent_journal
         self.skills = SkillRegistry.model_validate(skills.model_dump()) if skills else load_skills()
         self.skills_history = (self.skills, *skills_history, *skill_history())
+        self.skills_enabled = skills_enabled
         self.model = model
         self.tools = tools
         registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
@@ -126,7 +128,7 @@ class SOPExecutor:
         return self.definitions.get(question.active_intent)
 
     def pin_versions(self, versions: VersionManifest, code: IntentCode) -> VersionManifest:
-        if self.registry:
+        if self.registry and self.skills_enabled:
             versions = versions.model_copy(update={"skills": self.skills.digest})
         if self.agent_policy:
             versions = versions.model_copy(update={"collaboration": self.agent_policy.digest})
@@ -497,6 +499,29 @@ class SOPExecutor:
                 model_seconds=bounded.limits.model_seconds,
             )
         else:
+            if question.versions.skills:
+                registry = next(
+                    s for s in self.skills_history if s.digest == question.versions.skills
+                )
+                selected_skill = (
+                    registry.select(question.active_intent, tool)
+                    if question.active_intent
+                    else None
+                )
+                if selected_skill:
+                    # 已审核机器指令进入当前请求；仍只有原工具/schema与原槽位可执行。
+                    request = request.model_copy(
+                        update={
+                            "messages": [
+                                *request.messages[:-1],
+                                ChatMessage(
+                                    role="system",
+                                    content="TRUSTED SKILL:\n" + selected_skill.model_dump_json(),
+                                ),
+                                request.messages[-1],
+                            ]
+                        }
+                    )
             try:
                 async with asyncio.timeout(
                     min(bounded.limits.model_seconds, budget.remaining_seconds())

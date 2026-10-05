@@ -264,11 +264,13 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
         *,
         registry,
         prompt_artifact,
+        skill_review,
         persist_assets_validation,
     ):
         assert assets == key and output.name == "validation.json" and gate.request() is budget
         assert registry is assembly.sop_registry and auth == providers == key
         assert prompt_artifact is config.prompt_artifact
+        assert skill_review is None
         assert persist_assets_validation is False
         validation_paths.append(output)
         seen.append("validate")
