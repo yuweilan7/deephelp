@@ -147,6 +147,7 @@ class ApprovalService:
     def graph(self, budget: ExecutionBudget, token: str | None = None) -> Any:
         @observed("graph.approval_wait")
         async def wait(state: ApprovalState) -> ApprovalState:
+            # interrupt恢复可能重入该节点；暂停前只读取原账本，不做不可逆业务效果。
             op = await self.repo.get(state["operation_id"])
             if op.approval_status == ApprovalStatus.PENDING:
                 annotate(
@@ -173,7 +174,7 @@ class ApprovalService:
                 return {"status": op.status.value, "effect": None}
             assert token is not None
             try:
-                # A lost response/commit is queried before any possible redispatch.
+                # 丢响应/提交未知先query原operation；明确ABSENT后才考虑同一操作派发。
                 if op.status in {OperationStatus.IN_FLIGHT, OperationStatus.UNKNOWN}:
                     op = await self.repo.query_dispatched(op.plan.operation_id, token)
                     result = await self.rights.call("query", op, budget)
@@ -183,6 +184,7 @@ class ApprovalService:
                 op = await self.repo.dispatch(op.plan.operation_id, token, self.snapshot)
                 self.inject("before_tool")
                 result = await self.rights.call("execute", op, budget)
+                # await取得观察值而非自行证明落账；下一节点校验同operation效果后提交。
                 self.inject("after_tool")
                 assert result.effect is not None
                 return {"effect": result.effect.model_dump(), "status": "OBSERVED"}
@@ -261,6 +263,7 @@ class ApprovalService:
         budget: ExecutionBudget,
     ) -> OperationRecord:
         scoped = await self.repo.scoped(identity, command.session_id, command.run_id, operation_id)
+        # scoped先校验可信归属，acquire原子领取；普通消息或trace ID均不能授权resume。
         links = await operation_link(self.repo.pool, operation_id)
         with observation(
             "approval.resume",
@@ -305,6 +308,8 @@ class ApprovalService:
                     else:
                         value = None
                     await graph.ainvoke(value, config, durability="sync")
+                    # 等本次图/官方保存完成；操作事实仍回repo读取，checkpoint不是账本。
                 return await self.repo.get(operation_id)
             finally:
+                # 当前恢复调用拥有领取token，无论成功/失败/取消都释放，不删除UNKNOWN事实。
                 await self.repo.release(operation_id, token)

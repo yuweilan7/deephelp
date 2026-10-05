@@ -130,6 +130,7 @@ class ReleaseStore(FeedbackReader):
         fault: Callable[[str], None] | None = None,
     ) -> ReleasePointer:
         """Short database commit after public switch has verified the complete runtime."""
+        # 先在事务外做字节验证，再锁channel/revision并CAS；不在验证时长期占事务。
         async with self.pool.acquire() as conn:
             await conn.begin()
             try:
@@ -179,6 +180,7 @@ class ReleaseStore(FeedbackReader):
                         fault("before_commit")
                 await conn.commit()
                 if fault:
+                    # commit后通信/进程中断不能靠rollback撤销已提交active；恢复需读原指针。
                     fault("after_commit")
                 return result
             except BaseException:

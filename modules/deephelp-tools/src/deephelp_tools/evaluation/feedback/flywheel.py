@@ -27,6 +27,7 @@ from deephelp_tools.assets import asset_path
 
 def isolation(candidate: FeedbackCandidate) -> None:
     """Identifier-neutral collisions and declared paraphrase groups are both audited."""
+    # 改订单号不产生独立数据；已知训练/dev/test/regression与同来源改写组不能回收。
     import json
 
     from deephelp_tools.evaluation.quality.core import DATA, historical_inputs
@@ -111,6 +112,7 @@ def capture_candidate(
 
 
 def reviewed(candidate: FeedbackCandidate, route: Route, review: RouteReview) -> FeedbackCandidate:
+    # 人工按路线审核才产生gold候选；批准不自动训练/发布，仍须留出隔离及版本门禁。
     if review.state == "approved":
         isolation(candidate)
         if not review.independent_from_heldout or not review.label or not review.label.actionable:

@@ -182,6 +182,7 @@ def graph_callbacks() -> list[Any]:
 
 
 def model_io(*, input_value: Any = None, output_value: Any = None) -> None:
+    # 仅记录网关实际允许的脱敏IO，剔除隐藏推理；诊断失败不改变原解析/业务效果。
     runtime, active = current(), _active.get()
     if not isinstance(runtime, NativeTelemetry) or active is None:
         return

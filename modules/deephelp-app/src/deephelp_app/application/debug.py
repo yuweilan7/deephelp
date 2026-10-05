@@ -29,6 +29,7 @@ def pseudonym(key: bytes, value: str) -> str:
 
 
 def sanitize(data: Mapping[str, object], key: bytes) -> dict[str, object]:
+    # 脱敏建立新展示值，不改原模型请求/业务结果；原文span偏移不能套用到替换后文本。
     replacements: dict[str, str] = {}
 
     def collect(value: object, name: str = "") -> None:
@@ -94,6 +95,7 @@ def sanitize(data: Mapping[str, object], key: bytes) -> dict[str, object]:
 
 
 def project(snapshot: DebugSnapshot, view: DebugView, *, dropped: int = 0) -> dict[str, object]:
+    # 三视图选择同一snapshot字段，不重新执行模型/检索；缺失保留None/incomplete。
     data = snapshot.data
     keys = {
         "intent": ("input", "text", "intent", "versions"),

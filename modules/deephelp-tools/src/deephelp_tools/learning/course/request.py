@@ -65,3 +65,34 @@ async def request_demo() -> dict[str, object]:
             "replay": summary(replay),
             "unknown": summary(unknown),
         }
+
+
+async def memory_demo() -> dict[str, object]:
+    repo, judge, trace = MemoryCaseRepository(), ReplayJudge(), MemoryTrace()
+    assembly = ReplayAssembly(ledger=repo, event_judge=judge, policy=CascadePolicy())
+    async with httpx.AsyncClient() as client, assembly.open(client, trace) as conversation:
+        first = await conversation.run(
+            envelope("我的订单未享受优惠", "course-interleaved"), ExecutionBudget.start(20, 40, 0)
+        )
+        other = await conversation.run(
+            envelope("另外订单000042券不能用", "course-interleaved"),
+            ExecutionBudget.start(20, 40, 0),
+        )
+        assert first.question_id != other.question_id
+        assert first.question_id and other.question_id
+        assert first.question_status == other.question_status == QuestionStatus.WAITING_SLOT
+        judge.target, judge.relation = first.question_id, "supplement"
+        completed = await conversation.run(
+            envelope("补充订单000031", "course-interleaved"), ExecutionBudget.start(20, 40, 0)
+        )
+        assert completed.question_id == first.question_id and completed.outcome == Outcome.ANSWERED
+        assert repo.questions[other.question_id].status == QuestionStatus.WAITING_SLOT
+        assert all(e.value != "000031" for e in repo.questions[other.question_id].entities)
+        return {
+            "evidence_kind": "synthetic_interleaved_questions",
+            "remote_model_calls": 0,
+            "first": summary(first),
+            "other": summary(other),
+            "completed": summary(completed),
+            "other_kept_order": [e.value for e in repo.questions[other.question_id].entities],
+        }
