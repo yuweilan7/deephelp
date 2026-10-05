@@ -25,7 +25,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course --help
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 ```
 
-本地核心无需创建`.env.local`、`.local`、身份、预算、发布指针或SSH隧道，也无需安装Node或PG/Redis/Milvus/Langfuse。源码开发安装允许没有`frontend/built`；需要网页或构建正式Python安装包时，再按[前端说明](../../modules/deephelp-app/frontend/README.md)构建同源页面，正式wheel/sdist仍要求前端产物。已准备依赖后可给uv命令追加`--offline`，使依赖解析也不访问网络。
+本地核心无需创建`.env.local`、`.local`、身份、预算、发布指针或SSH隧道，也无需安装Node或PG/Redis/Milvus/Langfuse。源码开发安装允许没有`frontend/built`；需要网页或构建正式Python安装包时，再按[前端说明](../../modules/deephelp-app/frontend/README.md)构建同源页面，正式wheel/sdist仍要求前端产物。已准备依赖后可将`uv run --locked`改为`uv run --offline --locked`，使依赖解析也不访问网络。
 
 预期Python为3.14.7；输出evidence_kind=synthetic_mechanism_replay、remote_model_calls=0。ID每次不同，核对关系与内容：
 

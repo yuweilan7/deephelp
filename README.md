@@ -4,13 +4,29 @@
 
 用Python复刻客诉意图识别、多轮问题归属、分层记忆、SOP/MCP、调试和评测。三类客诉运行见[业务启动入口](modules/deephelp-app/README.md#业务启动入口)，实际进度与限制见PROJECT_STATE。
 
-先按[PG入口](infra/postgres/README.md)显式设置 `DEEPHELP_POSTGRES_CONFIG` 并执行迁移；PG审批使用官方保存器，旧发布证据不能用于新运行。M30已完成正式PG单写和旧MySQL/Tempo退役；旧源数据/恢复资料继续保留，当前云入口见[部署说明](infra/deployment/README.md)。
+本地先运行核心原理：在新克隆的仓库根准备Python3.14.7/uv0.12.13和锁定依赖，再执行原课程。
 
-从仓库根用 `py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_app serve --mcp-module deephelp_tools.demo.mcp_server --corpus demo/data/m09_corpus.jsonl --pointer .local/m09/active.json` 启动现有业务链；先按 LOCAL_SETUP 核对身份、累计预算和真实依赖。`python -m deephelp_app --help` 列出 init/migrate/serve/ask。正式业务通过真实模型、PostgreSQL/Redis/Milvus及本机合成业务MCP；业务事实为合成值，服务绑定127.0.0.1。完整发布按应用文档的 release_cli 入口选取PostgreSQL登记版本。
+```powershell
+py -3.14 -m uv sync --locked --all-packages
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
+```
+
+无需旧`.local`、云凭据、SSH隧道、Node或本机PG/Redis/Milvus/Langfuse。先观察缺槽→补充→原事实→零调用重投，再沿[本地最短路径](docs/learning/README.md#本地核心最短路径)学归属、检索、异步和审批。实验用固定模型响应、内存适配器和合成资料复用原核心；远程模型0次，不能当作模型质量或真实持久性证据。依赖准备可能下载包，安装完成后可将`uv run --locked`改为`uv run --offline --locked`。
+
+云端使用已有完整个人学习工作台，本机只需浏览器和已经配置的personal SSH隧道：
+
+```powershell
+./infra/client/tunnel.ps1 -Profile personal -Action start
+./infra/client/tunnel.ps1 -Profile personal -Action health
+```
+
+然后打开[个人学习工作台](http://127.0.0.1:18080/)。新机器的SSH配置按[LOCAL_SETUP](docs/LOCAL_SETUP.md#本机配置与新机器接手)提供。云端保留真实模型、PostgreSQL事实/历史、两个MCP、原run解释与观测/评测入口；页面浏览0模型，明确执行才调用。当前能力及未配置项见[云教学边界](docs/LOCAL_SETUP.md#当前云端个人入口)，安装与恢复见[部署说明](infra/deployment/README.md)。两种环境按用途验收，不要求本机复制云端全栈。
+
+需要自行装配真实业务时，基础`deephelp_app serve`与完整`deephelp_tools.learning.workbench serve`的选择见[当前运行方式](docs/LOCAL_SETUP.md#当前学习与运行入口)。完整运行显式配置PG/模型/身份/预算/发布资产；基础serve不自动装配全部学习路由。M30旧MySQL/Tempo源数据与恢复资料保留，不能作为当前默认启动配置。
 
 学习实验与fake在 `deephelp_tools.learning`，显式探针在 `deephelp_tools.probes`，冻结评测/训练选参工具在 `deephelp_tools.evaluation`。运行策略/SOP/Prompt在业务包resources；合成事实、冻结集和学习数据的唯一来源见[datasets职责](datasets/README.md)，工具包安装时包含对应资源。业务启动不导入这些工具或读取冻结评测集。
 
-2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36)已完成个人免登录、职责整理/清理、[14章Java课程](docs/learning/README.md)、Vue工作台和运行解释。先运行离线课程，再沿[一条消息的调用路径](docs/learning/source-navigation.md)进入具体子系统；当前云安装与通用Chat固定qwen3.8-flash的实际证据见[PROJECT_STATE](docs/PROJECT_STATE.md)。后续[M37–M39收尾规划](docs/ROADMAP.md#最终学习收尾m37m39待实施)分别面向本地核心教学/云端完整体验、Python与Agent的详细中文注释、最终不必要文件清理；仅完成规划，尚未实施，不要求本机复制云端全栈。
+2026-10-05的[M32–M36路线](docs/ROADMAP.md#可读性与学习体验m32m36)交付个人免登录、职责整理、14章Java课程、Vue工作台和运行解释。[M37–M39收尾路线](docs/ROADMAP.md#最终学习收尾m37m39)中M37已打通本地核心/云端教学入口；M38中文讲解与M39清理尚未启动。当前云安装与固定通用Chat选择见[PROJECT_STATE](docs/PROJECT_STATE.md)，从[一条消息的调用路径](docs/learning/source-navigation.md)阅读同一套实现。
 
 | 需要什么 | 入口 |
 |---|---|
@@ -18,7 +34,7 @@
 | 能力顺序与检查命令 | [ROADMAP](docs/ROADMAP.md) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
 | 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
-| Java课程与学习工作台 | [14章课程与离线实验](docs/learning/README.md)、Vue工作台和运行解释已交付；[M37–M39](docs/ROADMAP.md#最终学习收尾m37m39待实施)为待实施收尾计划 |
+| 本地核心与云端完整教学 | [最短离线路径](docs/learning/README.md#本地核心最短路径)、[云工作台](docs/LOCAL_SETUP.md#当前云端个人入口)、[M37交接](handoffs/M37.md) |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |

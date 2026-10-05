@@ -1,6 +1,6 @@
 # DeepHelp 独立工具包
 
-关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)；旧完整发布继续绑定其原安装字节。
+本地核心先运行`course request`，不需PG、云凭据、旧.local或前端built；环境准备和最短路径见[课程](../../docs/learning/README.md#本地核心最短路径)。真实业务/完整工作台才按[PG入口](../../infra/postgres/README.md)配置并迁移，M26审批使用官方保存器。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，旧完整发布绑定其原安装字节。
 
 本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装三个workspace包，独立机器可只安装app wheel；需要演示/学习时再安装tools及其依赖。
 
@@ -11,6 +11,7 @@ evaluation按retrieval/quality/feedback/releases/migration/platform归组；prob
 从仓库根运行以下入口，帮助、预览和审计均不调用真实模型：
 
 ```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.experiments
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.replay.event_cli --help
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.retrieval.dense_cli preview
@@ -31,7 +32,9 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release
 
 ## 浏览器学习扩展
 
-安装tools后，以 `python -m deephelp_tools.learning.workbench.app serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
+完整源码学习使用`py -3.14 -m uv run --locked python -m deephelp_tools.learning.workbench serve`替代基本app入口，其他业务/检索/身份/预算/完整发布参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。先用该命令的`--help`核对参数，再提供自己的有效配置；它不是零配置离线演示。基础app提供业务/历史/解释，tools明确装配协议/工作流/分析与可选评测路由。已有完整云安装按[当前云入口](../../docs/LOCAL_SETUP.md#当前云端个人入口)访问，本机无需装配这些服务；云/本地课程复用同一核心，依赖失败不回退回放。
+
+`DEEPHELP_LEARNING_CATALOG`选择受控评测目录；未配置时没有评测扩展路由。合成权益学习另需成对的`DEEPHELP_LEARNING_RIGHTS_PORT/DEEPHELP_LEARNING_RIGHTS_KEY`，key为原32-byte文件，与基本业务`--rights-*`装配分别配置；个人主体不接管synthetic练习。catalog中的平台历史映射是独立可选项，未配置时显示实际空态，不影响按原run读取Langfuse。浏览/帮助/历史0模型，明确业务提问、检索比较及任务构建/验证才进入相应共享预算。
 
 ### 评测与飞轮目录
 
@@ -39,7 +42,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release
 
 ```powershell
 $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
-# 随后使用上面的 tools.learning.workbench serve 与原业务/检索/身份/预算参数
+# 随后使用上面的 workbench serve 与原业务/检索/身份/预算/发布参数
 ```
 
 只有`owner`这一明确配置的个人学习主体可浏览该本机管理目录；其他可信身份仍只使用自己的业务工作台，目录读写404。全局审核/完整版本来自当前PostgreSQL，不另建事实源。页内主链采集仅接受已完成的专用`m18-collect`合成run，冻结评测输入不能回收为训练；内容生成沿用原[飞轮入口](../deephelp-app/README.md#m18-审核后的反馈闭环)。审核复用原revision守卫、留出隔离和三路队列，浏览器只能明确人工审核，不能伪造确定性证据注册者。

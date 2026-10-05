@@ -10,7 +10,7 @@ npm run build
 npm run dev
 ```
 
-开发服务只绑定本机，代理原应用8000；生产仅由Python应用同源提供built，服务器不运行Node。路由使用hash，刷新仍读取根入口；所有脚本/样式本地打包，无CDN。需要先build再构建Python包。wheel仅包含built；sdist包含可再构建源码和同一built，不含node_modules。
+开发服务只绑定本机，代理原应用8000；生产仅由Python应用同源提供built，服务器不运行Node。路由使用hash，刷新仍读取根入口；所有脚本/样式本地打包，无CDN。需要网页或构建正式Python包时先build；仅源码editable安装和本地核心course无需Node/built。wheel仅包含built；sdist包含可再构建源码和同一built，不含node_modules。
 
 src/app管理路由，features管理页面，components承载共用展示，api定义原服务契约，composables拥有读取取消、个人连接和待核对消息，styles维护布局。仅身份/预算、选中run及未确认原消息跨页共享。前端不判断意图、补槽归属或审批合法性。
 

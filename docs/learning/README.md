@@ -29,7 +29,7 @@
 
 ## 本地核心最短路径
 
-新克隆先按[01章](01-start.md#从仓库根运行)准备Python3.14.7和根锁定依赖；无需旧`.local`、云凭据、隧道、Node或中间件服务。每次只选正在学习的topic，不要求一次跑完14章。下面的`course <topic>`均展开为`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course <topic>`，已准备依赖后可追加uv的`--offline`。
+新克隆先按[01章](01-start.md#从仓库根运行)准备Python3.14.7和根锁定依赖；无需旧`.local`、云凭据、隧道、Node或中间件服务。每次只选正在学习的topic，不要求一次跑完14章。下面的`course <topic>`均展开为`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course <topic>`，已准备依赖后可将`uv run --locked`改为`uv run --offline --locked`。
 
 | 次序 | 执行与阅读 | 先解释清楚的结果 |
 |---|---|---|
@@ -70,4 +70,10 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.evaluati
 
 领域类型与确定性安全规则在domain；会话/级联/SOP/审批在application；供应商、PostgreSQL/Redis/Milvus、MCP和trace在adapters；HTTP在api；配置、生命周期和CLI在bootstrap；运行策略、SOP/Prompt与SQL在resources。审批客户端与合成服务已经分开，查看一个HTTP请求时可以沿客户端、协议值、独立demo服务和审批账本追踪。
 
-真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。Business/Retrieval服务的运行、schema、委托、预算回执及维护学习见[服务包](../../modules/deephelp-services/README.md)。M22工作台及M30个人云已交付，当前观测是M28原生Langfuse，旧M21 Tempo路线仅保留历史资料。整个13段主链不宣称全部由LangGraph实现；可读性改进按M32–M36实施，不因历史模块通过认定学习体验已满足。
+真实执行的边界是明确启动live探针或配置正式serve。模型执行方式、业务数据源与运行地点各自选择；有Key或位于服务器不会自动联网。Business/Retrieval服务的运行、schema、委托、预算回执及维护学习见[服务包](../../modules/deephelp-services/README.md)。当前观测为原生Langfuse，旧Tempo路线仅保留历史资料。整个13段主链不宣称全部由LangGraph实现；课程/固定回放不替代真实质量验收或读者自测。
+
+## 云端完整教学路径
+
+按[当前云入口](../LOCAL_SETUP.md#当前云端个人入口)启动personal隧道并访问18080。先刷新持久历史，选自己的已有原run，读取事实/不可变证据/13段与解释，再沿观测、记忆、检索、工具和评测页面对照本课程。服务端完整workbench使用同一核心，不要求本地也有全部组件；普通阅读0模型，页面内明确执行的真实动作才走原预算。
+
+云端数据是可维护合成资料，持久协议和模型为真实执行；原run诊断、历史版本、固定本地回放分别理解。个人身份不能接管独立synthetic审批，未配置平台历史映射保持实际空态；已验范围/当前只读观察见[M36](../../handoffs/M36.md)/[M37](../../handoffs/M37.md)，当前安装见STATE。基础业务serve和完整workbench、离线course与历史恢复的选择统一见LOCAL_SETUP。
