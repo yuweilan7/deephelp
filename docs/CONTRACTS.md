@@ -2,13 +2,13 @@
 
 当前发布契约：`0.2.0-m02`，唯一类型见 `modules/deephelp-app/src/deephelp_app/domain/models/__init__.py`。从 M01 的 `0.1.2-m01` 升级：facts/evidence 由自由 dict/string 改为 Fact/EvidenceRef，next_action 改为枚举，新增 run_status、tool_call_ids、missing_slots；旧版本 envelope 拒收。现有 API、预算、fake 和离线消费者按新类型回归；converse 的业务执行边界见 PROJECT_STATE。
 
-本文同时约束未来模块，不声明数据库表或审批能力已存在。后续首次消费时增量细化，不在 M02 冻结全部未来协议。破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增 ADR。
+本文约束接口语义，不充当实现状态或运行说明。旧阶段的MySQL/自建saver名称保留其历史契约背景，当前后端以M25/M26装配和ARCHITECTURE为准；已交付/未实现项只查PROJECT_STATE，具体源码路径见学习导航。新增消费者时增量细化，破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增 ADR。
 
-M19保持HTTP/工具DTO和wire版本不变，Python入口按职责迁移：Port在domain/ports.py，会话/SOP/审批在application，具体外部实现/发布读侧在adapters，装配CLI在bootstrap。学习、demo、冻结评测与发布prepare/validate只由deephelp-tools消费；运行包无反向依赖。ToolGateway通过显式StdioServerParameters选择现有协议进程，serve须明确MCP模块，Hybrid提供已发布语料；不隐式启用demo或回退数据库。现行路径与安装边界见[M19交接](../handoffs/M19.md)。
+HTTP/工具DTO和wire保持同一版本；Port在domain，业务用例在application，外部实现/发布读侧在adapters，装配CLI在bootstrap。学习、demo、冻结评测与发布prepare/validate只由deephelp-tools消费，运行包无反向依赖。MCP显式选择stdio模块或独立HTTP服务，Hybrid提供已发布语料；不隐式启用demo或回退数据库。职责与路径见[源码导航](learning/source-navigation.md)，原拆包证据见[M19交接](../handoffs/M19.md)。
 
 ## M25 PostgreSQL装配
 
-新源码所有关系事实由同一PostgreSQL应用库承载；连接必须显式 `DEEPHELP_POSTGRES_CONFIG`，不回退MySQL/demo。唯一DTO、HTTP/MCP wire保持；新工具证据来源为`business-postgres-v1`，历史`business-mysql-v1`结果/清单/签名字节原样读取，不重新执行。`PostgresLedger/PostgresCaseRepository/PostgresHistory`保留接收/终态/身份契约；原MySQL只由tools的专门只读快照入口访问，现行旧部署保留。
+新源码所有关系事实由同一PostgreSQL应用库承载；连接必须显式 `DEEPHELP_POSTGRES_CONFIG`，不回退MySQL/demo。唯一DTO、HTTP/MCP wire保持；新工具证据来源为`business-postgres-v1`，历史`business-mysql-v1`结果/清单/签名字节原样读取，不重新执行。`PostgresLedger/PostgresCaseRepository/PostgresHistory`保留接收/终态/身份契约；原MySQL仅由tools的专门只读快照入口访问，旧数据/安装保留给历史与恢复消费者。
 
 `m25_legacy`保存typed checkpoint、parent/pending writes与迁移进度，tools的`LegacyCheckpointArchive`只读。M26正式PG审批只注入显式打开的官方`AsyncPostgresSaver`薄接缝，独立schema为`deephelp_checkpoints`；业务连接与保存器使用同一应用配置、独立连接池。app migrate执行官方setup，serve不隐式迁移。学习查询读取正式saver和原图，不另建审批流程。业务写效果仍由操作账本与下游对账证明。
 

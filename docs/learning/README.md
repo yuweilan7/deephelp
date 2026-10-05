@@ -4,7 +4,7 @@
 
 实际工作台首页有八个阅读场景；原run→机制页面→同一课程/源码/最小实验的完整阅读方法见[13章](13-observations.md#沿当前页面解释一次真实运行)。浏览解释不调用模型，正式结果与诊断缺口分别读取。
 
-保留一套引擎。先用离线样本观察实际类型、决策、事实与trace，再由明确live入口运行真实模型；浏览文档、帮助、预览和pytest不会自动调用模型。开始异步基础可先读[M01指南](M01_ASYNC_GUIDE.md)。运行、工具和demo安装说明见[工具包](../../modules/deephelp-tools/README.md)。
+保留一套引擎。先用离线样本观察实际类型、决策、事实与trace，再由明确live入口运行真实模型；浏览文档、帮助、预览和pytest不会自动调用模型。异步基础从[await与Task](04-awaitables.md)开始，原M01的CPU/进程实验收在[资源课程](07-resources.md#原m01异步与cpu补充实验)。运行、工具和demo安装说明见[工具包](../../modules/deephelp-tools/README.md)。
 
 课程面向资深Java开发者、Python语法入门者与Agent新人。先运行再读源码，每章都有前置、普通话解释、Java类比边界、反例、练习答案和当前源码；14章全部交付。异步章还有时序图与任务/资源拥有者表。实验复用同一Conversation/领域类型，正常阅读和默认实验远程模型0次。实际范围/检查见[M33交接](../../handoffs/M33.md)，完整标准见[M33规格](../MODULES/M33_JAVA_LEARNING_COURSE.md)。
 

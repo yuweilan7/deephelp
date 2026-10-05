@@ -36,6 +36,6 @@ Langfuse官方文档将SeaweedFS列为Official，并在Helm chart v2.0.0起采�
 
 ## 验收与停止
 
-原生 SDK 异步/短进程 flush、超时/取消、断网/恢复和直接导出关闭不阻塞业务；平台重启后实际 trace/score可读，观测备份恢复到隔离目标后关联可读，SeaweedFS对象内容/元数据/队列/分析存储关系明确。对象存储停止时如实暴露不可用/积压，恢复后据实际处理结果记录，不宣称仅有ClickHouse即可正常接新trace。首特性合成 observation，模型 0 次；“完成M27”在存入/读回特性验收交付后继续组合容量与平台恢复，全部特性交付后停止，主业务接入留 M28。现网仍旧路线，MySQL/Collector/Tempo 暂不删除。
+原生 SDK 异步/短进程 flush、超时/取消、断网/恢复和直接导出关闭不阻塞业务；平台重启后实际 trace/score可读，观测备份恢复到隔离目标后关联可读，SeaweedFS对象内容/元数据/队列/分析存储关系明确。对象存储停止时如实暴露不可用/积压，恢复后据实际处理结果记录，不宣称仅有ClickHouse即可正常接新trace。平台首特性使用合成observation，模型0次；业务接入留M28，平台资格阶段不退役旧服务，正式切换范围见M30。协作与顺序交付遵循AGENTS。
 
 依据：[架构](https://langfuse.com/self-hosting)、[Docker Compose](https://langfuse.com/self-hosting/deployment/docker-compose)、[队列要求](https://langfuse.com/self-hosting/deployment/infrastructure/cache)、[官方SeaweedFS/Blob接入](https://langfuse.com/self-hosting/deployment/infrastructure/blobstorage#seaweedfs)、[SeaweedFS](https://github.com/seaweedfs/seaweedfs)、[MinIO 维护状态](https://github.com/minio/minio)、[LangSmith 自托管](https://docs.langchain.com/langsmith/self-hosted)。

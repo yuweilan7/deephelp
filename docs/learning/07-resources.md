@@ -69,3 +69,19 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m
 stream打开失败后pool是否关闭？事务commit成功但Langfuse导出失败，应回滚业务吗？
 
 答案：已登记pool退出仍执行；未成功进入stream没有对应退出。已提交业务不能因诊断失败伪装回滚，也不能重新执行工具，应显示缺失诊断并读原receipt。参照[官方AsyncExitStack](https://docs.python.org/3.14/library/contextlib.html#contextlib.AsyncExitStack)。
+
+## 原M01异步与CPU补充实验
+
+原M01的三个实验仍可从仓库根运行，使用合成等待和本机进程，不访问网络或模型：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.experiments
+```
+
+1. **独立I/O：** 先串行等待A/B，再由TaskGroup并发等待，观察结果、并发峰值和耗时。串行峰值为1，并发为2；测试证明任务重叠，具体耗时只供观察。await推进协程、等待异步I/O时让出事件循环，不能等同Java阻塞式Future.get。
+2. **失败与超时：** 子任务确认兄弟已启动后抛异常或耗尽timeout。TaskGroup取消兄弟，等待其finally收尾，再抛异常组；Java CompletableFuture.allOf本身不保证取消兄弟。预期故障是实验结果，业务入口仍必须映射成错误。
+3. **CPU与进程池：** 同步CPU循环直接运行会堵住事件循环、使heartbeat停住；将相同工作交给ProcessPoolExecutor并await时，heartbeat继续。独立进程绕过同一解释器的GIL，但参数/返回值须可序列化，有启动和内存成本。Windows入口需要`if __name__ == '__main__'`保护；取消await不能强行停止已运行的线程/进程。实验将等待池关闭移到线程，避免同步关闭堵住事件循环。
+
+asyncio.to_thread适合短同步文件I/O或阻塞SDK，普通CPython线程下的纯Python CPU工作不保证提速；Semaphore限制同时进入上游的调用，不是线程池或QPS配额。请求总deadline同时覆盖排队、子调用和有限重试，不能每层重新计时；副作用未知须对账，不能套用只读重试。Task/取消的完整实验见[04](04-awaitables.md)、[05](05-coordination.md)、[06](06-cancellation.md)，生产资源所有权见本章上文。
+
+练习：把CPU循环包进async def后直接await，是否就能保持heartbeat？取消进程池任务后是否可以立即关闭共享HTTP池？答案：不能，协程里的同步循环仍占据事件循环；取消等待不说明工作已停止，请求只清理自己的资源，共享HTTP池由应用lifespan关闭。对照[实验源码](../../modules/deephelp-tools/src/deephelp_tools/learning/experiments.py)观察启动、结果接收和关闭的拥有者。
