@@ -109,3 +109,13 @@ export interface Flow {
   incomplete?: string[];
   dropped_events?: number;
 }
+
+export interface AgentTaskRecord {
+  task: AgentReceipt["task"];
+  state: string;
+  phase: string;
+  decisions: AgentReceipt["decisions"];
+  observation: AgentReceipt["observation"];
+  receipt: AgentReceipt | null;
+  updated_at: string;
+}

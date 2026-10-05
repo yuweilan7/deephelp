@@ -25,19 +25,20 @@ from deephelp_app.domain.models.collaboration import (
     AgentDecision,
     AgentReceipt,
     AgentTask,
+    AgentTaskRecord,
     AgentTaskStatus,
 )
 from deephelp_app.domain.models.common import DTO, ErrorCode, ErrorDetail, QuestionStatus
 from deephelp_app.domain.models.conversation import Question, RequestEnvelope
 from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest, ModelTool, ModelToolCall
 from deephelp_app.domain.models.tools import ToolName, ToolParameters, ToolResult, ToolStatus
-from deephelp_app.domain.ports import ChatPort
+from deephelp_app.domain.ports import AgentTaskJournalPort, ChatPort
 
 
 class AgentRole(DTO):
     """已登记专业角色；每个角色的工具权限只覆盖一种现有只读能力。"""
 
-    role_id: Literal["order-benefits"]
+    role_id: Literal["order-benefits", "coupon-status"]
     version: str = Field(min_length=1)
     tool: ToolName
     goal: str = Field(min_length=1, max_length=1000)
@@ -45,8 +46,12 @@ class AgentRole(DTO):
 
     @model_validator(mode="after")
     def permission(self) -> AgentRole:
-        if self.tool != ToolName.GET_ORDER_BENEFITS:
-            raise ValueError("Order agent cannot acquire coupon or write tools")
+        allowed = {
+            "order-benefits": ToolName.GET_ORDER_BENEFITS,
+            "coupon-status": ToolName.CHECK_COUPON,
+        }
+        if self.tool != allowed[self.role_id]:
+            raise ValueError("Role cannot acquire another role's tools")
         return self
 
 
@@ -55,6 +60,9 @@ class AgentPolicy(DTO):
     coordinator_prompt: str = Field(min_length=1, max_length=4000)
     max_tasks: int = Field(default=2, ge=1, le=4)
     max_depth: Literal[1] = 1
+    max_task_attempts: int = Field(default=6, ge=1, le=8)
+    task_seconds: float = Field(default=80, gt=0, le=90)
+    total_seconds: float = Field(default=90, gt=0, le=90)
     roles: tuple[AgentRole, ...] = Field(min_length=1, max_length=2)
 
     @model_validator(mode="after")
@@ -77,7 +85,7 @@ class AgentPolicy(DTO):
 
 def load_agent_policy(path: Path | None = None) -> AgentPolicy:
     """只读取显式资产；不打开模型/工具，也不从正文发现任意角色。"""
-    source = path or files("deephelp_app").joinpath("resources/sop_data/agent-policy-v1.json")
+    source = path or files("deephelp_app").joinpath("resources/sop_data/agent-policy-v2.json")
     return AgentPolicy.model_validate_json(source.read_text(encoding="utf-8"))
 
 
@@ -120,8 +128,11 @@ def validate_agent_task(
 
 
 class CollaborationSession:
-    def __init__(self, model: ChatPort, policy: AgentPolicy) -> None:
+    def __init__(
+        self, model: ChatPort, policy: AgentPolicy, journal: AgentTaskJournalPort | None = None
+    ) -> None:
         self.model, self.policy = model, AgentPolicy.model_validate(policy.model_dump())
+        self.journal = journal
         self.receipts: list[AgentReceipt] = []
         self._seen: set[str] = set()
 
@@ -248,97 +259,183 @@ class CollaborationSession:
                 "deephelp.policy_version": self.policy.version,
             }
         )
+        record = (
+            await self.journal.begin(task, context, max_tasks=self.policy.max_tasks)
+            if self.journal
+            else None
+        )
+        if record and record.state == "COMPLETED":
+            assert record.receipt and record.observation
+            validate_agent_task(record.task, question, context, run_id, self.policy)
+            self.receipts.append(record.receipt)
+            return record.observation
         started = datetime.now(UTC)
         decisions: list[AgentDecision] = []
-        observation = None
+        observation: ToolResult | None = None
+        phase = "delegate"
+        closed = False
+        journal = self.journal
+
+        async def progress(
+            next_phase: Literal["select_tool", "tool", "return_evidence"], *, observed: bool = False
+        ) -> None:
+            # 每次短事务完成后才开始下一次外部等待；不跨模型/工具持行锁。
+            nonlocal record, phase
+            phase = next_phase
+            if journal is not None and record is not None:
+                record = AgentTaskRecord.model_validate(
+                    record.model_copy(
+                        update={
+                            "state": "OBSERVED" if observed else "RUNNING",
+                            "phase": next_phase,
+                            "decisions": tuple(decisions),
+                            "observation": observation,
+                            "updated_at": datetime.now(UTC),
+                        }
+                    ).model_dump()
+                )
+                await journal.write(record)
+
+        async def finish(receipt: AgentReceipt) -> None:
+            # 本execute拥有短保存任务。取消只给落盘5秒宽限，不追加模型/工具或延长业务deadline。
+            nonlocal record, closed
+            if journal is not None and record is not None:
+                record = AgentTaskRecord.model_validate(
+                    record.model_copy(
+                        update={
+                            "state": receipt.status.value,
+                            "phase": "closed",
+                            "receipt": receipt,
+                            "decisions": receipt.decisions,
+                            "observation": receipt.observation,
+                            "updated_at": datetime.now(UTC),
+                        }
+                    ).model_dump()
+                )
+
+                async def persist() -> None:
+                    assert journal is not None and record is not None
+                    async with asyncio.timeout(5):
+                        await journal.write(record)
+
+                writer = asyncio.create_task(persist())
+                try:
+                    await asyncio.shield(writer)
+                except asyncio.CancelledError:
+                    await writer
+                    closed = True
+                    self.receipts.append(receipt)
+                    raise
+            closed = True
+            self.receipts.append(receipt)
+
         try:
-            trusted = task.model_dump_json()
-            await self._decision(
-                [
-                    ChatMessage(
-                        role="system",
-                        content=self.policy.coordinator_prompt + "\nTRUSTED TASK:\n" + trusted,
+            with budget.limit_attempts(self.policy.max_task_attempts):
+                async with asyncio.timeout(
+                    min(self.policy.task_seconds, budget.remaining_seconds())
+                ):
+                    trusted = task.model_dump_json()
+                    await self._decision(
+                        [
+                            ChatMessage(
+                                role="system",
+                                content=self.policy.coordinator_prompt
+                                + "\nTRUSTED TASK:\n"
+                                + trusted,
+                            )
+                        ],
+                        "delegate_task",
+                        {"task_id": task_id, "role_id": role.role_id},
+                        budget,
+                        decisions,
+                        "delegate",
+                        model_seconds,
                     )
-                ],
-                "delegate_task",
-                {"task_id": task_id, "role_id": role.role_id},
-                budget,
-                decisions,
-                "delegate",
-                model_seconds,
-            )
-            # 专业上下文只含本任务与原文；不继承其他 question、协调者工具权限或隐藏推理。
-            messages = [
-                ChatMessage(role="system", content=role.prompt + "\nTRUSTED TASK:\n" + trusted),
-                ChatMessage(
-                    role="user",
-                    content=json.dumps(
-                        {"untrusted_user_text": context.raw_text}, ensure_ascii=False
-                    ),
-                ),
-            ]
-            action = await self._decision(
-                messages,
-                tool.value,
-                expected,
-                budget,
-                decisions,
-                "select_tool",
-                model_seconds,
-                parameters=tool_schema(tool),
-            )
-            observation = await dispatch()
-            if observation.run_id != run_id or observation.tool_name != tool:
-                raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Agent observation parent mismatch")
-            if observation.status != ToolStatus.SUCCEEDED:
-                self.receipts.append(
-                    AgentReceipt(
-                        task=task,
-                        status=AgentTaskStatus.FAILED,
-                        decisions=tuple(decisions),
-                        observation=observation,
-                        error=observation.error,
-                        started_at=started,
-                        finished_at=datetime.now(UTC),
+                    await progress("select_tool")
+                    # 专业上下文只含本任务与原文；不继承其他 question、协调者工具权限或隐藏推理。
+                    messages = [
+                        ChatMessage(
+                            role="system", content=role.prompt + "\nTRUSTED TASK:\n" + trusted
+                        ),
+                        ChatMessage(
+                            role="user",
+                            content=json.dumps(
+                                {"untrusted_user_text": context.raw_text}, ensure_ascii=False
+                            ),
+                        ),
+                    ]
+                    action = await self._decision(
+                        messages,
+                        tool.value,
+                        expected,
+                        budget,
+                        decisions,
+                        "select_tool",
+                        model_seconds,
+                        parameters=tool_schema(tool),
                     )
-                )
-                return observation
-            evidence_ids = tuple(r.evidence_id for r in observation.evidence_refs)
-            await self._decision(
-                [
-                    *messages,
-                    ChatMessage(role="assistant", tool_calls=[action]),
-                    ChatMessage(
-                        role="tool",
-                        tool_call_id=action.call_id,
-                        content=observation.model_dump_json(),
-                    ),
-                    ChatMessage(
-                        role="system",
-                        content="仅用return_evidence返回task_id、status=COMPLETED和本工具全部evidence_ids。不要新增事实或继续查询。",
-                    ),
-                ],
-                "return_evidence",
-                {"task_id": task_id, "status": "COMPLETED", "evidence_ids": list(evidence_ids)},
-                budget,
-                decisions,
-                "return_evidence",
-                model_seconds,
-            )
-            self.receipts.append(
-                AgentReceipt(
-                    task=task,
-                    status=AgentTaskStatus.COMPLETED,
-                    decisions=tuple(decisions),
-                    observation=observation,
-                    evidence_ids=evidence_ids,
-                    started_at=started,
-                    finished_at=datetime.now(UTC),
-                )
-            )
-            return observation
+                    await progress("tool")
+                    observation = await dispatch()
+                    if observation.run_id != run_id or observation.tool_name != tool:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Agent observation parent mismatch"
+                        )
+                    if observation.status != ToolStatus.SUCCEEDED:
+                        await finish(
+                            AgentReceipt(
+                                task=task,
+                                status=AgentTaskStatus.FAILED,
+                                decisions=tuple(decisions),
+                                observation=observation,
+                                error=observation.error,
+                                started_at=started,
+                                finished_at=datetime.now(UTC),
+                            )
+                        )
+                        return observation
+                    await progress("return_evidence", observed=True)
+                    evidence_ids = tuple(r.evidence_id for r in observation.evidence_refs)
+                    await self._decision(
+                        [
+                            *messages,
+                            ChatMessage(role="assistant", tool_calls=[action]),
+                            ChatMessage(
+                                role="tool",
+                                tool_call_id=action.call_id,
+                                content=observation.model_dump_json(),
+                            ),
+                            ChatMessage(
+                                role="system",
+                                content="仅用return_evidence返回task_id、status=COMPLETED和本工具全部evidence_ids。不要新增事实或继续查询。",
+                            ),
+                        ],
+                        "return_evidence",
+                        {
+                            "task_id": task_id,
+                            "status": "COMPLETED",
+                            "evidence_ids": list(evidence_ids),
+                        },
+                        budget,
+                        decisions,
+                        "return_evidence",
+                        model_seconds,
+                    )
+                    await finish(
+                        AgentReceipt(
+                            task=task,
+                            status=AgentTaskStatus.COMPLETED,
+                            decisions=tuple(decisions),
+                            observation=observation,
+                            evidence_ids=evidence_ids,
+                            started_at=started,
+                            finished_at=datetime.now(UTC),
+                        )
+                    )
+                    return observation
         except asyncio.CancelledError:
-            self.receipts.append(
+            if closed:
+                raise
+            await finish(
                 AgentReceipt(
                     task=task,
                     status=AgentTaskStatus.CANCELLED,
@@ -350,11 +447,15 @@ class CollaborationSession:
             )
             raise
         except (AppError, TimeoutError) as exc:
+            if closed:
+                raise
             code = exc.code if isinstance(exc, AppError) else ErrorCode.TIMEOUT
-            self.receipts.append(
+            await finish(
                 AgentReceipt(
                     task=task,
-                    status=AgentTaskStatus.FAILED,
+                    status=AgentTaskStatus.UNKNOWN
+                    if code == ErrorCode.TIMEOUT or (phase == "tool" and observation is None)
+                    else AgentTaskStatus.FAILED,
                     decisions=tuple(decisions),
                     observation=observation,
                     started_at=started,

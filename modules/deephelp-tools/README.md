@@ -138,3 +138,11 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 ```
 
 使用新output路径保留不可变报告；身份/数据为专用合成输入。核心解释、预期结果和练习答案见[09章](../../docs/learning/09-agent-basics.md#受控专业-agent委托m40)。正式主链显式execution_mode=collaboration，默认single；原页面选中run查看实际委托/证据，浏览不调用模型。
+
+M40子任务PG协议（固定动作，远程模型0次）：
+
+```powershell
+uv run --locked python -m deephelp_tools.probes.conversation.task_journal_probe --live --config PRIVATE_PG_CONFIG --output NEW_PRIVATE_REPORT
+```
+
+该显式入口在原PG创建唯一合成消息，证明两源完成回收/重读0调用、竞争领取/CAS/归属和连接重开后RUNNING禁止重领；不是任意会话恢复。券实际模型内容选择collaboration_probe的`--case coupon-threshold --case coupon-conflict`，共享预算和新报告必填；不自动扩大历史样本。

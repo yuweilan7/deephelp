@@ -56,7 +56,7 @@ answered为model_calls=2、tool_calls=1：RecordedModel建议查订单，获得�
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course collaboration
 ```
 
-预期：`remote_model_calls=0`、`recorded_decisions=3`、`real_stdio_calls=1`；原SOP路径为 `order → decide → applied`，回执 `COMPLETED`，实付 `99.90`、优惠 `10.00`。固定动作只证明机制，实际模型内容另由显式live入口验证。本机stdio SDK与原工具观察真实运行，退出实验后关闭子进程。
+预期：`remote_model_calls=0`，`cases`中订单例 `recorded_decisions=3`、`real_stdio_calls=1`；原SOP路径为 `order → decide → applied`，回执 `COMPLETED`，实付 `99.90`、优惠 `10.00`。固定动作只证明机制，实际模型内容另由显式live入口验证。本机stdio SDK与原工具观察真实运行，退出实验后关闭子进程。
 
 按顺序读 [AgentTask/AgentReceipt](../../modules/deephelp-app/src/deephelp_app/domain/models/collaboration.py)、[CollaborationSession.lookup](../../modules/deephelp-app/src/deephelp_app/application/collaboration.py)、[SOPExecutor._flow](../../modules/deephelp-app/src/deephelp_app/application/sop.py)。任务固定父run/question、身份/session、问题输入版本、实体原来源、角色/策略摘要、工具许可和预算引用。正文不能填写这些可信字段。模型返回另一订单、未知角色或假证据均在接收处拒绝；不同来源矛盾仍按原SOP移交，不能让另一个Agent投票创造事实。
 
@@ -67,3 +67,12 @@ Java可类比一个用例调用受权限约束的策略对象并收到不可变�
 工作台明确选择协作后发送新消息；“事实/时间线”和“工具与工作流”沿所选原run展示协调者、专业角色、槽位来源、实际模型动作和call/证据ID。默认单Agent，读取历史0模型；缺槽先补充，未记录任务不补造协作故事。重投同message_id保留原执行模式，不能借重投把single改成collaboration。
 
 练习：专业角色返回 `COMPLETED` 却引用不存在的证据；或任务来自另一个question但订单号相同；或用同message_id改执行模式。答案：第一种回收校验拒绝，原SOP不能回答成功；第二种父链/归属守卫拒绝，编号相同不提供授权；第三种原消息hash冲突，旧single默认hash保持兼容。若用户缺订单号，预期没有委托、没有工具，原主链先等待补充。
+
+
+券门槛例为 `recorded_decisions=6`、`real_stdio_calls=2`，两个回执按 `coupon-status → order-benefits` 顺序出现，实付99.90、门槛100.00由原SOP比较。可用/过期券只查券，不机械凑第二个Agent；缺券号仍先等待补槽。Java可以把两个专业端口类比为顺序策略调用，但不能把模型承诺当方法后置条件。
+
+原 [PostgresAgentTasks](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/agent_tasks.py) 借用原账本连接池：begin只在短事务中锁原run，核对原消息hash/归属/版本，COMMIT后才等待模型。phase从delegate→select_tool→tool→return_evidence→closed单调前进；成功工具观察先落OBSERVED再等待回收，完成原回执不可改写。固定深度1/最多2任务/每任务6attempts/80秒同时受原90秒deadline约束；attempts包括格式修复和工具重试。`limit_attempts`只收窄原额度，退出不赠送额度，不允许借其范围并发其他角色。
+
+中断读取沿原session/run的任务表，不补造最终回执：COMPLETED的同绑定任务可直接返回原观察，调用计数与预算增量均0；RUNNING/OBSERVED/UNKNOWN/CANCELLED禁止重新领取。普通新消息不恢复旧run，也不批准旧操作。取消向父传播，仅短保存拥有者可在5秒宽限中写终态；这不保证进程强杀或重复取消后已经落盘，未关闭状态仍需只读核对。任务进度与原最终response分别展示，部分完成不表示整次成功。
+
+练习：券回执完成后订单角色失败；或模型回收前取消，但工具观察已落盘；或两个请求同时领取同子任务。答案：第一例整次失败，保留券完成与订单失败；第二例保存观察和取消、不返回成功证据、不重发；第三例原run行锁及唯一键只允许一个领取者，另一个先读取状态。原消息仍RUNNING时无自动恢复整条会话入口，不能把读回子回执外推为任意checkpoint可续跑。

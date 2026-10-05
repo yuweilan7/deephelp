@@ -39,7 +39,7 @@ from deephelp_app.domain.models.tools import (
     ToolStatus,
     tool_parameters_hash,
 )
-from deephelp_app.domain.ports import ChatPort, ToolPort
+from deephelp_app.domain.ports import AgentTaskJournalPort, ChatPort, ToolPort
 
 CONTROL_SCHEMA: dict[str, object] = {
     "type": "object",
@@ -60,6 +60,7 @@ class SOPExecutor:
         history: tuple[SOPRegistry, ...] = (),
         evidence_version: str = "business-fixtures-v1",
         agent_policy: AgentPolicy | None = None,
+        agent_journal: AgentTaskJournalPort | None = None,
     ) -> None:
         if evidence_version not in {"business-fixtures-v1", "business-postgres-v1"}:
             raise ValueError("Unknown business evidence source")
@@ -67,6 +68,7 @@ class SOPExecutor:
         self.agent_policy = (
             AgentPolicy.model_validate(agent_policy.model_dump()) if agent_policy else None
         )
+        self.agent_journal = agent_journal
         self.model = model
         self.tools = tools
         registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
@@ -171,10 +173,16 @@ class SOPExecutor:
                 raise AppError(
                     ErrorCode.FORBIDDEN, "Collaboration requires registered governed roles"
                 )
-            collaboration = CollaborationSession(self.model, self.agent_policy)
+            collaboration = CollaborationSession(self.model, self.agent_policy, self.agent_journal)
         try:
             async with asyncio.timeout(
-                min(definition.limits.total_seconds, budget.remaining_seconds())
+                min(
+                    definition.limits.total_seconds,
+                    budget.remaining_seconds(),
+                    collaboration.policy.total_seconds
+                    if collaboration
+                    else definition.limits.total_seconds,
+                )
             ):
                 if isinstance(definition, GovernedSOP):
                     result = await self._flow(
@@ -554,6 +562,32 @@ class SOPExecutor:
                         failure = result
                         current = node.failure
                         continue
+                    # 同run已完成子任务只读回收其原调用ID；不再派发工具或重复结算。
+                    if result.call_id and result.call_id not in calls:
+                        calls.append(result.call_id)
+                    # 缓存观察也重新过当前请求/参数/版本/证据守卫，不因来自账本跳过事实校验。
+                    cached_request = ToolRequest(
+                        operation_id=result.operation_id,
+                        run_id=run_id,
+                        question_id=question.question_id,
+                        identity=context.identity,
+                        tool_name=node.tool,
+                        tool_version=d.tool_version,
+                        parameters=validate_arguments(node.tool.value, expected),
+                        parameters_hash=tool_parameters_hash(
+                            validate_arguments(node.tool.value, expected)
+                        ),
+                        budget=budget.snapshot(),
+                    )
+                    validate_tool_result(cached_request, result)
+                    try:
+                        validate_observation(
+                            cached_request, result, evidence_version=self.evidence_version
+                        )
+                    except ValueError:
+                        raise AppError(
+                            ErrorCode.MODEL_OUTPUT_INVALID, "Cached facts differ from bound task"
+                        ) from None
                     observed[current] = result
                     if action is not None:
                         messages.extend(

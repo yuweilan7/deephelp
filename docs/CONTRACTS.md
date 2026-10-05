@@ -382,3 +382,7 @@ POST原review可附`platform_score_id`，只允许v3 Score的ANNOTATION、有作
 专业角色独立指令与上下文，以原生工具建议进入原SOPExecutor._lookup（schema/参数/实际call/证据及共享计量守卫），成功后仅return_evidence原task/status/实际全部证据ID。`AgentReceipt`保存公开模型动作call/provider/model/已知usage、实际ToolResult、起止及COMPLETED/NEEDS_INPUT/REFUSED/FAILED/CANCELLED/UNKNOWN；没有隐藏推理。模型结论不是事实，证据回收失败不输出已解决。原SOP继续跨源冲突/分支/审批，权限只能收窄。
 
 `SOPResult.agent_receipts`与`ResponseEnvelope.agent_receipts`默认空兼容旧消费者；终态随原PG response事务保存，回执必须属于同run/question、固定策略和已记录工具call。`run-explanation-v1.agent_receipts`直接投影原receipt，原页面读取0模型，不用诊断或新的模型故事补回执。取消继续向父请求传播，异步资源由原适配器拥有，未终态任务无回执时保持未知，不自动重领RUNNING或恢复旧审批。
+
+M40有界协作：角色策略agent-policy-v2登记order-benefits/get_order_benefits与coupon-status/check_coupon，depth=1、max_tasks=2、每任务max_task_attempts=6（含网关修复/工具重试）、task_seconds=80、total_seconds=90。原ExecutionBudget不复制额度；同请求顺序委托。dh_m40_agent_tasks外键原run，唯一(task_id)/(run,node)/(run,query_hash)，原消息hash、双侧主体/session/输入问题版本通过后短事务领取，claim_token CAS单调更新。终态不可改写，已完成同绑定只读复用；未完成/UNKNOWN/取消不得重领。原终态消息仍按原账本重放。
+
+原GET history/runs/{run_id}/explanation保持先PG归属鉴权；新增agent_tasks及agent_tasks_source读取实际持久进度，不返回claim_token、不消费模型或工具。agent_receipts仍来自原response，两者不能合成为伪造终态；任务表不可用标unavailable/gap。空列表代表确无任务，null代表未配置/不可读。普通会话不提供任意RUNNING恢复或旧审批授权。

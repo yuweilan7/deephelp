@@ -40,6 +40,9 @@ from .collaboration import (
     AgentTask as AgentTask,
 )
 from .collaboration import (
+    AgentTaskRecord as AgentTaskRecord,
+)
+from .collaboration import (
     AgentTaskStatus as AgentTaskStatus,
 )
 from .common import (

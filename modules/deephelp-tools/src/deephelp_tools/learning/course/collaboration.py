@@ -28,10 +28,12 @@ class RecordedAgentModel:
         budget.claim_attempt(retry=False)
         self.requests.append(request)
         tool = request.tools[0]
-        if tool.name == "get_order_benefits":
+        if tool.name in {"get_order_benefits", "check_coupon"}:
             assert request.messages[0].content is not None
             task = json.loads(request.messages[0].content.split("TRUSTED TASK:\n", 1)[1])
             arguments = {"order_id": task["parameters"]["order_id"]}
+            if tool.name == "check_coupon":
+                arguments["coupon_id"] = task["parameters"]["coupon_id"]
         else:
             properties = cast(dict[str, Any], tool.parameters["properties"])
             arguments = {
@@ -53,29 +55,36 @@ class RecordedAgentModel:
 
 
 async def collaboration_demo() -> dict[str, object]:
-    """订单任务顺序回收后走原 SOP 分支；网关上下文负责退出子进程。"""
-    budget = ExecutionBudget.start(30, 12, 0)
-    model, gateway = RecordedAgentModel(), DemoToolGateway()
-    executor = SOPExecutor(
-        model, gateway, registry=bundled_registry(), agent_policy=load_agent_policy()
-    )
-    question, context = sop_question(budget, IntentCode.DISCOUNT_MISSING)
-    question = question.model_copy(
-        update={"versions": executor.pin_versions(question.versions, IntentCode.DISCOUNT_MISSING)}
-    )
-    context = context.model_copy(update={"execution_mode": "collaboration"})
-    async with gateway.open():
-        result = await executor.execute(
-            question, budget, context=context, run_id="course-agent-run"
+    """依次运行订单/券门槛两例，复用同核心；每例上下文负责退出MCP子进程。"""
+    cases = []
+    for name, intent, order, coupon in [
+        ("order", IntentCode.DISCOUNT_MISSING, "000031", None),
+        ("coupon-threshold", IntentCode.COUPON_UNUSABLE, "DEMO-C01", "COUPON-C01"),
+    ]:
+        budget = ExecutionBudget.start(30, 12, 0)
+        model, gateway = RecordedAgentModel(), DemoToolGateway()
+        executor = SOPExecutor(
+            model, gateway, registry=bundled_registry(), agent_policy=load_agent_policy()
         )
-        ledger = await gateway.ledger()
-    assert result.status == SOPStatus.RESOLVED
-    assert len(result.agent_receipts) == 1 and len(ledger) == 1
-    return {
-        "evidence_kind": "synthetic_mechanism_replay",
-        "remote_model_calls": 0,
-        "recorded_decisions": len(model.requests),
-        "real_stdio_calls": len(ledger),
-        "result": result.model_dump(mode="json"),
-        "shared_budget": budget.usage().model_dump(mode="json"),
-    }
+        question, context = sop_question(budget, intent, order=order, coupon=coupon)
+        question = question.model_copy(
+            update={"versions": executor.pin_versions(question.versions, intent)}
+        )
+        context = context.model_copy(update={"execution_mode": "collaboration"})
+        async with gateway.open():
+            result = await executor.execute(
+                question, budget, context=context, run_id="course-" + name
+            )
+            ledger = await gateway.ledger()
+        assert result.status == SOPStatus.RESOLVED
+        assert len(result.agent_receipts) == len(ledger) == (2 if coupon else 1)
+        cases.append(
+            {
+                "case": name,
+                "recorded_decisions": len(model.requests),
+                "real_stdio_calls": len(ledger),
+                "result": result.model_dump(mode="json"),
+                "shared_budget": budget.usage().model_dump(mode="json"),
+            }
+        )
+    return {"evidence_kind": "synthetic_mechanism_replay", "remote_model_calls": 0, "cases": cases}
