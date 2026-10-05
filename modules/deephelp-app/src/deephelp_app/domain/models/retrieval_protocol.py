@@ -1,4 +1,8 @@
-"""Canonical retrieval protocol values and validation; no runtime resources."""
+"""Retrieval MCP的查询、可信上下文、预算委托和回执。
+
+公开查询与签名委托分开；身份/版本来自入口，远程usage必须在预留范围内才可结算。
+普通schema只验证形状，客户端和服务端仍须校验签名、归属与原候选语义。
+"""
 
 from __future__ import annotations
 

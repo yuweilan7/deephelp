@@ -1,4 +1,9 @@
-"""600 is the only main-intent owner. Dense scores are candidates, not probabilities."""
+"""600阶段唯一的主意图入口，接受实体处理结果并返回IntentDecision。
+
+context_intent来自已授权旧问题，memory_query是归属后的增强查询，二者不能越过当前诉求。
+有级联策略时委托Cascade；否则依次检查规则、召回和结构化模型选择。
+选中意图与槽位齐全是两件事：缺槽返回CLARIFY，检索分数不代表概率。
+"""
 
 import json
 import re
@@ -58,6 +63,11 @@ class IntentService:
         context_intent: IntentCode | None = None,
         memory_query: str | None = None,
     ) -> IntentDecision:
+        """在600选择主意图并检查槽位；返回决定与选择证据，不调用SOP。
+
+        text包含候选和未解决字段；已授权context_intent只允许同话题续接。
+        规则不唯一或模型不支持时交人工/澄清，不能把最相似资料直接当用户诉求。
+        """
         if self.cascade:
             return await self.cascade.recognize(
                 text, budget, context_intent=context_intent, memory_query=memory_query

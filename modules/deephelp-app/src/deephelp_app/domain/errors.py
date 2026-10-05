@@ -1,3 +1,9 @@
+"""用安全静态信息表示领域/依赖错误，由API映射状态和诊断。
+
+AppError保留错误码、可重试标记与供应商请求ID；不把凭据或原响应正文向外传播。
+ConfigurationError只说明出错字段，配置值仍留在受保护环境。
+"""
+
 from deephelp_app.domain.models.common import ErrorCode
 
 HTTP_STATUS: dict[ErrorCode, int] = {

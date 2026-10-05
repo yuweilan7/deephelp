@@ -1,4 +1,8 @@
-"""Bounded, non-executing corpus readers. Preview all rows before any remote writes."""
+"""有界读取合成语料并预检全体记录，导入远程索引之前先调用。
+
+JSONL/CSV/XLSX均只读数据；表格公式不执行，错误只报位置不回显原单元格。
+校验重复编号、同内容及跨split近义组，index_records只选择index，dev/test不进入业务索引。
+"""
 
 import csv
 import hashlib

@@ -1,4 +1,8 @@
-"""Canonical approval values and validation; no runtime resources."""
+"""明确审批命令、恢复命令与操作记录的值。
+
+OperationRecord把计划、待审批回复、原run及执行尝试绑定在一起。
+审批状态与效果状态分别保存，批准不等于执行成功；UNKNOWN仍需对账。
+"""
 
 from __future__ import annotations
 

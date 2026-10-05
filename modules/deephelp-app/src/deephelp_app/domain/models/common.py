@@ -1,4 +1,8 @@
-"""Canonical common values and validation; no runtime resources."""
+"""通用不可变值：身份、状态、错误、预算快照与精确金额。
+
+DTO禁止额外字段并冻结赋值，Money拒绝float输入以避免二进制舍入进入账本。
+BudgetSnapshot是相对时限的值副本，不包含事件循环、连接或可变ExecutionBudget。
+"""
 
 from __future__ import annotations
 

@@ -1,3 +1,10 @@
+"""用Protocol描述用例所需能力，具体连接与生命周期由bootstrap装配。
+
+Protocol类似Java接口，但实现不必显式继承：类型检查按同名方法与签名判断。
+await返回候选/观察值仍要经用例守卫，Port并不自带授权或事实真实性保证。
+Memory/Case端口读取原问题，Repository仅是M01练习缝隙，不是持久幂等账本。
+"""
+
 from collections.abc import Callable
 from typing import Protocol
 

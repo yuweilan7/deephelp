@@ -44,11 +44,12 @@
 | M35 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M35.md) | Vue3/TS/Vite/Element Plus八任务入口、全部原能力迁移、唯一源码/前端锁及同源wheel；正式个人安装、14/14内容门禁、事实/重放/检索/记忆/观测、CAS、重启及M34→M35恢复通过；后续M36结果见下行 |
 | M36 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M36.md) | 原run确定性解释、同来源机制/观测与课程联动；八场景浏览器、14/14精确发布、正式安装/重启/M35→M36恢复通过；平台缺失/usage/CPU/排队按实未知，浏览0模型 |
 | M37 | IMPLEMENTED_OFFLINE_AND_CLOUD_READ_VERIFIED；全部两项完成；[交接](../handoffs/M37.md) | 干净目录七个核心实验/七个审批反例、75项相关回归通过；正式包仍要求前端；当前入口/云原记录及可选配置边界已核验，新增模型0次，云安装保持M36；系统临时核验环境清理被自动审批拒绝而暂留，功能交付与清理状态分别记录 |
+| M38 | PARTIAL_OFFLINE_VERIFIED；主链/领域讲解完成；[交接](../handoffs/M38.md) | 60个Python执行AST保持，635 passed/1 skipped；继续支撑路径与全范围审阅，尚非整个M完成；模型0次，无云安装变更 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 最终学习收尾规划
 
-2026-10-05按“完成M37的所有内容”完成[收尾路线](ROADMAP.md#最终学习收尾m37m39)中的M37两项：新克隆安装不再要求先构建前端，本地核心不依赖旧状态/云凭据，正式包保留前端守卫；根/应用/工具包README、LOCAL_SETUP与课程导航统一离线course、基础serve、完整workbench和历史恢复。当前只读观察确认云`m36-explainable-v2`及`m30-personal` revision26/active `a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`保持，runtime仍为M36的`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`；四服务active，配置通用Chat为qwen3.8-flash、原1024维Embedding与关闭Rerank。原PG记录实付181.23/优惠13.45、资料version3、同一不可变Business证据及13段/解释可读；原run的Langfuse available/85节点、去重GENERATION2/1082 tokens可读。评测catalog/完整发布/实际图定义可读，平台历史映射仍未配置、个人主体仍不能创建synthetic审批。页面/历史读取新增模型0次，云累计预算保持；复用适用M36完整场景/安装/恢复证据，本轮未部署、发新消息、执行重投/审批或重跑模型质量。M38前置已满足但仍PLANNED，M39等待M38；两者均未启动。
+2026-10-05按“完成M37的所有内容”完成[收尾路线](ROADMAP.md#最终学习收尾m37m39)中的M37两项：新克隆安装不再要求先构建前端，本地核心不依赖旧状态/云凭据，正式包保留前端守卫；根/应用/工具包README、LOCAL_SETUP与课程导航统一离线course、基础serve、完整workbench和历史恢复。当前只读观察确认云`m36-explainable-v2`及`m30-personal` revision26/active `a388a5e9d802c9e508e827dfcd64908f43ec4d9b3e94f8ca96d44cff098e90ba`保持，runtime仍为M36的`c86504e8b8b28d1f10b904d1e21740aaa70b021a454d5fcdf8bbb43160a97e55`；四服务active，配置通用Chat为qwen3.8-flash、原1024维Embedding与关闭Rerank。原PG记录实付181.23/优惠13.45、资料version3、同一不可变Business证据及13段/解释可读；原run的Langfuse available/85节点、去重GENERATION2/1082 tokens可读。评测catalog/完整发布/实际图定义可读，平台历史映射仍未配置、个人主体仍不能创建synthetic审批。页面/历史读取新增模型0次，云累计预算保持；复用适用M36完整场景/安装/恢复证据，本轮未部署、发新消息、执行重投/审批或重跑模型质量。M38前置已满足；用户随后明确启动其全部内容，进度见本次表格。M39等待M38完成且另行启动。
 
 ## 现代路线实施与规划
 

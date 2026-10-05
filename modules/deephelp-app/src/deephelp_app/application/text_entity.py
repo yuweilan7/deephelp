@@ -1,4 +1,9 @@
-"""300 preprocessing: grounded observations and rule candidates, never final intent routing."""
+"""300阶段保留原文证据、提取槽位并产生规则候选，不决定最终主意图。
+
+Conversation与事件归属共用TextEntityProcessor.process。confirmed是历史已确认实体，
+fields是本次允许提取的字段；结果同时保留观察、否定、更正、冲突及未解决字段。
+先读process，再看regex_entities/merge_entities；模型补提取必须经grounded_rows回到原文。
+"""
 
 import asyncio
 import json
@@ -225,6 +230,11 @@ def merge_entities(
     confirmed: Sequence[Entity],
     requested: Sequence[EntityName],
 ) -> tuple[list[Entity], list[EntityConflict], list[EntityName]]:
+    """合并当前观察与历史槽位，返回唯一实体、冲突和待澄清字段。
+
+    显式更正可以替换历史值，普通不同值只形成冲突；否定值不当作确认。
+    保留来源让后续SOP知道每个编号从哪条消息来，不按最后出现值静默覆盖。
+    """
     resolved: list[Entity] = []
     conflicts: list[EntityConflict] = []
     unresolved: set[EntityName] = set()
@@ -410,6 +420,11 @@ def grounded_rows(
     wanted: Sequence[EntityName],
     layer: Layer,
 ) -> tuple[list[ExtractedEntity], int]:
+    """把模型行重新绑定到当前原文；返回可接受观察及拒绝数。
+
+    offset是分块在raw_text中的起点，evidence/value必须唯一、逐字出现且字段语义相符。
+    前导零和偏移不能由模型猜测，否定/更正由同一代码规则判定。
+    """
     if structured is None or not MODEL_VALIDATOR.is_valid(structured):
         raise AppError(ErrorCode.MODEL_OUTPUT_INVALID, "Invalid extraction schema")
     result: list[ExtractedEntity] = []
@@ -531,6 +546,8 @@ class TextEntityProcessor:
         await asyncio.sleep(0)
         coverage_missing: set[EntityName] = set()
         # At most one primary and one strong pass, sharing the original budget.
+        # 补提取先主模型、必要时强模型，两个阶段共用原预算。
+        # 只处理仍缺失/未覆盖字段，但每个选定块都看完，后块出现第二个值仍须形成冲突。
         ports: tuple[tuple[Layer, ChatPort | None], ...] = (
             ("api", self.primary),
             ("strong", self.strong),
@@ -628,6 +645,11 @@ class TextEntityProcessor:
         confirmed: Sequence[Entity] = (),
         fields: Sequence[EntityName] | None = None,
     ) -> TextEntityResult:
+        """并行清洗和提取当前原文，返回有来源的实体及候选规则。
+
+        confirmed仅含历史消息实体；fields省略时从本条原文估计需提取的字段。
+        本函数拥有两个子Task，成功、失败、超时和取消均在finally取消未结束者并等待回收。
+        """
         if len({e.name for e in confirmed}) != len(confirmed):
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Confirmed slots must be unique")
         if any(e.source.message_id == request.message_id for e in confirmed):
@@ -635,6 +657,8 @@ class TextEntityProcessor:
                 ErrorCode.INVALID_ARGUMENT, "Confirmed entities require prior message provenance"
             )
         requested = tuple(fields) if fields is not None else required_fields(request.raw_text)
+        # create_task让两个协程进入同一loop调度，并不创建两个线程。
+        # gather首错不会自动结束兄弟Task，因此下面finally必须显式取消并join。
         clean_task = asyncio.create_task(self._clean(request))
         extraction_task = asyncio.create_task(self._extract(request, budget, confirmed, requested))
         try:

@@ -1,4 +1,8 @@
-"""Canonical text values and validation; no runtime resources."""
+"""300阶段原文、分段、实体观察和规则候选的结果契约。
+
+ExtractedEntity偏移指向raw_text，清洗不改变原证据；否定与更正也保留观察。
+实体、规则片段与当前message_id逐项绑定，模型schema合法后仍需这些证据校验。
+"""
 
 from __future__ import annotations
 

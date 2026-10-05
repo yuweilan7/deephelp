@@ -1,4 +1,8 @@
-"""Canonical model io values and validation; no runtime resources."""
+"""Chat/Embedding/Rerank请求与结果的值，客户端在适配器而非DTO中。
+
+原生tool_calls通过专门字段表达，正文JSON不会自动成为工具调用。
+EmbeddingSignature绑定模型/维度/归一化空间；RerankDocument本地保留ID与来源，供应商只收content。
+"""
 
 from __future__ import annotations
 

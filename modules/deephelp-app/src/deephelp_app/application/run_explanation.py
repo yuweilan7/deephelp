@@ -1,4 +1,8 @@
-"""Read a receipt before interpreting optional diagnostics; never execute a run."""
+"""从原receipt和可选诊断生成确定性运行解释，供授权历史API调用。
+
+先读账本事实再解释诊断；未终态、缺快照和漏观测按原状态展示。
+explain_run不重投消息、不调用模型，解释句只来自已记录的结构。
+"""
 
 from typing import Any
 

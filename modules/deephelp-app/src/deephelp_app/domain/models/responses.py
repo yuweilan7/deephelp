@@ -1,4 +1,8 @@
-"""Canonical responses values and validation; no runtime resources."""
+"""主链终态、阶段计数与展示来源的响应契约。
+
+closeout检查事实/证据、槽位、工具ID、拒绝和待审批状态的整体一致性。
+缺槽回复不能夹带已执行事实，pending approval不能写成完成；诊断字段不授权新动作。
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,9 @@
-"""Commit terminal facts before diagnostics; cancellation waits for the owned writer."""
+"""先提交问题与原receipt终态，再尽力记录诊断和审批暂停。
+
+finish_run由当前消息请求调用；它只拥有一个最多五秒的保存Task。
+shield保护这次短保存，外层取消仍须交还调用者；它不授权新的模型或工具执行。
+保存失败会向上抛出，不能把尚未落账的回复宣称为已完成。
+"""
 
 from __future__ import annotations
 

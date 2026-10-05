@@ -1,4 +1,8 @@
-"""Stage timing and diagnostic events; business facts live in the ledger."""
+"""为主链阶段记录起止、错误和观测事件，事实仍归原账本。
+
+stage是异步上下文管理器：进入时开始计时，离开时即使异常也生成阶段结果。
+准备阶段延迟emit，领取后再发真实标识；事件只解释实际执行，不触发业务重试。
+"""
 
 from __future__ import annotations
 

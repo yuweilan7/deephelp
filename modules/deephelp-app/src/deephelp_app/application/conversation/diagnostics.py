@@ -1,4 +1,9 @@
-"""Capture bounded redacted diagnostics after the authoritative commit."""
+"""在账本提交后生成有界、脱敏的调试快照。
+
+主链传入本次原文处理、窗口、SOP和计数；capture_debug只投影已经得到的结构。
+缺少密钥/标识、内容过大或存储失败时不伪造快照，也不回头执行模型/工具。
+这里的异常被收口为诊断缺失，业务结果以先前保存的receipt为准。
+"""
 
 from __future__ import annotations
 

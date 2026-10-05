@@ -1,4 +1,9 @@
-"""Advance question entities and provenance before main-intent recognition."""
+"""把本次已确认的实体、冲突与版本推进到问题，供主链600之前调用。
+
+QuestionState是请求独有的暂存对象，Question仍通过model_copy产生新值。
+准备阶段每个await后保留已完成结果；后续失败时主链仍能保存这些诊断。
+已绑定意图保留旧版本，未分类的新问题才用当前版本。
+"""
 
 from __future__ import annotations
 
@@ -41,6 +46,11 @@ async def advance_question(
     budget: ExecutionBudget,
     stats: RunTrace,
 ) -> None:
+    """推进请求独有的state，保留完成的实体、窗口和旧问题以便错误收口。
+
+    prepared已做归属时沿用其上下文，避免重复提取；显式续接则保留旧冲突及更正来源。
+    函数不自行保存账本，主链finish_run负责最终提交。
+    """
     if prepared:
         assert prepared.text is not None
         state.text = prepared.text

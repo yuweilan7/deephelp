@@ -1,4 +1,8 @@
-"""Canonical conversation values and validation; no runtime resources."""
+"""入口消息与问题的唯一DTO，API、主链和仓储共用。
+
+ConverseInput是未可信正文，身份由入口另注入；Question保存成员、实体来源与绑定版本。
+校验拒绝跨成员来源、重复实体及不完整审批状态；model_copy后需要按边界重新验证。
+"""
 
 from __future__ import annotations
 

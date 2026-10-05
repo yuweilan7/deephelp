@@ -1,4 +1,8 @@
-"""Event membership policy; never classify main intent or execute SOP tools."""
+"""定义归属窗口、候选上限与端口；调用者显式提供策略与依赖。
+
+EventLedger负责授权查旧receipt、原子领取和终态保存；EventSimilarityPort只提供相似候选。
+这些上限约束本次归属计算，不是主意图阈值或部署单元。
+"""
 
 import re
 from dataclasses import dataclass

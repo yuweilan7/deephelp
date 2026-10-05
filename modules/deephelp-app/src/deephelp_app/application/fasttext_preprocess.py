@@ -1,4 +1,8 @@
-"""One versioned CPU tokenizer shared by training, audit and inference."""
+"""训练、审计和推理共用的版本化CPU分词。
+
+每个词典版本复用同一个tokenizer；prepare的规范化必须与训练时相同。
+缓存的是不可变词典配置，不是模型回答；版本漂移应重新训练/校准，不能静默复用旧模型。
+"""
 
 import hashlib
 import importlib.metadata

@@ -1,4 +1,7 @@
-"""Authorized history projections; stored receipts remain the source of results."""
+"""授权历史的只读分页值；结果仍取原消息与原receipt。
+
+分页摘要不重执行消息、不迁移身份，也不把缺终态的记录包装成成功回复。
+"""
 
 from pydantic import AwareDatetime
 

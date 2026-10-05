@@ -1,4 +1,8 @@
-"""Canonical tools values and validation; no runtime resources."""
+"""只读工具的参数、请求、观察值与内部委托，模型不能自由填写可信元数据。
+
+参数hash绑定确认编号；SUCCEEDED必须含实际call_id与同来源证据。
+ToolInvocationEnvelope只走内部签名通道，不暴露为模型可选择的工具参数。
+"""
 
 from __future__ import annotations
 

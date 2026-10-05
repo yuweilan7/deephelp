@@ -1,4 +1,8 @@
-"""Canonical retrieval values and validation; no runtime resources."""
+"""语料、索引签名、召回候选及重排证据的值。
+
+不同score_kind有独立取值范围，融合原分数与重排顺序并存。
+RerankPolicy要求排完整召回候选，最终K在用例中按意图裁剪；scope防止混向量空间。
+"""
 
 from __future__ import annotations
 

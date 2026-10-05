@@ -1,4 +1,8 @@
-"""Canonical sop values and validation; no runtime resources."""
+"""SOP结果与待审批建议的值，供主链映射回复和账本保存。
+
+WAITING_SLOT不能带工具调用/事实，RESOLVED必须有闭合证据。
+SOPPlan绑定问题版本、参数与快照，只是提案，还没有审批领取或业务效果。
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,8 @@
-"""Event membership persistence; never classify main intent or execute SOP tools."""
+"""显式归属实验的持久入口，复用原领取/终态账本，不调用600或SOP。
+
+先查旧receipt再计算归属，accept原子领取后才保存；重投读原结果。
+短保存Task的取消回收与主链相同，Redis/Milvus投影意图随原事实提交。
+"""
 
 import asyncio
 from datetime import UTC, datetime

@@ -1,4 +1,8 @@
-"""Event membership fragments; never classify main intent or execute SOP tools."""
+"""把当前消息划成独立诉求片段，并标记主诉、补充或新话题。
+
+片段偏移始终指向原文；槽位列表、更正句和同一诉求的补充不机械按标点拆开。
+这些标签供归属候选过滤，不能当作已确定的业务意图。
+"""
 
 import hashlib
 import re

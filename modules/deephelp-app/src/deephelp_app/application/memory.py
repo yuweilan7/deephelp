@@ -1,4 +1,9 @@
-"""Bounded memory; PostgreSQL authorizes every read, Redis/Milvus are disposable projections."""
+"""读授权PG窗口并维护可重建记忆投影，供主链与投影worker复用。
+
+MemoryService.load先取事实快照，Milvus只给候选，逐项回PG验证版本和状态。
+Redis写入失败只记降级，不将缓存当作旧事实。ProjectionWorker领取outbox租约后更新投影，
+全部成功才ack；取消或丢租约不会重做原业务工具。
+"""
 
 import asyncio
 from typing import Protocol
@@ -78,6 +83,11 @@ class ProjectionWorker:
         self.repository, self.memory, self.index = repository, memory, index
 
     async def once(self, budget: ExecutionBudget, *, event_id: int | None = None) -> str:
+        """领取一个outbox事件并更新可重建投影，返回idle/projected/lease_lost。
+
+        租约token只属于当前worker；全部写入成功后才ack。
+        失败保存错误，取消保留租约等待到期续跑；这些路径不重新执行原业务效果。
+        """
         claim = await self.repository.claim_event(event_id=event_id)
         if claim is None:
             return "idle"

@@ -1,8 +1,7 @@
-"""Validate a published retrieval selection without reopening dev/test inputs.
+"""启动时验证已发布检索选择，业务运行不重新读dev/test。
 
-The publisher still verifies query hashes against the frozen datasets. Startup
-checks the immutable selection, scope, corpus, analyzer and budgets; dev/test hashes
-are retained as provenance, never used as business data.
+validate_published_selection核对scope、语料摘要、分词器和候选预算；冻结查询hash只作来源。
+选参质量由发布者验，启动校验通过不代表新的模型质量通过。
 """
 
 import re

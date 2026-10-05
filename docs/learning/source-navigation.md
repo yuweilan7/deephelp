@@ -15,6 +15,17 @@
 
 Conversation保留stage/prepare等原方法入口，绑定的是对应职责模块的函数。Python把类中的函数绑定到实例，调用时自动传入self；它相当于Java对象将调用委托给同一组组件，没有继承第二套业务引擎。需要查计数和取消时，直接看[tracking](../../modules/deephelp-app/src/deephelp_app/application/conversation/tracking.py)与[stages](../../modules/deephelp-app/src/deephelp_app/application/conversation/stages.py)。
 
+读函数时先看中文契约，再把分支对应到实际输入：`confirmed`来自历史消息，`fields`限定提取字段，`context_intent`来自已授权旧问题，`budget`由本次请求共享。`model_copy`生成新DTO值，但不会重新跑校验；因此结果/终态边界的`model_validate`不能省掉。DTO的冻结也不意味着其中所有容器都变成深度不可变对象。
+
+| 容易误读的选择 | 从哪里追踪及为什么 |
+|---|---|
+| 自动归属是否已经领取消息 | preparation最后的accept才原子领取；模型先给目标/期望版本，竞争失败者读原receipt，不能再进入600 |
+| 缺槽和未知意图是否一样 | intent/cascade分别保留最终类别与槽位状态；有类缺槽可补充，无类不能凭相似样例猜工具 |
+| gather失败后兄弟任务是否结束 | text_entity.process创建两个Task，并在finally取消未完成者、等待全部回收；Task不是线程 |
+| tool_choice是否保证工具参数正确 | sop._loop/_flow继续核对动作数、工具名和expected，_lookup再校验派发ID及事实证据；请求约束不能替代返回守卫 |
+| 图恢复是否重新执行整条消息 | approval.resume先授权/领取，同operation为UNKNOWN时先query；checkpoint缺口从账本恢复，原message重投仍只读receipt |
+| 已取消是否意味着下游没执行 | 主链保留实际派发ID，审批保存UNKNOWN；terminal只等待短保存，不继续业务，恢复需对账 |
+
 ## 唯一类型的责任
 
 [domain/models](../../modules/deephelp-app/src/deephelp_app/domain/models/__init__.py)只显式导出原公开名字；定义按概念保存在同目录的具体模块，内部import直接指向它们。

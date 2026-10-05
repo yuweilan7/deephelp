@@ -1,4 +1,9 @@
-"""One sequential 13-stage message use case; helpers own preparation and closeout."""
+"""一条消息的十三段主链，由API或显式实验调用Conversation.run。
+
+输入是入口确认身份后的RequestEnvelope与本次共享预算，输出是可验证的ResponseEnvelope。
+账本决定是否领取执行；这里只编排实体、归属、600主意图、SOP和回复，不把模型建议当事实。
+先读run/_run，再按preparation、state、terminal追踪准备与落账；诊断不替代账本。
+"""
 
 from __future__ import annotations
 
@@ -107,6 +112,11 @@ class Conversation:
     @observed("conversation.run")
     async def run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         # 当前Task的可信委托上下文；嵌套适配器读取它，退出必须恢复原token。
+        """执行当前可信消息，并在所有退出路径恢复请求上下文。
+
+        request由API注入身份；budget由入口创建并贯穿模型、检索、工具和终态。
+        返回原receipt重放或本次新结果；取消在短保存收口后继续向调用者传播。
+        """
         from deephelp_app.domain.execution import request_execution
 
         token = request_execution.set(request)
@@ -127,6 +137,8 @@ class Conversation:
             }
         )
         # Authorize hints before receipt lookup; a hint never resumes an old run.
+        # 先授权hint再查receipt，重投也不能借旧标识读取别人的问题。
+        # 等待审批的问题只接受原成员重投；新更正必须先显式结束旧审批。
         if request.question_hint:
             old = await self.ledger.question(
                 request.identity, request.session_id, request.question_hint
@@ -147,6 +159,8 @@ class Conversation:
                     ErrorCode.INVALID_ARGUMENT, "M08 requires a new complete question without hint"
                 )
         stats = RunTrace()
+        # 自动归属需读取窗口与模型建议，发生在领取之前；最终accept用版本做原子竞争。
+        # 已有receipt会提前返回，竞争失败者也不能进入600或SOP。
         prepared = await self.prepare(request, budget, stats) if self.events else None
         receipt = prepared.receipt if prepared else await self.ledger.accept(request)
         annotate(
@@ -236,6 +250,8 @@ class Conversation:
                     if event and event.disposition == "clarify":
                         raise EventClarification
                     async with self.stage(STAGES[5], request, receipt, budget, stats):
+                        # 这一段才是主意图入口。旧问题沿固定意图续接，新问题按当前诉求分类。
+                        # intent_calls统计服务进入次数，与内部模型/检索的实际调用数分别记录。
                         stats.intent_calls += 1
                         if (
                             request.question_hint or (event and event.disposition == "attached")
@@ -396,6 +412,7 @@ class Conversation:
                     missing_slots=question.unresolved_fields,
                     reply="无法确定归属或存在多个诉求，请明确问题编号或分条发送独立问题。",
                 )
+            # 取消与超时均停止后续业务；这里只构造终态，稍后短保存结束再传播取消。
             except asyncio.CancelledError:
                 cancelled = True
                 response = self.error(request, receipt, ErrorCode.TIMEOUT, "执行已取消。")

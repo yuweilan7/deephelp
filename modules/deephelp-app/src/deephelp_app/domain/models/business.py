@@ -1,4 +1,8 @@
-"""Canonical business values and validation; no runtime resources."""
+"""订单、券、活动及维护版本的值，Business服务用仓储事务读写。
+
+金额、有效期、关系去重在边界校验；BusinessUpdate带expected_version防止覆盖并发修改。
+业务记录能是合成内容，是否持久/真实协议由调用路径决定。
+"""
 
 from __future__ import annotations
 

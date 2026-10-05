@@ -1,4 +1,9 @@
-"""One mutable runtime budget per request; do not serialize this object into domain DTOs."""
+"""一次请求共享的可变预算与异步调用协调器，不放进领域DTO。
+
+ExecutionBudget先预留尝试与tokens/金额上界，收到可信usage才结算；超时/丢响应保留未知预留。
+AsyncCalls拥有并发槽和子调用超时，排队也消耗原请求时限；只有明确安全的调用才有限重试。
+这里依赖当前事件循环的单调时钟，不能把deadline当墙上时间或跨进程序列化。
+"""
 
 import asyncio
 import random
@@ -183,6 +188,8 @@ class AsyncCalls:
             raise ValueError("Backoff must be nonnegative")
         self.backoff = backoff
 
+    # PEP 695的[T]表示返回类型跟operation一致，类似Java泛型方法。
+    # operation是可调用工厂，每次真正尝试才创建协程，避免重复await同一协程对象。
     async def call[T](
         self,
         operation: Callable[[], Awaitable[T]],
@@ -203,6 +210,8 @@ class AsyncCalls:
             # Waiting for the semaphore is included in the original request deadline.
             try:
                 async with asyncio.timeout(budget.remaining_seconds()):
+                    # 并发槽由AsyncCalls拥有；排队在原deadline里，拿到槽才扣调用预留。
+                    # 退出with会归还槽，退避在槽外等待，避免占着容量睡眠。
                     async with self._slots:
                         budget.claim_attempt(
                             retry=retry, tokens=token_reservation, cost=cost_reservation

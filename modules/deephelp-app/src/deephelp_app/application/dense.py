@@ -1,4 +1,9 @@
-"""Idempotent immutable-version import and Dense candidate retrieval, without intent takeover."""
+"""导入不可变签名语料并检索候选，不接管600主意图决定。
+
+DenseImporter先检查全部语料与容量，再按批写入并读回向量/元数据，清单用于同版本续跑。
+DenseRetriever校验查询向量与集合签名；Embedding变化必须新集合，不能混用向量空间。
+atomic_json用同目录临时文件替换本地状态，锁与清单保护单写/恢复，不是业务事实账本。
+"""
 
 import asyncio
 import hashlib

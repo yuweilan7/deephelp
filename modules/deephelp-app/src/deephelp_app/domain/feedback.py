@@ -1,4 +1,7 @@
-"""Authoritative feedback values and runtime literal predicates; no frozen data."""
+"""反馈候选与审核决定的唯一类型，运行规则和飞轮复用这些值。
+
+采集不等于批准，approved标签必须来自显式审核；冻结数据与训练资产不放在领域层。
+"""
 
 import re
 from typing import Any, Literal
