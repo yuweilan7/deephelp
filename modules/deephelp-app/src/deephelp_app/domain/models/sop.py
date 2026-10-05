@@ -26,6 +26,7 @@ from .common import (
 )
 from .entities import EntityName
 from .evidence import EvidenceRef, EvidenceSource, Fact, validate_facts
+from .skills import SkillReceipt
 from .tools import ToolParameters, tool_parameters_hash
 
 
@@ -75,6 +76,7 @@ class SOPResult(DTO):
     plan: SOPPlan | None = None
     node_path: tuple[Identifier, ...] = ()
     agent_receipts: tuple[AgentReceipt, ...] = ()
+    skill_receipts: tuple[SkillReceipt, ...] = ()
 
     @model_validator(mode="after")
     def sop_closeout(self) -> SOPResult:

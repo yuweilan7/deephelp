@@ -47,11 +47,12 @@
 | M38 | IMPLEMENTED_OFFLINE_VERIFIED；全部两项实现/验收完成；[交接](../handoffs/M38.md) | 主链及支撑路径中文契约/时序、全范围走查与现有导航完成；连接配置/SSH容量职责收口，旧诊断端口及评测回放兼容问题修复；最终1260 passed/2 skipped、infra 8项、三包内容与独立安装11课程通过；模型0次，新源码不等同于仍保留的M36云安装 |
 | M39 | IMPLEMENTED_OFFLINE_VERIFIED；两项清理与保护核对完成；[交接](../handoffs/M39.md) | 删除完成M18/M39 PLAN及13487过程/临时文件（340929947字节）、2740空目录；1245保留hash不变，断连1项复验通过；模型0次，云未知用途对象保留 |
 | M40 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M40.md) | 默认single，显式订单/券角色/两源门槛；PG任务短事务/CAS/取消/只读回收；12条原主链内容对照/正式两HTTP MCP事实、新精确安装与M36→M40恢复通过；固定样本未证明质量收益，协作增加调用/等待 |
+| M41 | FEATURE1_VERIFIED；版本化订单Skill/原事实执行已验；[交接](../handoffs/M41.md) | 特性2/3继续，云仍为M40；无模型选择质量收益结论 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 后续规格与实施边界
 
-2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部三项已交付，证据见上表；M41–M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`，未新增对应运行能力、验收或部署。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不改已有验收状态，也不启动远期能力或调度。
+2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部三项已交付，证据见上表；M41正在顺序实施，M42–M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`，未新增对应运行能力、验收或部署。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不改已有验收状态，也不启动远期能力或调度。
 
 ## 当前运行与验收边界
 

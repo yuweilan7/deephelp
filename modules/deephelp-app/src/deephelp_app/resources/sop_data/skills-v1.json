@@ -1,0 +1,44 @@
+{
+  "version": "skills-v1",
+  "definitions": [
+    {
+      "skill_id": "order-benefits",
+      "version": "1",
+      "goal": "查询已确认订单的权益与实付，只返回原工具证据",
+      "applicable_intents": [
+        "DISCOUNT_MISSING",
+        "COUPON_UNUSABLE",
+        "ORDER_ACTIVITY_QUERY"
+      ],
+      "tool": "get_order_benefits",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "order_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "ToolParameters",
+        "type": "object"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "order_id": "text",
+          "paid": "money",
+          "discount": "money",
+          "discount_status": "text",
+          "activity_ids": "text",
+          "activity_labels": "text"
+        }
+      }
+    }
+  ]
+}

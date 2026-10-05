@@ -33,6 +33,7 @@ from .events import EventClusterResult
 from .evidence import EvidenceRef, EvidenceSource, Fact, validate_facts
 from .intent_decisions import IntentDecision
 from .release import VersionManifest
+from .skills import SkillReceipt
 from .sop import SOPPlan
 
 
@@ -105,9 +106,18 @@ class ResponseEnvelope(DTO):
     reply_presentation: ReplyPresentation | None = None
     approval_operation_id: Identifier | None = None
     agent_receipts: tuple[AgentReceipt, ...] = ()
+    skill_receipts: tuple[SkillReceipt, ...] = ()
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
+        if len({r.execution_id for r in self.skill_receipts}) != len(self.skill_receipts) or any(
+            r.run_id != self.run_id
+            or r.question_id != self.question_id
+            or r.registry_digest != self.versions.skills
+            or (r.observation and r.observation.call_id not in self.tool_call_ids)
+            for r in self.skill_receipts
+        ):
+            raise ValueError("Skill receipts must bind original run, question, registry and calls")
         if len({r.task.task_id for r in self.agent_receipts}) != len(self.agent_receipts):
             raise ValueError("Agent task receipts must be unique")
         if any(

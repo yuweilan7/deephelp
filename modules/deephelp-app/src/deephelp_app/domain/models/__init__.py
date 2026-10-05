@@ -324,6 +324,7 @@ from .retrieval_protocol import (
 from .retrieval_protocol import (
     RetrievalWire as RetrievalWire,
 )
+from .skills import SkillReceipt as SkillReceipt
 from .sop import (
     SOPPlan as SOPPlan,
 )

@@ -36,6 +36,7 @@ class VersionManifest(DTO):
     tool_schema: Identifier | None = None
     release_manifest: Identifier | None = None
     collaboration: Identifier | None = None
+    skills: Identifier | None = None
 
 
 class ReleaseManifest(DTO):

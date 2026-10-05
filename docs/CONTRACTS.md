@@ -389,3 +389,10 @@ M40有界协作：角色策略agent-policy-v2登记order-benefits/get_order_bene
 
 
 M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额外进入prompts，内容报告必须核对collaboration_policy_digest；runtime-v2包含应用与同源built，tooling另绑。单路径默认不变，协作内容门禁适用范围见M40交接。M36旧DTO严格拒绝M40新字段，因此旧安装恢复只读旧记录，新记录保留原值且需回M40读取；不把新回执降格、修改旧manifest或覆写预算换兼容。
+
+
+## M41 版本化业务Skill
+
+唯一SkillReceipt记录原run/question/node、registry_digest、稳定skill_id/version/digest、已确认Entity来源、状态/起止、实际ToolResult与安全错误；SOPResult/ResponseEnvelope.skill_receipts默认空，VersionManifest.skills默认null兼容旧记录。响应守卫核对原run/question、注册表和call。Skill不是审批授权或事实来源，输出仍验证原ToolResult及证据链；缺槽无模型/工具/Skill，取消抛回父请求，不以新组合重跑恢复UNKNOWN。
+
+SkillDefinition机器契约只允许既有意图工具授予，schema必须匹配原输入/事实；代码选择当前意图/工具的唯一登记候选，ID/version/hash精确读取，同版本字节不可替换。没有远程Skill安装、Markdown代码执行、模型注册或扩权。旧问题skills=null继续原SOP；新版本漂移在任何模型/工具前拒绝。客户端/预算/连接由原请求装配拥有，回执仅值。

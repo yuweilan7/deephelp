@@ -1,6 +1,6 @@
 # M41｜版本化、可组合的Agent Skills
 
-**状态：** `SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`；2026-10-05规格。
+**状态：** `FEATURE1_VERIFIED / FEATURE2_3_PENDING`；2026-10-06顺序实施，证据见[交接](../../handoffs/M41.md)。
 **来源：** PDF文件页15–18、67–69及75的可复用Skill/SOP方向；用户要求补齐能力。Skill的执行契约和管理流程是本项目设计，不把外部Skill站点视作已接入依赖。
 **基线：** M39；复用[M14 SOP治理](M14_SOP_GOVERNANCE.md)、[M15审批](M15_DURABILITY_APPROVAL.md)、[M18发布](M18_DATA_FLYWHEEL.md)、[M20 MCP](M20_BUSINESS_SOURCE.md)、[M29不可变Prompt](M29_LANGFUSE_ENGINEERING.md)。工具类Skill可独立实施，委托类Skill才依赖M40已验接口。
 
