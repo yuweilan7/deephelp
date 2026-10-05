@@ -7,6 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: modules/deephelp-app/frontend/package-lock.json
+      - run: npm ci && npm test && npm run build
+        working-directory: modules/deephelp-app/frontend
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.13"

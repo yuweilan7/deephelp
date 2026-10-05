@@ -172,3 +172,27 @@ def test_runtime_integrity_does_not_require_learning_or_frozen_assets(
     assert provenance()["package_digest"] == first
     (tmp_path / "runtime.py").write_text("runtime = 2")
     assert provenance()["package_digest"] != first
+
+
+def test_frontend_binds_manifest_and_assets_without_suffix_filter(tmp_path, monkeypatch):
+    import deephelp_app.adapters.releases.asset_integrity as integrity
+
+    frontend = tmp_path / "frontend"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<html></html>")
+    manifest = frontend / "build-manifest.json"
+    manifest.write_text("{}")
+    font = frontend / "font.woff2"
+    font.write_bytes(b"first")
+    monkeypatch.setattr(integrity, "PACKAGE", tmp_path)
+    before = provenance()
+    assert set(before["artifact_hashes"]) == {
+        "frontend/index.html",
+        "frontend/build-manifest.json",
+        "frontend/font.woff2",
+    }
+    font.write_bytes(b"second")
+    assert provenance()["package_digest"] != before["package_digest"]
+    second = provenance()["package_digest"]
+    manifest.write_text('{"entry":"changed"}')
+    assert provenance()["package_digest"] != second

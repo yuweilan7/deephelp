@@ -1,5 +1,7 @@
 # DeepHelp 业务运行、验收与学习
 
+工作台前端构建/开发入口见[frontend](frontend/README.md)。源码运行或构建Python安装包前，先在该目录使用Node22.12以上执行`npm ci`、`npm run build`；Python应用仅同源服务已构建资源，不运行Node常驻服务。
+
 关系事实已统一PostgreSQL，M26审批使用官方保存器；启动前按[PG入口](../../infra/postgres/README.md)设置显式连接并执行migrate。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)；M32结构迁移只做离线等价验收，旧完整发布继续绑定其原安装字节。
 
 Python3.14.7，唯一业务契约`0.2.0-m02`。三类客诉使用下方M08入口；启动/凭据见[LOCAL_SETUP](../../docs/LOCAL_SETUP.md)，检查命令见[ROADMAP](../../docs/ROADMAP.md)，实际证据见对应handoff。

@@ -2,7 +2,7 @@
 
 基线：2026-10-05，规划分支feature/learning-experience-roadmap，HEAD f7bbc336b6ab0594b6b4ca71d2d075b95c8110c4。
 
-**decision=DECOMPOSE；readiness=READY（M34/M32及M33完整课程已实际交付，尚未启动本M）。** [规格](../../docs/MODULES/M35_FRONTEND_FOUNDATION.md)选择Vue3/TypeScript/Vite/Element Plus；版本与构建兼容性在实施时核对。两个顺序特性，不按每个tab拆M或创建S。
+**decision=DECOMPOSE；readiness=IMPLEMENTING（首项已验收，完成Git交付后续做第二项）。** [规格](../../docs/MODULES/M35_FRONTEND_FOUNDATION.md)选择Vue3/TypeScript/Vite/Element Plus；版本与构建兼容性在实施时核对。两个顺序特性，不按每个tab拆M或创建S。
 
 ## 目标、前置及改动范围
 

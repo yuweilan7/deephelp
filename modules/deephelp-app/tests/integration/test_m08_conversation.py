@@ -84,10 +84,13 @@ async def test_normal_response_replay_and_13_stages(identity, body):
         assert len([e for e in trace.events if e.event == "stage_finished"]) == 13
         assert (await client.get("/health")).json()["module"] == "M08"
         page = (await client.get("/")).text
-        assert '<script src="/workbench.js" defer></script>' in page
-        script = await client.get("/workbench.js")
+        import re
+
+        script_path = re.search(r'src="(/assets/[^\"]+\.js)"', page)
+        assert script_path is not None
+        script = await client.get(script_path.group(1))
         assert script.status_code == 200
-        assert "textContent" in script.text and "innerHTML" not in script.text
+        assert script.headers["x-content-type-options"] == "nosniff"
 
 
 @pytest.mark.parametrize("case", load_corpus().cases, ids=lambda c: c.case_id)

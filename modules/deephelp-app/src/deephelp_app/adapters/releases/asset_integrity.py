@@ -32,13 +32,13 @@ def provenance() -> dict[str, Any]:
     # Editable and wheel installations bind the same unique frontend bytes and paths.
     frontend = PACKAGE / "frontend"
     if not frontend.is_dir():
-        frontend = PACKAGE.parents[1] / "frontend"
+        frontend = PACKAGE.parents[1] / "frontend" / "built"
     if frontend.is_dir():
         inputs.update(
             {
                 "frontend/" + str(p.relative_to(frontend)).replace("\\", "/"): file_digest(p)
                 for p in sorted(frontend.rglob("*"))
-                if p.is_file() and p.suffix in {".html", ".js", ".css"}
+                if p.is_file()
             }
         )
     # Installed serving still verifies every runtime byte without needing a Git checkout.

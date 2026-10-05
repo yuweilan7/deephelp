@@ -22,6 +22,8 @@ __pycache__/
 htmlcov/
 build/
 dist/
+node_modules/
+/modules/deephelp-app/frontend/built/
 
 # IDE / OS state.
 .idea/

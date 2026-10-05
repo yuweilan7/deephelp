@@ -10,7 +10,7 @@ from time import monotonic
 from typing import Annotated, Any
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import Field
 
@@ -74,11 +74,15 @@ class BrowserAuth:
 
 
 def asset(name: str) -> Path:
-    # Hatch packages the unique frontend source; editable runs read the same root directory.
-    packaged = Path(__file__).parents[1] / "frontend" / name
-    if packaged.is_file():
-        return packaged
-    return Path(__file__).parents[3] / "frontend" / name
+    # Serve the same built bytes in editable and wheel installs. Never expose the
+    # development source, lock, or node_modules through the asset route.
+    root = Path(__file__).parents[1] / "frontend"
+    if not root.is_dir():
+        root = Path(__file__).parents[3] / "frontend" / "built"
+    target = (root / name).resolve()
+    if not target.is_relative_to(root.resolve()) or not target.is_file():
+        raise HTTPException(404, "构建资源不存在，请按工作台说明构建前端。")
+    return target
 
 
 def static_response(name: str) -> FileResponse:
@@ -89,7 +93,8 @@ def static_response(name: str) -> FileResponse:
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "same-origin",
             "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; "
-            "connect-src 'self'; img-src 'self'; object-src 'none'; frame-ancestors 'none'; "
+            "style-src-attr 'unsafe-inline'; "
+            "connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; "
             "base-uri 'none'; form-action 'self'",
         },
     )
