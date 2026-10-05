@@ -14,6 +14,7 @@ from .offline import offline_only
 from .request import memory_demo, request_demo
 from .resources import resources_demo
 from .retrieval import retrieval_demo
+from .skills import skills_demo
 
 TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "types": types_demo,
@@ -28,6 +29,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "observations": observations_demo,
     "evaluation": evaluation_demo,
     "collaboration": collaboration_demo,
+    "skills": skills_demo,
 }
 
 

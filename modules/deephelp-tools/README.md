@@ -28,7 +28,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release
 
 学习路线见[Java课程](../../docs/learning/README.md)，安装后可执行 `python -m deephelp_tools.learning.course request`（types/syntax同入口）。课程在事件循环初始化后封住业务网络，复用原13段用例与受控stdio合成服务；不加载云配置。各模块既有运行与验收参数见[应用README](../deephelp-app/README.md)。pytest收集前守卫禁止远程DNS/TCP，允许loopback/受控stdio；不是任意子进程的网络沙箱。真实模型由明确live入口及共享预算控制。
 
-课程完整topic为types、syntax、request、awaitables、coordination、cancellation、resources、retrieval、memory、observations、evaluation、collaboration。命令帮助和普通实验都没有live入口；审批章直接复用原测试中的ApprovalService/真实LangGraph，安装后的课程不依赖测试包。任务结束不产生新云发布、正式PG事实或模型质量结论。
+课程完整topic为types、syntax、request、awaitables、coordination、cancellation、resources、retrieval、memory、observations、evaluation、collaboration、skills。命令帮助和普通实验都没有live入口；审批章直接复用原测试中的ApprovalService/真实LangGraph，安装后的课程不依赖测试包。任务结束不产生新云发布、正式PG事实或模型质量结论。
 
 ## 浏览器学习扩展
 
@@ -156,3 +156,6 @@ uv run --locked --env-file .env.local python -m deephelp_tools.probes.conversati
 配置原PG、Redis/Milvus连接与所需endpoint，先用真实协议确认依赖；只有端口可连不足。比对实际事实/分支/原13段/600、权限与证据，重投/历史0调用；共用网关可能命中embedding缓存，耗时按观察解释，不宣称质量或冷启动收益。角色指令/策略/许可JSON沿原精确发布绑定。
 
 检查器与原响应Outcome契约的等价修正可用同入口`--review-report ORIGINAL_REPORT --output NEW_REVIEW_REPORT`只读复核原PG关键回执字段；原采集报告及hash保留，新增模型/工具0。runtime/资产/providers/策略/样本必须相同且齐全，不允许用缺样本或改业务预期换PASS；新检查器tooling摘要及原采集器摘要分别绑定。
+
+
+M41单Skill实验：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course skills`。真实固定内容复用原collaboration_probe，加`--execution-mode single --case normal-order --case injection-order`，仍须--live/准确providers/原累计budget-state/新output；证据为真实模型与stdio，非PG正式部署。[09章](../../docs/learning/09-agent-basics.md#版本化业务skillm41)说明预期与Java边界。

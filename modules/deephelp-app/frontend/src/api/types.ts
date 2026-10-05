@@ -30,6 +30,7 @@ export interface Question {
   status: string;
 }
 export interface RunResponse {
+  skill_receipts?: SkillReceipt[];
   agent_receipts?: AgentReceipt[];
   run_id: string | null;
   trace_id: string;
@@ -56,6 +57,17 @@ export interface RunResponse {
   };
   budget_used: unknown;
   versions: unknown;
+}
+export interface SkillReceipt {
+  execution_id: string;
+  parent_id: string | null;
+  node_id: string;
+  skill_id: string;
+  version: string;
+  digest: string;
+  status: string;
+  observation: { tool_name: string; call_id: string | null } | null;
+  error: { code: string; message: string } | null;
 }
 export interface AgentReceipt {
   task: {

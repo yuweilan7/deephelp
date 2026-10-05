@@ -19,6 +19,7 @@ from deephelp_app.adapters.mcp.business.mcp_protocol import (
 )
 from deephelp_app.adapters.observability.trace import observe_sop_node
 from deephelp_app.application.collaboration import AgentPolicy, CollaborationSession
+from deephelp_app.application.skills import SkillRegistry, SkillSession, load_skills
 from deephelp_app.application.sop_config import SOPBranch, SOPDefinition, load_prompt, load_sops
 from deephelp_app.application.sop_governance import GovernedSOP, SOPRegistry
 from deephelp_app.domain.checks import validate_question_access, validate_tool_result
@@ -28,7 +29,7 @@ from deephelp_app.domain.models.common import ErrorCode, ErrorDetail, NextAction
 from deephelp_app.domain.models.conversation import Question, RequestEnvelope
 from deephelp_app.domain.models.evidence import Fact, FactKind
 from deephelp_app.domain.models.intents import IntentCode
-from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest, ModelTool
+from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest, ModelTool, ModelToolCall
 from deephelp_app.domain.models.release import VersionManifest
 from deephelp_app.domain.models.sop import SOPPlan, SOPResult, SOPStatus
 from deephelp_app.domain.models.tools import (
@@ -61,6 +62,7 @@ class SOPExecutor:
         evidence_version: str = "business-fixtures-v1",
         agent_policy: AgentPolicy | None = None,
         agent_journal: AgentTaskJournalPort | None = None,
+        skills: SkillRegistry | None = None,
     ) -> None:
         if evidence_version not in {"business-fixtures-v1", "business-postgres-v1"}:
             raise ValueError("Unknown business evidence source")
@@ -69,6 +71,7 @@ class SOPExecutor:
             AgentPolicy.model_validate(agent_policy.model_dump()) if agent_policy else None
         )
         self.agent_journal = agent_journal
+        self.skills = SkillRegistry.model_validate(skills.model_dump()) if skills else load_skills()
         self.model = model
         self.tools = tools
         registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
@@ -115,6 +118,8 @@ class SOPExecutor:
         return self.definitions.get(question.active_intent)
 
     def pin_versions(self, versions: VersionManifest, code: IntentCode) -> VersionManifest:
+        if self.registry:
+            versions = versions.model_copy(update={"skills": self.skills.digest})
         if self.agent_policy:
             versions = versions.model_copy(update={"collaboration": self.agent_policy.digest})
         return (
@@ -138,6 +143,8 @@ class SOPExecutor:
         缺槽立即返回WAITING_SLOT，不消耗工具；超时或领域失败转换成失败结果，取消仍抛出。
         """
         validate_question_access(context, question)
+        if question.versions.skills and question.versions.skills != self.skills.digest:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Pinned Skill registry is unavailable")
         definition = self.definition_for(question)
         if definition is None:
             raise AppError(ErrorCode.NO_SOP, "No configured SOP for the selected intent")
@@ -167,6 +174,15 @@ class SOPExecutor:
                 ErrorCode.INVALID_ARGUMENT, "Complete question must be active before tools"
             )
         calls: list[str] = []
+        skills = (
+            SkillSession(
+                self.skills,
+                tool_version=definition.tool_version,
+                evidence_version=self.evidence_version,
+            )
+            if question.versions.skills
+            else None
+        )
         collaboration = None
         if context.execution_mode == "collaboration":
             if self.agent_policy is None or not isinstance(definition, GovernedSOP):
@@ -186,11 +202,14 @@ class SOPExecutor:
             ):
                 if isinstance(definition, GovernedSOP):
                     result = await self._flow(
-                        definition, question, context, run_id, budget, calls, collaboration
+                        definition, question, context, run_id, budget, calls, collaboration, skills
                     )
                     return result.model_copy(
                         update={
-                            "agent_receipts": tuple(collaboration.receipts) if collaboration else ()
+                            "agent_receipts": tuple(collaboration.receipts)
+                            if collaboration
+                            else (),
+                            "skill_receipts": tuple(skills.receipts) if skills else (),
                         }
                     )
                 return await self._loop(definition, question, context, run_id, budget, calls)
@@ -199,12 +218,18 @@ class SOPExecutor:
                 definition, calls, ErrorCode.BUDGET_EXHAUSTED, "SOP deadline exhausted"
             )
             return result.model_copy(
-                update={"agent_receipts": tuple(collaboration.receipts) if collaboration else ()}
+                update={
+                    "agent_receipts": tuple(collaboration.receipts) if collaboration else (),
+                    "skill_receipts": tuple(skills.receipts) if skills else (),
+                }
             )
         except AppError as exc:
             result = self._failed(definition, calls, exc.code, exc.safe_message)
             return result.model_copy(
-                update={"agent_receipts": tuple(collaboration.receipts) if collaboration else ()}
+                update={
+                    "agent_receipts": tuple(collaboration.receipts) if collaboration else (),
+                    "skill_receipts": tuple(skills.receipts) if skills else (),
+                }
             )
 
     @staticmethod
@@ -422,6 +447,76 @@ class SOPExecutor:
                 return result
         return result
 
+    async def _ready_lookup(
+        self,
+        bounded: GovernedSOP,
+        question: Question,
+        context: RequestEnvelope,
+        run_id: str,
+        node_id: str,
+        tool: ToolName,
+        expected: dict[str, str],
+        budget: ExecutionBudget,
+        calls: list[str],
+        collaboration: CollaborationSession | None,
+        request: ChatRequest,
+        actions: list[ModelToolCall],
+    ) -> ToolResult:
+        """当前节点的唯一建议/派发入口；Skill和协作都只能包装此链，不另建查询。"""
+        if collaboration:
+            result = await collaboration.lookup(
+                question,
+                context,
+                run_id,
+                node_id,
+                tool,
+                validate_arguments(tool.value, expected),
+                budget,
+                partial(
+                    self._lookup,
+                    bounded,
+                    question,
+                    context,
+                    run_id,
+                    budget,
+                    tool,
+                    validate_arguments(tool.value, expected),
+                    calls,
+                ),
+                model_seconds=bounded.limits.model_seconds,
+            )
+        else:
+            try:
+                async with asyncio.timeout(
+                    min(bounded.limits.model_seconds, budget.remaining_seconds())
+                ):
+                    selected = await self.model.chat(request, budget)
+            except TimeoutError:
+                raise AppError(ErrorCode.TIMEOUT, "SOP model selection timed out") from None
+            if selected.finish_reason == "length" or len(selected.tool_calls) != 1:
+                raise AppError(
+                    ErrorCode.MODEL_OUTPUT_INVALID,
+                    "Flow requires one complete ready action",
+                )
+            action = selected.tool_calls[0]
+            actions.append(action)
+            if action.name != tool.value or action.arguments != expected:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Action differs from ready node or verified slots",
+                )
+            result = await self._lookup(
+                bounded,
+                question,
+                context,
+                run_id,
+                budget,
+                tool,
+                validate_arguments(action.name, expected),
+                calls,
+            )
+        return result
+
     async def _flow(
         self,
         d: GovernedSOP,
@@ -431,6 +526,7 @@ class SOPExecutor:
         budget: ExecutionBudget,
         calls: list[str],
         collaboration: CollaborationSession | None = None,
+        skills: SkillSession | None = None,
     ) -> SOPResult:
         snapshot = next(
             s for s in self.history if s.snapshot_hash == question.versions.sop_snapshot
@@ -499,60 +595,35 @@ class SOPExecutor:
                             )
                         }
                     )
-                    action = None
-                    if collaboration:
-                        result = await collaboration.lookup(
-                            question,
-                            context,
-                            run_id,
-                            current,
-                            node.tool,
-                            validate_arguments(node.tool.value, expected),
-                            budget,
-                            partial(
-                                self._lookup,
-                                bounded,
-                                question,
-                                context,
-                                run_id,
-                                budget,
-                                node.tool,
-                                validate_arguments(node.tool.value, expected),
-                                calls,
-                            ),
-                            model_seconds=d.limits.model_seconds,
+                    actions: list[ModelToolCall] = []
+                    perform = partial(
+                        self._ready_lookup,
+                        bounded,
+                        question,
+                        context,
+                        run_id,
+                        current,
+                        node.tool,
+                        expected,
+                        budget,
+                        calls,
+                        collaboration,
+                        request,
+                        actions,
+                    )
+                    skill = (
+                        skills.registry.select(question.active_intent, node.tool)
+                        if skills and question.active_intent
+                        else None
+                    )
+                    result = (
+                        await skills.lookup(
+                            question, context, run_id, current, skill, expected, budget, perform
                         )
-                    else:
-                        try:
-                            async with asyncio.timeout(
-                                min(d.limits.model_seconds, budget.remaining_seconds())
-                            ):
-                                selected = await self.model.chat(request, budget)
-                        except TimeoutError:
-                            raise AppError(
-                                ErrorCode.TIMEOUT, "SOP model selection timed out"
-                            ) from None
-                        if selected.finish_reason == "length" or len(selected.tool_calls) != 1:
-                            raise AppError(
-                                ErrorCode.MODEL_OUTPUT_INVALID,
-                                "Flow requires one complete ready action",
-                            )
-                        action = selected.tool_calls[0]
-                        if action.name != node.tool.value or action.arguments != expected:
-                            raise AppError(
-                                ErrorCode.INVALID_ARGUMENT,
-                                "Action differs from ready node or verified slots",
-                            )
-                        result = await self._lookup(
-                            bounded,
-                            question,
-                            context,
-                            run_id,
-                            budget,
-                            node.tool,
-                            validate_arguments(action.name, expected),
-                            calls,
-                        )
+                        if skills and skill
+                        else await perform()
+                    )
+                    action = actions[0] if actions else None
                     if result.status != ToolStatus.SUCCEEDED:
                         node_observation["status"] = "failed"
                         node_observation["error_code"] = (

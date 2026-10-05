@@ -81,3 +81,18 @@ Java可类比一个用例调用受权限约束的策略对象并收到不可变�
 M40原主链六类固定内容对照：订单、券门槛、缺槽、外归属、来源矛盾、正文越权写建议，single与collaboration各一条。12条原PG回执/工具事实复核通过，六类事实与分支相同；普通订单观察为约4.13秒→9.78秒、券门槛约5.07秒→18.06秒，模型动作更多，未展示回答质量收益。每个成功查询由单路径1个模型选工具变为协作3个公开动作，实际总API还受embedding缓存/路径影响；同组共用网关，第二模式可能命中缓存，所以这些耗时不是冷启动基准。
 
 默认single，只有需要观察独立角色、权限隔离和任务回执时明确选择协作；更多Agent不自动带来更好的事实。发布清单的prompts映射同时绑定agent-policy-v2.json及其策略摘要，原runtime-v2还绑定全部代码/JSON/迁移/前端字节。修正检查器只读原报告/PG并保留原FAIL，不能改业务规则或把旧PASS套新运行字节。
+
+
+## 版本化业务Skill（M41）
+
+Skill描述一个复用能力的输入/schema、目标、意图许可、工具和输出；SOP决定何时调用、按哪条业务分支收口；MCP提供实际资料。说明文字不变成代码或授权。按顺序读[机器注册表与SkillSession](../../modules/deephelp-app/src/deephelp_app/application/skills.py)、[原SOP执行链](../../modules/deephelp-app/src/deephelp_app/application/sop.py)、[回执值](../../modules/deephelp-app/src/deephelp_app/domain/models/skills.py)。稳定ID/version/hash三者共同确定内容；同版本指令不能覆盖，输入来源沿已确认Entity保留。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course skills
+```
+
+预期订单000031实付99.90、优惠10.00，实际stdio调用1次、Skill COMPLETED回执1条，远程模型0次；退出上下文关闭MCP子进程。固定建议仅证明机制，不能证明模型选择质量。工作台选择原run，在“工具与工作流”读Skill/version/hash、输入来源、实际call与证据，浏览0模型；缺槽不启动Skill，取消无终态时保持未知。
+
+Java类比：SkillDefinition类似不可变用例契约，SkillSession类似请求内Interceptor，SOP像业务编排。边界是schema/说明不会自动授予权限，Python await只等待原异步链，客户端由原gateway上下文拥有，不能每个Skill另建连接或新预算。
+
+练习与答案：1. 加refund参数会怎样？输入必须与已确认槽位精确相等，工具前拒绝。2. 改同一version目标？不可变登记拒绝，应创建新候选版本。3. 缺order_id？原SOP返回WAITING_SLOT，模型/工具/Skill均0次。4. 说明写“退款成功”？只有实际只读工具证据进入事实，SOP审批守卫仍决定写建议能否成立。

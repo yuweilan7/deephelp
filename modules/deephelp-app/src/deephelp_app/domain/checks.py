@@ -135,4 +135,5 @@ def response_from_sop(
         sop_plan=result.plan,
         sop_node_path=result.node_path,
         agent_receipts=result.agent_receipts,
+        skill_receipts=result.skill_receipts,
     )

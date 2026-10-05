@@ -100,7 +100,7 @@ async def probe(args: argparse.Namespace) -> int:
                 question = question.model_copy(
                     update={"versions": executor.pin_versions(question.versions, intent)}
                 )
-                context = context.model_copy(update={"execution_mode": "collaboration"})
+                context = context.model_copy(update={"execution_mode": args.execution_mode})
                 async with gateway.open():
                     result = await executor.execute(
                         question, budget, context=context, run_id="m40-" + context.request_id
@@ -110,17 +110,27 @@ async def probe(args: argparse.Namespace) -> int:
                     ]
                 closed.append(bool(gateway.pid and not process_alive(gateway.pid)))
                 facts = {f.name: f.value for f in result.facts}
+                receipts = (
+                    result.agent_receipts
+                    if args.execution_mode == "collaboration"
+                    else tuple(r for r in result.skill_receipts if r.observation)
+                )
+                receipt_evidence = {
+                    e.evidence_id
+                    for r in receipts
+                    if r.observation
+                    for e in r.observation.evidence_refs
+                }
                 passed = (
                     result.status
                     == (SOPStatus.HANDED_OFF if name == "coupon-conflict" else SOPStatus.RESOLVED)
-                    and len(result.agent_receipts) == (2 if coupon else 1)
-                    and all(r.status == "COMPLETED" for r in result.agent_receipts)
+                    and len(receipts) == (2 if coupon else 1)
+                    and all(r.status == "COMPLETED" for r in receipts)
                     and len(records) == (2 if coupon else 1)
                     and records[0].parameters.order_id == order
                     and facts.get("order_id") == order
                     and result.tool_call_ids == tuple(r.call_id for r in records)
-                    and {e for r in result.agent_receipts for e in r.evidence_ids}
-                    == {e for r in records for e in r.evidence_ids}
+                    and receipt_evidence == {e for r in records for e in r.evidence_ids}
                 )
                 if name == "normal-order":
                     paid, discount = facts.get("paid"), facts.get("discount")
@@ -157,6 +167,8 @@ async def probe(args: argparse.Namespace) -> int:
                 )
             report.update(
                 cases=cases,
+                execution_mode=args.execution_mode,
+                skills_digest=executor.skills.digest,
                 budget_used=budget.usage().model_dump(mode="json"),
                 diagnostics=model.diagnostics,
             )
@@ -180,6 +192,9 @@ def main() -> int:
     parser.add_argument("--providers", required=True)
     parser.add_argument("--budget-state", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument(
+        "--execution-mode", choices=["single", "collaboration"], default="collaboration"
+    )
     parser.add_argument(
         "--case",
         action="append",
