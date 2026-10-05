@@ -73,7 +73,7 @@ class ExecutionBudget:
         cost: Decimal = Decimal("0"),
         attempts: int = 1,
     ) -> None:
-        # No await between the check and decrement: concurrent tasks share the same counters.
+        # 同loop共享计数：检查/扣减之间没有await；不是线程/多进程的互斥保证。
         self.remaining_seconds()
         if type(attempts) is not int or attempts < 1 or (retry and attempts != 1):
             raise ValueError("Invalid attempt reservation")

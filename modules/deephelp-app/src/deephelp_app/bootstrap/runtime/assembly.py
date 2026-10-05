@@ -157,6 +157,7 @@ class LiveAssembly:
             raise ConfigurationError(
                 "Select an explicit MCP server before opening runtime dependencies"
             )
+        # assembly拥有成功打开的资源，退出按登记逆序关闭；client是外层借入资源。
         async with AsyncExitStack() as stack:
             repository = ApprovalRepository if self.rights_port else PostgresCaseRepository
             if self.release_manifest:

@@ -122,7 +122,7 @@ class ToolGateway:
         if self.ledger_path is not None:
             env["DEEPHELP_MCP_LEDGER"] = str(self.ledger_path.resolve())
         params = self.server.model_copy(update={"env": env})
-        # The SDK owns process cleanup. Enter/exit in the same task for AnyIO scope ordering.
+        # SDK拥有stdio进程/管道；在同一Task进入/退出，维持AnyIO取消作用域栈顺序。
         from mcp.client.stdio import stdio_client
 
         transport = stdio_client(params, errlog=self.stderr or sys.stderr)
@@ -141,7 +141,7 @@ class ToolGateway:
             yield self
         finally:
             self._client = None
-            # Close SDK scopes normally so caller errors/cancellation retain their original type.
+            # 等SDK退出才能报告资源收回；借用者取消不等于远端业务已回滚。
             await client.__aexit__(None, None, None)
 
     def _connected(self) -> Client | NetworkMCPClient:

@@ -5,14 +5,21 @@ import asyncio
 import json
 from collections.abc import Awaitable, Callable
 
+from .async_flow import awaitables_demo, coordination_demo
 from .basics import syntax_demo, types_demo
+from .cancellation import cancellation_demo
 from .offline import offline_only
 from .request import request_demo
+from .resources import resources_demo
 
 TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "types": types_demo,
     "syntax": syntax_demo,
     "request": request_demo,
+    "awaitables": awaitables_demo,
+    "coordination": coordination_demo,
+    "cancellation": cancellation_demo,
+    "resources": resources_demo,
 }
 
 

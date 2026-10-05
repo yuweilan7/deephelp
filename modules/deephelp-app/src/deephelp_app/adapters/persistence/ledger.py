@@ -304,6 +304,7 @@ class PostgresLedger:
         self, receipt: Receipt, question: Question, response: ResponseEnvelope
     ) -> None:
         validate_terminal(receipt, question, response)
+        # 本请求借连接，只在终态更新期间持事务，不跨模型/人工等待占住连接。
         try:
             async with self.pool.acquire() as conn:
                 try:
@@ -345,6 +346,7 @@ class PostgresLedger:
                     await conn.rollback()
                     raise
                 except BaseException:
+                    # CancelledError也属于BaseException；未提交更新要回滚，再向拥有者传播。
                     await conn.rollback()
                     raise
         except PostgreSQLError, OSError:

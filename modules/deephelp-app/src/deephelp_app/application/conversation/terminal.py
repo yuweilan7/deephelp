@@ -36,7 +36,7 @@ async def finish_run(
     definition: SOPDefinition | GovernedSOP | None,
     stats: RunTrace,
 ) -> None:
-    # Short terminal storage grace does not permit more model/tool execution.
+    # 当前请求只拥有这个短时存储Task；5秒宽限不能继续模型/工具业务。
     async def persist() -> None:
         async with asyncio.timeout(5):
             await conversation.ledger.finish(receipt, question, response)
@@ -44,10 +44,13 @@ async def finish_run(
     writer = asyncio.create_task(persist())
     storage_start = perf_counter()
     try:
+        # shield只隔离这一条外层取消到writer的传播，外层仍会收到CancelledError。
         await asyncio.shield(writer)
     except asyncio.CancelledError:
+        # 先收回第一次取消后的writer再传播；二次取消/进程强杀并非此处的提交保证。
         await writer
         raise
+    # 账本提交完成后才发诊断；导出/调试不能成为重新执行工具的理由。
     await conversation.trace.emit(
         TraceEvent(
             event="ledger_committed",
