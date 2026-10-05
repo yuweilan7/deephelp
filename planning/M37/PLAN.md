@@ -2,7 +2,7 @@
 
 规格：[本地核心原理教学与云端完整学习入口](../../docs/MODULES/M37_LOCAL_CORE_LEARNING.md)。
 规划基线：`main` / `ae50fdf0cfd7c935d4e8e3921548deff8c7691d6`，开始时工作区干净；规划分支`feature/m37-m39-learning-finish-plan`。实施前重新核对状态，不沿用本次干净结论。
-判断：`VERIFY_EXISTING`，已有course/原用例/云工作台，先验证并补真实缺口。首项可开始；完整云教学的当前可用性待实际核验。下面命令均为待执行，不是通过证据。
+判断：`VERIFY_EXISTING`。实施基线为同步main `aa38c32`，工作区干净。干净源码目录的首次`uv sync --locked --all-packages`发现app强制包含不存在的`frontend/built`；特性1改用构建hook，源码editable安装允许无前端，正式wheel/sdist仍要求前端产物。复用原course和审批用例复验，不增加业务引擎。完整云教学的当前可用性待特性2实际核验；下面未执行的命令仍是计划。
 
 ## 1. 做成什么
 
@@ -17,7 +17,7 @@
 | 1 / `feature/m37-local-core-learning` | `modules/deephelp-tools/src/deephelp_tools/learning/course/`、`learning/replay/`、其现有测试及`docs/learning/`；仅为实际阻塞缺口调整原核心/装配并说明影响 | 本地命令、结果说明与相关反例可独立验收 |
 | 2 / `feature/m37-learning-entrypoints` | 根/应用/工具包README、`docs/LOCAL_SETUP.md`、课程导航；必要时调整既有workbench/启动配置入口，保持当前云能力 | 当前两种学习方式清楚，云入口与原记录有实际或适用证据 |
 
-先核对现有`course request/memory/retrieval/coordination/cancellation/resources`及原审批测试；不因计划列多个能力就重写它们。拟新增接口尚不存在，只有确认缺口才设计。配置中秘密仍留受保护位置。
+特性1本地验收已完成，命令/结果见[交接](../../handoffs/M37.md)；按AGENTS完成本项Git交付后从同步main建立特性2分支。剩余只收口当前运行说明，并按M36原记录核验现有云入口、能力配置与事实/解释，不发新消息或更新安装。配置中秘密仍留受保护位置。
 
 ## 3. 怎样证明
 

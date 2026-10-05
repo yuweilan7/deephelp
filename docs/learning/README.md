@@ -25,7 +25,25 @@
 | [13 观测](13-observations.md) | receipt/run/trace/原证据/usage | course observations |
 | [14 评测发布](14-evaluation-release.md) | 留出/gold/完整版本/CAS/回退 | course evaluation与原反馈/发布反例 |
 
-从根运行 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request`。第一次先看missing→answered→replay→unknown，再沿每章的当前源码链接阅读。M35任务页面复用同一课程链接，M36继续沿同一套引擎扩展解释；此处不配置云端或激活新发布。下面保留已有机制入口，历史M01指南是补充阅读。
+从根运行 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request`。第一次先看missing→answered→replay→unknown，再沿每章的当前源码链接阅读。云工作台的机制页面复用同一课程和源码链接。下面保留已有机制入口，历史M01指南是补充阅读。
+
+## 本地核心最短路径
+
+新克隆先按[01章](01-start.md#从仓库根运行)准备Python3.14.7和根锁定依赖；无需旧`.local`、云凭据、隧道、Node或中间件服务。每次只选正在学习的topic，不要求一次跑完14章。下面的`course <topic>`均展开为`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course <topic>`，已准备依赖后可追加uv的`--offline`。
+
+| 次序 | 执行与阅读 | 先解释清楚的结果 |
+|---|---|---|
+| 1 | `course request`，读[01](01-start.md)/[08](08-message-path.md)/[09](09-agent-basics.md) | 缺order_id时0工具；补000031沿原question；99.90/10.00来自事实及证据；同message返回原run且四种计数0；物流HANDOFF |
+| 2 | `course memory`，读[11](11-memory.md) | 优惠与券属于两个question；000031只补优惠，券问题仍保留000042；message/question/run分别对应消息、问题、执行 |
+| 3 | `course retrieval`，读[10](10-retrieval.md) | 一次固定向量、相同三候选、不同排名、每意图最佳证据后K=2；候选排序不等于600最终判断 |
+| 4 | 按需要选`course awaitables/coordination/cancellation/resources`，读[04](04-awaitables.md)–[07](07-resources.md) | 每个topic单独执行；Future由谁完成，顺序峰值1/并发2，TaskGroup先收回子任务，取消后finally/线程/子进程由谁关闭 |
+| 5 | 读[12](12-approval.md#最小可运行unknown实验)，运行下方原审批反例 | UNKNOWN先query；已成功不再execute，明确ABSENT才派发，不可用仍UNKNOWN；未批准不能恢复 |
+
+```powershell
+py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/approval/test_m15_approval.py -k "unknown_queries_before_any_redispatch or resume_without_approval_never_calls_downstream" -v
+```
+
+预期7个参数化场景通过，其中UNKNOWN三种、未批准四种。实验沿用生产Conversation/HybridRetriever/ApprovalService与正式SDK或LangGraph；模型响应、向量和业务资料固定合成，账本及saver在内存。输出中的端口动作计数不是远程API用量；这些结果证明机制，PG跨进程持久性与模型质量按各自真实验收判断。修改Python后重跑对应topic或原测试，沿每章源码位置观察受影响的状态关系。
 
 ## 怎样学、怎样复验
 

@@ -116,7 +116,7 @@ M31已完成专用端口、同条件dev/test和真实会话/Retrieval MCP/学习
 
 | 模块与规格 | 顺序特性与验收 | 前置/当前计划 |
 |---|---|---|
-| [M37 本地核心与云端教学](MODULES/M37_LOCAL_CORE_LEARNING.md) | 现有本地核心实验可运行→当前运行说明与云入口收口；本地/云端分别按用途验收 | M33/M36已交付，先核验已有成果；[PLAN](../planning/M37/PLAN.md) |
+| [M37 本地核心与云端教学](MODULES/M37_LOCAL_CORE_LEARNING.md) | 本地核心路径已验收→当前运行说明与云入口收口；本地/云端分别按用途验收 | 第1项已完成，证据见[交接](../handoffs/M37.md)；第2项按[PLAN](../planning/M37/PLAN.md)继续 |
 | [M38 Python/Agent中文讲解](MODULES/M38_PYTHON_AGENT_READABILITY.md) | 主链讲解与局部可读性→支撑路径讲解/职责收口/全范围审阅；重点说明难点，简单代码不凑注释 | 等待M37实际交付；[PLAN](../planning/M38/PLAN.md) |
 | [M39 不必要文件清理](MODULES/M39_FINAL_FILE_CLEANUP.md) | 受控文件→忽略/临时及有证据的云端过程副本；实际删除并检查直接消费者 | 等待M37/M38实际交付；[PLAN](../planning/M39/PLAN.md) |
 
