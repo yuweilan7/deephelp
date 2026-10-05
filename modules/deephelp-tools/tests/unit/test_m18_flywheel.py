@@ -11,9 +11,7 @@ from deephelp_app.application.fasttext_preprocess import DICTIONARY, FastTextPre
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models.intents import IntentCode
 from deephelp_tools.demo.fixtures import load_business_fixtures
-from deephelp_tools.evaluation.core import DATA, historical_inputs, semantic_label
-from deephelp_tools.evaluation.fasttext_training import audit
-from deephelp_tools.evaluation.flywheel import (
+from deephelp_tools.evaluation.feedback.flywheel import (
     FeedbackCandidate,
     RouteReview,
     capture_candidate,
@@ -23,9 +21,11 @@ from deephelp_tools.evaluation.flywheel import (
     snapshot,
     withdrawn,
 )
-from deephelp_tools.evaluation.flywheel_assets import DEMO_DATA, activate, exports
-from deephelp_tools.evaluation.flywheel_store import FeedbackStore
-from deephelp_tools.evaluation.flywheel_validation import validation_cases
+from deephelp_tools.evaluation.feedback.flywheel_assets import DEMO_DATA, activate, exports
+from deephelp_tools.evaluation.feedback.flywheel_store import FeedbackStore
+from deephelp_tools.evaluation.feedback.flywheel_validation import validation_cases
+from deephelp_tools.evaluation.quality.core import DATA, historical_inputs, semantic_label
+from deephelp_tools.evaluation.retrieval.fasttext_training import audit
 
 pytestmark = pytest.mark.unit
 
@@ -246,8 +246,12 @@ async def test_failed_version_gate_never_replaces_active_pointer(tmp_path, monke
     atomic_json(pointer, {"active": "last-complete"})
     atomic_json(tmp_path / "validation.json", {"status": "REJECTED", "assets_digest": digest(data)})
     original = pointer.read_bytes()
-    monkeypatch.setattr("deephelp_tools.evaluation.flywheel_assets.verify_files", lambda path: data)
-    monkeypatch.setattr("deephelp_tools.evaluation.flywheel_assets.verify_remote", AsyncMock())
+    monkeypatch.setattr(
+        "deephelp_tools.evaluation.feedback.flywheel_assets.verify_files", lambda path: data
+    )
+    monkeypatch.setattr(
+        "deephelp_tools.evaluation.feedback.flywheel_assets.verify_remote", AsyncMock()
+    )
     store = SimpleNamespace(require_current=AsyncMock())
     with pytest.raises(ConfigurationError, match="successful validation"):
         await activate(store, assets, pointer, None)
@@ -260,10 +264,11 @@ async def test_changed_review_blocks_activation_before_vector_calls(tmp_path, mo
     atomic_json(pointer, {"active": "previous"})
     original = pointer.read_bytes()
     monkeypatch.setattr(
-        "deephelp_tools.evaluation.flywheel_assets.verify_files", lambda path: {"source": {}}
+        "deephelp_tools.evaluation.feedback.flywheel_assets.verify_files",
+        lambda path: {"source": {}},
     )
     remote = AsyncMock()
-    monkeypatch.setattr("deephelp_tools.evaluation.flywheel_assets.verify_remote", remote)
+    monkeypatch.setattr("deephelp_tools.evaluation.feedback.flywheel_assets.verify_remote", remote)
     store = SimpleNamespace(
         require_current=AsyncMock(side_effect=ConfigurationError("stale review"))
     )

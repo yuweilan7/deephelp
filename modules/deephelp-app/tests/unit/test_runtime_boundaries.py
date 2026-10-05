@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from deephelp_app.adapters.asset_integrity import provenance
-from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.model_gateway.providers import ProviderConfig
+from deephelp_app.adapters.releases.asset_integrity import provenance
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.hybrid import ANALYZER
 from deephelp_app.application.retrieval_policy import validate_published_selection
@@ -46,18 +46,18 @@ import httpx
 from deephelp_app.bootstrap import mvp_cli
 from deephelp_app.bootstrap import release_cli
 from deephelp_app.api.app import create_app
-from deephelp_app.adapters.asset_integrity import provenance
+from deephelp_app.adapters.releases.asset_integrity import provenance
 from deephelp_app.resources import asset_path
 from deephelp_app.application.corpus import digest, read_corpus
 from deephelp_app.domain.models import HybridScope
 from deephelp_app.application.hybrid import ANALYZER
-from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
-from deephelp_app.adapters.providers import ProviderConfig
-from deephelp_app.adapters.release_assets import verify_release
-from deephelp_app.bootstrap.release_runtime import ReleaseRuntime
+from deephelp_app.bootstrap.runtime.assembly import LiveAssembly
+from deephelp_app.adapters.model_gateway.providers import ProviderConfig
+from deephelp_app.adapters.releases.release_assets import verify_release
+from deephelp_app.bootstrap.runtime.release_runtime import ReleaseRuntime
 from deephelp_app.bootstrap.settings import Settings
-from deephelp_app.adapters.synthetic_rights import RightsClient
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.approval.synthetic_rights import RightsClient
+from deephelp_app.adapters.observability.trace import MemoryTrace
 
 providers = Path("modules/deephelp-app/providers.example.json")
 scope = HybridScope(namespace="boundary", dataset_version="boundary-v1",
@@ -147,7 +147,7 @@ def test_runtime_policy_keeps_query_provenance_and_rejects_missing_hash(selectio
 def test_runtime_integrity_does_not_require_learning_or_frozen_assets(
     tmp_path, monkeypatch, excluded
 ):
-    import deephelp_app.adapters.asset_integrity as integrity
+    import deephelp_app.adapters.releases.asset_integrity as integrity
 
     (tmp_path / "runtime.py").write_text("runtime = 1")
     (tmp_path / "assets" / excluded).mkdir(parents=True)

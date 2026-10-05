@@ -30,6 +30,26 @@ Conversation保留stage/prepare等原方法入口，绑定的是对应职责模�
 
 从公共值向具体业务类型单向导入；responses最后组合请求结果，不要求其他DTO反向导入它。领域包的__init__保持原import API，类型对象与职责模块中的对象相同。
 
+## 从用例进入子系统
+
+上层边界仍是domain/application/adapters/api/bootstrap/resources；下面的目录承接具体依赖。配置选择与资源生命周期在bootstrap/runtime，入口参数在bootstrap/commands。导入这些模块不打开数据库、模型或子进程。
+
+| 责任 | 实际入口 | 调用者与失败处理 |
+|---|---|---|
+| 模型网关 | [model_gateway/gateway](../../modules/deephelp-app/src/deephelp_app/adapters/model_gateway/gateway.py)、[validation](../../modules/deephelp-app/src/deephelp_app/adapters/model_gateway/validation.py)、providers、fasttext_runtime | 用例经Port调用；协议、schema、usage由适配器验证，AppError交给原用例终态处理 |
+| PG事实 | [persistence/ledger](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/ledger.py)、cases、history、postgres | 接收/终态事务和问题版本归PG；历史API只读原事实，错误不回退demo |
+| 记忆与检索 | memory_projection/redis_memory、milvus_memory；[retrieval/milvus_hybrid](../../modules/deephelp-app/src/deephelp_app/adapters/retrieval/milvus_hybrid.py)、milvus_dense | 用例决定召回；适配器处理索引协议。投影可重建，失败不篡改原PG账本 |
+| MCP | [mcp/business/tool_gateway](../../modules/deephelp-app/src/deephelp_app/adapters/mcp/business/tool_gateway.py)、business_client、mcp_protocol；mcp/retrieval；mcp/shared/network_mcp | 客户端、双端schema与可信委托各有入口；预算未知仍保留预留，业务结果由原事实/证据守卫处理 |
+| 审批 | [approval/postgres_checkpoints](../../modules/deephelp-app/src/deephelp_app/adapters/approval/postgres_checkpoints.py)、approval_store、checkpoints、synthetic_rights | ApprovalService显式暂停/恢复；checkpoint不是账本，UNKNOWN先查询对账，普通新消息不批准旧操作 |
+| 观测 | [observability/telemetry](../../modules/deephelp-app/src/deephelp_app/adapters/observability/telemetry.py)、native_observation、langfuse_query、trace、prometheus | 埋点和查询解释实际执行；原用例处理诊断缺失，不让平台失败改变业务副作用 |
+| 完整发布 | [releases/release_assets](../../modules/deephelp-app/src/deephelp_app/adapters/releases/release_assets.py)、asset_integrity、release_store、runtime_assets、feedback_store | 运行装配校验不可变字节/引用/active CAS；tools只在显式准备时参与，旧清单不绑定新源码 |
+| 运行装配 | [runtime/assembly](../../modules/deephelp-app/src/deephelp_app/bootstrap/runtime/assembly.py)、auth、budget、event_runtime、release_runtime | assembly拥有AsyncExitStack并逆序关闭依赖；auth选择原身份，budget在派发前保存累计预留 |
+| 独立服务 | [Business API](../../modules/deephelp-services/src/deephelp_services/business/api.py)、repository；[Retrieval API](../../modules/deephelp-services/src/deephelp_services/retrieval/api.py)、backend；transport/http | Business负责关系维护/查询事务，Retrieval负责冻结语料检索/回执；共享传输只管会话、origin和认证挂载 |
+
+tools/evaluation内部按retrieval、quality、feedback、releases、migration、platform归组；probes按models、retrieval、protocol、conversation、approval、releases、platform、migration归组。learning/workbench组合原协议/分析/评测路由；learning/replay、faults、fakes提供显式实验。正式app没有反向tools/services导入，业务装配仍复用同一组领域类型与用例。
+
+原bootstrap/*_cli和tools下已有CLI名字是受支持的命令入口，文件只转调职责模块中的main，具体实现只有一处。消费者包括旧运行文档、部署start.sh、显式任务与历史恢复命令；这不是等待删除的临时别名。新实现路径同样支持明确执行，内部代码和patch定位直接使用新路径。Business/Retrieval/workbench原模块路径变成包，由__main__继续承接受支持的`python -m`命令。找逻辑时进入表中实现，不在薄入口增加业务代码。
+
 ## 离线定位练习
 
 从仓库根运行：

@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import pytest
 
-from deephelp_tools.probes.langfuse_probe import check_trace, configuration, main
+from deephelp_tools.probes.platform.langfuse_probe import check_trace, configuration, main
 
 
 @pytest.mark.parametrize(

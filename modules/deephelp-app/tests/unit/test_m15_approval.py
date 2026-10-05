@@ -10,8 +10,8 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
-from deephelp_app.adapters.approval_store import ApprovalRepository, validate_binding
-from deephelp_app.adapters.synthetic_rights import (
+from deephelp_app.adapters.approval.approval_store import ApprovalRepository, validate_binding
+from deephelp_app.adapters.approval.synthetic_rights import (
     RightsClient,
     RightsObservation,
     SyntheticEffect,
@@ -460,7 +460,7 @@ async def test_released_terminal_replay_closes_gap_without_loading_new_runtime(
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock
 
-    from deephelp_app.bootstrap.release_runtime import ReleasedApprovals
+    from deephelp_app.bootstrap.runtime.release_runtime import ReleasedApprovals
 
     op, _ = pair
     repo = OfflineAuthority(op)
@@ -491,7 +491,7 @@ async def test_released_terminal_replay_closes_gap_without_loading_new_runtime(
 async def test_unknown_bound_release_keeps_original_runtime_gate_before_query_or_execute(pair):
     from unittest.mock import AsyncMock
 
-    from deephelp_app.bootstrap.release_runtime import ReleasedApprovals
+    from deephelp_app.bootstrap.runtime.release_runtime import ReleasedApprovals
     from deephelp_app.domain.errors import ConfigurationError
 
     op, _ = pair

@@ -11,12 +11,12 @@ from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_app.domain.models.text import DemandType
-from deephelp_tools.evaluation.business_catalog import business_cases, validate_catalog
-from deephelp_tools.evaluation.core import DATA, audit
-from deephelp_tools.evaluation.evaluation_runtime import EvaluationAssembly
-from deephelp_tools.evaluation.flywheel import FeedbackCandidate, isolation
-from deephelp_tools.evaluation.mvp_acceptance import api_client
-from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.evaluation.feedback.flywheel import FeedbackCandidate, isolation
+from deephelp_tools.evaluation.quality.business_catalog import business_cases, validate_catalog
+from deephelp_tools.evaluation.quality.core import DATA, audit
+from deephelp_tools.evaluation.quality.evaluation_runtime import EvaluationAssembly
+from deephelp_tools.evaluation.quality.mvp_acceptance import api_client
+from deephelp_tools.learning.replay.event_replay import envelope
 
 pytestmark = pytest.mark.unit
 SCALE = DATA.with_name("m17_scale_cases.json")

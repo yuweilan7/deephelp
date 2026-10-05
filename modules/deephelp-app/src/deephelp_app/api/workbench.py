@@ -14,7 +14,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import Field
 
-from deephelp_app.adapters.history import PostgresHistory
+from deephelp_app.adapters.persistence.history import PostgresHistory
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 

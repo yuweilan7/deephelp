@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from deephelp_app.adapters.asset_integrity import file_digest, provenance
+from deephelp_app.adapters.releases.asset_integrity import file_digest, provenance
 from deephelp_app.application.corpus import digest
 from deephelp_tools.assets import GROUPS, PACKAGE, asset_path
 

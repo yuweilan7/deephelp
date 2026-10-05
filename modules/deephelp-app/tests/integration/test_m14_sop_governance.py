@@ -5,7 +5,7 @@ from importlib.resources import files
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.adapters.mcp.business.tool_gateway import process_alive
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import RegistryStore, SOPRegistry, bundled_registry
 from deephelp_app.domain.checks import response_from_sop
@@ -18,9 +18,13 @@ from deephelp_app.domain.models.model_io import ModelToolCall
 from deephelp_app.domain.models.release import VersionManifest
 from deephelp_app.domain.models.sop import SOPResult, SOPStatus
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
-from deephelp_tools.evaluation.sop_acceptance import proposal_registry, scenario_config, scenarios
-from deephelp_tools.learning.sop_replay import ReplayModel
-from deephelp_tools.probes.sop_probe import sop_question
+from deephelp_tools.evaluation.quality.sop_acceptance import (
+    proposal_registry,
+    scenario_config,
+    scenarios,
+)
+from deephelp_tools.learning.replay.sop_replay import ReplayModel
+from deephelp_tools.probes.conversation.sop_probe import sop_question
 
 pytestmark = pytest.mark.integration
 

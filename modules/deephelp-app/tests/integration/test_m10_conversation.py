@@ -5,12 +5,12 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.models.common import VerifiedIdentity
-from deephelp_tools.learning.cases_fake import MemoryCaseRepository
-from deephelp_tools.learning.mvp_replay import ReplayAssembly
+from deephelp_tools.learning.fakes.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.replay.mvp_replay import ReplayAssembly
 
 pytestmark = pytest.mark.integration
 

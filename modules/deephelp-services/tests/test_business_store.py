@@ -16,9 +16,9 @@ from deephelp_app.domain.models.business import (
     BusinessRelations,
 )
 from deephelp_app.domain.models.tools import ToolInvocationEnvelope
-from deephelp_services.business_store import BusinessRepository
-from deephelp_tools.probes.business_probe import Processes, port, reclaim_owned_lock
-from deephelp_tools.probes.mcp_smoke import synthetic_request
+from deephelp_services.business.repository import BusinessRepository
+from deephelp_tools.probes.protocol.business_probe import Processes, port, reclaim_owned_lock
+from deephelp_tools.probes.protocol.mcp_smoke import synthetic_request
 
 pytestmark = pytest.mark.unit
 

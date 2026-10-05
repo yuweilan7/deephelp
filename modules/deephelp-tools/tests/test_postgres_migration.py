@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from deephelp_tools.evaluation.postgres_migration import (
+from deephelp_tools.evaluation.migration.postgres_migration import (
     canonical,
     identifier,
     read_snapshot,
@@ -46,7 +46,7 @@ def test_snapshot_names_cannot_be_sql(name):
 
 
 def test_interrupted_snapshot_is_rejected_before_import(tmp_path, monkeypatch):
-    import deephelp_tools.evaluation.postgres_migration as migration
+    import deephelp_tools.evaluation.migration.postgres_migration as migration
 
     monkeypatch.setattr(migration, "application_tables", lambda: {"dh_test"})
     path = tmp_path / "snapshot.gz"
@@ -65,7 +65,7 @@ def test_interrupted_snapshot_is_rejected_before_import(tmp_path, monkeypatch):
 
 
 def test_completed_snapshot_detects_changed_row(tmp_path, monkeypatch):
-    import deephelp_tools.evaluation.postgres_migration as migration
+    import deephelp_tools.evaluation.migration.postgres_migration as migration
 
     monkeypatch.setattr(migration, "application_tables", lambda: {"dh_test"})
     path = tmp_path / "snapshot.gz"

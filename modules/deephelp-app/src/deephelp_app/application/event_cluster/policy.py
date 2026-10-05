@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Protocol
 
-from deephelp_app.adapters.ledger import Receipt
+from deephelp_app.adapters.persistence.ledger import Receipt
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import (
     VerifiedIdentity,

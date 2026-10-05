@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Query, Request
 
-from deephelp_app.adapters.business_client import BusinessClient, record_path
+from deephelp_app.adapters.mcp.business.business_client import BusinessClient, record_path
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.business import (
     BusinessInput,

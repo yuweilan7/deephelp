@@ -7,8 +7,13 @@ import pytest
 
 from deephelp_app.application.corpus import digest
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_tools.evaluation.core import DATA, MANIFEST, audit, expected
-from deephelp_tools.evaluation.langfuse_mapping import ImportIds, import_lock, plan_import, upload
+from deephelp_tools.evaluation.platform.langfuse_mapping import (
+    ImportIds,
+    import_lock,
+    plan_import,
+    upload,
+)
+from deephelp_tools.evaluation.quality.core import DATA, MANIFEST, audit, expected
 
 pytestmark = pytest.mark.unit
 
@@ -95,7 +100,7 @@ def test_changed_frozen_or_incomplete_source_rejected(historical, change):
 
 
 def test_os_lock_and_ids_are_owned_until_exit(tmp_path):
-    from deephelp_tools.evaluation.langfuse_mapping import _ids
+    from deephelp_tools.evaluation.platform.langfuse_mapping import _ids
 
     token = _ids.set(("a" * 32, "b" * 16))
     try:
@@ -113,7 +118,7 @@ def test_os_lock_and_ids_are_owned_until_exit(tmp_path):
 async def test_partial_and_cancel_resume_readback_without_replaying_business(
     historical, tmp_path, monkeypatch
 ):
-    import deephelp_tools.evaluation.langfuse_mapping as module
+    import deephelp_tools.evaluation.platform.langfuse_mapping as module
 
     path, _, ids = historical
     plan = plan_import(path, DATA, MANIFEST, ids, ["hybrid"])
@@ -174,7 +179,7 @@ async def test_partial_and_cancel_resume_readback_without_replaying_business(
 
 
 async def test_readback_requires_exact_observation_all_scores_and_null_is_not_zero(historical):
-    from deephelp_tools.evaluation.langfuse_mapping import Platform
+    from deephelp_tools.evaluation.platform.langfuse_mapping import Platform
 
     path, _, ids = historical
     plan = plan_import(path, DATA, MANIFEST, ids, ["hybrid"])

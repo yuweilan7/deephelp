@@ -10,16 +10,16 @@
 
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.experiments
-py -3.14 -m uv run --locked python -m deephelp_tools.learning.event_cli --help
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.dense_cli preview
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.evaluation_cli audit
-py -3.14 -m uv run --locked python -m deephelp_tools.probes.live_probe --help
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli --help
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.replay.event_cli --help
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.retrieval.dense_cli preview
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.evaluation_cli audit
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.models.live_probe --help
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release_cli --help
 ```
 
 业务运行使用app的正式CLI，显式给出 `--mcp-module deephelp_tools.demo.mcp_server`；Hybrid另给出 `--corpus demo/data/m09_corpus.jsonl` 或实际发布语料。客户端保留工具白名单、可信主体、签名、输入/输出schema、共享预算、超时与取消守卫。`DemoAssembly`/`DemoToolGateway`只在本包明确装配demo，复用运行实现。
 
-完整发布的 `prepare/validate` 位于 `deephelp_tools.evaluation.release_cli`，`register/activate/rollback/status/references/retire/serve` 位于 `deephelp_app.bootstrap.release_cli`。准备同时绑定运行字节和工具/输入指纹；serve无需安装评测工具，也不重新读取冻结集。
+完整发布的 `prepare/validate` 位于 `deephelp_tools.evaluation.releases.release_cli`，`register/activate/rollback/status/references/retire/serve` 位于 `deephelp_app.bootstrap.commands.release_cli`。准备同时绑定运行字节和工具/输入指纹；serve无需安装评测工具，也不重新读取冻结集。
 
 仓库中冻结数据唯一来源为[ datasets ](../../datasets/README.md)，demo事实唯一来源为[demo/data](../../demo/README.md)。构建tools wheel时将同一份字节纳入包资源，安装后不依赖仓库路径。学习数据放在本包resources/learning。工作区中的路径与安装wheel中的资源选择顺序详见assets.py。
 
@@ -27,7 +27,7 @@ py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli --he
 
 ## 浏览器学习扩展
 
-安装tools后，以 `python -m deephelp_tools.learning.workbench serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
+安装tools后，以 `python -m deephelp_tools.learning.workbench.app serve` 代替基本app入口，其他业务/检索/身份/预算参数完全复用[主工作台启动](../deephelp-app/README.md#m22浏览器工作台)。基础app只显示已装配页面；浏览/固定协议实验不请求模型。
 
 ### 评测与飞轮目录
 
@@ -61,8 +61,8 @@ $env:DEEPHELP_LEARNING_CATALOG = '.local/learning/catalog.json'
 ```powershell
 $env:DEEPHELP_POSTGRES_CONFIG = (Resolve-Path '.local/m28/facts.json').Path
 $env:DEEPHELP_LANGFUSE_CONFIG = (Resolve-Path '.local/m28/native.json').Path
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.native_observation_probe --live --mode proof --output .local/m28/proof-new.json
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.native_observation_probe --live --mode business --sample all --fault-checks --output .local/m28/business-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.platform.native_observation_probe --live --mode proof --output .local/m28/proof-new.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probes.platform.native_observation_probe --live --mode business --sample all --fault-checks --output .local/m28/business-new.json
 ```
 
 `--sample order|coupon`只运行该样本。`--source <已有business报告>`按原消息ID重投并核对原回执，
@@ -79,8 +79,8 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 平台使用锁定的v4原生Experiment。只接受原冻结集/manifest与报告来源一致的完整会话子集；不运行评测器、模型或业务。原逐行检查/失败、原报告门禁、空分母、未启用能力以及全部审批/越权/effects计数保持。原结果以JSON文本保存，避免平台数字序列化改变浮点精度。历史导入不证明当前模型质量或企业泛化。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_cli --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state .local/m29/import-state.json
-py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_engineering_probe --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state-root .local/tmp/m29-proof-new --output .local/m29/proof-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.platform.langfuse_cli --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state .local/m29/import-state.json
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.releases.langfuse_engineering_probe --live --config .local/m28/native.json --report .local/m17-scale/live-feature-final.json --data datasets/m17_scale_cases.json --manifest datasets/m17_scale_manifest.json --case scale-discount-applied-interleaved-hints --case scale-discount-ineligible-auto-fill --mode hybrid --state-root .local/tmp/m29-proof-new --output .local/m29/proof-new.json
 ```
 
 导入器的状态文件与OS锁绑定来源/选择/平台project；重投相同命令读回相同Dataset item、Experiment observation和Score ID后才记COMPLETE。单次最多20会话/100行，每请求最多3次、5秒；每行读回60秒、导入600秒。probe需新状态目录/新报告，模拟实际不可用端点与取消，不新执行业务。
@@ -94,17 +94,17 @@ M22受控catalog可增加`platform_config`（私有配置路径）与`imports`�
 `langfuse_prompt_review create`将现有M12主意图兜底system文本及静态契约保存为平台版本；不改变模型或schema。`export`只接受确切正整数版本，不读取latest/production label作为发布文本。原输入JSON完整保留当前文本、已确认事件上下文与检索结果；模板引擎为none，无插值变量，文本不能包含平台模板占位符。模型/参数/schema/tools约束随本地工件一起核对。首次创建版本为非幂等请求，网络结果未知时先查询平台版本，不自动再POST。
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review create --live --config .local/m28/native.json
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review export --live --config .local/m28/native.json --name deephelp-intent-fallback --version 1 --output .local/m29/prompt-v1.json
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.langfuse_prompt_review score-config --live --config .local/m28/native.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.feedback.langfuse_prompt_review create --live --config .local/m28/native.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.feedback.langfuse_prompt_review export --live --config .local/m28/native.json --name deephelp-intent-fallback --version 1 --output .local/m29/prompt-v1.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.feedback.langfuse_prompt_review score-config --live --config .local/m28/native.json
 ```
 
 导出的`m29-prompt-v1`工件具有name/version/text/contract/request_digest，路径使用OS锁且不可覆盖。模型内容验证使用原入口的`--prompt-artifact`，准备完整版本同时传该工件及本次验证报告；相同最终请求可复用仍适用的内容证据，版本/hash仍分别绑定。不同文本、契约、runtime/tooling、模型、SOP或资产不能拿旧PASS发布。
 
 ```powershell
 # 使用本轮新建且不重置的累计预算；先核对已有资产的当前审核来源与远端完整性。
-py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.release_cli validate --live --assets .local/m18/current/assets.json --output .local/m29/content-new.json --budget-state .local/m29/budget.json --auth .local/m17/auth.json --prompt-artifact .local/m29/prompt-v1.json
-py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.release_cli prepare --assets .local/m18/current/assets.json --validation .local/m29/content-new.json --version m29-prompt-a --prompt-artifact .local/m29/prompt-v1.json --output .local/m29/release-a.json
+py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.evaluation.releases.release_cli validate --live --assets .local/m18/current/assets.json --output .local/m29/content-new.json --budget-state .local/m29/budget.json --auth .local/m17/auth.json --prompt-artifact .local/m29/prompt-v1.json
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.releases.release_cli prepare --assets .local/m18/current/assets.json --validation .local/m29/content-new.json --version m29-prompt-a --prompt-artifact .local/m29/prompt-v1.json --output .local/m29/release-a.json
 ```
 
 后续登记、发布与回退沿用[完整版本入口](../deephelp-app/README.md#m18-完整版本发布)。`ReleaseManifest.prompts`的保留键`langfuse:intent-fallback`指向工件SHA256，`files`绑定唯一完整路径/hash，工件记录不可变平台版本；原模型、SOP、审核、代码、完整资产和CAS门禁保持。运行从清单读取本地工件，不访问平台Prompt API，不随平台label改变，不因平台不可用切换未经验证文本。当前静态搬运不宣称质量提升。

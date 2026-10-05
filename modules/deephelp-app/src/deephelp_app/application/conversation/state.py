@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from deephelp_app.adapters.ledger import Receipt
+from deephelp_app.adapters.persistence.ledger import Receipt
 from deephelp_app.application.text_entity import reconcile_conflicts
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.conversation import Question, RequestEnvelope

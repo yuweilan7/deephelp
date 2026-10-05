@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.providers import (
+from deephelp_app.adapters.model_gateway.providers import (
     EndpointConfig,
     ProviderConfig,
     RerankEndpointConfig,

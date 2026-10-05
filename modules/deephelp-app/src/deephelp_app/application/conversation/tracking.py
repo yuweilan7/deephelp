@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from deephelp_app.adapters.ledger import Receipt
+from deephelp_app.adapters.persistence.ledger import Receipt
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import (

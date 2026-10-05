@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.milvus_dense import FIELDS
-from deephelp_app.adapters.milvus_hybrid import MilvusHybridStore, publish_hybrid
-from deephelp_app.adapters.providers import ProviderConfig
+from deephelp_app.adapters.model_gateway.providers import ProviderConfig
+from deephelp_app.adapters.retrieval.milvus_dense import FIELDS
+from deephelp_app.adapters.retrieval.milvus_hybrid import MilvusHybridStore, publish_hybrid
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import atomic_json, load_json
 from deephelp_app.application.hybrid import ANALYZER, HybridRetriever, normalized_fusion, result_for
@@ -24,8 +24,8 @@ from deephelp_app.domain.models.model_io import (
     ModelUsage,
 )
 from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope, HybridScope
-from deephelp_tools.evaluation.hybrid_cli import validate_selection
-from deephelp_tools.evaluation.hybrid_eval import (
+from deephelp_tools.evaluation.retrieval.hybrid_cli import validate_selection
+from deephelp_tools.evaluation.retrieval.hybrid_eval import (
     choose_weight,
     classify,
     dataset,

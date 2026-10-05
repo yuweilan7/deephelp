@@ -40,7 +40,7 @@ from deephelp_app.domain.models.tools import (
 )
 from deephelp_app.domain.registry import IntentRegistry, complaint_registry
 from deephelp_tools.assets import asset_path
-from deephelp_tools.learning.fakes import FakeRepository
+from deephelp_tools.learning.fakes.memory import FakeRepository
 
 pytestmark = pytest.mark.unit
 NOW = datetime(2026, 10, 2, tzinfo=UTC)

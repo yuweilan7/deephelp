@@ -7,7 +7,7 @@ import pytest
 from fastapi import Request
 from pydantic import SecretStr
 
-from deephelp_app.adapters.trace import JsonlTrace, MemoryTrace, request_context
+from deephelp_app.adapters.observability.trace import JsonlTrace, MemoryTrace, request_context
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError, ConfigurationError

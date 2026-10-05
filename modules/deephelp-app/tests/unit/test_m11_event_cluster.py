@@ -19,8 +19,8 @@ from deephelp_app.domain.models.events import (
     EventMessage,
 )
 from deephelp_app.domain.models.text import DemandType
-from deephelp_tools.learning.cases_fake import MemoryCaseRepository
-from deephelp_tools.learning.event_replay import ReplayJudge, envelope, sequences
+from deephelp_tools.learning.fakes.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.replay.event_replay import ReplayJudge, envelope, sequences
 
 
 def budget() -> ExecutionBudget:

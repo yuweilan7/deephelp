@@ -10,8 +10,8 @@ from uuid import uuid4
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 
-from deephelp_app.adapters.approval_store import ApprovalRepository
-from deephelp_app.adapters.synthetic_rights import (
+from deephelp_app.adapters.approval.approval_store import ApprovalRepository
+from deephelp_app.adapters.approval.synthetic_rights import (
     RightsObservation,
     RightsRequest,
     SyntheticEffect,
@@ -104,7 +104,7 @@ def create_rights_app(root: Path, key: bytes, fault_path: Path | None = None) ->
                     raise HTTPException(403, "Synthetic order precondition denied")
                 fault = None
                 if fault_path:
-                    from deephelp_tools.learning.rights_faults import before_effect
+                    from deephelp_tools.learning.faults.rights_faults import before_effect
 
                     fault = await before_effect(fault_path, body.operation_id)
                 effect = SyntheticEffect(
@@ -128,7 +128,7 @@ def create_rights_app(root: Path, key: bytes, fault_path: Path | None = None) ->
                     raise HTTPException(409, "Idempotency payload differs")
                 await conn.commit()
                 if fault:
-                    from deephelp_tools.learning.rights_faults import after_effect
+                    from deephelp_tools.learning.faults.rights_faults import after_effect
 
                     after_effect(fault)
                 return RightsObservation(status="SUCCEEDED", effect=stored)

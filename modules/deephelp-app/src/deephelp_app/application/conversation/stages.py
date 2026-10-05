@@ -9,9 +9,9 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from deephelp_app.adapters.ledger import Receipt
-from deephelp_app.adapters.telemetry import observation, stage_event
-from deephelp_app.adapters.trace import TraceEvent
+from deephelp_app.adapters.observability.telemetry import observation, stage_event
+from deephelp_app.adapters.observability.trace import TraceEvent
+from deephelp_app.adapters.persistence.ledger import Receipt
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import (

@@ -8,8 +8,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from prometheus_client import generate_latest
 from prometheus_client.parser import text_string_to_metric_families
 
-from deephelp_app.adapters.prometheus import MetricsEndpoint
-from deephelp_app.adapters.telemetry import Telemetry, annotate, observation, using
+from deephelp_app.adapters.observability.prometheus import MetricsEndpoint
+from deephelp_app.adapters.observability.telemetry import Telemetry, annotate, observation, using
 
 
 def values(endpoint):
@@ -95,7 +95,7 @@ def test_registry_lifecycle_isolated_and_duplicate_metrics_export_rejected(monke
 
 
 def test_retired_otlp_configuration_fails_before_dispatch(monkeypatch):
-    from deephelp_app.adapters.telemetry import environment
+    from deephelp_app.adapters.observability.telemetry import environment
 
     monkeypatch.setenv("DEEPHELP_OTLP_ENDPOINT", "http://127.0.0.1:4318")
     with pytest.raises(ValueError, match="retired"), environment("app"):

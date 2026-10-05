@@ -24,23 +24,23 @@ with (
     ):
         import deephelp_app.api.app
         import deephelp_tools.learning.experiments
-        import deephelp_tools.learning.fakes
-        import deephelp_app.adapters.trace
+        import deephelp_tools.learning.fakes.memory
+        import deephelp_app.adapters.observability.trace
         import deephelp_app.domain.checks
         import deephelp_app.domain.registry
-        import deephelp_tools.evaluation.samples
+        import deephelp_tools.evaluation.quality.samples
         import deephelp_app.application.corpus
         import deephelp_app.application.dense
-        import deephelp_app.adapters.milvus_dense
-        import deephelp_tools.evaluation.dense_cli
-        import deephelp_app.adapters.mcp_protocol
+        import deephelp_app.adapters.retrieval.milvus_dense
+        import deephelp_tools.evaluation.retrieval.dense_cli
+        import deephelp_app.adapters.mcp.business.mcp_protocol
         import deephelp_tools.demo.mcp_server
-        import deephelp_app.adapters.tool_gateway
-        import deephelp_tools.probes.mcp_smoke
+        import deephelp_app.adapters.mcp.business.tool_gateway
+        import deephelp_tools.probes.protocol.mcp_smoke
         import deephelp_app.application.sop_config
         import deephelp_app.application.sop
-        import deephelp_tools.learning.sop_replay
-        import deephelp_tools.probes.sop_probe
+        import deephelp_tools.learning.replay.sop_replay
+        import deephelp_tools.probes.conversation.sop_probe
     assert not client.called
     assert not pool.called
 """

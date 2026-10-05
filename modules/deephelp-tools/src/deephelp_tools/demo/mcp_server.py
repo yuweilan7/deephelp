@@ -25,7 +25,7 @@ from mcp.types import (
 )
 from pydantic import ValidationError
 
-from deephelp_app.adapters.mcp_protocol import (
+from deephelp_app.adapters.mcp.business.mcp_protocol import (
     HEALTH_URI,
     LEDGER_URI,
     TOOL_VERSION,
@@ -34,7 +34,7 @@ from deephelp_app.adapters.mcp_protocol import (
     validate_arguments,
     verify_metadata,
 )
-from deephelp_app.adapters.telemetry import environment, server_call
+from deephelp_app.adapters.observability.telemetry import environment, server_call
 from deephelp_app.domain.checks import require_owner
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import DTO, ErrorCode
@@ -156,7 +156,7 @@ class MockBackend:
             fault = self.fault(req.tool_name, parameters.order_id)
             data = result.model_dump(mode="json")
             if fault.kind != "normal":
-                from deephelp_tools.learning.mcp_faults import alter_result
+                from deephelp_tools.learning.faults.mcp_faults import alter_result
 
                 alter_result(data, fault)
             return CallToolResult(
@@ -205,7 +205,7 @@ class MockBackend:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "Coupon does not belong to order")
         fault = self.fault(req.tool_name, order.order_id)
         if fault.kind != "normal" or fault.delay_seconds:
-            from deephelp_tools.learning.mcp_faults import before_query
+            from deephelp_tools.learning.faults.mcp_faults import before_query
 
             await before_query(fault)
         evidence_id = "ev-" + uuid4().hex
@@ -243,7 +243,7 @@ class MockBackend:
         )
         summary = "合成 fixture 查询证据"
         if fault.kind == "injection":
-            from deephelp_tools.learning.mcp_faults import evidence_summary
+            from deephelp_tools.learning.faults.mcp_faults import evidence_summary
 
             summary = evidence_summary(fault)
         return ToolResult(

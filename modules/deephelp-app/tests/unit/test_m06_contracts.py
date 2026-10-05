@@ -4,7 +4,7 @@ import hashlib
 import pytest
 from mcp.types import CallToolResult, TextContent
 
-from deephelp_app.adapters.mcp_protocol import (
+from deephelp_app.adapters.mcp.business.mcp_protocol import (
     canonical,
     registered_tools,
     sign_metadata,
@@ -19,7 +19,7 @@ from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.fixtures import load_business_fixtures
 from deephelp_tools.demo.mcp_server import MockBackend
 from deephelp_tools.demo.tool_config import MockConfig
-from deephelp_tools.probes.mcp_smoke import load_fault_config, synthetic_request
+from deephelp_tools.probes.protocol.mcp_smoke import load_fault_config, synthetic_request
 
 pytestmark = pytest.mark.unit
 

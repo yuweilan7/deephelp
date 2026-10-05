@@ -2,7 +2,7 @@
 
 import asyncio
 
-from deephelp_app.adapters.cases import OPEN
+from deephelp_app.adapters.persistence.cases import OPEN
 from deephelp_app.application.text_entity import (
     TextEntityProcessor,
     TextPolicy,

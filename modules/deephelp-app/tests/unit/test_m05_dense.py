@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.milvus_dense import FIELDS, MilvusDenseStore, activate, rollback
+from deephelp_app.adapters.retrieval.milvus_dense import (
+    FIELDS,
+    MilvusDenseStore,
+    activate,
+    rollback,
+)
 from deephelp_app.application.corpus import REQUIRED, read_corpus, validate_records
 from deephelp_app.application.dense import (
     Capacity,
@@ -24,7 +29,7 @@ from deephelp_app.domain.models.common import ErrorCode
 from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.models.model_io import EmbeddingResult, EmbeddingSignature, ModelUsage
 from deephelp_app.domain.models.retrieval import DenseHit, DenseResult, DenseScope
-from deephelp_tools.evaluation.corpus_preview import frozen_preview
+from deephelp_tools.evaluation.retrieval.corpus_preview import frozen_preview
 
 pytestmark = pytest.mark.unit
 SIGNATURE = EmbeddingSignature(provider="synthetic", model="offline-only", dimension=3)
@@ -518,7 +523,7 @@ def test_atomic_manifest_size_bounds(tmp_path):
 
 
 def test_live_control_paths_cannot_overwrite_budget_or_share_lock(monkeypatch, tmp_path):
-    from deephelp_tools.evaluation.dense_cli import control_paths
+    from deephelp_tools.evaluation.retrieval.dense_cli import control_paths
 
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ConfigurationError, match="must differ"):

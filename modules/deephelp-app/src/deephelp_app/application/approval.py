@@ -10,11 +10,23 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from deephelp_app.adapters.approval_store import TERMINAL, ApprovalRepository
-from deephelp_app.adapters.postgres import application_config
-from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints, official_checkpoints
-from deephelp_app.adapters.synthetic_rights import RightsClient, SyntheticEffect, binding_hash
-from deephelp_app.adapters.telemetry import annotate, observation, observed, operation_link
+from deephelp_app.adapters.approval.approval_store import TERMINAL, ApprovalRepository
+from deephelp_app.adapters.approval.postgres_checkpoints import (
+    PostgresCheckpoints,
+    official_checkpoints,
+)
+from deephelp_app.adapters.approval.synthetic_rights import (
+    RightsClient,
+    SyntheticEffect,
+    binding_hash,
+)
+from deephelp_app.adapters.observability.telemetry import (
+    annotate,
+    observation,
+    observed,
+    operation_link,
+)
+from deephelp_app.adapters.persistence.postgres import application_config
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
@@ -209,7 +221,7 @@ class ApprovalService:
 
     @staticmethod
     def config(op: OperationRecord) -> Any:
-        from deephelp_app.adapters.native_observation import graph_callbacks
+        from deephelp_app.adapters.observability.native_observation import graph_callbacks
 
         return {
             "configurable": {"thread_id": "m15-approval-v1:" + op.run_id},
@@ -220,7 +232,7 @@ class ApprovalService:
     async def pause(self, operation_id: str, budget: ExecutionBudget) -> None:
         self.inject("before_checkpoint")
         op = await self.repo.get(operation_id)
-        from deephelp_app.adapters.native_observation import register_run
+        from deephelp_app.adapters.observability.native_observation import register_run
 
         await register_run(self.repo.pool, op.run_id, kind="pause", operation_id=operation_id)
         await operation_link(self.repo.pool, operation_id, save=True)
@@ -255,7 +267,7 @@ class ApprovalService:
             links=links,
             attributes={"deephelp.operation_id": operation_id, "deephelp.synthetic": True},
         ):
-            from deephelp_app.adapters.native_observation import register_run
+            from deephelp_app.adapters.observability.native_observation import register_run
 
             await register_run(
                 self.repo.pool,

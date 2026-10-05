@@ -6,10 +6,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, observe_sop_node, sop_node_observer
+from deephelp_app.adapters.observability.trace import (
+    JsonlTrace,
+    TraceEvent,
+    observe_sop_node,
+    sop_node_observer,
+)
 from deephelp_app.application.debug import export_json, project, sanitize, scope_hash
 from deephelp_app.application.reply import ReplyComposer, apply_wording, fact_reply
-from deephelp_app.bootstrap.mvp_runtime import validate_trace_path
+from deephelp_app.bootstrap.runtime.budget import validate_trace_path
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import Money, VerifiedIdentity

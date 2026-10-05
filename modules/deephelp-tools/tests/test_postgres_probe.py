@@ -4,8 +4,8 @@ import sys
 
 import pytest
 
-from deephelp_app.adapters.postgres import PostgresConfig
-from deephelp_tools.probes.postgres_probe import main, require_isolated
+from deephelp_app.adapters.persistence.postgres import PostgresConfig
+from deephelp_tools.probes.migration.postgres_probe import main, require_isolated
 
 
 @pytest.mark.parametrize(

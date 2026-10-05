@@ -7,8 +7,12 @@ from langgraph.graph import END, START, StateGraph
 from opentelemetry import trace
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from deephelp_app.adapters.native_observation import NativeTelemetry, graph_callbacks, model_io
-from deephelp_app.adapters.telemetry import (
+from deephelp_app.adapters.observability.native_observation import (
+    NativeTelemetry,
+    graph_callbacks,
+    model_io,
+)
+from deephelp_app.adapters.observability.telemetry import (
     annotate,
     carrier,
     extracted,
@@ -169,7 +173,7 @@ async def test_generation_io_filters_reasoning_and_serialized_identifiers_withou
 
 async def test_observation_io_failure_cannot_change_actual_model_result(native, monkeypatch):
     with observation("model.attempt"):
-        from deephelp_app.adapters.native_observation import _active
+        from deephelp_app.adapters.observability.native_observation import _active
 
         def failed(**kwargs):
             raise ValueError("DO_NOT_EXPORT")

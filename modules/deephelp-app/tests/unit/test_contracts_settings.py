@@ -9,7 +9,7 @@ from deephelp_app.domain.models.common import Outcome, VerifiedIdentity
 from deephelp_app.domain.models.conversation import ConverseInput, RequestEnvelope
 from deephelp_app.domain.models.evidence import EvidenceRef
 from deephelp_app.domain.models.responses import ResponseEnvelope
-from deephelp_tools.learning.fakes import FakeRepository
+from deephelp_tools.learning.fakes.memory import FakeRepository
 
 pytestmark = pytest.mark.unit
 

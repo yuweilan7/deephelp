@@ -13,15 +13,15 @@ import pytest
 from fastapi import FastAPI
 from pydantic import ValidationError
 
-from deephelp_app.adapters.business_client import BusinessClient
-from deephelp_app.adapters.mcp_protocol import canonical, sign_metadata
-from deephelp_app.adapters.network_mcp import (
+from deephelp_app.adapters.mcp.business.business_client import BusinessClient
+from deephelp_app.adapters.mcp.business.mcp_protocol import canonical, sign_metadata
+from deephelp_app.adapters.mcp.business.tool_gateway import ToolGateway
+from deephelp_app.adapters.mcp.shared.network_mcp import (
     DelegationVerifier,
     HTTPMCPConfig,
     ServiceCredentials,
     encode_delegation,
 )
-from deephelp_app.adapters.tool_gateway import ToolGateway
 from deephelp_app.api.business import business_router
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
@@ -33,12 +33,12 @@ from deephelp_app.domain.models.business import (
 )
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolStatus
-from deephelp_services.business import create_business_app
-from deephelp_services.business_store import BusinessRepository
+from deephelp_services.business.api import create_business_app
+from deephelp_services.business.repository import BusinessRepository
 from deephelp_tools.demo.mcp_server import MockBackend
 from deephelp_tools.demo.tool_config import MockConfig
-from deephelp_tools.evaluation.mvp_acceptance import api_client
-from deephelp_tools.probes.mcp_smoke import synthetic_request
+from deephelp_tools.evaluation.quality.mvp_acceptance import api_client
+from deephelp_tools.probes.protocol.mcp_smoke import synthetic_request
 
 pytestmark = pytest.mark.integration
 

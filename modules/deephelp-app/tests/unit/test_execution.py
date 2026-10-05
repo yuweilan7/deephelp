@@ -6,7 +6,7 @@ import pytest
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget, read_json
 from deephelp_app.domain.models.common import ErrorCode
-from deephelp_tools.learning.fakes import FakeModelGateway
+from deephelp_tools.learning.fakes.memory import FakeModelGateway
 
 pytestmark = pytest.mark.unit
 

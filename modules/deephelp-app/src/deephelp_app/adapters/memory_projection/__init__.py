@@ -1,0 +1,1 @@
+"""memory projection responsibility modules."""

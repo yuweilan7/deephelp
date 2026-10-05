@@ -7,9 +7,10 @@ from uuid import uuid4
 import pytest
 from starlette.requests import Request
 
-from deephelp_app.adapters.ledger import MemoryLedger, payload_hash
+from deephelp_app.adapters.persistence.ledger import MemoryLedger, payload_hash
 from deephelp_app.application.conversation.tracking import usage_delta
-from deephelp_app.bootstrap.mvp_runtime import BudgetSession, LocalAuth, validate_control_paths
+from deephelp_app.bootstrap.runtime.auth import LocalAuth
+from deephelp_app.bootstrap.runtime.budget import BudgetSession, validate_control_paths
 from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import (

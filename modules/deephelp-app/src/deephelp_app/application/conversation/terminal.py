@@ -6,8 +6,8 @@ import asyncio
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from deephelp_app.adapters.ledger import Receipt
-from deephelp_app.adapters.trace import TraceEvent
+from deephelp_app.adapters.observability.trace import TraceEvent
+from deephelp_app.adapters.persistence.ledger import Receipt
 from deephelp_app.application.sop_config import SOPDefinition
 from deephelp_app.application.sop_governance import GovernedSOP
 from deephelp_app.domain.execution import ExecutionBudget
@@ -69,7 +69,7 @@ async def finish_run(
         stats,
         input_question_version=receipt.question.version,
     )
-    from deephelp_app.adapters.native_observation import register_run
+    from deephelp_app.adapters.observability.native_observation import register_run
 
     await register_run(getattr(conversation.ledger, "pool", None), receipt.run_id)
     if conversation.approvals is not None and response.approval_operation_id:

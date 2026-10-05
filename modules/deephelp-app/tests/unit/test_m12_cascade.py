@@ -14,9 +14,9 @@ from deephelp_app.domain.models.intent_decisions import Decision, FallbackResult
 from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
 from deephelp_app.domain.models.retrieval import DenseCandidate, DenseHit, DenseResult
-from deephelp_tools.evaluation.cascade_tune import select_gate
-from deephelp_tools.learning.event_replay import envelope
-from deephelp_tools.learning.mvp_replay import REPLAY_SCOPE
+from deephelp_tools.evaluation.retrieval.cascade_tune import select_gate
+from deephelp_tools.learning.replay.event_replay import envelope
+from deephelp_tools.learning.replay.mvp_replay import REPLAY_SCOPE
 
 pytestmark = pytest.mark.unit
 
