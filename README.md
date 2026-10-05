@@ -32,11 +32,12 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 |---|---|
 | 当前事实与待验事项 | [PROJECT_STATE](docs/PROJECT_STATE.md) |
 | 能力机制与验收选择 | [ROADMAP](docs/ROADMAP.md) |
+| M39基线后的新增能力规格（尚未实施） | [M40–M46](docs/ROADMAP.md#后续能力规格) |
 | 个人学习工作台与云运行 | [当前私有云入口](infra/deployment/README.md)、[PG/Langfuse切换交接](handoffs/M30.md)；M23为旧路线历史 |
 | 从消息找到源码、测试与子系统 | [源码导航](docs/learning/source-navigation.md)、[M32迁移/清理证据](handoffs/M32.md) |
 | 本地核心与云端完整教学 | [最短离线路径](docs/learning/README.md#本地核心最短路径)、[云工作台](docs/LOCAL_SETUP.md#当前云端个人入口)、[M37交接](handoffs/M37.md) |
 | 应用/隧道启动、凭据与模型额度位置 | [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
-| Agent读取范围与Git交付 | [AGENTS](AGENTS.md) |
+| Agent读取范围、每个feature编码习惯与Git交付 | [AGENTS](AGENTS.md)、[讲解/学习观测/相关清理](AGENTS.md#每个feature的编码与交付习惯) |
 | 架构、接口和设计依据 | [ARCHITECTURE](docs/ARCHITECTURE.md)、[CONTRACTS](docs/CONTRACTS.md)、[DECISIONS](docs/DECISIONS.md)、[SOURCE_MAP](docs/SOURCE_MAP.md) |
 | 客诉API、演示与验证边界 | [应用README](modules/deephelp-app/README.md) |
 
