@@ -19,7 +19,13 @@ from deephelp_app.adapters.mcp.business.mcp_protocol import (
 )
 from deephelp_app.adapters.observability.trace import observe_sop_node
 from deephelp_app.application.collaboration import AgentPolicy, CollaborationSession
-from deephelp_app.application.skills import SkillRegistry, SkillSession, load_skills
+from deephelp_app.application.skills import (
+    SkillDefinition,
+    SkillRegistry,
+    SkillSession,
+    load_skills,
+    skill_history,
+)
 from deephelp_app.application.sop_config import SOPBranch, SOPDefinition, load_prompt, load_sops
 from deephelp_app.application.sop_governance import GovernedSOP, SOPRegistry
 from deephelp_app.domain.checks import validate_question_access, validate_tool_result
@@ -63,6 +69,7 @@ class SOPExecutor:
         agent_policy: AgentPolicy | None = None,
         agent_journal: AgentTaskJournalPort | None = None,
         skills: SkillRegistry | None = None,
+        skills_history: tuple[SkillRegistry, ...] = (),
     ) -> None:
         if evidence_version not in {"business-fixtures-v1", "business-postgres-v1"}:
             raise ValueError("Unknown business evidence source")
@@ -72,6 +79,7 @@ class SOPExecutor:
         )
         self.agent_journal = agent_journal
         self.skills = SkillRegistry.model_validate(skills.model_dump()) if skills else load_skills()
+        self.skills_history = (self.skills, *skills_history, *skill_history())
         self.model = model
         self.tools = tools
         registry = SOPRegistry.model_validate(registry.model_dump()) if registry else None
@@ -143,7 +151,10 @@ class SOPExecutor:
         缺槽立即返回WAITING_SLOT，不消耗工具；超时或领域失败转换成失败结果，取消仍抛出。
         """
         validate_question_access(context, question)
-        if question.versions.skills and question.versions.skills != self.skills.digest:
+        skill_registry = next(
+            (s for s in self.skills_history if s.digest == question.versions.skills), None
+        )
+        if question.versions.skills and skill_registry is None:
             raise AppError(ErrorCode.VERSION_CONFLICT, "Pinned Skill registry is unavailable")
         definition = self.definition_for(question)
         if definition is None:
@@ -176,11 +187,11 @@ class SOPExecutor:
         calls: list[str] = []
         skills = (
             SkillSession(
-                self.skills,
+                skill_registry,
                 tool_version=definition.tool_version,
                 evidence_version=self.evidence_version,
             )
-            if question.versions.skills
+            if skill_registry
             else None
         )
         collaboration = None
@@ -455,7 +466,7 @@ class SOPExecutor:
         run_id: str,
         node_id: str,
         tool: ToolName,
-        expected: dict[str, str],
+        expected: dict[str, object],
         budget: ExecutionBudget,
         calls: list[str],
         collaboration: CollaborationSession | None,
@@ -515,6 +526,9 @@ class SOPExecutor:
                 validate_arguments(action.name, expected),
                 calls,
             )
+        # 任务只读回收的call也属于原运行，先保留实际ID再让Skill/流程核验观察。
+        if result.call_id and result.call_id not in calls:
+            calls.append(result.call_id)
         return result
 
     async def _flow(
@@ -543,11 +557,93 @@ class SOPExecutor:
             ),
         ]
         observed: dict[str, ToolResult] = {}
+        retries_at_start = budget.retries_used
+        prefetched: dict[ToolName, ToolResult] = {}
+        composition = (
+            skills.registry.composition_for(question.active_intent)
+            if skills and question.active_intent and not collaboration
+            else None
+        )
+        if skills and composition:
+            # 组合是原SOP的实际消费者：先订单后券，原节点只读回收完成观察。
+            # 只允许本SOP真实存在的唯一lookup，不能把Skill许可扩大成任意工具派发。
+            lookup_nodes = {
+                tool: [n for n in d.nodes if n.kind == "lookup" and n.tool == tool]
+                for tool in composition.allowed_tools
+            }
+            if any(len(nodes) != 1 for nodes in lookup_nodes.values()):
+                raise AppError(
+                    ErrorCode.FORBIDDEN, "Composition tools must match original SOP nodes"
+                )
+
+            async def dispatch(child: SkillDefinition, arguments: dict[str, object]) -> ToolResult:
+                node = lookup_nodes[child.tool][0]
+                request = ChatRequest(
+                    messages=[
+                        *messages,
+                        ChatMessage(
+                            role="system",
+                            content=json.dumps(
+                                {
+                                    "ready_node": node.node_id,
+                                    "required_action": child.tool.value,
+                                    "verified_parameters": arguments,
+                                },
+                                ensure_ascii=False,
+                            )
+                            + "\nInvoke exactly one native tool_calls function with the "
+                            "verified parameters. Do not describe the action in content "
+                            "or return a JSON/code block instead of a function call.",
+                        ),
+                    ],
+                    tools=[ModelTool(name=child.tool.value, parameters=tool_schema(child.tool))],
+                    tool_choice=child.tool.value,
+                    max_output_tokens=4096,
+                    repair_once=True,
+                )
+                remaining = max(
+                    0, d.limits.total_retries - (budget.retries_used - retries_at_start)
+                )
+                bounded = d.model_copy(
+                    update={"limits": d.limits.model_copy(update={"total_retries": remaining})}
+                )
+                with observe_sop_node("skill." + child.skill_id, "skill", calls) as observation:
+                    observation.update(
+                        {
+                            "skill_id": child.skill_id,
+                            "skill_version": child.version,
+                            "skill_digest": child.digest,
+                            "skill_registry": skills.registry.digest,
+                        }
+                    )
+                    return await self._ready_lookup(
+                        bounded,
+                        question,
+                        context,
+                        run_id,
+                        node.node_id,
+                        child.tool,
+                        arguments,
+                        budget,
+                        calls,
+                        None,
+                        request,
+                        [],
+                    )
+
+            with observe_sop_node(composition.skill_id, "skill_composition", calls):
+                prefetched = await skills.compose(
+                    question, context, run_id, composition, budget, dispatch
+                )
+            observed = {
+                n.node_id: prefetched[n.tool]
+                for n in d.nodes
+                if n.kind == "lookup" and n.tool in prefetched
+            }
         path: list[str] = []
         current = d.entry
         failure: ToolResult | None = None
         seen: set[str] = set()
-        retries_at_start = budget.retries_used
         for _ in range(d.limits.max_steps):
             budget.remaining_seconds()
             node = index[current]
@@ -555,7 +651,9 @@ class SOPExecutor:
             with observe_sop_node(current, node.kind, calls) as node_observation:
                 if node.kind == "lookup":
                     assert node.tool and node.success and node.failure
-                    expected = {slot: values[slot] for slot in tool_schema(node.tool)["required"]}
+                    expected: dict[str, object] = {
+                        slot: values[slot] for slot in tool_schema(node.tool)["required"]
+                    }
                     request = ChatRequest(
                         messages=[
                             *messages,
@@ -617,12 +715,19 @@ class SOPExecutor:
                         else None
                     )
                     result = (
-                        await skills.lookup(
-                            question, context, run_id, current, skill, expected, budget, perform
+                        prefetched[node.tool]
+                        if node.tool in prefetched
+                        else (
+                            await skills.lookup(
+                                question, context, run_id, current, skill, expected, budget, perform
+                            )
+                            if skills and skill
+                            else await perform()
                         )
-                        if skills and skill
-                        else await perform()
                     )
+                    if node.tool in prefetched:
+                        node_observation["source"] = "completed_skill_observation"
+                        node_observation["original_tool_call_id"] = result.call_id
                     action = actions[0] if actions else None
                     if result.status != ToolStatus.SUCCEEDED:
                         node_observation["status"] = "failed"
@@ -745,6 +850,7 @@ class SOPExecutor:
                             parameters_hash=tool_parameters_hash(parameters),
                             sop_version=d.version,
                             snapshot_hash=question.versions.sop_snapshot,
+                            skills_digest=question.versions.skills,
                             evidence_ids=tuple(r.evidence_id for r in evidence),
                         )
                     return SOPResult(

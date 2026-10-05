@@ -118,6 +118,18 @@ class ResponseEnvelope(DTO):
             for r in self.skill_receipts
         ):
             raise ValueError("Skill receipts must bind original run, question, registry and calls")
+        skill_index = {r.execution_id: r for r in self.skill_receipts}
+        if any(
+            (r.parent_id and r.parent_id not in skill_index)
+            or any(
+                child not in skill_index or skill_index[child].parent_id != r.execution_id
+                for child in r.children
+            )
+            or not set(r.evidence_ids) <= {e.evidence_id for e in self.evidence_refs}
+            for r in self.skill_receipts
+            if r.status == "COMPLETED" and r.children
+        ):
+            raise ValueError("Composition receipt lacks its actual child/evidence closure")
         if len({r.task.task_id for r in self.agent_receipts}) != len(self.agent_receipts):
             raise ValueError("Agent task receipts must be unique")
         if any(
@@ -136,6 +148,7 @@ class ResponseEnvelope(DTO):
             or self.sop_plan.question_id != self.question_id
             or self.sop_plan.sop_version != self.versions.sop
             or self.sop_plan.snapshot_hash != self.versions.sop_snapshot
+            or self.sop_plan.skills_digest != self.versions.skills
             or not set(self.sop_plan.evidence_ids) <= {r.evidence_id for r in self.evidence_refs}
         ):
             raise ValueError("Proposal must be a bound handoff or pending approval")

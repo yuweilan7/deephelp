@@ -1,0 +1,162 @@
+{
+  "version": "skills-v2",
+  "definitions": [
+    {
+      "skill_id": "order-benefits",
+      "version": "1",
+      "goal": "查询已确认订单的权益与实付，只返回原工具证据",
+      "applicable_intents": [
+        "DISCOUNT_MISSING",
+        "COUPON_UNUSABLE",
+        "ORDER_ACTIVITY_QUERY"
+      ],
+      "tool": "get_order_benefits",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "order_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "ToolParameters",
+        "type": "object"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "order_id": "text",
+          "paid": "money",
+          "discount": "money",
+          "discount_status": "text",
+          "activity_ids": "text",
+          "activity_labels": "text"
+        }
+      }
+    },
+    {
+      "skill_id": "coupon-status",
+      "version": "1",
+      "goal": "检查已确认订单的券状态，保留门槛与实际证据",
+      "applicable_intents": [
+        "COUPON_UNUSABLE"
+      ],
+      "tool": "check_coupon",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "order_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "coupon_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "coupon_id"
+        ],
+        "title": "ToolParameters",
+        "type": "object"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "order_id": "text",
+          "coupon_id": "text",
+          "coupon_status": "text",
+          "minimum_spend": "money",
+          "usable": "flag"
+        }
+      }
+    }
+  ],
+  "compositions": [
+    {
+      "skill_id": "order-coupon-diagnosis",
+      "version": "1",
+      "goal": "先查询订单，再用实际订单事实与原券编号诊断券；SOP负责金额/矛盾收口",
+      "applicable_intents": [
+        "COUPON_UNUSABLE"
+      ],
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "order_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "coupon_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "coupon_id"
+        ],
+        "title": "ToolParameters",
+        "type": "object"
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "order.order_id": "text",
+          "order.paid": "money",
+          "order.discount": "money",
+          "order.discount_status": "text",
+          "order.activity_ids": "text",
+          "order.activity_labels": "text",
+          "coupon.order_id": "text",
+          "coupon.coupon_id": "text",
+          "coupon.coupon_status": "text",
+          "coupon.minimum_spend": "money",
+          "coupon.usable": "flag"
+        }
+      },
+      "allowed_tools": [
+        "get_order_benefits",
+        "check_coupon"
+      ],
+      "steps": [
+        {
+          "step_id": "order",
+          "skill_id": "order-benefits",
+          "version": "1",
+          "digest": "c273f53fc7f9c478eee58585148b48b6da5795ae1f77122f829a52c4cf4e8962",
+          "inputs": {
+            "order_id": "slot.order_id"
+          }
+        },
+        {
+          "step_id": "coupon",
+          "skill_id": "coupon-status",
+          "version": "1",
+          "digest": "1c8deff6304d33cb82f1d90ff35a664241f2b367c0f5ef17de906b8386438f3d",
+          "inputs": {
+            "order_id": "order.order_id",
+            "coupon_id": "slot.coupon_id"
+          }
+        }
+      ]
+    }
+  ]
+}

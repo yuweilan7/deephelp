@@ -96,3 +96,10 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course skills
 Java类比：SkillDefinition类似不可变用例契约，SkillSession类似请求内Interceptor，SOP像业务编排。边界是schema/说明不会自动授予权限，Python await只等待原异步链，客户端由原gateway上下文拥有，不能每个Skill另建连接或新预算。
 
 练习与答案：1. 加refund参数会怎样？输入必须与已确认槽位精确相等，工具前拒绝。2. 改同一version目标？不可变登记拒绝，应创建新候选版本。3. 缺order_id？原SOP返回WAITING_SLOT，模型/工具/Skill均0次。4. 说明写“退款成功”？只有实际只读工具证据进入事实，SOP审批守卫仍决定写建议能否成立。
+
+
+M41组合实验同一`course skills`增加订单→券例：DEMO-C01实付99.90、券门槛100.00，两个stdio调用，原SOP在threshold收口；父组合1条、子Skill2条回执。coupon输入order_id来自order.order_id实际Fact，再与原槽位精确核对；coupon_id来自原slot。原SOP读回已完成观察，不再次派发；Java可类比顺序CompletableFuture.thenCompose，区别是这些await共享原deadline/尝试计量，取消传播回原拥有者。
+
+组合当前只支持深度2的直接只读叶子、最多4步、16attempts/80秒且受原SOP/请求更小上限约束；递归/环、未登记/漂移子hash、未来/类型不兼容映射、子扩权均拒绝。写Skill未开放，已有SOP提案仍走原M15，并额外绑定Skill摘要。协作模式的叶子可包装已验M40受控角色，保持其原券→条件订单分支，未开放任意委托Skill或通信。
+
+练习与答案：5. 第二步预算耗尽？首步原call/证据保留，整次不输出解决，不能新建子预算继续。6. 查询券时取消？父取消传播，原gateway上下文关闭，未提交终态保持未知；不能断言工具未派发。7. 重跑组合能恢复吗？同执行实例重复ID拒绝；终态消息读取原账本0调用，未终态/UNKNOWN先查原记录，不提供自动重领。8. 旧版本续接？保留F1机器字节与摘要，原问题沿旧版本执行，不把待审批动作绑到新指令。

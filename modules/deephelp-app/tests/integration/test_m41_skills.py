@@ -1,13 +1,18 @@
 """Skill机器边界与实际stdio事实独立核对；记录/描述不能冒充执行通过。"""
 
+import asyncio
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 
 from deephelp_app.application.skills import (
     SkillDefinition,
+    SkillRegistry,
     SkillSession,
     load_skills,
     register_skills,
+    skill_history,
 )
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import bundled_registry
@@ -130,3 +135,171 @@ async def test_pinned_registry_drift_fails_before_missing_slots():
     with pytest.raises(AppError):
         await executor.execute(question, budget, context=context, run_id="drift")
     assert budget.attempts_used == 0
+
+
+def coupon_setup():
+    budget, gateway, executor, _, _ = setup()
+    question, context = sop_question(
+        budget, IntentCode.COUPON_UNUSABLE, order="DEMO-C01", coupon="COUPON-C01"
+    )
+    question = question.model_copy(
+        update={"versions": executor.pin_versions(question.versions, IntentCode.COUPON_UNUSABLE)}
+    )
+    return budget, gateway, executor, question, context
+
+
+async def test_composition_order_then_coupon_original_sop_no_repeat():
+    budget, gateway, executor, question, context = coupon_setup()
+    deadline = budget.deadline
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="compose")
+        ledger = await gateway.ledger()
+    assert result.status == "RESOLVED" and result.node_path[-1] == "threshold"
+    assert [r.tool_name.value for r in ledger] == ["get_order_benefits", "check_coupon"]
+    assert result.tool_call_ids == tuple(r.call_id for r in ledger)
+    parent, order, coupon = result.skill_receipts
+    assert parent.children == (order.execution_id, coupon.execution_id)
+    assert coupon.input_sources == {"order_id": "order.order_id", "coupon_id": "slot.coupon_id"}
+    assert order.parent_id == coupon.parent_id == parent.execution_id
+    facts = {f.name: f.value for f in result.facts}
+    assert facts["paid"].amount == Decimal("99.90") < facts["minimum_spend"].amount
+    assert budget.attempts_used == 4 and budget.tool_steps_used == 2 and budget.deadline == deadline
+
+
+@pytest.mark.parametrize(
+    "change", ["cycle", "depth", "steps", "hash", "future", "money", "tool", "scope"]
+)
+def test_composition_closure_mapping_and_permission_guard(change):
+    raw = load_skills().model_dump(mode="json")
+    c = raw["compositions"][0]
+    if change == "cycle":
+        c["steps"][0]["skill_id"] = c["skill_id"]
+    elif change == "depth":
+        c["max_depth"] = 3
+    elif change == "steps":
+        c["max_steps"] = 1
+    elif change == "hash":
+        c["steps"][1]["digest"] = "0" * 64
+    elif change == "future":
+        c["steps"][0]["inputs"]["order_id"] = "coupon.order_id"
+    elif change == "money":
+        c["steps"][1]["inputs"]["order_id"] = "order.paid"
+    elif change == "tool":
+        c["allowed_tools"] = ["get_order_benefits"]
+    else:
+        c["applicable_intents"] = ["DISCOUNT_MISSING"]
+    with pytest.raises(ValidationError):
+        SkillRegistry.model_validate(raw)
+
+
+async def test_partial_budget_failure_keeps_first_call_never_refreshes_budget():
+    budget, gateway, executor, question, context = coupon_setup()
+    budget.remaining_attempts = 2
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="partial")
+        ledger = await gateway.ledger()
+    assert result.status == "FAILED" and result.error.code == "BUDGET_EXHAUSTED"
+    assert len(ledger) == 1 and result.tool_call_ids == (ledger[0].call_id,)
+    assert result.skill_receipts[1].status == "COMPLETED"
+    assert result.skill_receipts[0].status == "FAILED" and not result.facts
+    assert budget.attempts_used == 2 and not budget._attempt_caps
+
+
+async def test_cancellation_propagates_and_original_gateway_releases():
+    budget, gateway, executor, question, context = coupon_setup()
+    ready = asyncio.Event()
+
+    class PauseSecond(RecordedSkillModel):
+        async def chat(self, request, budget):
+            if request.tools[0].name == "check_coupon":
+                ready.set()
+                await asyncio.Event().wait()
+            return await super().chat(request, budget)
+
+    executor.model = PauseSecond()
+    async with gateway.open():
+        task = asyncio.create_task(
+            executor.execute(question, budget, context=context, run_id="cancel-compose")
+        )
+        await asyncio.wait_for(ready.wait(), 10)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        ledger = await gateway.ledger()
+    assert len(ledger) == 1 and budget.tool_steps_used == 1
+    assert not budget._attempt_caps and gateway.pid
+    from deephelp_app.adapters.mcp.business.tool_gateway import process_alive
+
+    assert not process_alive(gateway.pid)
+
+
+async def test_old_skill_snapshot_keeps_original_leaf_hash():
+    budget, gateway, executor, question, context = setup()
+    old = skill_history()[0]
+    question = question.model_copy(
+        update={"versions": question.versions.model_copy(update={"skills": old.digest})}
+    )
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="old")
+    assert result.skill_receipts[0].registry_digest == old.digest != executor.skills.digest
+    assert result.skill_receipts[0].digest == old.definitions[0].digest
+
+
+@pytest.mark.parametrize("change", ["tool", "run", "evidence"])
+async def test_skill_output_cannot_bypass_actual_observation_guard(change):
+    budget, gateway, executor, question, context = setup()
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="output-guard")
+    observation = result.skill_receipts[0].observation
+    updates = {
+        "tool": {"tool_name": "check_coupon"},
+        "run": {"run_id": "foreign"},
+        "evidence": {"evidence_refs": ()},
+    }
+    bad = observation.model_copy(update=updates[change])
+    session = SkillSession(executor.skills)
+
+    async def wrong():
+        return bad
+
+    with pytest.raises(AppError):
+        await session.lookup(
+            question,
+            context,
+            "output-guard",
+            "order",
+            executor.skills.definitions[0],
+            {"order_id": "000031"},
+            budget,
+            wrong,
+        )
+    assert session.receipts[0].status == "FAILED" and session.receipts[0].observation is None
+
+
+async def test_completed_leaf_cannot_be_rerun_in_same_execution():
+    budget, gateway, executor, question, context = setup()
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="same-leaf")
+    observation = result.skill_receipts[0].observation
+    session = SkillSession(executor.skills)
+    callbacks = 0
+
+    async def original():
+        nonlocal callbacks
+        callbacks += 1
+        return observation
+
+    args = (
+        question,
+        context,
+        "same-leaf",
+        "order",
+        executor.skills.definitions[0],
+        {"order_id": "000031"},
+        budget,
+        original,
+    )
+    await session.lookup(*args)
+    with pytest.raises(AppError, match="cannot be rerun"):
+        await session.lookup(*args)
+    assert callbacks == 1 and budget.attempts_used == 2

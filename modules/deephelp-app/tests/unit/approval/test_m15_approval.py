@@ -524,3 +524,20 @@ async def test_unknown_bound_release_keeps_original_runtime_gate_before_query_or
         )
     assert repo.op.status == OperationStatus.UNKNOWN and repo.events == []
     router.entry.assert_awaited_once_with("old")
+
+
+def test_skill_dependency_binding_cannot_change_while_waiting_approval(pair):
+    # Skill指令/依赖与原SOP/参数一起绑定；新候选不能改待批准动作。
+    op, question = pair
+    bound = op.model_copy(
+        update={"plan": op.plan.model_copy(update={"skills_digest": "skills-original"})}
+    )
+    original = question.model_copy(
+        update={"versions": question.versions.model_copy(update={"skills": "skills-original"})}
+    )
+    validate_binding(bound, original, "snapshot-v1")
+    changed = original.model_copy(
+        update={"versions": original.versions.model_copy(update={"skills": "skills-new"})}
+    )
+    with pytest.raises(AppError):
+        validate_binding(bound, changed, "snapshot-v1")

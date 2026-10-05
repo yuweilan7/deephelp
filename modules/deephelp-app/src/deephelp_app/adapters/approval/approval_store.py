@@ -45,6 +45,7 @@ def validate_binding(op: OperationRecord, q: Question, snapshot: str) -> None:
         or q.approval_operation_id != plan.operation_id
         or q.versions.sop != plan.sop_version
         or q.versions.sop_snapshot != plan.snapshot_hash
+        or q.versions.skills != plan.skills_digest
         or snapshot != plan.snapshot_hash
         or values.get("order_id") != plan.parameters.order_id
         or q.unresolved_fields
