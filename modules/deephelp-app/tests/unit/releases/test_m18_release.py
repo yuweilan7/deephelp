@@ -113,6 +113,67 @@ def test_complete_manifest_binds_all_routes_and_code(release):
     assert restored.prompts and restored.code_digest == "fixed-code"
 
 
+def test_new_optional_skill_fields_preserve_original_release_identity(release):
+    # 独立按旧DTO字段计算原hash，不能用release_hash自己断言自己。
+    raw = release.model_dump(mode="json")
+    raw.pop("skill_registry")
+    raw.pop("skill_review_path")
+    assert release_hash(ReleaseManifest.model_validate(raw)) == digest(raw)
+
+
+def test_approved_skill_snapshot_exact_content_and_file_binding(release, tmp_path):
+    from deephelp_app.adapters.releases.skill_store import SkillStore
+    from deephelp_app.application.skills import load_skills
+    from deephelp_app.domain.models.common import VerifiedIdentity
+
+    registry = load_skills()
+    store = SkillStore(tmp_path / "skills")
+    store.propose(registry, registry)
+    store.review(
+        registry.digest,
+        1,
+        VerifiedIdentity(tenant_id="test", user_id="a"),
+        "契约核对通过，固定内容证据在validation",
+        True,
+    )
+    reviewed = store.approved(registry.digest)
+    report = Path(release.validation_path)
+    value = json.loads(report.read_text())
+    value.update(skills_digest=registry.digest, skills_review_digest=file_digest(reviewed))
+    report.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="approved artifact"):
+        prepare_manifest(
+            Path(release.assets_path), Path(release.providers_path), bundled_registry(), "bad"
+        )
+    complete = prepare_manifest(
+        Path(release.assets_path),
+        Path(release.providers_path),
+        bundled_registry(),
+        "skills-v1",
+        skill_review=reviewed,
+    )
+    assert verify_release(complete)
+    assert complete.skill_registry == registry.content()
+    assert complete.prompts["skills:registry"] == registry.digest
+    assert str(reviewed.resolve()) in complete.files
+    for altered in (
+        complete.model_copy(update={"skill_review_path": None}),
+        complete.model_copy(update={"skill_registry": None}),
+        complete.model_copy(update={"skill_registry": {**registry.content(), "version": "drift"}}),
+        complete.model_copy(
+            update={
+                "files": {k: v for k, v in complete.files.items() if k != str(reviewed.resolve())}
+            }
+        ),
+    ):
+        with pytest.raises(ConfigurationError):
+            verify_release(altered)
+    # 审核原因改动同样改变原件hash，不能借审批状态为APPROVED而通过。
+    reviewed.write_text(reviewed.read_text() + "\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="artifact changed"):
+        verify_release(complete)
+
+
 @pytest.mark.parametrize(
     "field",
     [

@@ -159,3 +159,5 @@ uv run --locked --env-file .env.local python -m deephelp_tools.probes.conversati
 
 
 M41单Skill实验：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course skills`。真实固定内容复用原collaboration_probe，加`--execution-mode single --case normal-order --case injection-order`，仍须--live/准确providers/原累计budget-state/新output；证据为真实模型与stdio，非PG正式部署。[09章](../../docs/learning/09-agent-basics.md#版本化业务skillm41)说明预期与Java边界。
+
+M41管理：`python -m deephelp_tools.learning.skill_cli details`读取机器契约0模型，`trial --registry NEW_REGISTRY_JSON`用同核心/固定建议/真实本机stdio；draft/review参数见`--help`和09章。原工作台“工具与工作流”提供详情/差异/候选/显式审核/当前发布版本试运行；“评测与发布”的validate/prepare选择同一已审核Skill。正式六类受影响内容复用上方collaboration_delivery，加`--single-only --skill-review PRIVATE_APPROVED_REVIEW_JSON`；原release_cli的validate/prepare也接受`--skill-review`，完整门禁绑定快照/审核原件/本次代码与内容，不改旧manifest。全部真实命令须先核验真实依赖并声明固定样本/原共享预算，不因课程或页面浏览执行live。

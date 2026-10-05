@@ -103,3 +103,22 @@ M41组合实验同一`course skills`增加订单→券例：DEMO-C01实付99.90�
 组合当前只支持深度2的直接只读叶子、最多4步、16attempts/80秒且受原SOP/请求更小上限约束；递归/环、未登记/漂移子hash、未来/类型不兼容映射、子扩权均拒绝。写Skill未开放，已有SOP提案仍走原M15，并额外绑定Skill摘要。协作模式的叶子可包装已验M40受控角色，保持其原券→条件订单分支，未开放任意委托Skill或通信。
 
 练习与答案：5. 第二步预算耗尽？首步原call/证据保留，整次不输出解决，不能新建子预算继续。6. 查询券时取消？父取消传播，原gateway上下文关闭，未提交终态保持未知；不能断言工具未派发。7. 重跑组合能恢复吗？同执行实例重复ID拒绝；终态消息读取原账本0调用，未终态/UNKNOWN先查原记录，不提供自动重领。8. 旧版本续接？保留F1机器字节与摘要，原问题沿旧版本执行，不把待审批动作绑到新指令。
+
+### 候选、审核与完整发布
+
+“工具与工作流”读取当前Skill、机器schema/许可/依赖和候选差异，模型0次。修改已有叶子的目标时必须使用新版本；组合引用自动形成新版本和精确子hash。理由与确认框完成显式审核，revision CAS阻止重复审核；审核不会改active。管理只对现有学习catalog的owner开放，仍沿同源/CSRF及身份边界。
+
+在“评测与发布”刷新已审核Skill，验证与准备选择同一候选及原资产。验证把快照摘要、审核文件hash和实际运行字节写入内容报告；准备必须匹配，完整清单包含快照及审核原件。激活沿原ReleaseStore的完整资产回读/CAS。生产装配只用清单快照；旧清单无Skill时明确未配置，不偷偷加载新默认。当前run/审批的版本不会热替换。
+
+本地管理与候选试运行复用同一机器核心：
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.skill_cli details
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.skill_cli trial --registry PATH_TO_NEW_REGISTRY_JSON
+```
+
+`details`为0模型只读；`trial`应输出订单/券真实本机stdio事实、远程模型0次。机器JSON只含已允许工具/schema及闭包，不能添加shell/Python代码。`draft --root ROOT --registry JSON`保存候选，`review --root ROOT --candidate DIGEST --revision 1 --identity PRIVATE_IDENTITY_JSON --reason REASON --confirmed`保存审核原件；原完整发布入口另传`--skill-review APPROVED_REVIEW_JSON`。浏览器明确“当前发布版本试运行”创建新业务会话，实际调用模型/MCP并消耗原预算；候选离线试运行不能代替真实模型内容门禁。
+
+Java类比：不可变配置快照、乐观锁revision和一次请求借用的策略对象；Python文件短锁只覆盖同步登记/审核，不能跨await等待模型。选择按意图与原工具许可确定，已发布目标说明进入原模型选工具请求，模型建议仍经机器守卫；没有验证过模型选Skill质量，因此不称智能选择。
+
+练习与答案：9. 已审核后再改JSON？审核/文件/内容hash不匹配，发布拒绝。10. 只改页面列表能否宣称新版本运行？不能，原run必须带同快照/叶子版本及实际call/evidence。11. 回退旧安装继续新Skill消息？旧DTO不识别新字段时只读旧记录，新记录留PG，回到新安装再读；不降格回执、不回滚数据库或清零预算。

@@ -119,7 +119,7 @@ py -3.14 -m uv pip install --python infra/.venv314/Scripts/python.exe --requirem
 
 ## 当前云端个人入口
 
-部署、版本切换、受保护配置与恢复见[服务器运行入口](../infra/deployment/README.md)，当前事实见PROJECT_STATE，[M37交接](../handoffs/M37.md)记录当前只读观察，原八场景见[M36](../handoffs/M36.md)，当前协作/精确安装/恢复证据见[M40](../handoffs/M40.md)。M23为旧MySQL/Tempo路线历史。本机只运行浏览器和现有SSH隧道，应用/两个HTTP MCP/中间件在服务器运行，无需本机前端或业务进程。
+部署、版本切换、受保护配置与恢复见[服务器运行入口](../infra/deployment/README.md)，当前事实见PROJECT_STATE，[M37交接](../handoffs/M37.md)记录该项只读观察，原八场景见[M36](../handoffs/M36.md)，协作证据见[M40](../handoffs/M40.md)，当前Skill/精确安装/恢复及剩余收尾见[M41](../handoffs/M41.md)。M23为旧MySQL/Tempo路线历史。本机只运行浏览器和现有SSH隧道，应用/两个HTTP MCP/中间件在服务器运行，无需本机前端或业务进程。
 
 ```powershell
 ./infra/client/tunnel.ps1 -Profile personal -Action start

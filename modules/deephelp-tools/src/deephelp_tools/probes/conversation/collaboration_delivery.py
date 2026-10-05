@@ -1,6 +1,7 @@
 """M40固定业务对照与精确发布内容证据；复用原Conversation，不另造教学引擎。
 
 显式live只选六个冻结合成样本，两种模式共用真实PG/模型/SDK MCP与原预算writer。
+M41使用single-only及审核Skill快照验同一事实路径，不再次采集未改的协作对照。
 固定反例先有离线守卫证据，此处只检查原主链内容；重投/历史读取不发模型。
 原始私有报告绑定runtime/tooling/providers/资产/角色策略，旧PASS不套新字节。
 """
@@ -18,6 +19,7 @@ from uuid import uuid4
 from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.adapters.persistence.history import PostgresHistory
 from deephelp_app.adapters.releases.asset_integrity import file_digest
+from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.api.app import create_app
 from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.application.corpus import digest
@@ -86,6 +88,14 @@ def content_checks(
         ),
         "no_approval": response.sop_plan is None,
     }
+    if response.versions.skills:
+        leaves = [r for r in response.skill_receipts if r.observation]
+        good["skills"] = all(
+            r.registry_digest == response.versions.skills for r in response.skill_receipts
+        )
+        good["skill_call_ids"] = tuple(
+            r.observation.call_id for r in leaves if r.observation
+        ) == tuple(r.call_id for r in records)
     if name in {"order", "injection"}:
         good["money"] = facts.get("paid") == Money(
             amount=Decimal("99.90"), currency="CNY"
@@ -99,7 +109,9 @@ def content_checks(
         good["status"] = (
             facts.get("coupon_status") == "threshold_not_met" and facts.get("usable") is False
         )
-        good["parameters"] = records[0].parameters.coupon_id == "COUPON-C01" and all(
+        good["parameters"] = next(
+            r for r in records if r.tool_name.value == "check_coupon"
+        ).parameters.coupon_id == "COUPON-C01" and all(
             r.parameters.order_id == "DEMO-C01" for r in records
         )
     elif name == "foreign":
@@ -139,7 +151,9 @@ async def probe(args: argparse.Namespace) -> int:
     report: dict[str, Any] = dict(
         format="m18-validation-v1",
         status="FAIL",
-        validation_scope="m40-collaboration-targeted",
+        validation_scope="m41-skills-targeted"
+        if args.single_only
+        else "m40-collaboration-targeted",
         synthetic=True,
         interpretation="real original Conversation/PG/model/SDK MCP; synthetic fixed business",
         assets_digest=digest(data),
@@ -187,9 +201,15 @@ async def probe(args: argparse.Namespace) -> int:
                 fasttext_pointer=Path(data["fasttext_pointer"]),
                 reviewed_rules=Path(data["rules"]),
             )
+            if args.skill_review:
+                runtime.skills_registry, _ = read_skill_review(Path(args.skill_review))
             report.update(
                 sop_snapshot=runtime.sop_registry.snapshot_hash,
                 collaboration_policy_digest=runtime.agent_policy.digest,
+                skills_digest=runtime.skills_registry.digest,
+                skills_review_digest=file_digest(Path(args.skill_review))
+                if args.skill_review
+                else None,
                 retrieval_profile=runtime.retrieval_binding.health(),
             )
             app = create_app(
@@ -202,7 +222,13 @@ async def probe(args: argparse.Namespace) -> int:
                 budget_factory=gate.request,
             )
             async with app.router.lifespan_context(app), api_client(app, http=True) as client:
-                for mode in ("single", "collaboration"):
+                original_tools = expected_tools
+                for mode in ("single",) if args.single_only else ("single", "collaboration"):
+                    expected_tools = (
+                        tuple(reversed(original_tools))
+                        if mode == "single" and name.startswith("coupon-")
+                        else original_tools
+                    )
                     body = dict(
                         channel="m40-content",
                         session_id="m40-" + uuid4().hex,
@@ -303,29 +329,30 @@ async def probe(args: argparse.Namespace) -> int:
             )
         for name, *_ in CASES:
             rows = [r for r in report["rows"] if r["case_id"] == name]
-            single, collaboration = rows
-            a, b = single["response"], collaboration["response"]
+            if not args.single_only:
+                single, collaboration = rows
+                a, b = single["response"], collaboration["response"]
 
-            def semantic(response: dict[str, Any]) -> list[tuple[str, Any]]:
-                return [(f["name"], f["value"]) for f in response["facts"]]
+                def semantic(response: dict[str, Any]) -> list[tuple[str, Any]]:
+                    return [(f["name"], f["value"]) for f in response["facts"]]
 
-            same = (
-                a["outcome"] == b["outcome"]
-                and semantic(a) == semantic(b)
-                and a["sop_node_path"] == b["sop_node_path"]
-            )
-            report["comparison"].append(
-                dict(
-                    case=name,
-                    same_content_and_branch=same,
-                    single_model_calls=a["call_counts"]["model_calls"],
-                    collaboration_model_calls=b["call_counts"]["model_calls"],
-                    single_ms=single["elapsed_ms"],
-                    collaboration_ms=collaboration["elapsed_ms"],
+                same = (
+                    a["outcome"] == b["outcome"]
+                    and semantic(a) == semantic(b)
+                    and a["sop_node_path"] == b["sop_node_path"]
                 )
-            )
+                report["comparison"].append(
+                    dict(
+                        case=name,
+                        same_content_and_branch=same,
+                        single_model_calls=a["call_counts"]["model_calls"],
+                        collaboration_model_calls=b["call_counts"]["model_calls"],
+                        single_ms=single["elapsed_ms"],
+                        collaboration_ms=collaboration["elapsed_ms"],
+                    )
+                )
         report["checks"].update(
-            complete_coverage=len(report["rows"]) == len(CASES) * 2,
+            complete_coverage=len(report["rows"]) == len(CASES) * (1 if args.single_only else 2),
             all_content_and_safety=all(r["score"]["completed"] for r in report["rows"]),
             compared=all(r["same_content_and_branch"] for r in report["comparison"]),
         )
@@ -366,9 +393,13 @@ async def review_report(args: argparse.Namespace) -> int:
         or report["providers_digest"] != file_digest(Path(args.providers))
         or report["collaboration_policy_digest"] != load_agent_policy().digest
         or report["sop_snapshot"] != bundled_registry().snapshot_hash
-        or len(report["rows"]) != len(CASES) * 2
+        or len(report["rows"]) != len(CASES) * (1 if args.single_only else 2)
         or {(r["case_id"], r["mode"]) for r in report["rows"]}
-        != {(c[0], m) for c in CASES for m in ("single", "collaboration")}
+        != {
+            (c[0], m)
+            for c in CASES
+            for m in (("single",) if args.single_only else ("single", "collaboration"))
+        }
     ):
         raise ConfigurationError("Read-only review requires same exact runtime/targets")
     _, identity = LocalAuth(Path(args.auth)).rows[0]
@@ -378,6 +409,8 @@ async def review_report(args: argparse.Namespace) -> int:
         for row in report["rows"]:
             name, _, outcome, tools = next(c for c in CASES if c[0] == row["case_id"])
             response = ResponseEnvelope.model_validate(row["response"])
+            if response.versions.skills and row["mode"] == "single" and name.startswith("coupon-"):
+                tools = tuple(reversed(tools))
             assert response.run_id
             # 从原消息找到其session；不从用户传入的任意run/diagnostic获取授权。
             rows = await store.fresh_rows(
@@ -395,6 +428,7 @@ async def review_report(args: argparse.Namespace) -> int:
                 and original.response.facts == response.facts
                 and original.response.evidence_refs == response.evidence_refs
                 and original.response.agent_receipts == response.agent_receipts
+                and original.response.skill_receipts == response.skill_receipts
                 and original.response.tool_call_ids == response.tool_call_ids
                 and original.response.versions == response.versions
                 and original.response.outcome == response.outcome
@@ -451,6 +485,8 @@ def main() -> int:
     for name in ("assets", "providers", "auth", "budget-state", "output"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--review-report")
+    parser.add_argument("--skill-review")
+    parser.add_argument("--single-only", action="store_true")
     args = parser.parse_args()
     return asyncio.run(review_report(args) if args.review_report else probe(args))
 

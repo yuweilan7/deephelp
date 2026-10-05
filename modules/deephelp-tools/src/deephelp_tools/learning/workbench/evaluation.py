@@ -22,6 +22,7 @@ from pydantic import Field
 from deephelp_app.adapters.releases.asset_integrity import file_digest
 from deephelp_app.adapters.releases.release_assets import verify_release
 from deephelp_app.adapters.releases.release_store import ReleaseStore
+from deephelp_app.adapters.releases.skill_store import SkillStore
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.artifact_paths import resolve_artifact, state_root
 from deephelp_app.application.dense import atomic_json
@@ -95,6 +96,7 @@ class JobInput(DTO):
     asset_id: Key | None = None
     import_id: Key | None = None
     candidate_revision: Annotated[int, Field(strict=True, ge=0)] | None = None
+    skill_candidate: Hash | None = None
     confirmed: Literal[True]
 
 
@@ -374,6 +376,11 @@ def evaluation_router(
                 active_changed=False,
             )
         assets = asset_path(options["asset_id"])
+        skill_review = (
+            SkillStore(config.task_root / "skills").approved(options["skill_candidate"])
+            if options.get("skill_candidate")
+            else None
+        )
         if action == "validate":
             validation_report = await validate(
                 feedback(),
@@ -384,6 +391,7 @@ def evaluation_router(
                 config.auth,
                 registry=assembly.sop_registry,
                 prompt_artifact=config.prompt_artifact,
+                skill_review=skill_review,
                 persist_assets_validation=False,
             )
             return dict(
@@ -397,6 +405,7 @@ def evaluation_router(
                 for task in jobs.rows.values()
                 if task["options"]["action"] == "validate"
                 and task["options"]["asset_id"] == options["asset_id"]
+                and task["options"].get("skill_candidate") == options.get("skill_candidate")
             ),
             key=lambda task: (task["updated_at"], task["id"]),
             reverse=True,
@@ -418,6 +427,7 @@ def evaluation_router(
             "m22-" + row["id"],
             prompt_artifact=config.prompt_artifact,
             validation_path=validation_path,
+            skill_review=skill_review,
         )
         # This registers an immutable full release only after the original M18 exact gate.
         identity = await release().register(manifest)
@@ -691,6 +701,10 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
+        if body.skill_candidate and body.action not in {"validate", "prepare"}:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Skill candidate is only used by validate/prepare"
+            )
         if body.action == "platform_candidate":
             if config.platform_config is None:
                 raise AppError(ErrorCode.NOT_FOUND, "Platform review is not configured", 404)

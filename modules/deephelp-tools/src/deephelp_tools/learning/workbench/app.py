@@ -13,6 +13,7 @@ from deephelp_app.bootstrap.runtime.assembly import LiveAssembly
 from deephelp_tools.learning.workbench.analysis import analysis_router
 from deephelp_tools.learning.workbench.evaluation import EvaluationCatalog, evaluation_router
 from deephelp_tools.learning.workbench.protocol import learning_router
+from deephelp_tools.learning.workbench.skills import skills_router
 
 
 def install(app: FastAPI, assembly: LiveAssembly) -> None:
@@ -31,6 +32,11 @@ def install(app: FastAPI, assembly: LiveAssembly) -> None:
     app.include_router(analysis_router(assembly, app.state.browser_auth))
     if catalog := os.getenv("DEEPHELP_LEARNING_CATALOG"):
         config = EvaluationCatalog.model_validate_json(Path(catalog).read_text(encoding="utf-8"))
+        app.include_router(
+            skills_router(
+                assembly, app.state.browser_auth, config.owner, config.task_root / "skills"
+            )
+        )
         app.include_router(
             evaluation_router(
                 assembly,

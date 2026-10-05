@@ -8,6 +8,7 @@ import StateNotice from "../../components/StateNotice.vue";
 import MechanismGuide from "../../components/MechanismGuide.vue";
 import AgentReceipts from "./AgentReceipts.vue";
 import SkillReceipts from "./SkillReceipts.vue";
+import SkillManager from "./SkillManager.vue";
 import { workspace } from "../../composables/workspace";
 const status = useRead<LearningStatus>(),
   workflow = useRead<{
@@ -93,6 +94,7 @@ function resume() {
 <template>
   <section class="card">
     <h2>SOP 与实际审批图</h2>
+    <SkillManager />
     <AgentReceipts :receipts="workspace.selected?.response.agent_receipts" />
     <SkillReceipts :receipts="workspace.selected?.response.skill_receipts" />
     <MechanismGuide mechanism="workflow" />

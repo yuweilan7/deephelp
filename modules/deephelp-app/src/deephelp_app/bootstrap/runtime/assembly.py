@@ -127,6 +127,16 @@ class LiveAssembly:
             )
         self.sop_registry = self.sop_snapshots[0] if self.sop_snapshots else bundled_registry()
         self.agent_policy = load_agent_policy()
+        from deephelp_app.application.skills import SkillRegistry, load_skills
+
+        self.skills_registry = (
+            SkillRegistry.model_validate(release_manifest.skill_registry)
+            if release_manifest and release_manifest.skill_registry
+            else load_skills()
+        )
+        self.skills_enabled = (
+            release_manifest is None or release_manifest.skill_registry is not None
+        )
         if release_manifest:
             from deephelp_app.adapters.releases.release_assets import verify_release
             from deephelp_app.application.sop_governance import SOPRegistry
@@ -318,6 +328,7 @@ class LiveAssembly:
                 release_manifest=release_identity,
                 code_commit=self.release_manifest.code_commit if self.release_manifest else None,
                 collaboration=self.agent_policy.digest,
+                skills=self.skills_registry.digest if self.skills_enabled else None,
             )
             yield Conversation(
                 ledger,
@@ -338,6 +349,8 @@ class LiveAssembly:
                     evidence_version=tools.evidence_version,
                     agent_policy=self.agent_policy,
                     agent_journal=PostgresAgentTasks(ledger.pool),
+                    skills=self.skills_registry,
+                    skills_enabled=self.skills_enabled,
                 ),
                 trace,
                 versions,

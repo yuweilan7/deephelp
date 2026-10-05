@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { api } from "../../api/client";
 import {
   lines,
@@ -33,6 +33,11 @@ const mode = ref("audit"),
     note: string;
   }>(),
   action = useAction();
+const skill = ref("");
+const skills = useRead<{
+  candidates: { candidate_digest: string; status: string }[];
+}>();
+onMounted(() => skills.load("/learning/skills"));
 watch(
   () => props.catalog.assets,
   (rows) => {
@@ -62,6 +67,9 @@ function start() {
       candidate_ids: mode.value === "build" ? lines(ids.value) : [],
       asset_id: ["validate", "prepare"].includes(mode.value)
         ? assetId.value
+        : null,
+      skill_candidate: ["validate", "prepare"].includes(mode.value)
+        ? skill.value || null
         : null,
       confirmed: true,
     });
@@ -156,10 +164,33 @@ function control(op: "cancel" | "resume") {
         文件核对 {{ asset.data.value.files_verified }} · 审核当前
         {{ asset.data.value.reviews_current }} · {{ asset.data.value.note }}
       </p>
-      <RawDetails
-        v-if="asset.data.value"
-        :value="asset.data.value"
-      /><el-checkbox v-model="confirmed"
+      <RawDetails v-if="asset.data.value" :value="asset.data.value" />
+      <template v-if="['validate', 'prepare'].includes(mode)">
+        <label>已审核Skill候选</label>
+        <select v-model="skill">
+          <option value="">未选择 · 新Skill发布必须选择已审核候选</option>
+          <option
+            v-for="s in skills.data.value?.candidates.filter(
+              (c) => c.status === 'APPROVED',
+            ) || []"
+            :key="s.candidate_digest"
+            :value="s.candidate_digest"
+          >
+            {{ s.candidate_digest }}
+          </option>
+        </select>
+        <el-button @click="skills.load('/learning/skills')"
+          >刷新Skill审核 · 0模型</el-button
+        >
+        <StateNotice
+          :error="skills.error.value"
+          :loading="skills.loading.value"
+        />
+        <p>
+          验证与准备必须选择同一审核候选和资产。准备只登记完整版本；激活沿原发布CAS，不热替换当前会话。
+        </p>
+      </template>
+      <el-checkbox v-model="confirmed"
         >已核对模式、样本与共享预算，明确启动</el-checkbox
       ><el-button
         native-type="submit"

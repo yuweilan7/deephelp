@@ -5,6 +5,7 @@
 
 import json
 
+from deephelp_app.application.skills import SkillRegistry
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_governance import bundled_registry
 from deephelp_app.domain.execution import ExecutionBudget
@@ -19,8 +20,12 @@ class RecordedSkillModel:
 
     async def chat(self, request: ChatRequest, budget: ExecutionBudget) -> ChatResult:
         budget.claim_attempt(retry=False)
-        assert request.messages[-1].content is not None
-        ready = json.loads(request.messages[-1].content.split("\nInvoke exactly", 1)[0])
+        ready_text = next(
+            m.content
+            for m in reversed(request.messages)
+            if m.content and '"ready_node"' in m.content
+        )
+        ready = json.loads(ready_text.split("\nInvoke exactly", 1)[0])
         return ChatResult(
             tool_calls=[
                 ModelToolCall(
@@ -35,7 +40,7 @@ class RecordedSkillModel:
         )
 
 
-async def skills_demo() -> dict[str, object]:
+async def skills_demo(registry: SkillRegistry | None = None) -> dict[str, object]:
     """原核心订单例，核对回执、实际工具账本与金额；离开async with才交付结果。"""
     cases = []
     for name, intent, order, coupon in [
@@ -44,7 +49,9 @@ async def skills_demo() -> dict[str, object]:
     ]:
         budget = ExecutionBudget.start(30, 8, 0)
         gateway = DemoToolGateway()
-        executor = SOPExecutor(RecordedSkillModel(), gateway, registry=bundled_registry())
+        executor = SOPExecutor(
+            RecordedSkillModel(), gateway, registry=bundled_registry(), skills=registry
+        )
         question, context = sop_question(budget, intent, order=order, coupon=coupon)
         question = question.model_copy(
             update={"versions": executor.pin_versions(question.versions, intent)}

@@ -100,6 +100,7 @@ async def validate(
     registry: SOPRegistry | None = None,
     persist_assets_validation: bool = True,
     prompt_artifact: Path | None = None,
+    skill_review: Path | None = None,
 ) -> dict[str, Any]:
     if await asyncio.to_thread(output.exists):
         raise ConfigurationError("Use a new immutable validation report")
@@ -109,6 +110,10 @@ async def validate(
     nonce = uuid4().hex[:16]
     collection = "dh_m10_events_m18_" + nonce
     runtime = assembly(data, providers, collection)
+    if skill_review:
+        from deephelp_app.adapters.releases.skill_store import read_skill_review
+
+        runtime.skills_registry, _ = read_skill_review(skill_review)
     if prompt_artifact:
         runtime.intent_prompt = read_prompt(prompt_artifact)
     if registry:
@@ -137,6 +142,8 @@ async def validate(
         judge_providers_digest=file_digest(runtime.judge_providers),
         sop_snapshot=runtime.sop_registry.snapshot_hash,
         collaboration_policy_digest=runtime.agent_policy.digest,
+        skills_digest=runtime.skills_registry.digest,
+        skills_review_digest=file_digest(skill_review) if skill_review else None,
         code_digest=code["package_digest"],
         code_integrity_scope=code["integrity_scope"],
         tooling_digest=code["tooling_digest"],

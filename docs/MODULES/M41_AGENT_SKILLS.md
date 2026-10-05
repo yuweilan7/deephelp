@@ -1,6 +1,6 @@
 # M41｜版本化、可组合的Agent Skills
 
-**状态：** `FEATURE1_2_VERIFIED / FEATURE3_PENDING`；2026-10-06顺序实施，证据见[交接](../../handoffs/M41.md)。
+**状态：** `IMPLEMENTED_LIVE_VERIFIED / LOCAL_CLOSEOUT_BLOCKED`；2026-10-06三个feature的能力、内容/安装/恢复通过；本地清理被自动审批拒绝，尚未完成整M收尾。证据与续做范围见[交接](../../handoffs/M41.md)。
 **来源：** PDF文件页15–18、67–69及75的可复用Skill/SOP方向；用户要求补齐能力。Skill的执行契约和管理流程是本项目设计，不把外部Skill站点视作已接入依赖。
 **基线：** M39；复用[M14 SOP治理](M14_SOP_GOVERNANCE.md)、[M15审批](M15_DURABILITY_APPROVAL.md)、[M18发布](M18_DATA_FLYWHEEL.md)、[M20 MCP](M20_BUSINESS_SOURCE.md)、[M29不可变Prompt](M29_LANGFUSE_ENGINEERING.md)。工具类Skill可独立实施，委托类Skill才依赖M40已验接口。
 
@@ -19,7 +19,7 @@
 | [执行预算](../../modules/deephelp-app/src/deephelp_app/domain/execution.py) | 组合Skill共享一个原预算，嵌套不能刷新deadline/额度 |
 | [发布资产](../../modules/deephelp-app/src/deephelp_app/adapters/releases/release_assets.py) | 不可变Skill字节、依赖闭包、运行绑定与完整发布校验 |
 
-拟新增Skill描述至少包括稳定ID/版本/hash、目标与适用条件、输入/输出schema、所需槽位、允许工具/子Skill、失败/缺槽行为、有限步数及引用版本。结果引用真实工具证据并区分成功、补充、拒绝、失败、取消、未知。新DTO/Port在实施时同步CONTRACTS，不预创建泛化插件框架。
+已实现Skill描述包括稳定ID/版本/hash、目标与适用条件、输入/输出schema、所需槽位、允许工具/子Skill、失败/缺槽行为、有限步数及引用版本。结果引用真实工具证据并区分成功、补充、拒绝、失败、取消、未知。唯一SkillReceipt/版本/审批与发布契约见CONTRACTS；组合当前只允许深度2直接只读叶子，不开放递归组合、写Skill或任意委托插件。
 
 Skill选择只接受已登记、版本兼容、当前意图允许的候选；模型推荐不扩大权限。Skill输入不能覆盖已确认实体，输出不能绕过原事实/归属守卫。审批的版本/参数绑定到实际计划及Skill依赖，指令变化不能偷偷改变待审批动作。
 
