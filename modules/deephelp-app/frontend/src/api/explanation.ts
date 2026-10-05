@@ -3,6 +3,7 @@ import type {
   Question,
   RunResponse,
   AgentReceipt,
+  AgentTaskRecord,
 } from "./types";
 export interface EntityObservation {
   name: string;
@@ -15,6 +16,8 @@ export interface EntityObservation {
 }
 export interface Explanation {
   agent_receipts: AgentReceipt[] | null;
+  agent_tasks?: AgentTaskRecord[] | null;
+  agent_tasks_source?: string;
   schema_version: string;
   run_id: string;
   trace_id: string | null;

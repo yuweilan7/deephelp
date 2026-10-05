@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from deephelp_app.domain.execution import ExecutionBudget
+from deephelp_app.domain.models.collaboration import AgentTask, AgentTaskRecord
 from deephelp_app.domain.models.common import VerifiedIdentity
 from deephelp_app.domain.models.conversation import LifecycleCommand, Question, RequestEnvelope
 from deephelp_app.domain.models.events import ClusterJudgement, EventCandidate, EventMessage
@@ -129,6 +130,18 @@ class SOPExecutorPort(Protocol):
         context: RequestEnvelope,
         run_id: str,
     ) -> SOPResult: ...
+
+
+class AgentTaskJournalPort(Protocol):
+    async def begin(
+        self, task: AgentTask, context: RequestEnvelope, *, max_tasks: int
+    ) -> AgentTaskRecord: ...
+
+    async def write(self, record: AgentTaskRecord) -> None: ...
+
+    async def records(
+        self, identity: VerifiedIdentity, session: str, run_id: str
+    ) -> tuple[AgentTaskRecord, ...]: ...
 
 
 class Repository(Protocol):

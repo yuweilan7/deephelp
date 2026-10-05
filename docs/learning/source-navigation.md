@@ -103,4 +103,4 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/integration/test_m
 观察原测试中的缺槽→补槽、更正、重投、600计数和模型/工具调用断言，再在上述路径逐步找到实现。这里复用原离线引擎及合成事实，证明组织后的行为与边界，不代表远程模型质量或新云版本。旧完整发布绑定旧运行字节；本轮源码指纹变了，应保留原安装或在未来正式发布时重新取得精确内容证据。
 
 
-M40显式协作从原[SOPExecutor](../../modules/deephelp-app/src/deephelp_app/application/sop.py)的lookup进入[CollaborationSession](../../modules/deephelp-app/src/deephelp_app/application/collaboration.py)，领域值在[collaboration](../../modules/deephelp-app/src/deephelp_app/domain/models/collaboration.py)，角色资产在[sop_data](../../modules/deephelp-app/src/deephelp_app/resources/sop_data/agent-policy-v1.json)。阅读顺序与离线实验见[09章](09-agent-basics.md#受控专业-agent委托m40)；协调者/专业角色不改变原600、工具事实与审批权威。
+M40显式协作从原[SOPExecutor](../../modules/deephelp-app/src/deephelp_app/application/sop.py)的lookup进入[CollaborationSession](../../modules/deephelp-app/src/deephelp_app/application/collaboration.py)，领域值在[collaboration](../../modules/deephelp-app/src/deephelp_app/domain/models/collaboration.py)，角色资产在[sop_data](../../modules/deephelp-app/src/deephelp_app/resources/sop_data/agent-policy-v2.json)。阅读顺序与离线实验见[09章](09-agent-basics.md#受控专业-agent委托m40)；协调者/专业角色不改变原600、工具事实与审批权威。

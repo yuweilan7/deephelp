@@ -221,3 +221,234 @@ async def test_original_conversation_has_one_600_and_receipt_replay_has_no_new_c
         assert replay.agent_receipts == result.agent_receipts
         assert sum(replay.call_counts.model_dump().values()) == 0
         assert len(await assembly.tools.ledger()) == count
+
+
+class TaskJournal:
+    """离线只测用例时序；真正唯一锁/CAS/连接重开由显式PG探针独立证明。"""
+
+    def __init__(self):
+        self.rows = {}
+        self.states = []
+
+    async def begin(self, task, context, *, max_tasks):
+        from datetime import UTC, datetime
+
+        from deephelp_app.domain.models.collaboration import AgentTaskRecord
+
+        old = self.rows.get(task.task_id)
+        if old:
+            if old.state != "COMPLETED":
+                raise AppError(ErrorCode.OPERATION_UNKNOWN, "Reconcile only")
+            return old
+        row = AgentTaskRecord(
+            task=task,
+            claim_token="owned",
+            state="RUNNING",
+            phase="delegate",
+            updated_at=datetime.now(UTC),
+        )
+        self.rows[task.task_id] = row
+        return row
+
+    async def write(self, record):
+        self.rows[record.task.task_id] = record
+        self.states.append(record.state)
+
+
+def coupon_setup(
+    gateway, *, model=None, journal=None, policy=None, order="DEMO-C01", coupon="COUPON-C01"
+):
+    budget = ExecutionBudget.start(30, 20, 0)
+    executor = SOPExecutor(
+        model or RecordedAgentModel(),
+        gateway,
+        registry=bundled_registry(),
+        agent_policy=policy or load_agent_policy(),
+        agent_journal=journal,
+    )
+    question, context = sop_question(budget, IntentCode.COUPON_UNUSABLE, order=order, coupon=coupon)
+    question = question.model_copy(
+        update={"versions": executor.pin_versions(question.versions, IntentCode.COUPON_UNUSABLE)}
+    )
+    return (
+        executor,
+        budget,
+        question,
+        context.model_copy(update={"execution_mode": "collaboration"}),
+    )
+
+
+async def test_coupon_two_sources_keep_original_amount_comparison_and_cached_calls():
+    journal, model, gateway = TaskJournal(), RecordedAgentModel(), DemoToolGateway()
+    executor, budget, question, context = coupon_setup(gateway, model=model, journal=journal)
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        before = budget.usage()
+        replay = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        ledger = await gateway.ledger()
+    assert result.status == replay.status == SOPStatus.RESOLVED
+    assert [r.task.role_id for r in result.agent_receipts] == ["coupon-status", "order-benefits"]
+    assert "合成口径比对一致" in result.reason
+    facts = {f.name: f.value for f in result.facts}
+    assert (
+        facts["paid"].amount
+        == Decimal("99.90")
+        < facts["minimum_spend"].amount
+        == Decimal("100.00")
+    )
+    assert len(ledger) == 2 and len(model.requests) == 6
+    assert before == budget.usage() and replay.agent_receipts == result.agent_receipts
+    assert replay.tool_call_ids == result.tool_call_ids
+    assert journal.states == ["RUNNING", "RUNNING", "OBSERVED", "COMPLETED"] * 2
+
+
+@pytest.mark.parametrize("order,coupon", [("000042", "000009"), ("DEMO-C04", "COUPON-C04")])
+async def test_coupon_short_branch_does_not_delegated_order(order, coupon):
+    gateway = DemoToolGateway()
+    executor, budget, question, context = coupon_setup(gateway, order=order, coupon=coupon)
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        ledger = await gateway.ledger()
+    assert result.status == SOPStatus.RESOLVED and len(ledger) == 1
+    assert [r.task.role_id for r in result.agent_receipts] == ["coupon-status"]
+
+
+async def test_partial_completion_cannot_return_success_or_restart_failed_task():
+    class FailSecond(RecordedAgentModel):
+        async def chat(self, request, budget):
+            if len(self.requests) == 3:
+                raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Second role stopped")
+            return await super().chat(request, budget)
+
+    journal, model, gateway = TaskJournal(), FailSecond(), DemoToolGateway()
+    executor, budget, question, context = coupon_setup(gateway, model=model, journal=journal)
+    async with gateway.open():
+        result = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        replay = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        ledger = await gateway.ledger()
+    assert result.status == replay.status == SOPStatus.FAILED and not result.facts
+    assert [r.status for r in result.agent_receipts] == ["COMPLETED", "FAILED"]
+    assert replay.error.code == ErrorCode.OPERATION_UNKNOWN and len(ledger) == 1
+    assert len(model.requests) == 3
+
+
+async def test_cancel_after_observation_saves_cancelled_receipt_without_returned_evidence():
+    entered = asyncio.Event()
+
+    class WaitReturn(RecordedAgentModel):
+        async def chat(self, request, budget):
+            if request.tools[0].name == "return_evidence":
+                entered.set()
+                await asyncio.Event().wait()
+            return await super().chat(request, budget)
+
+    journal, gateway = TaskJournal(), DemoToolGateway()
+    executor, budget, question, context = coupon_setup(gateway, model=WaitReturn(), journal=journal)
+    async with gateway.open():
+        task = asyncio.create_task(
+            executor.execute(question, budget, context=context, run_id="coupon-run")
+        )
+        await entered.wait()
+        observed = next(iter(journal.rows.values()))
+        assert observed.state == "OBSERVED" and observed.observation.status == "SUCCEEDED"
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        row = next(iter(journal.rows.values()))
+        assert row.state == "CANCELLED" and row.observation == observed.observation
+        assert not row.receipt.evidence_ids
+        retry = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        assert retry.error.code == ErrorCode.OPERATION_UNKNOWN
+        assert len(await gateway.ledger()) == 1
+
+
+async def test_nested_attempt_cap_prevents_model_repair_from_bypassing_task_budget():
+    class SpendUntilStopped(RecordedAgentModel):
+        async def chat(self, request, budget):
+            for _ in range(4):
+                budget.claim_attempt(retry=False)
+            return await super().chat(request, budget)
+
+    gateway = DemoToolGateway()
+    policy = load_agent_policy().model_copy(update={"max_task_attempts": 2})
+    executor, budget, question, context = coupon_setup(
+        gateway, model=SpendUntilStopped(), policy=policy
+    )
+    result = await executor.execute(question, budget, context=context, run_id="coupon-run")
+    assert result.error.code == ErrorCode.BUDGET_EXHAUSTED and budget.attempts_used == 2
+    budget.claim_attempt(retry=False)
+    assert budget.attempts_used == 3 and budget.tool_steps_used == 0
+
+
+async def test_task_timeout_stays_unknown_and_no_next_role():
+    class Wait(RecordedAgentModel):
+        async def chat(self, request, budget):
+            await asyncio.Event().wait()
+
+    gateway, journal = DemoToolGateway(), TaskJournal()
+    policy = load_agent_policy().model_copy(update={"task_seconds": 0.02})
+    executor, budget, question, context = coupon_setup(
+        gateway, model=Wait(), journal=journal, policy=policy
+    )
+    result = await executor.execute(question, budget, context=context, run_id="coupon-run")
+    assert result.status == SOPStatus.FAILED and result.agent_receipts[0].status == "UNKNOWN"
+    assert len(journal.rows) == 1 and budget.tool_steps_used == 0
+
+
+async def test_cancel_while_terminal_writer_commits_does_not_downgrade_completed():
+    """短保存Task拥有提交，父取消等待其退出；已经完成的事实不能改写为取消。"""
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    class GatedJournal(TaskJournal):
+        async def write(self, record):
+            if record.state == "COMPLETED":
+                entered.set()
+                await release.wait()
+            await super().write(record)
+
+    journal, gateway = GatedJournal(), DemoToolGateway()
+    executor, budget, question, context = coupon_setup(
+        gateway, journal=journal, order="000042", coupon="000009"
+    )
+    async with gateway.open():
+        owned = asyncio.create_task(
+            executor.execute(question, budget, context=context, run_id="coupon-run")
+        )
+        await entered.wait()
+        owned.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await owned
+    row = next(iter(journal.rows.values()))
+    assert row.state == "COMPLETED" and row.receipt.status == "COMPLETED"
+    assert journal.states[-1] == "COMPLETED" and "CANCELLED" not in journal.states
+
+
+async def test_cached_observation_still_revalidates_bound_parameters_without_new_calls():
+    """故障适配器返回同task却串入别单观察，不能因缓存而绕过原事实守卫。"""
+    journal, model, gateway = TaskJournal(), RecordedAgentModel(), DemoToolGateway()
+    executor, budget, question, context = coupon_setup(gateway, journal=journal, model=model)
+    async with gateway.open():
+        original = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        row = next(iter(journal.rows.values()))
+        observation = row.observation.model_copy(
+            update={
+                "facts": tuple(
+                    f.model_copy(update={"value": "foreign-order"}) if f.name == "order_id" else f
+                    for f in row.observation.facts
+                )
+            }
+        )
+        journal.rows[row.task.task_id] = row.model_copy(
+            update={
+                "observation": observation,
+                "receipt": row.receipt.model_copy(update={"observation": observation}),
+            }
+        )
+        before = budget.usage()
+        failed = await executor.execute(question, budget, context=context, run_id="coupon-run")
+        assert len(await gateway.ledger()) == 2
+    assert failed.status == SOPStatus.FAILED and not failed.facts
+    assert failed.error.code == ErrorCode.MODEL_OUTPUT_INVALID
+    assert failed.tool_call_ids == original.tool_call_ids[:1]
+    assert budget.usage() == before and len(model.requests) == 6

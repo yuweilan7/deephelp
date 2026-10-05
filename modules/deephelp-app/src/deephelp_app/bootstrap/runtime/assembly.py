@@ -26,6 +26,7 @@ from deephelp_app.adapters.model_gateway.providers import (
     create_gateway,
 )
 from deephelp_app.adapters.observability.trace import TraceSink
+from deephelp_app.adapters.persistence.agent_tasks import PostgresAgentTasks
 from deephelp_app.adapters.persistence.cases import PostgresCaseRepository
 from deephelp_app.adapters.retrieval.milvus_dense import MilvusDenseStore, create_client
 from deephelp_app.adapters.retrieval.milvus_hybrid import MilvusHybridStore
@@ -336,6 +337,7 @@ class LiveAssembly:
                     history=self.sop_snapshots,
                     evidence_version=tools.evidence_version,
                     agent_policy=self.agent_policy,
+                    agent_journal=PostgresAgentTasks(ledger.pool),
                 ),
                 trace,
                 versions,

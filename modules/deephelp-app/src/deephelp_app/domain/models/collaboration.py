@@ -94,3 +94,46 @@ class AgentReceipt(DTO):
         elif self.evidence_ids:
             raise ValueError("Incomplete task cannot claim returned evidence")
         return self
+
+
+class AgentTaskRecord(DTO):
+    """原run下的持久任务进度；claim_token仅供短事务CAS，不是新授权。"""
+
+    task: AgentTask
+    claim_token: Identifier
+    state: Literal["RUNNING", "OBSERVED", "COMPLETED", "FAILED", "REFUSED", "CANCELLED", "UNKNOWN"]
+    phase: Literal["delegate", "select_tool", "tool", "return_evidence", "closed"]
+    decisions: tuple[AgentDecision, ...] = ()
+    observation: ToolResult | None = None
+    receipt: AgentReceipt | None = None
+    updated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def progress(self) -> AgentTaskRecord:
+        phases = ("delegate", "select_tool", "return_evidence")
+        if (
+            tuple(d.phase for d in self.decisions) != phases[: len(self.decisions)]
+            or len(self.decisions) > 3
+        ):
+            raise ValueError("Task decisions must preserve their ordered prefix")
+        if (self.state in {"RUNNING", "OBSERVED"}) != (self.phase != "closed"):
+            raise ValueError("Terminal state and phase must close together")
+        if self.observation and (
+            self.observation.run_id != self.task.parent_run_id
+            or self.observation.tool_name not in self.task.allowed_tools
+        ):
+            raise ValueError("Task observation belongs to another delegation")
+        if self.state == "OBSERVED" and (
+            not self.observation or self.observation.status != ToolStatus.SUCCEEDED
+        ):
+            raise ValueError("Observed task requires a successful verified observation")
+        if self.receipt and (
+            self.receipt.task != self.task
+            or self.receipt.status.value != self.state
+            or self.receipt.observation != self.observation
+            or self.receipt.decisions != self.decisions
+        ):
+            raise ValueError("Durable receipt differs from its progress")
+        if self.state not in {"RUNNING", "OBSERVED"} and not self.receipt:
+            raise ValueError("Closed task requires its receipt")
+        return self

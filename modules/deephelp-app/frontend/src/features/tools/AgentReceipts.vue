@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import type { AgentReceipt } from "../../api/types";
+import type { AgentReceipt, AgentTaskRecord } from "../../api/types";
 import RawDetails from "../../components/RawDetails.vue";
-defineProps<{ receipts?: AgentReceipt[] | null }>();
+defineProps<{
+  receipts?: AgentReceipt[] | null;
+  records?: AgentTaskRecord[] | null;
+  source?: string;
+}>();
 </script>
 <template>
   <section>
@@ -46,6 +50,30 @@ defineProps<{ receipts?: AgentReceipt[] | null }>();
       </p>
       <RawDetails title="原任务、槽位来源、版本和回执" :value="r" />
     </article>
+    <h4 v-if="records?.length">原账本的子任务进度</h4>
+    <article
+      v-for="r in records || []"
+      :key="r.task.task_id"
+      class="route-result"
+    >
+      <b>{{ r.task.role_id }} · {{ r.state }} · {{ r.phase }}</b>
+      <p>
+        父 run {{ r.task.parent_run_id }} · 更新 {{ r.updated_at }} · 来源
+        {{ source }}
+      </p>
+      <p>
+        实际工具 call {{ r.observation?.call_id ?? "尚无已确认观察" }} ·
+        已保存决策 {{ r.decisions.length }}
+      </p>
+      <p>
+        COMPLETED 可读取原回执。RUNNING / OBSERVED / UNKNOWN
+        保持待核对；取消不重发工具，部分完成不代表整次成功。
+      </p>
+      <RawDetails title="原任务的持久进度" :value="r" />
+    </article>
+    <p v-if="source === 'unavailable'">
+      任务账本暂不可读，状态保持未知；刷新只读，不恢复调用。
+    </p>
     <p>
       失败或取消不等于所有调用都未发送；用原 call
       和账本核对。没有回执时保持未知，浏览不恢复旧任务或批准写入。

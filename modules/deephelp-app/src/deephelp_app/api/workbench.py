@@ -193,7 +193,23 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
             or (row.response is not None and snapshot.trace_id != row.response.trace_id)
         ):
             snapshot = None
-        return no_store(explain_run(row, snapshot, dropped=getattr(sink, "dropped", 0)))
+        explained = explain_run(row, snapshot, dropped=getattr(sink, "dropped", 0))
+        # 原归属检查已通过；任务进度来自业务账本，即使终态回执/可选诊断尚无也可读。
+        service = request.app.state.resources.conversation
+        journal = getattr(getattr(service, "sop", None), "agent_journal", None)
+        explained["agent_tasks"] = None
+        explained["agent_tasks_source"] = "unconfigured"
+        if journal is not None:
+            try:
+                records = await journal.records(identity, session_id, run_id)
+                explained["agent_tasks"] = [
+                    r.model_dump(mode="json", exclude={"claim_token"}) for r in records
+                ]
+                explained["agent_tasks_source"] = "dh_m40_agent_tasks"
+            except AppError:
+                explained["gaps"].append("agent_task_journal_unavailable")
+                explained["agent_tasks_source"] = "unavailable"
+        return no_store(explained)
 
     @router.get("/history/sessions/{session_id}/messages")
     async def messages(

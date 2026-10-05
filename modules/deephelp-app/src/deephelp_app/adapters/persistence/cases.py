@@ -28,6 +28,9 @@ class PostgresCaseRepository(PostgresLedger):
 
     async def migrate(self) -> None:
         await super().migrate()
+        from deephelp_app.adapters.persistence.agent_tasks import PostgresAgentTasks
+
+        await PostgresAgentTasks(self.pool).migrate()
         sql = (
             files("deephelp_app")
             .joinpath("resources/migrations/010_memory.sql")

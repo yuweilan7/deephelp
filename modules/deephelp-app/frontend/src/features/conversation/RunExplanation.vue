@@ -147,7 +147,11 @@ watch(
       阶段未记录；没有用预设动画补全路径。
     </p>
     <h3>哪些内容可以确定</h3>
-    <AgentReceipts :receipts="read.data.value.agent_receipts" />
+    <AgentReceipts
+      :receipts="read.data.value.agent_receipts"
+      :records="read.data.value.agent_tasks"
+      :source="read.data.value.agent_tasks_source"
+    />
     <p>
       模型动作是建议，工具结果是下游记录；代码核验后才进入原
       receipt。下方不可变证据可继续读回。

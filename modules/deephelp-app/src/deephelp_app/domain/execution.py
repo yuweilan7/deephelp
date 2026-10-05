@@ -7,9 +7,10 @@ AsyncCalls拥有并发槽和子调用超时，排队也消耗原请求时限；�
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 import httpx
@@ -39,6 +40,23 @@ class ExecutionBudget:
     cost_upper_bound: Decimal = Decimal("0")
     uncertain_attempts: int = 0
     on_change: Callable[[], None] | None = None
+    _attempt_caps: list[int] = field(default_factory=list, repr=False)
+
+    @contextmanager
+    def limit_attempts(self, limit: int) -> Iterator[None]:
+        """当前顺序子任务只收窄共享尝试额度，退出移除边界，不赠送或结算额度。
+
+        不创建第二份预算；claim_attempt在原子检查处同时核对本请求和所有嵌套上限。
+        拥有者必须顺序等待子任务，不能在此范围并发启动不属于它的模型调用。
+        """
+        if type(limit) is not int or limit < 1:
+            raise ValueError("Attempt scope limit must be positive")
+        cap = self.attempts_used + limit
+        self._attempt_caps.append(cap)
+        try:
+            yield
+        finally:
+            self._attempt_caps.pop()
 
     @classmethod
     def start(
@@ -84,6 +102,10 @@ class ExecutionBudget:
             raise ValueError("Invalid attempt reservation")
         if self.remaining_attempts < attempts or (retry and self.retry_remaining <= 0):
             raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Request call budget exhausted", 503)
+        if any(self.attempts_used + attempts > cap for cap in self._attempt_caps):
+            raise AppError(
+                ErrorCode.BUDGET_EXHAUSTED, "Delegated task attempt limit exhausted", 503
+            )
         if tokens < 0 or not cost.is_finite() or cost < 0:
             raise ValueError("Invalid model reservation")
         if (
