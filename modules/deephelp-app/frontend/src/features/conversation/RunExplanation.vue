@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { watch } from "vue";
+import { computed, watch } from "vue";
+import type { RunResponse } from "../../api/types";
 import { workspace } from "../../composables/workspace";
 import { useRead } from "../../composables/requests";
 import { explanationPath, type Explanation } from "../../api/explanation";
@@ -8,12 +9,28 @@ import StateNotice from "../../components/StateNotice.vue";
 import RawDetails from "../../components/RawDetails.vue";
 import MechanismGuide from "../../components/MechanismGuide.vue";
 const read = useRead<Explanation>();
+const props = defineProps<{
+  target?: { run_id: string; session_id: string };
+  returned?: RunResponse | null;
+}>();
+const target = computed(
+  () =>
+    props.target ??
+    (workspace.selected?.response.run_id
+      ? {
+          run_id: workspace.selected.response.run_id,
+          session_id: workspace.selected.session_id,
+        }
+      : null),
+);
+const returned = computed(() =>
+  props.target ? (props.returned ?? null) : workspace.selected?.response,
+);
 watch(
-  () => workspace.selected,
+  target,
   (s) => {
     read.clear();
-    if (s?.response.run_id)
-      void read.load(explanationPath(s.response.run_id, s.session_id));
+    if (s?.run_id) void read.load(explanationPath(s.run_id, s.session_id));
   },
   { immediate: true },
 );
@@ -25,8 +42,23 @@ watch(
     <h3>这次发生了什么</h3>
     <p class="user-text">{{ read.data.value.input.raw_text }}</p>
     <p>{{ read.data.value.summary }}</p>
+    <p v-if="read.data.value.receipt?.missing_slots?.length">
+      缺少必要资料：{{
+        read.data.value.receipt.missing_slots.map(factLabel).join("、")
+      }}；只有原补充绑定校验通过后才继续。
+    </p>
+    <p v-if="read.data.value.receipt?.error">
+      原错误 {{ read.data.value.receipt.error.code }} ·
+      {{ read.data.value.receipt.error.message }}
+    </p>
     <p>
-      PG 原终态 {{ statusLabel(read.data.value.status) }} · 当前问题版本
+      允许的下一步（原next_action）：{{
+        read.data.value.receipt?.next_action ??
+        "没有终态动作记录，先核对原状态"
+      }}。页面不会自动执行它。
+    </p>
+    <p>
+      PG 原状态 {{ statusLabel(read.data.value.status) }} · 当前问题版本
       {{ read.data.value.question_now.version }} · 原运行问题版本
       {{ read.data.value.question_at_run?.version ?? "未知" }}
     </p>
@@ -36,13 +68,13 @@ watch(
       {{
         read.data.value.receipt?.call_counts.tool_calls ?? "未知"
       }}；所选返回模型
-      {{ workspace.selected?.response.call_counts.model_calls ?? "未知" }} /
-      工具 {{ workspace.selected?.response.call_counts.tool_calls ?? "未知" }}。
+      {{ returned?.call_counts.model_calls ?? "无本次执行返回" }} / 工具
+      {{ returned?.call_counts.tool_calls ?? "无本次执行返回" }}。
     </p>
-    <p v-if="workspace.selected?.response.replayed">
+    <p v-if="returned?.replayed">
       这次读取的是原 receipt。原执行 trace
       {{ read.data.value.trace_id }}；本次重投 trace
-      {{ workspace.selected.response.trace_id }}。重投没有重新执行原阶段。
+      {{ returned.trace_id }}。重投没有重新执行原阶段。
     </p>
     <h3>采用了哪些资料</h3>
     <p v-if="!read.data.value.entities">

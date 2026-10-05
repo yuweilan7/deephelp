@@ -23,6 +23,8 @@ export function statusLabel(value: string): string {
         CANCELLED: "已取消",
         INTERRUPTED: "已中断",
         FAILED: "失败",
+        UNKNOWN: "效果未知，先对账",
+        WAITING_APPROVAL: "等待明确审批",
         SUCCEEDED: "成功",
         PENDING: "未审批",
         APPROVED: "已批准",

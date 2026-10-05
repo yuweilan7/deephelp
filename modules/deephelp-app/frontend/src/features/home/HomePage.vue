@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { workspace } from "../../composables/workspace";
+import { scenarios } from "../../content/scenarios";
 </script>
 <template>
   <div class="home">
@@ -38,6 +39,30 @@ import { workspace } from "../../composables/workspace";
         浏览、刷新历史和阅读教程新增模型调用 0
         次。只有明确执行才进入当前共享预算。
       </p>
+    </section>
+    <section class="card">
+      <h2>沿一条真实run完成学习</h2>
+      <p>
+        每次只选一个场景。先预测，再读自己的原记录，最后运行课程最小实验。进入页面不会执行示例或改变审批。
+      </p>
+      <div class="two-column">
+        <article v-for="s in scenarios" :key="s.name" class="route-result">
+          <h3>{{ s.name }}</h3>
+          <p>输入：{{ s.input }}</p>
+          <p>先读：{{ s.read }}</p>
+          <p>应能解释：{{ s.proof }}</p>
+          <router-link :to="s.page">进入对应任务</router-link> ·
+          <a
+            :href="
+              'https://github.com/yuweilan7/deephelp/blob/main/docs/learning/' +
+              s.chapter
+            "
+            target="_blank"
+            rel="noopener"
+            >课程与练习答案</a
+          >
+        </article>
+      </div>
     </section>
   </div>
 </template>

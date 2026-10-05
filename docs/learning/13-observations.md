@@ -1,5 +1,23 @@
 # 13｜调试、Langfuse、指标与原证据
 
+## 沿当前页面解释一次真实运行
+
+工作台首页的八个场景连接同一套课程。先在“对话与全过程”选自己的原消息，打开“事实 / 时间线”：读原诉求→采用的实体及来源消息→事件归属→600级联→实际13段→工具call与原证据。没有回执的取消/未完成消息也可读取，不能推断资源已清理或下游无效果。缺槽先看missing_slots与原next_action，不用重新发一次模型来解释。
+
+到“多轮与记忆”区分原运行问题版本和本次读取的当前PG快照；更正看previous/replacement及来源，归属看原judgement引用、edges原因与候选排除。Redis缺失/TTL和outbox待投影按实显示；浏览不修复投影。到“工具与工作流”读客户端/服务端固定反例，区分未发送与发送后拒绝；审批图定义不是实际执行路径，只有原checkpoint/next/interrupt和效果账本能证明进度。
+
+“观测诊断”先独立读取PG原回执，再读登记的同run平台记录。时序条起点/长度来自当前页同trace实际span，重叠不求和，不推算排队或CPU；缺结束为未知。GENERATION按trace/span去重，统计基于本次有界读回的全部页；只把合法input/output相加，父级汇总和reasoning不重复计入。缺usage、重复ID内容冲突、缺页/截断或平台不可用时总量未知，保留已知小计。原API实际usage、预算预留上界、费用估算各读原字段，不把预留标成实际花费。PID/版本来自当前观察，旧PID/profile未记录保持未知。
+
+| 页面当前数据 | 当前源码 | 最小实验与应看到什么 |
+|---|---|---|
+| 原回执/原问题/当前问题 | [explain_run](../../modules/deephelp-app/src/deephelp_app/application/run_explanation.py) · [PG单run读取](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/history.py) | `course request`：missing→answered→replay→unknown；缺槽0工具，重投0新增调用 |
+| usage分母/时序范围/缺口 | [observation_summary](../../modules/deephelp-app/src/deephelp_app/application/observation_explanation.py) · [平台查询](../../modules/deephelp-app/src/deephelp_app/adapters/observability/langfuse_query.py) | `course observations`：actual未知与2000预留分开、敏感/隐藏字段剔除 |
+| UNKNOWN/恢复前序 | [ApprovalService](../../modules/deephelp-app/src/deephelp_app/application/approval.py) · [课程12](12-approval.md) | 原三种UNKNOWN反例：SUCCESS采用原效果、ABSENT才派发、查询不可用保持UNKNOWN |
+
+上述course命令的根前缀为 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.`。页面“跟着当前记录学”给出完整命令、对应章节和函数；点击课程或源码不会执行实验。固定离线实验帮助理解机制，真实页面仍须读取自己的run，不能拿演示数据替换它。
+
+Java类比：原receipt像已提交事务的不可变结果，诊断像附带的日志/trace；日志轮转或导出超时不能让事务结果变成“没执行”。官方checkpoint更像工作流恢复点，不是业务账本。练习：平台只读到两次attempt中的一次usage，应该显示多少？答案：显示一次的已知小计和一次未知，完整总量未知；不能用父span总量补齐。若两个span都耗时100ms但后一个晚50ms开始，观测包围范围150ms，不能写请求CPU耗时200ms。审批暂停一天后恢复也不能把一天算成执行耗时。
+
 [上一章](12-approval.md) · [课程入口](README.md) · [下一章](14-evaluation-release.md)
 
 ## 业务问题与目标

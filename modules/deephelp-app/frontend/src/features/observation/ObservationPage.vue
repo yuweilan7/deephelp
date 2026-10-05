@@ -30,6 +30,27 @@ async function inspect(cursor = 0) {
 function start(value: string) {
   return new Date(Number(value) / 1_000_000).toLocaleString();
 }
+function spanPosition(span: Observation["spans"][number]) {
+  const rows = observation.data.value?.spans.filter(
+    (s) => s.trace_id === span.trace_id,
+  ) ?? [span];
+  const origin = Math.min(...rows.map((s) => Number(s.start_unix_ns)));
+  const extent = Math.max(
+    ...rows.map(
+      (s) =>
+        (Number(s.start_unix_ns) - origin) / 1_000_000 + (s.duration_ms ?? 0),
+    ),
+    1,
+  );
+  const offset = (Number(span.start_unix_ns) - origin) / 1_000_000;
+  return {
+    offset,
+    style: {
+      marginLeft: `${(offset / extent) * 100}%`,
+      width: `${Math.max(((span.duration_ms ?? 0) / extent) * 100, 0.5)}%`,
+    },
+  };
+}
 </script>
 <template>
   <PageGuide
@@ -123,6 +144,15 @@ function start(value: string) {
           class="route-result"
         >
           <b>{{ s.service }} · {{ s.name }} · {{ s.type }}</b>
+          <div class="span-bar-track">
+            <div class="span-bar" :style="spanPosition(s).style" />
+          </div>
+          <small
+            >本页同trace起点 +{{
+              spanPosition(s).offset.toFixed(2)
+            }}
+            ms；条长只用实际已知耗时，结束未知仅画标记。相同时间区间表示重叠，不表示CPU同时执行。</small
+          >
           <p>
             {{ start(s.start_unix_ns) }} · 耗时
             {{ s.duration_ms?.toFixed(2) ?? "未知" }} ms ·

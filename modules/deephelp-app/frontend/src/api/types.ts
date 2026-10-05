@@ -33,6 +33,9 @@ export interface RunResponse {
   outcome: string;
   reply: string;
   replayed: boolean;
+  missing_slots?: string[];
+  next_action?: string | null;
+  error?: { code: string; message: string } | null;
   facts: { name: string; value: unknown }[];
   evidence_refs: { evidence_id?: string; [key: string]: unknown }[];
   stages: {
