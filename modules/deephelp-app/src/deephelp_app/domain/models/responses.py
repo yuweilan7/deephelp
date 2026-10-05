@@ -14,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+from .collaboration import AgentReceipt
 from .common import (
     CONTRACT_VERSION,
     DTO,
@@ -103,9 +104,20 @@ class ResponseEnvelope(DTO):
     sop_node_path: tuple[Identifier, ...] = ()
     reply_presentation: ReplyPresentation | None = None
     approval_operation_id: Identifier | None = None
+    agent_receipts: tuple[AgentReceipt, ...] = ()
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
+        if len({r.task.task_id for r in self.agent_receipts}) != len(self.agent_receipts):
+            raise ValueError("Agent task receipts must be unique")
+        if any(
+            r.task.parent_run_id != self.run_id
+            or r.task.parent_question_id != self.question_id
+            or r.task.policy_digest != self.versions.collaboration
+            or (r.observation and r.observation.call_id not in self.tool_call_ids)
+            for r in self.agent_receipts
+        ):
+            raise ValueError("Agent receipts must belong to the original run, question and calls")
         if self.next_action == NextAction.REQUEST_APPROVAL and self.sop_plan is None:
             raise ValueError("Approval request requires a bound proposal")
         if self.sop_plan is not None and (

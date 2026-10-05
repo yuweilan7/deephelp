@@ -6,6 +6,8 @@ import { useRead, useAction } from "../../composables/requests";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
 import MechanismGuide from "../../components/MechanismGuide.vue";
+import AgentReceipts from "./AgentReceipts.vue";
+import { workspace } from "../../composables/workspace";
 const status = useRead<LearningStatus>(),
   workflow = useRead<{
     approval_graph?: { edges: { source: string; target: string }[] };
@@ -90,6 +92,7 @@ function resume() {
 <template>
   <section class="card">
     <h2>SOP 与实际审批图</h2>
+    <AgentReceipts :receipts="workspace.selected?.response.agent_receipts" />
     <MechanismGuide mechanism="workflow" />
     <p>
       普通主链复用原 SOP 执行器，审批部分使用 LangGraph。PG

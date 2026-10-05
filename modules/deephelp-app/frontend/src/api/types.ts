@@ -7,6 +7,7 @@ export interface Execution {
   max_tokens: number;
   charged_tokens: number;
   request_timeout_seconds: number;
+  collaboration_available?: boolean;
 }
 export interface Workspace {
   csrf: string;
@@ -21,6 +22,7 @@ export interface MessageInput {
   occurred_at: string;
   question_hint: string | null;
   expected_question_version: number | null;
+  execution_mode?: "single" | "collaboration";
 }
 export interface Question {
   question_id: string;
@@ -28,6 +30,7 @@ export interface Question {
   status: string;
 }
 export interface RunResponse {
+  agent_receipts?: AgentReceipt[];
   run_id: string | null;
   trace_id: string;
   outcome: string;
@@ -53,6 +56,35 @@ export interface RunResponse {
   };
   budget_used: unknown;
   versions: unknown;
+}
+export interface AgentReceipt {
+  task: {
+    task_id: string;
+    parent_run_id: string;
+    parent_question_id: string;
+    question_version: number;
+    coordinator: string;
+    role_id: string;
+    role_version: string;
+    policy_digest: string;
+    node_id: string;
+    goal: string;
+    slots: unknown[];
+    allowed_tools: string[];
+    budget_ref: string;
+  };
+  status: string;
+  evidence_ids: string[];
+  decisions: {
+    phase: string;
+    model: string;
+    call_id: string;
+    usage: unknown;
+  }[];
+  observation: { call_id: string | null; status: string } | null;
+  started_at: string;
+  finished_at: string;
+  error: { code: string; message: string } | null;
 }
 export interface HistoryMessage {
   input: MessageInput;

@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from .async_flow import awaitables_demo, coordination_demo
 from .basics import syntax_demo, types_demo
 from .cancellation import cancellation_demo
+from .collaboration import collaboration_demo
 from .evidence import evaluation_demo, observations_demo
 from .offline import offline_only
 from .request import memory_demo, request_demo
@@ -26,6 +27,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "memory": memory_demo,
     "observations": observations_demo,
     "evaluation": evaluation_demo,
+    "collaboration": collaboration_demo,
 }
 
 

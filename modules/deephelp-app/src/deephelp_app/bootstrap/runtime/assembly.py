@@ -33,6 +33,7 @@ from deephelp_app.api.app import create_app
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.cascade import CascadePolicy, StructuredFallback
+from deephelp_app.application.collaboration import load_agent_policy
 from deephelp_app.application.conversation.orchestrator import Conversation
 from deephelp_app.application.conversation.tracking import (
     CountedModel,
@@ -124,6 +125,7 @@ class LiveAssembly:
                 "Publish a SOP registry before explicitly enabling its directory"
             )
         self.sop_registry = self.sop_snapshots[0] if self.sop_snapshots else bundled_registry()
+        self.agent_policy = load_agent_policy()
         if release_manifest:
             from deephelp_app.adapters.releases.release_assets import verify_release
             from deephelp_app.application.sop_governance import SOPRegistry
@@ -314,6 +316,7 @@ class LiveAssembly:
                 fasttext_policy=classifier.manifest.policy_version if classifier else None,
                 release_manifest=release_identity,
                 code_commit=self.release_manifest.code_commit if self.release_manifest else None,
+                collaboration=self.agent_policy.digest,
             )
             yield Conversation(
                 ledger,
@@ -332,6 +335,7 @@ class LiveAssembly:
                     registry=self.sop_registry,
                     history=self.sop_snapshots,
                     evidence_version=tools.evidence_version,
+                    agent_policy=self.agent_policy,
                 ),
                 trace,
                 versions,
@@ -387,6 +391,7 @@ def live_app(
                 "request_timeout_seconds": 90,
                 "expected_calls_per_message": "0–8（含Embedding，复杂多轮依原预算）",
                 "business_maintenance": bool(getattr(assembly, "business_mcp", None)),
+                "collaboration_available": bool(getattr(assembly, "agent_policy", None)),
             },
         )
     )

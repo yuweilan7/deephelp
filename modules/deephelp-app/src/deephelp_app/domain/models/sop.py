@@ -14,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+from .collaboration import AgentReceipt
 from .common import (
     DTO,
     ErrorDetail,
@@ -73,6 +74,7 @@ class SOPResult(DTO):
     error: ErrorDetail | None = None
     plan: SOPPlan | None = None
     node_path: tuple[Identifier, ...] = ()
+    agent_receipts: tuple[AgentReceipt, ...] = ()
 
     @model_validator(mode="after")
     def sop_closeout(self) -> SOPResult:

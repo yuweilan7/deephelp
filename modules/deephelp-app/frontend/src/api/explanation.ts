@@ -1,4 +1,9 @@
-import type { MessageInput, Question, RunResponse } from "./types";
+import type {
+  MessageInput,
+  Question,
+  RunResponse,
+  AgentReceipt,
+} from "./types";
 export interface EntityObservation {
   name: string;
   value: string;
@@ -9,6 +14,7 @@ export interface EntityObservation {
   source: { message_id: string; excerpt: string };
 }
 export interface Explanation {
+  agent_receipts: AgentReceipt[] | null;
   schema_version: string;
   run_id: string;
   trace_id: string | null;

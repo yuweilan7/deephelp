@@ -30,6 +30,18 @@ from .business import (
 from .business import (
     BusinessUpdate as BusinessUpdate,
 )
+from .collaboration import (
+    AgentDecision as AgentDecision,
+)
+from .collaboration import (
+    AgentReceipt as AgentReceipt,
+)
+from .collaboration import (
+    AgentTask as AgentTask,
+)
+from .collaboration import (
+    AgentTaskStatus as AgentTaskStatus,
+)
 from .common import (
     CONTRACT_VERSION as CONTRACT_VERSION,
 )
