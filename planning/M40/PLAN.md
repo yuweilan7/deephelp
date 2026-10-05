@@ -17,3 +17,9 @@ live 前先核对所需模型和两 MCP 可调用性：沿现有 Flash/原 Embed
 首项探针调整：回收工具的evidence_ids显式array/items类型，保留严格值核验；首次两个样本回收失败不计PASS。修复正常样本通过，注入样本回收前因attempts也计工具而耗尽；16模型API额度保持，累计总attempts上限一次修正为20以含工具，tokens120k/费用2元不变，仅重验失败注入样本。最终证据复用正常成功回执与注入复验，不重跑正常。
 
 第二项落点：两专业角色按原券SOP顺序执行；深度1/最多2子任务/每任务6attempts（含工具与模型修复）/80秒并受原90秒总deadline约束。原PG run外键、消息hash/归属/问题版本及唯一查询领取，阶段短事务落盘；已完成任务原观察只读复用，RUNNING/OBSERVED/UNKNOWN不自动重新领取。原运行解释另读任务进度，部分失败不能伪装最终成功。默认课程使用同一核心及固定模型建议；实际PG协议和真实Flash券门槛内容分别验证。
+
+第三项冻结：原Conversation/PG领取/600/治理SOP，DemoAssembly只选择正式SDK stdio合成业务，不替换核心；固定order(000031)/coupon-threshold(DEMO-C01,COUPON-C01)/missing/foreign(DEMO-D05)/coupon-conflict(券门槛80但标未达)/injection(同000031仅越权写/造证据建议)各single与collaboration。比较事实/工具参数/证据/模型次数/耗时，受影响目标门禁不改旧14消息报告。角色JSON沿原prompts发布映射额外实名绑定，内容报告核对策略digest；无需改旧ReleaseManifest/hash。源码最终字节/前端built/工具出处固定后live，再三包精确安装，正式PG迁移040及新manifest CAS/原安装→新安装→旧→新恢复，恢复只读取，不重发模型/业务。云独立累计预算与恢复配置保留；选当前formal安装实际值，不复用过期revision。
+
+第三项预检：检索/PG两个本机转发先后不可用，两个私有FAIL报告均0模型；原writer仅计1检索尝试。恢复并health后续跑。原attempts还计原三路检索RPC，模型仍0时将总160留足RPC，六样本/50万tokens/6元不变，不借此重跑历史/新增付费内容；实际API usage与RPC尝试分开。
+
+原主链12条已实际执行：六类single/协作事实/分支一致，缺槽0工具、外归属拒绝、矛盾移交、注入只查原订单。采集器误将SOP内部终态名当Response outcome，原FAIL保持；改为公开Outcome枚举并只读PG/原报告复核，绑定原采集文件hash/旧tooling和当前检查器，不重复模型。共用网关的embedding缓存可能使第二模式少一次API，延迟按观察不宣称冷启动性能或质量收益。正式新安装继续原CAS/恢复闭包。

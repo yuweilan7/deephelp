@@ -146,3 +146,13 @@ uv run --locked python -m deephelp_tools.probes.conversation.task_journal_probe 
 ```
 
 该显式入口在原PG创建唯一合成消息，证明两源完成回收/重读0调用、竞争领取/CAS/归属和连接重开后RUNNING禁止重领；不是任意会话恢复。券实际模型内容选择collaboration_probe的`--case coupon-threshold --case coupon-conflict`，共享预算和新报告必填；不自动扩大历史样本。
+
+M40原主链受影响内容对照（六类固定样本，每类single/协作，完整历史评测另行显式启动）：
+
+```powershell
+uv run --locked --env-file .env.local python -m deephelp_tools.probes.conversation.collaboration_delivery --live --assets PRIVATE_PREPARED_ASSETS --providers EXACT_PROVIDERS --auth PRIVATE_AUTH --budget-state EXISTING_CUMULATIVE_BUDGET --output NEW_PRIVATE_REPORT
+```
+
+配置原PG、Redis/Milvus连接与所需endpoint，先用真实协议确认依赖；只有端口可连不足。比对实际事实/分支/原13段/600、权限与证据，重投/历史0调用；共用网关可能命中embedding缓存，耗时按观察解释，不宣称质量或冷启动收益。角色指令/策略/许可JSON沿原精确发布绑定。
+
+检查器与原响应Outcome契约的等价修正可用同入口`--review-report ORIGINAL_REPORT --output NEW_REVIEW_REPORT`只读复核原PG关键回执字段；原采集报告及hash保留，新增模型/工具0。runtime/资产/providers/策略/样本必须相同且齐全，不允许用缺样本或改业务预期换PASS；新检查器tooling摘要及原采集器摘要分别绑定。

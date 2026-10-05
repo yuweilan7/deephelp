@@ -136,6 +136,7 @@ async def validate(
         providers_digest=file_digest(providers),
         judge_providers_digest=file_digest(runtime.judge_providers),
         sop_snapshot=runtime.sop_registry.snapshot_hash,
+        collaboration_policy_digest=runtime.agent_policy.digest,
         code_digest=code["package_digest"],
         code_integrity_scope=code["integrity_scope"],
         tooling_digest=code["tooling_digest"],
