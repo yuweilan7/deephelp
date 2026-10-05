@@ -33,7 +33,13 @@ build-backend = "hatchling.build"
 packages = ["src/deephelp_app"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"frontend" = "deephelp_app/frontend"
+"frontend/built" = "deephelp_app/frontend"
 
 [tool.hatch.build.targets.sdist.force-include]
-"frontend" = "frontend"
+"frontend/built" = "frontend/built"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "README.md", "pyproject.toml", "frontend/src", "frontend/tests", "frontend/public", "frontend/*.json", "frontend/*.ts", "frontend/index.html"]
+
+[tool.hatch.build]
+exclude = ["frontend/node_modules", "frontend/.vite"]

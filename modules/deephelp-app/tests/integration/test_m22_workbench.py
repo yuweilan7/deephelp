@@ -1,4 +1,5 @@
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -178,17 +179,21 @@ async def test_static_assets_and_frontend_release_binding(tmp_path):
             for word in ("login-form", "login-panel", 'type="password"', 'id="logout"')
         )
         assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
-        script = await api.get("/workbench.js")
-        assert "textContent" in script.text and "innerHTML" not in script.text
-        assert "localStorage" not in script.text and "sessionStorage" not in script.text
-        assert "/auth/login" not in script.text and "/auth/logout" not in script.text
-        assert TOKEN not in script.text and "Authorization" not in script.text
-        assert (await api.get("/workbench.css")).status_code == 200
+        assets = re.findall(r'(?:src|href)="(/assets/[^\"]+)"', page.text)
+        assert assets and any(path.endswith(".js") for path in assets)
+        for path in assets:
+            response = await api.get(path)
+            assert response.status_code == 200
+            assert TOKEN not in response.text
+            assert response.headers["x-content-type-options"] == "nosniff"
+        assert (await api.get("/assets/missing.js")).status_code == 404
+        assert (await api.get("/assets/%2e%2e/%2e%2e/package.json")).status_code == 404
+        assert (await api.get("/src/main.ts")).status_code == 404
         assert (await api.get("/debug")).status_code == 200
     hashes = provenance()["artifact_hashes"]
-    assert all(
-        "frontend/" + name in hashes for name in ("index.html", "workbench.js", "workbench.css")
-    )
+    assert "frontend/index.html" in hashes and "frontend/build-manifest.json" in hashes
+    assert all("frontend" + name in hashes for name in assets)
+    assert not any("node_modules" in path or path.endswith(".ts") for path in hashes)
 
 
 class Cursor:

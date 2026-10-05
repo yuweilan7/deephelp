@@ -41,7 +41,8 @@
 | M34 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M34.md) | 固定原个人owner/自动HttpOnly会话/CSRF、删除登录退出；新精确发布/云安装、浏览器维护→补槽→事实/同run/重投、刷新/重启、CAS/外身份/原审批归属及旧版→新版恢复通过；其他学习体验模块仍待实施 |
 | M32 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[交接](../handoffs/M32.md) | 唯一类型/会话/归属及适配器/装配/工具/服务归组；52测试文件按职责移动、独立断言保留；62无消费者过程文件已删除，源码导航可用；模型0次，云安装保持M34 |
 | M33 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[课程](learning/README.md) · [交接](../handoffs/M33.md) | 完整14章Java课程、11个安装可运行离线topic、原图UNKNOWN/反馈/发布实验及关键中文注释；屏障/取消/线程/子进程/共享候选/交错/证据门禁通过；模型0次，云保持M34，不代替用户学习或真实质量 |
-| M35/M36 | SPEC_AND_PLAN_DELIVERED；[规格/PLAN入口](ROADMAP.md#可读性与学习体验m32m36待实施) | Vue前端、机制/观测学习仍为规格与PLAN |
+| M35 | PARTIALLY_IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M35.md) | Vue组件/对话历史事实、同源wheel与原云receipt重投已验；完整功能迁移/新云安装待第二项 |
+| M36 | SPEC_AND_PLAN_DELIVERED；[规格/PLAN入口](ROADMAP.md#可读性与学习体验m32m36待实施) | 机制/观测学习仍为规格与PLAN |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05通用Chat/归属判断切qwen3.7-flash，三项接口及11会话14消息内容通过；云PG订单/同run Langfuse/零调用重放通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 现代路线实施与规划
