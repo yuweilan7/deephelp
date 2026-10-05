@@ -6,17 +6,17 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import VerifiedIdentity
-from deephelp_tools.learning.workbench_evaluation import (
+from deephelp_tools.learning.workbench.evaluation import (
     EvaluationCatalog,
     evaluation_router,
     report_view,
 )
-from deephelp_tools.learning.workbench_jobs import LearningJobs
+from deephelp_tools.learning.workbench.jobs import LearningJobs
 
 pytestmark = pytest.mark.integration
 
@@ -217,7 +217,7 @@ async def test_catalog_owner_all_routes_and_no_browser_paths(tmp_path, monkeypat
 
 
 async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, monkeypatch):
-    import deephelp_tools.learning.workbench_evaluation as module
+    import deephelp_tools.learning.workbench.evaluation as module
     from deephelp_app.domain.errors import ConfigurationError
     from deephelp_app.domain.execution import ExecutionBudget
 
@@ -358,7 +358,7 @@ async def test_platform_worker_cancel_closes_child_before_partial_state(tmp_path
     child.wait, child.kill = wait, kill
 
     async def spawn(*args, **kwargs):
-        assert args[1:4] == ("-m", "deephelp_tools.evaluation.langfuse_cli", "--live")
+        assert args[1:4] == ("-m", "deephelp_tools.evaluation.platform.langfuse_cli", "--live")
         path = Path(args[args.index("--state") + 1])
         path.parent.mkdir(parents=True)
         await asyncio.to_thread(
@@ -396,11 +396,14 @@ async def test_platform_worker_cancel_closes_child_before_partial_state(tmp_path
 async def test_platform_annotation_still_requires_confirmation_label_isolation_and_cas(
     tmp_path, monkeypatch
 ):
-    import deephelp_tools.learning.workbench_evaluation as module
+    import deephelp_tools.learning.workbench.evaluation as module
     from deephelp_app.domain.errors import ConfigurationError
     from deephelp_app.domain.feedback import FeedbackCandidate
-    from deephelp_tools.evaluation.flywheel import reviewed
-    from deephelp_tools.evaluation.langfuse_prompt_review import SCORE_NAME, candidate_binding
+    from deephelp_tools.evaluation.feedback.flywheel import reviewed
+    from deephelp_tools.evaluation.feedback.langfuse_prompt_review import (
+        SCORE_NAME,
+        candidate_binding,
+    )
 
     monkeypatch.chdir(tmp_path)
     key = tmp_path / "key"
@@ -467,7 +470,9 @@ async def test_platform_annotation_still_requires_confirmation_label_isolation_a
 
     monkeypatch.setattr(module, "FeedbackStore", Store)
     monkeypatch.setattr(module, "annotations", read)
-    monkeypatch.setattr("deephelp_app.adapters.native_observation.configuration", lambda p: {})
+    monkeypatch.setattr(
+        "deephelp_app.adapters.observability.native_observation.configuration", lambda p: {}
+    )
     app = create_app(Settings(mode="test"), trace=MemoryTrace())
     app.include_router(
         evaluation_router(

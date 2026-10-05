@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from deephelp_app.adapters.approval_store import ApprovalRepository
+from deephelp_app.adapters.approval.approval_store import ApprovalRepository
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.domain.checks import response_from_sop
 from deephelp_app.domain.execution import ExecutionBudget
@@ -16,8 +16,8 @@ from deephelp_app.domain.models.release import VersionManifest
 from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.scenarios import proposal_registry
-from deephelp_tools.learning.event_replay import envelope
-from deephelp_tools.learning.sop_replay import ReplayModel
+from deephelp_tools.learning.replay.event_replay import envelope
+from deephelp_tools.learning.replay.sop_replay import ReplayModel
 
 
 async def prepare(repo: ApprovalRepository, session: str) -> OperationRecord:

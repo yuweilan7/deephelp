@@ -5,7 +5,7 @@ import httpx
 import pytest
 import uvicorn
 
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 

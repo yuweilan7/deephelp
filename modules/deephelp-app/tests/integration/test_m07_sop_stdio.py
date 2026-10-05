@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.adapters.mcp.business.tool_gateway import process_alive
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
@@ -10,8 +10,8 @@ from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.models.sop import SOPStatus
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
-from deephelp_tools.learning.sop_replay import ReplayModel
-from deephelp_tools.probes.sop_probe import demo, sop_question
+from deephelp_tools.learning.replay.sop_replay import ReplayModel
+from deephelp_tools.probes.conversation.sop_probe import demo, sop_question
 
 pytestmark = pytest.mark.integration
 

@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 import deephelp_app
-from deephelp_app.adapters.tool_gateway import ToolGateway
-from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
+from deephelp_app.adapters.mcp.business.tool_gateway import ToolGateway
+from deephelp_app.bootstrap.runtime.assembly import LiveAssembly
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.resources import asset_path
 
@@ -57,7 +57,7 @@ async def test_unselected_runtime_rejects_before_any_dependency_is_opened(monkey
         side_effect=AssertionError("Database opened before backend selection")
     )
     monkeypatch.setattr(
-        "deephelp_app.bootstrap.mvp_runtime.PostgresCaseRepository.open", open_database
+        "deephelp_app.bootstrap.runtime.assembly.PostgresCaseRepository.open", open_database
     )
     with pytest.raises(ConfigurationError, match="explicit MCP"):
         async with assembly.open(None, None):

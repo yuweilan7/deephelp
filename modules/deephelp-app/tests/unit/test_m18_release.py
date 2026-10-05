@@ -7,23 +7,23 @@ from types import SimpleNamespace
 
 import pytest
 
-from deephelp_app.adapters.ledger import new_receipt
-from deephelp_app.adapters.release_assets import release_hash, verify_release
-from deephelp_app.adapters.release_store import ReleaseMismatch, ReleaseRepository
+from deephelp_app.adapters.persistence.ledger import new_receipt
+from deephelp_app.adapters.releases.release_assets import release_hash, verify_release
+from deephelp_app.adapters.releases.release_store import ReleaseMismatch, ReleaseRepository
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.sop_governance import bundled_registry
 from deephelp_app.domain.errors import ConfigurationError
 from deephelp_app.domain.models.release import ReleaseManifest, VersionManifest
 from deephelp_app.domain.models.responses import ResponseEnvelope
-from deephelp_tools.evaluation.core import file_digest
-from deephelp_tools.evaluation.release_prepare import prepare_manifest
-from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.evaluation.quality.core import file_digest
+from deephelp_tools.evaluation.releases.release_prepare import prepare_manifest
+from deephelp_tools.learning.replay.event_replay import envelope
 
 pytestmark = pytest.mark.unit
 
 
 def test_prepare_requires_source_provenance_even_when_runtime_hash_is_valid(release, monkeypatch):
-    import deephelp_tools.evaluation.release_prepare as preparation
+    import deephelp_tools.evaluation.releases.release_prepare as preparation
 
     monkeypatch.setattr(
         preparation,
@@ -38,8 +38,8 @@ def test_prepare_requires_source_provenance_even_when_runtime_hash_is_valid(rele
 
 @pytest.fixture
 def release(tmp_path, monkeypatch):
-    import deephelp_app.adapters.release_assets as runtime_module
-    import deephelp_tools.evaluation.release_prepare as module
+    import deephelp_app.adapters.releases.release_assets as runtime_module
+    import deephelp_tools.evaluation.releases.release_prepare as module
 
     paths = {
         name: tmp_path / (name + ".json")
@@ -159,8 +159,8 @@ def test_static_valid_sop_cannot_bypass_its_content_regression(release):
 
 
 async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeypatch):
-    import deephelp_app.bootstrap.release_runtime as module
-    from deephelp_app.adapters.tool_gateway import process_alive
+    import deephelp_app.bootstrap.runtime.release_runtime as module
+    from deephelp_app.adapters.mcp.business.tool_gateway import process_alive
     from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 
     owners, gateways, configurations = [], [], []
@@ -199,7 +199,7 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
         "verify_release",
         lambda manifest: dict(dense_pointer="unused", fasttext_pointer="unused", rules="unused"),
     )
-    from deephelp_app.adapters.network_mcp import HTTPMCPConfig
+    from deephelp_app.adapters.mcp.shared.network_mcp import HTTPMCPConfig
 
     business = HTTPMCPConfig(url="http://127.0.0.1:8011/mcp", credentials_path=Path("business"))
     retrieval = HTTPMCPConfig(
@@ -217,7 +217,7 @@ async def test_dynamic_mcp_assembly_is_closed_in_its_owner_task(release, monkeyp
 
 
 async def test_continuation_cannot_accept_a_half_new_release(release, monkeypatch):
-    from deephelp_app.adapters.approval_store import ApprovalRepository
+    from deephelp_app.adapters.approval.approval_store import ApprovalRepository
 
     request = envelope("订单000031优惠未到账", "release-test")
     original = new_receipt(request)

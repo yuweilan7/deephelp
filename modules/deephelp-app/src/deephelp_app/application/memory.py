@@ -5,10 +5,10 @@ from typing import Protocol
 
 from redis.exceptions import RedisError
 
-from deephelp_app.adapters.cases import PostgresCaseRepository
-from deephelp_app.adapters.redis_memory import RedisMemory as RedisMemory
-from deephelp_app.adapters.redis_memory import scope_key as scope_key
-from deephelp_app.adapters.telemetry import observed
+from deephelp_app.adapters.memory_projection.redis_memory import RedisMemory as RedisMemory
+from deephelp_app.adapters.memory_projection.redis_memory import scope_key as scope_key
+from deephelp_app.adapters.observability.telemetry import observed
+from deephelp_app.adapters.persistence.cases import PostgresCaseRepository
 from deephelp_app.domain.cases import CLOSED, summary
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import VerifiedIdentity

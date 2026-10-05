@@ -6,12 +6,12 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from deephelp_app.adapters.asset_integrity import provenance
-from deephelp_app.adapters.history import PostgresHistory
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
+from deephelp_app.adapters.persistence.history import PostgresHistory
+from deephelp_app.adapters.releases.asset_integrity import provenance
 from deephelp_app.api.app import create_app
 from deephelp_app.api.workbench import COOKIE, BrowserAuth, workbench_router
-from deephelp_app.bootstrap.mvp_runtime import LocalAuth
+from deephelp_app.bootstrap.runtime.auth import LocalAuth
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.models.common import RunStatus, VerifiedIdentity
 from deephelp_app.domain.models.conversation import Question, RequestEnvelope

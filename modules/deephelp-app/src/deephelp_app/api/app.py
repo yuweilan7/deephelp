@@ -15,9 +15,21 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from deephelp_app.adapters.langfuse_query import LangfuseRunClient, retired_observation
-from deephelp_app.adapters.telemetry import ObservabilityMiddleware, annotate, environment
-from deephelp_app.adapters.trace import JsonlTrace, TraceEvent, TraceSink, request_context
+from deephelp_app.adapters.observability.langfuse_query import (
+    LangfuseRunClient,
+    retired_observation,
+)
+from deephelp_app.adapters.observability.telemetry import (
+    ObservabilityMiddleware,
+    annotate,
+    environment,
+)
+from deephelp_app.adapters.observability.trace import (
+    JsonlTrace,
+    TraceEvent,
+    TraceSink,
+    request_context,
+)
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.conversation.orchestrator import Conversation
 from deephelp_app.application.debug import DebugView, export_json, project, sanitize, scope_hash

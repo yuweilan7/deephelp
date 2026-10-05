@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from deephelp_app.adapters import postgres_checkpoints as checkpoints
-from deephelp_app.adapters.postgres import PostgresConfig
+from deephelp_app.adapters.approval import postgres_checkpoints as checkpoints
+from deephelp_app.adapters.persistence.postgres import PostgresConfig
 
 
 @pytest.mark.parametrize("memory", [False, True])
@@ -63,8 +63,8 @@ async def test_missing_saver_migrations_close_ledger_before_opening_projections(
 ):
     from contextlib import asynccontextmanager
 
-    from deephelp_app.adapters.approval_store import ApprovalRepository
-    from deephelp_app.bootstrap import mvp_runtime
+    from deephelp_app.adapters.approval.approval_store import ApprovalRepository
+    from deephelp_app.bootstrap.runtime import assembly as mvp_runtime
 
     ledger = object.__new__(ApprovalRepository)
     ledger.aclose = AsyncMock()

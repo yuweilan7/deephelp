@@ -1,8 +1,8 @@
 # M32实施计划
 
-实施基线：2026-10-05，同步main 983ff33；工作区干净。首特性已验收交付，证据见handoffs/M32.md，继续同一主写者实施第2、第3项。当前正式安装/模型见PROJECT_STATE，规划不改变服务/数据/验收状态。
+实施基线：2026-10-05，同步main 983ff33；工作区干净。前两特性已验收交付，证据见handoffs/M32.md，继续同一主写者实施第3项。当前正式安装/模型见PROJECT_STATE，规划不改变服务/数据/验收状态。
 
-**decision=DECOMPOSE；readiness=READY（剩余两特性离线实施）。** [规格](../../docs/MODULES/M32_CODE_ORGANIZATION.md)的三个特性按序由同一主写者交付。目录/类型/CLI依赖已存在；待验证的是迁移等价性、可删对象当前引用及本轮离线基线，不是已验收结论。
+**decision=DECOMPOSE；readiness=READY（最终清理特性离线实施）。** [规格](../../docs/MODULES/M32_CODE_ORGANIZATION.md)的三个特性按序由同一主写者交付。目录/类型/CLI依赖已存在；待验证的是迁移等价性、可删对象当前引用及本轮离线基线，不是已验收结论。
 
 ## 这次做成什么
 
@@ -14,7 +14,6 @@
 
 | 顺序/分支 | 改动及允许路径 | 独立交付条件 |
 |---|---|---|
-| 2 feature/m32-adapters-tooling | app/adapters/bootstrap、tools/src、services/src、包资源/配置及直接tests/运行文档 | 静态/动态import、原CLI和独立安装可用；一命令一实现，无反向tools依赖 |
 | 3 feature/m32-evidence-cleanup | 三包tests、根/包README、docs/learning/README.md；经当前引用核查的精确忽略对象 | 冗余断言有保留映射；实际删除/暂留理由明确，入口/资源/链接无失效 |
 
 根锁只在真实依赖改变且有必要时改，不为目录迁移重建依赖；共享文件只由当前主写者写。每项后更新同一PLAN的剩余步骤，不能停在“盘点完成”。

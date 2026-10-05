@@ -9,8 +9,8 @@ from opentelemetry.sdk.trace.export import SpanExporter
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import Link
 
-from deephelp_app.adapters.mcp_protocol import sign_metadata, verify_metadata
-from deephelp_app.adapters.telemetry import (
+from deephelp_app.adapters.mcp.business.mcp_protocol import sign_metadata, verify_metadata
+from deephelp_app.adapters.observability.telemetry import (
     META_KEY,
     ObservedCursor,
     Telemetry,
@@ -176,7 +176,7 @@ def test_no_ambient_resource_data_or_incoming_sampling_drops(telemetry, monkeypa
 async def test_metrics_have_distinct_outcomes_technical_failures_and_unknown_usage():
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
-    from deephelp_app.adapters.telemetry import stage_event
+    from deephelp_app.adapters.observability.telemetry import stage_event
     from deephelp_app.domain.errors import AppError
     from deephelp_app.domain.models.common import ErrorCode
 

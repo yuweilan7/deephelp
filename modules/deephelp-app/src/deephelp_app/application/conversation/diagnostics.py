@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from deephelp_app.adapters.telemetry import trace_id as otel_trace_id
-from deephelp_app.adapters.trace import TraceEvent
+from deephelp_app.adapters.observability.telemetry import trace_id as otel_trace_id
+from deephelp_app.adapters.observability.trace import TraceEvent
 from deephelp_app.application.debug import sanitize, scope_hash
 from deephelp_app.application.sop_config import SOPDefinition
 from deephelp_app.application.sop_governance import GovernedSOP

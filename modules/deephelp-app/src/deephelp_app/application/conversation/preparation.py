@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from deephelp_app.adapters.ledger import new_receipt
+from deephelp_app.adapters.persistence.ledger import new_receipt
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import (

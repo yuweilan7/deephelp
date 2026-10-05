@@ -66,7 +66,7 @@ def read_prompt(path: Path) -> PromptArtifact:
 
 
 def published_prompt(manifest: ReleaseManifest) -> tuple[Path, PromptArtifact] | None:
-    from deephelp_app.adapters.asset_integrity import file_digest
+    from deephelp_app.adapters.releases.asset_integrity import file_digest
 
     extras = {key for key in manifest.prompts if key.startswith("langfuse:")}
     if not extras:

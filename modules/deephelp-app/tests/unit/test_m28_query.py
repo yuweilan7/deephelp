@@ -5,7 +5,7 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from deephelp_app.adapters.langfuse_query import LangfuseRunClient
+from deephelp_app.adapters.observability.langfuse_query import LangfuseRunClient
 
 
 class Pool:

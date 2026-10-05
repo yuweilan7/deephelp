@@ -6,8 +6,12 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from deephelp_app.adapters.mcp_protocol import tool_schema, validate_arguments, validate_observation
-from deephelp_app.adapters.trace import observe_sop_node
+from deephelp_app.adapters.mcp.business.mcp_protocol import (
+    tool_schema,
+    validate_arguments,
+    validate_observation,
+)
+from deephelp_app.adapters.observability.trace import observe_sop_node
 from deephelp_app.application.sop_config import SOPBranch, SOPDefinition, load_prompt, load_sops
 from deephelp_app.application.sop_governance import GovernedSOP, SOPRegistry
 from deephelp_app.domain.checks import validate_question_access, validate_tool_result

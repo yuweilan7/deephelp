@@ -11,11 +11,11 @@ from uuid import uuid4
 import pytest
 from mcp.types import CallToolResult, TextContent
 
-from deephelp_app.adapters.mcp_protocol import canonical
-from deephelp_app.adapters.network_mcp import HTTPMCPConfig, ServiceCredentials
-from deephelp_app.adapters.providers import ProviderConfig, RerankEndpointConfig
-from deephelp_app.adapters.retrieval_mcp import RemoteRetriever
-from deephelp_app.adapters.retrieval_protocol import RetrievalBinding
+from deephelp_app.adapters.mcp.business.mcp_protocol import canonical
+from deephelp_app.adapters.mcp.retrieval.retrieval_mcp import RemoteRetriever
+from deephelp_app.adapters.mcp.retrieval.retrieval_protocol import RetrievalBinding
+from deephelp_app.adapters.mcp.shared.network_mcp import HTTPMCPConfig, ServiceCredentials
+from deephelp_app.adapters.model_gateway.providers import ProviderConfig, RerankEndpointConfig
 from deephelp_app.application.corpus import read_corpus
 from deephelp_app.application.hybrid import normalized_fusion, rerank_result, result_for
 from deephelp_app.domain.errors import AppError
@@ -37,10 +37,10 @@ from deephelp_app.domain.models.retrieval_protocol import (
     RetrievalQuery,
     RetrievalWire,
 )
-from deephelp_services.retrieval import create_retrieval_app
+from deephelp_services.retrieval.api import create_retrieval_app
 from deephelp_tools.assets import asset_path
-from deephelp_tools.evaluation.mvp_acceptance import api_client
-from deephelp_tools.probes.mcp_smoke import synthetic_request
+from deephelp_tools.evaluation.quality.mvp_acceptance import api_client
+from deephelp_tools.probes.protocol.mcp_smoke import synthetic_request
 
 pytestmark = pytest.mark.integration
 
@@ -255,7 +255,7 @@ async def test_rerank_profile_four_routes_once_or_disabled_and_shared_receipt(
 
 
 def test_rerank_allowance_owns_pairwise_query_input_and_policy_fingerprint(binding):
-    from deephelp_app.adapters.retrieval_protocol import validate_results
+    from deephelp_app.adapters.mcp.retrieval.retrieval_protocol import validate_results
 
     owned = replace(
         binding,

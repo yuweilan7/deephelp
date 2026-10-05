@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from deephelp_app.adapters.mcp_protocol import canonical, registered_tools, tool_schema
+from deephelp_app.adapters.mcp.business.mcp_protocol import canonical, registered_tools, tool_schema
 from deephelp_app.application.sop_config import SOPLimits
 from deephelp_app.domain.models.common import DTO, Identifier, Money
 from deephelp_app.domain.models.entities import EntityName

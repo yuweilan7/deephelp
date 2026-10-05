@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.fasttext_runtime import (
+from deephelp_app.adapters.model_gateway.fasttext_runtime import (
     LABELS,
     FastTextClassifier,
     FastTextFallback,
@@ -24,10 +24,15 @@ from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.intent_decisions import Decision, FallbackResult, FastTextPrediction
 from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.models.retrieval import DenseResult
-from deephelp_tools.evaluation.fasttext_cli import bounded_train
-from deephelp_tools.evaluation.fasttext_training import DATA, TrainingConfig, audit, calibrate
-from deephelp_tools.learning.event_replay import envelope
-from deephelp_tools.learning.mvp_replay import REPLAY_SCOPE
+from deephelp_tools.evaluation.retrieval.fasttext_cli import bounded_train
+from deephelp_tools.evaluation.retrieval.fasttext_training import (
+    DATA,
+    TrainingConfig,
+    audit,
+    calibrate,
+)
+from deephelp_tools.learning.replay.event_replay import envelope
+from deephelp_tools.learning.replay.mvp_replay import REPLAY_SCOPE
 
 pytestmark = pytest.mark.unit
 

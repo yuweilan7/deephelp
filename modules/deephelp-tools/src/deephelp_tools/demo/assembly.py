@@ -6,8 +6,8 @@ from typing import Any
 
 from mcp import StdioServerParameters
 
-from deephelp_app.adapters.tool_gateway import ToolGateway
-from deephelp_app.bootstrap.mvp_runtime import LiveAssembly
+from deephelp_app.adapters.mcp.business.tool_gateway import ToolGateway
+from deephelp_app.bootstrap.runtime.assembly import LiveAssembly
 from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.tool_config import MockConfig
 

@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from deephelp_tools.evaluation.core import DATA, MANIFEST, MODES
-from deephelp_tools.evaluation.evaluation_cli import run
+from deephelp_tools.evaluation.quality.core import DATA, MANIFEST, MODES
+from deephelp_tools.evaluation.quality.evaluation_cli import run
 
 pytestmark = pytest.mark.integration
 
 
 async def test_full_offline_http_stdio_evaluation_and_baseline(tmp_path, monkeypatch):
-    import deephelp_tools.evaluation.evaluation_cli as cli
+    import deephelp_tools.evaluation.quality.evaluation_cli as cli
 
     monkeypatch.setattr(cli, "local_path", lambda value: tmp_path / value)
     monkeypatch.setattr(
@@ -55,7 +55,7 @@ async def test_full_offline_http_stdio_evaluation_and_baseline(tmp_path, monkeyp
 async def test_targeted_offline_mode_runs_only_selected_whole_conversation(
     tmp_path, monkeypatch, modes
 ):
-    import deephelp_tools.evaluation.evaluation_cli as cli
+    import deephelp_tools.evaluation.quality.evaluation_cli as cli
 
     monkeypatch.setattr(cli, "local_path", lambda value: tmp_path / value)
     monkeypatch.setattr(
@@ -97,8 +97,8 @@ async def test_targeted_offline_mode_runs_only_selected_whole_conversation(
 async def test_business_journal_cleanup_keeps_complete_rows_and_failed_evidence(
     tmp_path, monkeypatch, failure
 ):
-    from deephelp_tools.evaluation import evaluation_cli as cli
-    from deephelp_tools.evaluation.core import audit
+    from deephelp_tools.evaluation.quality import evaluation_cli as cli
+    from deephelp_tools.evaluation.quality.core import audit
 
     data = DATA.with_name("m17_scale_cases.json")
     manifest = DATA.with_name("m17_scale_manifest.json")

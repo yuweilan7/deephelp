@@ -14,8 +14,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from deephelp_app.adapters.postgres_checkpoints import PostgresCheckpoints
-from deephelp_tools.evaluation import checkpoint_migration as migration
+from deephelp_app.adapters.approval.postgres_checkpoints import PostgresCheckpoints
+from deephelp_tools.evaluation.migration import checkpoint_migration as migration
 
 
 @pytest.mark.parametrize("reserved_first", [True, False])

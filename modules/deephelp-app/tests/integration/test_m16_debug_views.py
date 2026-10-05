@@ -7,16 +7,16 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from deephelp_app.adapters.trace import JsonlTrace, MemoryTrace
+from deephelp_app.adapters.observability.trace import JsonlTrace, MemoryTrace
 from deephelp_app.api.app import create_app
-from deephelp_app.bootstrap.mvp_runtime import LocalAuth
+from deephelp_app.bootstrap.runtime.auth import LocalAuth
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.models.intent_decisions import IntentDecision
 from deephelp_app.domain.models.retrieval import IntentCandidate
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
-from deephelp_tools.learning.cases_fake import MemoryCaseRepository
-from deephelp_tools.learning.event_replay import ReplayJudge
-from deephelp_tools.learning.mvp_replay import ReplayAssembly
+from deephelp_tools.learning.fakes.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.replay.event_replay import ReplayJudge
+from deephelp_tools.learning.replay.mvp_replay import ReplayAssembly
 
 pytestmark = pytest.mark.integration
 TOKEN = "a" * 32
@@ -99,7 +99,7 @@ async def view(api, run_id, name, session="s", **params):
 async def test_otel_real_stage_context_history_scope_and_zero_new_replay(tmp_path):
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-    from deephelp_app.adapters.telemetry import Telemetry, using
+    from deephelp_app.adapters.observability.telemetry import Telemetry, using
 
     exporter = InMemorySpanExporter()
     runtime = Telemetry("deephelp-app", exporter)
@@ -151,7 +151,7 @@ async def test_otel_real_stage_context_history_scope_and_zero_new_replay(tmp_pat
 async def test_retired_observation_preserves_identity_session_and_pagination_guards(tmp_path):
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-    from deephelp_app.adapters.telemetry import Telemetry, using
+    from deephelp_app.adapters.observability.telemetry import Telemetry, using
 
     queried = []
 

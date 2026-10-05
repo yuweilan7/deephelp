@@ -6,9 +6,9 @@ import asyncio
 from datetime import UTC, datetime
 from typing import cast
 
-from deephelp_app.adapters.ledger import MessageLedger, Receipt
-from deephelp_app.adapters.telemetry import annotate, observed
-from deephelp_app.adapters.trace import TraceEvent, TraceSink, sop_node_observer
+from deephelp_app.adapters.observability.telemetry import annotate, observed
+from deephelp_app.adapters.observability.trace import TraceEvent, TraceSink, sop_node_observer
+from deephelp_app.adapters.persistence.ledger import MessageLedger, Receipt
 from deephelp_app.application.approval import ApprovalService
 from deephelp_app.application.cascade import enhanced_query
 from deephelp_app.application.event_cluster.aggregation import EventAggregationService

@@ -1,0 +1,1058 @@
+"""M15 real PostgreSQL/HTTP/process failure matrix and one real model conversation.
+
+Requires --live. Fixed-action MCP preparations test the recovery protocol, while
+the separately reported HTTP conversation uses the configured real model.
+"""
+
+import argparse
+import asyncio
+import json
+import os
+import socket
+import subprocess
+import sys
+from contextlib import AsyncExitStack
+from datetime import UTC, datetime, timedelta
+from functools import partial
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+import httpx
+
+from deephelp_app.adapters.approval.approval_store import ApprovalRepository
+from deephelp_app.adapters.approval.synthetic_rights import RightsClient
+from deephelp_app.adapters.observability.telemetry import environment, observation
+from deephelp_app.application.approval import ApprovalService
+from deephelp_app.application.dense import atomic_json
+from deephelp_app.application.sop_governance import RegistryStore
+from deephelp_app.bootstrap.local_paths import local_path
+from deephelp_app.bootstrap.runtime.assembly import live_app
+from deephelp_app.bootstrap.runtime.auth import LocalAuth
+from deephelp_app.bootstrap.runtime.budget import BudgetSession
+from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.execution import ExecutionBudget
+from deephelp_app.domain.models.approval import ApprovalCommand, OperationRecord, ResumeCommand
+from deephelp_app.domain.models.common import ApprovalStatus, OperationStatus, Outcome
+from deephelp_app.domain.models.responses import ResponseEnvelope
+from deephelp_tools.demo.approval_prepare import prepare
+from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
+from deephelp_tools.evaluation.quality.mvp_acceptance import api_client
+from deephelp_tools.evaluation.quality.sop_acceptance import proposal_registry
+from deephelp_tools.learning.replay.event_replay import envelope
+from deephelp_tools.probes.protocol.business_probe import Processes, port
+
+SUBPROCESS_FLAGS = 0
+if sys.platform == "win32":
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+
+
+def decision(op: OperationRecord, kind: str = "approve") -> ApprovalCommand:
+    return ApprovalCommand.model_validate(
+        {
+            "session_id": op.session_id,
+            "run_id": op.run_id,
+            "expected_question_version": op.question_version,
+            "parameters_hash": op.plan.parameters_hash,
+            "sop_version": op.plan.sop_version,
+            "snapshot_hash": op.plan.snapshot_hash,
+            "decision": kind,
+        }
+    )
+
+
+def resume_command(op: OperationRecord) -> ResumeCommand:
+    return ResumeCommand(session_id=op.session_id, run_id=op.run_id)
+
+
+async def counts(repo: ApprovalRepository, operation_id: str) -> dict[str, int]:
+    async with repo.pool.acquire() as conn, conn.cursor() as cursor:
+        await cursor.execute(
+            "SELECT COUNT(*) FROM dh_m15_synthetic_effects WHERE operation_id=%s", (operation_id,)
+        )
+        effect_count = int((await cursor.fetchone())[0])
+        await cursor.execute(
+            "SELECT kind,COUNT(*) FROM dh_m15_synthetic_calls WHERE operation_id=%s GROUP BY kind",
+            (operation_id,),
+        )
+        calls = dict(await cursor.fetchall())
+        await conn.rollback()
+    return {
+        "effects": effect_count,
+        "execute_calls": int(calls.get("execute", 0)),
+        "query_calls": int(calls.get("query", 0)),
+    }
+
+
+async def worker(args: argparse.Namespace) -> None:
+    repo = await ApprovalRepository.open(Path.cwd())
+    # A short, real lease expiry keeps the owned crash matrix bounded.
+    repo.lease_seconds = 8
+    try:
+        async with (
+            httpx.AsyncClient(trust_env=False, timeout=15) as client,
+            AsyncExitStack() as approval_stack,
+        ):
+            service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    proposal_registry().snapshot_hash,
+                    fault=lambda stage: os._exit(87) if stage == args.fault else None,
+                )
+            )
+            op = await repo.get(args.operation)
+            budget = ExecutionBudget.start(60, 8, 0)
+            if args.action == "pause":
+                await service.pause(op.plan.operation_id, budget)
+            elif args.action == "approve":
+                await service.decide(op.plan.identity, op.plan.operation_id, decision(op))
+            else:
+                result = await service.resume(
+                    op.plan.identity, op.plan.operation_id, resume_command(op), budget
+                )
+                if result.status in {OperationStatus.SUCCEEDED, OperationStatus.CANCELLED}:
+                    assert not (await service.graph(budget).aget_state(service.config(result))).next
+    finally:
+        await repo.aclose()
+
+
+async def spawn_worker(
+    args: argparse.Namespace, operation: str, action: str, fault: str = ""
+) -> int:
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "deephelp_tools.probes.approval.approval_probe",
+        "worker",
+        "--operation",
+        operation,
+        "--action",
+        action,
+        "--port",
+        str(args.port),
+        "--key",
+        str(args.key),
+        "--fault",
+        fault,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+        creationflags=SUBPROCESS_FLAGS,
+    )
+    try:
+        async with asyncio.timeout(75):
+            _, error = await process.communicate()
+        code = process.returncode
+        assert code is not None
+        if code not in {0, 87}:
+            raise RuntimeError(error.decode(errors="replace")[-3000:])
+        return code
+    finally:
+        if process.returncode is None:
+            process.kill()
+            await process.wait()
+
+
+async def start_rights(args: argparse.Namespace, fault_path: Path) -> asyncio.subprocess.Process:
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "deephelp_tools.demo.synthetic_rights",
+        "--port",
+        str(args.port),
+        "--key",
+        str(args.key),
+        "--fault-path",
+        str(fault_path),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+        creationflags=SUBPROCESS_FLAGS,
+    )
+    try:
+        async with httpx.AsyncClient(trust_env=False, timeout=1) as client:
+            for _ in range(100):
+                if process.returncode is not None:
+                    raise RuntimeError("Owned synthetic rights process exited at startup")
+                try:
+                    if (
+                        await client.get(f"http://127.0.0.1:{args.port}/health")
+                    ).status_code == 200:
+                        return process
+                except httpx.TransportError:
+                    pass
+                await asyncio.sleep(0.1)
+        raise RuntimeError("Synthetic service startup timed out")
+    except BaseException:
+        await stop(process)
+        raise
+
+
+async def stop(process: asyncio.subprocess.Process) -> None:
+    if process.returncode is None:
+        process.terminate()
+    await process.wait()
+
+
+async def real_http(args: argparse.Namespace, report: dict[str, Any]) -> None:
+    gate = BudgetSession(args.budget_state)
+    gate.open()
+    auth = LocalAuth(local_path(args.auth))
+    directory = args.output.parent / (args.output.stem + "-sop")
+    RegistryStore(directory).publish(proposal_registry())
+    collection = "dh_m10_events_m15_" + uuid4().hex[:12]
+    assembly = LiveAssembly(
+        Path.cwd(),
+        Path(args.providers),
+        local_path(args.pointer),
+        sop_directory=directory,
+        event_collection=collection,
+        rights_port=args.port,
+        rights_key=args.key,
+    )
+    app = live_app(assembly, auth, gate, str(args.output.with_suffix(".trace.jsonl")))
+    headers = {"Authorization": "Bearer " + auth.rows[0][0]}
+    try:
+        async with app.router.lifespan_context(app), api_client(app, http=True) as api:
+            request = envelope("订单 DEMO-D01 优惠未到账，请查询", "m15-http-" + uuid4().hex)
+            body = request.model_dump(
+                mode="json",
+                include=set(request.__class__.model_fields)
+                - {"schema_version", "identity", "request_id", "trace_id", "received_at"},
+            )
+            response = await api.post("/converse", json=body, headers=headers)
+            value = ResponseEnvelope.model_validate(response.json())
+            report["real_http"] = {
+                "http_status": response.status_code,
+                "response": value.model_dump(mode="json"),
+            }
+            atomic_json(args.output, report)
+            assert response.status_code == 200 and value.outcome == Outcome.PENDING_APPROVAL
+            service = app.state.resources.conversation.approvals
+            op = await service.repo.get(value.approval_operation_id)
+            path = "/operations/" + op.plan.operation_id
+            checks = report["checks"]
+            initial_counts = await counts(service.repo, op.plan.operation_id)
+            unauthorized = await api.post(
+                path + "/approval", json=decision(op).model_dump(mode="json")
+            )
+            report.setdefault("unauthorized", []).append(
+                {
+                    "case": "http_authentication",
+                    "rejected": unauthorized.status_code == 401,
+                    "before": initial_counts,
+                    "after": await counts(service.repo, op.plan.operation_id),
+                }
+            )
+            checks["approval_authentication"] = unauthorized.status_code == 401
+            tampered = decision(op).model_dump(mode="json") | {"parameters_hash": "tampered"}
+            checks["http_parameter_binding"] = (
+                await api.post(path + "/approval", json=tampered, headers=headers)
+            ).status_code == 409
+            report["unauthorized"].append(
+                {
+                    "case": "http_parameter_binding",
+                    "rejected": checks["http_parameter_binding"],
+                    "before": initial_counts,
+                    "after": await counts(service.repo, op.plan.operation_id),
+                }
+            )
+            # A plain new message is accepted normally and cannot resume the old operation.
+            ordinary = body | {"message_id": uuid4().hex, "raw_text": "好的"}
+            ack = await api.post("/converse", json=ordinary, headers=headers)
+            checks["ordinary_message_does_not_approve"] = (
+                await service.repo.get(op.plan.operation_id)
+            ).approval_status == ApprovalStatus.PENDING and ack.status_code == 200
+            decided = await api.post(
+                path + "/approval", json=decision(op).model_dump(mode="json"), headers=headers
+            )
+            checks["pending_no_effect"] = (await counts(service.repo, op.plan.operation_id))[
+                "effects"
+            ] == 0
+            hinted = ordinary | {
+                "message_id": uuid4().hex,
+                "question_hint": op.plan.question_id,
+                "expected_question_version": op.question_version,
+                "raw_text": "更正为订单 000031",
+            }
+            checks["pending_correction_blocked"] = (
+                await api.post(
+                    "/converse",
+                    json=hinted,
+                    headers=headers,
+                )
+            ).status_code == 409
+            memory = app.state.resources.conversation.memory
+            window = await memory.load(op.plan.identity, op.session_id, gate.request())
+            cache = memory.cache
+            cache_key = cache.key(op.plan.identity, op.session_id, window.generation)
+            await cache.client.delete(cache_key, cache_key + ":keywords")
+            checks["isolated_cache_deleted"] = not await cache.client.exists(cache_key)
+            index = assembly.event_index
+            assert index is not None
+            await index.rpc(
+                partial(index.client.drop_collection, collection, timeout=None, retry_times=0)
+            )
+            checks["isolated_milvus_projection_deleted"] = not await index.rpc(
+                partial(index.client.has_collection, collection, timeout=None, retry_times=0)
+            )
+            async with service.repo.pool.acquire() as conn, conn.cursor() as cursor:
+                await cursor.execute(
+                    "SELECT COUNT(*) FROM dh_m10_outbox WHERE question_id=%s AND done=FALSE",
+                    (op.plan.question_id,),
+                )
+                checks["projection_lag_observed"] = (await cursor.fetchone())[0] >= 1
+                await conn.rollback()
+            checks["http_explicit_approval"] = (
+                decided.status_code == 200 and decided.json()["approval_status"] == "APPROVED"
+            )
+            resumed = await api.post(
+                path + "/resume", json=resume_command(op).model_dump(mode="json"), headers=headers
+            )
+            final = OperationRecord.model_validate(resumed.json())
+            checks["http_effect_and_fact"] = (
+                resumed.status_code == 200
+                and final.status == OperationStatus.SUCCEEDED
+                and bool(
+                    final.response
+                    and any(
+                        f.name == "synthetic_adjustment_status" and f.value == "applied"
+                        for f in final.response.facts
+                    )
+                )
+            )
+            repeated = await api.post(
+                path + "/resume", json=resume_command(op).model_dump(mode="json"), headers=headers
+            )
+            checks["http_resume_replay"] = repeated.status_code == 200 and await counts(
+                service.repo, op.plan.operation_id
+            ) == {"effects": 1, "execute_calls": 1, "query_calls": 0}
+            replay = ResponseEnvelope.model_validate(
+                (await api.post("/converse", json=body, headers=headers)).json()
+            )
+            checks["original_receipt_replays_final"] = (
+                replay.replayed and replay.outcome == Outcome.ANSWERED
+            )
+            view = await api.get(
+                f"/debug/runs/{op.run_id}/flow",
+                params={"session_id": op.session_id},
+                headers=headers,
+            )
+            checks["m16_current_approval_view"] = (
+                view.status_code == 200 and view.json()["data"]["approval"]["status"] == "SUCCEEDED"
+            )
+            report["real_http"]["final"] = final.model_dump(mode="json")
+            report.setdefault("observations", []).append(
+                {
+                    "case": "real_http",
+                    "operation_id": op.plan.operation_id,
+                    "status": final.status.value,
+                    **await counts(service.repo, op.plan.operation_id),
+                    "replay_unchanged": checks["http_resume_replay"],
+                    "facts_verified": checks["http_effect_and_fact"],
+                }
+            )
+            atomic_json(args.output, report)
+            assert all(checks.values()), checks
+    finally:
+        gate.close()
+
+
+async def matrix(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.live:
+        raise ValueError("This probe requires --live; ordinary pytest remains offline")
+    if args.output.exists():
+        raise ValueError("Use a new report path")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    if not args.fixed_only and not args.budget_state.exists():
+        atomic_json(
+            args.budget_state,
+            {
+                "max_calls": 500,
+                "max_tokens": 2000000,
+                "max_cost_cny": "50",
+                "attempts": 0,
+                "tokens": 0,
+                "charged_tokens": 0,
+                "cost_upper_cny": "0",
+                "uncertain_attempts": 0,
+                "stages": {},
+            },
+        )
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        args.port = sock.getsockname()[1]
+    faults = args.output.with_suffix(".faults.json")
+    atomic_json(faults, {})
+    server = await start_rights(args, faults)
+    repo = None
+    report: dict[str, Any] = {"status": "RUNNING", "stage": args.stage, "checks": {}, "matrix": []}
+    try:
+        repo = await ApprovalRepository.open(Path.cwd())
+        await repo.migrate()
+        if not args.fixed_only:
+            await real_http(args, report)
+        else:
+            report["model_calls"] = report["model_tokens"] = 0
+            report["scope"] = "fixed approval/database/downstream recovery protocol"
+        for name, stage in (
+            ("before_interrupt", "before_checkpoint"),
+            ("approval_checkpoint_gap", "after_decision"),
+            ("before_tool", "before_tool"),
+            ("effect_before_ledger", "after_tool"),
+            ("ledger_before_checkpoint", "after_business_commit"),
+            ("lost_tool_response", "lost_response"),
+            ("downstream_process_crash", "crash_after_effect"),
+            ("definite_absence", "before_effect"),
+        ):
+            op = await prepare(repo, "m15-" + name + "-" + uuid4().hex)
+            if name == "before_interrupt":
+                assert await spawn_worker(args, op.plan.operation_id, "pause", stage) == 87
+            else:
+                assert await spawn_worker(args, op.plan.operation_id, "pause") == 0
+            if name == "approval_checkpoint_gap":
+                assert await spawn_worker(args, op.plan.operation_id, "approve", stage) == 87
+            else:
+                assert await spawn_worker(args, op.plan.operation_id, "approve") == 0
+            if stage in {"before_tool", "after_tool", "after_business_commit"}:
+                assert await spawn_worker(args, op.plan.operation_id, "resume", stage) == 87
+                await asyncio.sleep(8)  # real lease expiry, no test rewrites of the operation lease
+            elif stage in {"lost_response", "crash_after_effect", "before_effect"}:
+                atomic_json(faults, {op.plan.operation_id: stage})
+                assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+                uncertain = await repo.get(op.plan.operation_id)
+                assert uncertain.status == OperationStatus.UNKNOWN
+                if stage == "crash_after_effect":
+                    assert await server.wait() == 86
+                    atomic_json(faults, {})
+                    server = await start_rights(args, faults)
+                else:
+                    atomic_json(faults, {})
+            assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+            final = await repo.get(op.plan.operation_id)
+            before_replay = await counts(repo, op.plan.operation_id)
+            assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+            after_replay = await counts(repo, op.plan.operation_id)
+            row = {
+                "case": name,
+                "operation_id": op.plan.operation_id,
+                "status": final.status.value,
+                **after_replay,
+                "history": await repo.history(op.plan.operation_id),
+                "replay_unchanged": before_replay == after_replay,
+            }
+            report["matrix"].append(row)
+            atomic_json(args.output, report)
+            assert final.status == OperationStatus.SUCCEEDED and final.response
+            assert after_replay == before_replay and after_replay["effects"] == 1
+            assert after_replay["execute_calls"] == (2 if stage == "before_effect" else 1)
+            if stage in {
+                "before_tool",
+                "after_tool",
+                "lost_response",
+                "crash_after_effect",
+                "before_effect",
+            }:
+                assert after_replay["query_calls"] >= 1
+        async with httpx.AsyncClient(trust_env=False) as client, AsyncExitStack() as approval_stack:
+            service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    proposal_registry().snapshot_hash,
+                )
+            )
+            changed_registry = proposal_registry().model_copy(
+                update={"registry_version": "sop-registry-m15-after-approval-v2"}
+            )
+            changed_store = RegistryStore(args.output.parent / (args.output.stem + "-changed-sop"))
+            changed_store.publish(changed_registry)
+            changed_service = await approval_stack.enter_async_context(
+                ApprovalService.open(
+                    repo,
+                    RightsClient(client, args.port, args.key.read_bytes()),
+                    changed_store.history()[0].snapshot_hash,
+                )
+            )
+            for kind in (
+                "reject",
+                "revoke",
+                "expired",
+                "reject_sop_changed",
+                "revoke_sop_changed",
+                "expired_decide_sop_changed",
+                "expired_resume_sop_changed",
+            ):
+                action = kind.split("_", 1)[0]
+                closing_service = changed_service if "sop_changed" in kind else service
+                op = await prepare(repo, "m15-" + kind + "-" + uuid4().hex)
+                if action == "revoke":
+                    await service.decide(op.plan.identity, op.plan.operation_id, decision(op))
+                if action == "expired":
+                    async with repo.locked(op.plan.operation_id) as (cursor, current, q, lease):
+                        current = current.model_copy(
+                            update={"expires_at": datetime.now(UTC) - timedelta(seconds=1)}
+                        )
+                        await repo.save(cursor, current, "probe_expiry")
+                        await cursor.execute(
+                            "UPDATE dh_m15_operations SET expires_at=%s WHERE operation_id=%s",
+                            (current.expires_at, current.plan.operation_id),
+                        )
+                if kind == "expired_resume_sop_changed":
+                    final = await closing_service.resume(
+                        op.plan.identity,
+                        op.plan.operation_id,
+                        resume_command(op),
+                        ExecutionBudget.start(60, 8, 0),
+                    )
+                else:
+                    final = await closing_service.decide(
+                        op.plan.identity,
+                        op.plan.operation_id,
+                        decision(op, "approve" if action == "expired" else action),
+                    )
+                stats = await counts(repo, op.plan.operation_id)
+                report["checks"][kind + "_no_effect"] = (
+                    final.status == OperationStatus.CANCELLED
+                    and stats["effects"] == stats["execute_calls"] == 0
+                    and final.plan == op.plan
+                )
+                report.setdefault("observations", []).append(
+                    {
+                        "case": kind,
+                        "operation_id": op.plan.operation_id,
+                        "status": final.status.value,
+                        **stats,
+                        "plan_unchanged": final.plan == op.plan,
+                    }
+                )
+            op = await prepare(repo, "m15-concurrent-" + uuid4().hex)
+            decisions = await asyncio.gather(
+                *[
+                    service.decide(op.plan.identity, op.plan.operation_id, decision(op))
+                    for _ in range(2)
+                ]
+            )
+            report["checks"]["concurrent_approvers"] = (
+                all(d.approval_status == ApprovalStatus.APPROVED for d in decisions)
+                and len(
+                    [h for h in await repo.history(op.plan.operation_id) if h["kind"] == "approved"]
+                )
+                == 1
+            )
+            results = await asyncio.gather(
+                *[
+                    service.resume(
+                        op.plan.identity,
+                        op.plan.operation_id,
+                        resume_command(op),
+                        ExecutionBudget.start(60, 8, 0),
+                    )
+                    for _ in range(2)
+                ],
+                return_exceptions=True,
+            )
+            report["checks"]["concurrent_resume_unique_effect"] = (
+                any(
+                    isinstance(r, OperationRecord) and r.status == OperationStatus.SUCCEEDED
+                    for r in results
+                )
+                and (await counts(repo, op.plan.operation_id))["effects"] == 1
+            )
+            final = await repo.get(op.plan.operation_id)
+            report["observations"].append(
+                {
+                    "case": "concurrent",
+                    "operation_id": op.plan.operation_id,
+                    "status": final.status.value,
+                    **await counts(repo, op.plan.operation_id),
+                }
+            )
+            if args.fixed_only:
+                held = await prepare(repo, "m26-cancel-query-lock-" + uuid4().hex)
+                await service.pause(held.plan.operation_id, ExecutionBudget.start(60, 8, 0))
+                await service.decide(held.plan.identity, held.plan.operation_id, decision(held))
+                marker = faults.with_suffix(".entered.json")
+                atomic_json(faults, {held.plan.operation_id: "hold_before_effect"})
+                running = asyncio.create_task(
+                    service.resume(
+                        held.plan.identity,
+                        held.plan.operation_id,
+                        resume_command(held),
+                        ExecutionBudget.start(60, 8, 0),
+                    )
+                )
+                query = None
+                try:
+                    async with asyncio.timeout(5):
+                        for _ in range(250):
+                            if (
+                                marker.exists()
+                                and json.loads(marker.read_text()).get("operation")
+                                == held.plan.operation_id
+                            ):
+                                break
+                            await asyncio.sleep(0.02)
+                        else:
+                            raise TimeoutError("Owned downstream did not enter the effect hold")
+                    current = await repo.get(held.plan.operation_id)
+                    query = asyncio.create_task(
+                        service.rights.call("query", current, ExecutionBudget.start(60, 8, 0))
+                    )
+                    blocked = False
+                    async with asyncio.timeout(2):
+                        for _ in range(100):
+                            async with repo.pool.acquire() as conn, conn.cursor() as cursor:
+                                await cursor.execute(
+                                    "SELECT COUNT(*) FROM pg_stat_activity "
+                                    "WHERE datname=current_database() "
+                                    "AND cardinality(pg_blocking_pids(pid))>0"
+                                )
+                                blocked = (await cursor.fetchone())[0] > 0
+                                await conn.rollback()
+                            if blocked:
+                                break
+                            await asyncio.sleep(0.02)
+                        else:
+                            raise TimeoutError("Database did not observe the query lock wait")
+                    assert not query.done(), "Query must wait rather than observe false ABSENT"
+                    running.cancel()
+                    atomic_json(faults, {})
+                    try:
+                        await running
+                    except asyncio.CancelledError:
+                        pass
+                    else:
+                        raise AssertionError("Approval cancellation was swallowed")
+                    observation = await query
+                finally:
+                    atomic_json(faults, {})
+                    if not running.done():
+                        running.cancel()
+                    if query is not None and not query.done():
+                        query.cancel()
+                    await asyncio.gather(
+                        running, *([query] if query is not None else []), return_exceptions=True
+                    )
+                assert observation.status == "SUCCEEDED" and observation.effect
+                assert (await repo.get(held.plan.operation_id)).status == OperationStatus.UNKNOWN
+                recovered = await service.resume(
+                    held.plan.identity,
+                    held.plan.operation_id,
+                    resume_command(held),
+                    ExecutionBudget.start(60, 8, 0),
+                )
+                stats = await counts(repo, held.plan.operation_id)
+                assert recovered.status == OperationStatus.SUCCEEDED
+                assert stats == {"effects": 1, "execute_calls": 1, "query_calls": 2}
+                marker.unlink()
+                report["checks"]["cancel_and_absence_commit_mutex"] = blocked
+                report["observations"].append(
+                    {
+                        "case": "cancel_and_absence_commit_mutex",
+                        "operation_id": held.plan.operation_id,
+                        "status": recovered.status.value,
+                        "server_blocking_pids_observed": blocked,
+                        "blocked_query_observed": observation.status,
+                        **stats,
+                    }
+                )
+            # All three dimensions are checked against the same persisted operation.
+            for field in ("tenant_id", "user_id", "session_id", "run_id"):
+                identity = (
+                    op.plan.identity.model_copy(update={field: "foreign"})
+                    if field in {"tenant_id", "user_id"}
+                    else op.plan.identity
+                )
+                before = await counts(repo, op.plan.operation_id)
+                command = (
+                    decision(op).model_copy(update={field: "foreign"})
+                    if field in {"session_id", "run_id"}
+                    else decision(op)
+                )
+                try:
+                    await service.decide(
+                        identity,
+                        op.plan.operation_id,
+                        command,
+                    )
+                except AppError as exc:
+                    report["checks"][field + "_isolation"] = exc.status_code == 404
+                else:
+                    report["checks"][field + "_isolation"] = False
+                report.setdefault("unauthorized", []).append(
+                    {
+                        "case": field + "_isolation",
+                        "rejected": report["checks"][field + "_isolation"],
+                        "before": before,
+                        "after": await counts(repo, op.plan.operation_id),
+                    }
+                )
+        assert all(report["checks"].values()), report["checks"]
+        report["status"] = "PASS"
+    except BaseException:
+        report["status"] = "FAIL"
+        raise
+    finally:
+        atomic_json(args.output, report)
+        try:
+            if repo is not None:
+                await repo.aclose()
+        finally:
+            await stop(server)
+    return report
+
+
+async def historical(args: argparse.Namespace) -> None:
+    """Own the synthetic endpoint while the original isolated history is resumed."""
+    from deephelp_app.adapters.approval.postgres_checkpoints import official_checkpoints
+    from deephelp_app.adapters.persistence.postgres import application_config
+    from deephelp_tools.evaluation.migration.checkpoint_migration import (
+        SnapshotCheckpoints,
+        recover_history,
+    )
+    from deephelp_tools.probes.migration.postgres_probe import require_isolated
+
+    if not args.live or not args.snapshot or args.output.exists():
+        raise ValueError("History requires --live, --snapshot and a new report path")
+    config = application_config(Path.cwd())
+    require_isolated(config)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.key.parent.mkdir(parents=True, exist_ok=True)
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    source = SnapshotCheckpoints(args.snapshot)
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        args.port = sock.getsockname()[1]
+    faults = args.output.with_suffix(".faults.json")
+    atomic_json(faults, {})
+    server = await start_rights(args, faults)
+    try:
+        repo = await ApprovalRepository.open(Path.cwd())
+        try:
+            async with official_checkpoints(config, owner=repo.pool.owner) as saver:
+                atomic_json(
+                    args.output,
+                    await recover_history(
+                        source,
+                        saver,
+                        repo.pool,
+                        args.snapshot,
+                        args.port,
+                        args.key.read_bytes(),
+                        args.output,
+                    ),
+                )
+        finally:
+            await repo.aclose()
+    except BaseException as exc:
+        partial_report = json.loads(args.output.read_text()) if args.output.exists() else {}
+        atomic_json(
+            args.output, partial_report | {"status": "FAIL", "error_type": type(exc).__name__}
+        )
+        raise
+    finally:
+        await stop(server)
+
+
+async def learning(args: argparse.Namespace) -> None:
+    """Actual LiveAssembly and learning HTTP routes, with fixed actions and zero models."""
+    from deephelp_app.adapters.approval.postgres_checkpoints import PostgresCheckpoints
+    from deephelp_app.adapters.persistence.postgres import application_config
+    from deephelp_tools.learning.workbench.protocol import learning_router
+    from deephelp_tools.probes.migration.postgres_probe import require_isolated
+
+    if not args.live or args.output.exists():
+        raise ValueError("Learning qualification requires --live and a new report path")
+    require_isolated(application_config(Path.cwd()))
+    args.key.parent.mkdir(parents=True, exist_ok=True)
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    auth_path = args.key.parent / (args.output.stem + ".auth.json")
+    if auth_path.exists() or args.budget_state.exists():
+        raise ValueError("Learning qualification requires new owned auth/budget paths")
+    atomic_json(
+        auth_path,
+        {
+            "tokens": [
+                {
+                    "token": uuid4().hex + uuid4().hex,
+                    "identity": {"tenant_id": "synthetic-tenant", "user_id": "synthetic-user-a"},
+                }
+            ]
+        },
+    )
+    atomic_json(
+        args.budget_state,
+        {
+            "max_calls": 1,
+            "max_tokens": 200000,
+            "max_cost_cny": "10",
+            "attempts": 0,
+            "tokens": 0,
+            "charged_tokens": 0,
+            "cost_upper_cny": "0",
+            "uncertain_attempts": 0,
+            "stages": {},
+        },
+    )
+    gate = BudgetSession(args.budget_state)
+    gate.open()
+    report: dict[str, Any] = {"status": "RUNNING", "model_calls": 0, "checks": {}}
+    directory = args.key.parent / (args.output.stem + "-sop")
+    RegistryStore(directory).publish(proposal_registry())
+    collection = "dh_m10_events_m26_" + uuid4().hex[:12]
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        args.port = sock.getsockname()[1]
+    faults = args.key.parent / (args.output.stem + ".faults.json")
+    atomic_json(faults, {})
+    try:
+        assembly = LiveAssembly(
+            Path.cwd(),
+            Path(args.providers),
+            local_path(args.pointer),
+            sop_directory=directory,
+            event_collection=collection,
+            rights_port=args.port,
+            rights_key=args.key,
+        )
+        auth = LocalAuth(auth_path)
+        app = live_app(
+            assembly, auth, gate, str(args.key.parent / (args.output.stem + ".trace.jsonl"))
+        )
+        app.include_router(
+            learning_router(
+                assembly,
+                app.state.browser_auth,
+                rights_port=args.port,
+                rights_key=args.key.read_bytes(),
+            )
+        )
+        server = await start_rights(args, faults)
+    except BaseException as exc:
+        gate.close()
+        atomic_json(args.output, report | {"status": "FAIL", "error_type": type(exc).__name__})
+        raise
+    headers = {"Authorization": "Bearer " + auth.rows[0][0]}
+
+    async def cleanup_projection() -> None:
+        index = assembly.event_index
+        assert index is not None
+        await index.rpc(
+            partial(index.client.drop_collection, collection, timeout=None, retry_times=0)
+        )
+        assert not await index.rpc(
+            partial(index.client.has_collection, collection, timeout=None, retry_times=0)
+        )
+        report["checks"]["owned_projection_deleted"] = True
+
+    report["owned_projection"] = collection
+    try:
+        async with (
+            app.router.lifespan_context(app),
+            api_client(app, http=True) as api,
+            AsyncExitStack() as cleanup,
+        ):
+            cleanup.push_async_callback(cleanup_projection)
+            service = app.state.resources.conversation.approvals
+            assert isinstance(service.saver, PostgresCheckpoints)
+            report["checks"]["formal_assembly_official_saver"] = True
+            assert (await api.get("/learning/workflow")).status_code == 401
+            workflow = (await api.get("/learning/workflow", headers=headers)).json()
+            report["workflow"] = workflow
+            assert workflow["approval_graph"] and workflow["model_calls"] == 0
+            assert (await api.get("/learning/status", headers=headers)).json()["demo_enabled"]
+            op = OperationRecord.model_validate(
+                (await api.post("/learning/demo", headers=headers)).json()
+            )
+            path = "/learning/demo/" + op.plan.operation_id
+            params = {"session_id": op.session_id, "run_id": op.run_id}
+            pending = (await api.get(path, params=params, headers=headers)).json()
+            assert pending["interrupts"] and pending["checkpoints"] and pending["effects"] == 0
+            bad = decision(op).model_dump(mode="json") | {"parameters_hash": "tampered"}
+            assert (
+                await api.post(path + "/approval", json=bad, headers=headers)
+            ).status_code == 409
+            assert (
+                await api.get(path, params=params | {"run_id": "foreign"}, headers=headers)
+            ).status_code == 404
+            assert (
+                await api.post(
+                    path + "/resume",
+                    json=resume_command(op).model_dump(mode="json"),
+                    headers=headers,
+                )
+            ).status_code == 403
+            assert await counts(service.repo, op.plan.operation_id) == {
+                "effects": 0,
+                "execute_calls": 0,
+                "query_calls": 0,
+            }
+            assert (
+                await api.post(
+                    path + "/approval", json=decision(op).model_dump(mode="json"), headers=headers
+                )
+            ).status_code == 200
+            # Resume through the formal generic HTTP route, then replay/view through learning.
+            result = await api.post(
+                "/operations/" + op.plan.operation_id + "/resume",
+                json=resume_command(op).model_dump(mode="json"),
+                headers=headers,
+            )
+            assert result.status_code == 200 and result.json()["status"] == "SUCCEEDED"
+            replay = await api.post(
+                path + "/resume", json=resume_command(op).model_dump(mode="json"), headers=headers
+            )
+            assert replay.status_code == 200
+            final = (await api.get(path, params=params, headers=headers)).json()
+            assert final["effects"] == 1 and not final["next"] and not final["interrupts"]
+            assert any(c["parent"] for c in final["checkpoints"])
+            stats = await counts(service.repo, op.plan.operation_id)
+            assert stats == {"effects": 1, "execute_calls": 1, "query_calls": 0}
+            report["operation"] = {
+                "operation_id": op.plan.operation_id,
+                "status": result.json()["status"],
+                **stats,
+                "checkpoint_count": len(final["checkpoints"]),
+                "pending_interrupt_count": len(pending["interrupts"]),
+            }
+            report["checks"].update(
+                {
+                    "same_graph_learning_formal_resume": True,
+                    "approval_and_scope_guards_zero_effect": True,
+                    "replay_unique_effect": True,
+                    "official_history_and_parent": True,
+                }
+            )
+        assert gate.state["attempts"] == gate.state["tokens"] == 0
+        report["status"] = "PASS"
+    except BaseException as exc:
+        report.update(status="FAIL", error_type=type(exc).__name__)
+        raise
+    finally:
+        atomic_json(args.output, report)
+        gate.close()
+        await stop(server)
+
+
+async def native_approval(
+    args: argparse.Namespace, report: dict[str, Any], processes: Processes
+) -> None:
+    args.port = port()
+    args.key = args.output.parent / "synthetic-rights.key"
+    if not args.key.exists():
+        args.key.write_bytes(os.urandom(32))
+    await processes.start(
+        "rights",
+        [
+            "-m",
+            "deephelp_tools.demo.synthetic_rights",
+            "--port",
+            str(args.port),
+            "--key",
+            str(args.key),
+        ],
+        f"http://127.0.0.1:{args.port}/health",
+    )
+    repo = await ApprovalRepository.open(Path.cwd())
+    try:
+        await repo.migrate()
+        with observation("probe.approval_prepare"):
+            op = await prepare(repo, "native-observation-" + uuid4().hex)
+        # Each actual worker is a separate process/trace; ledger controls the action.
+        assert await spawn_worker(args, op.plan.operation_id, "pause") == 0
+        assert await spawn_worker(args, op.plan.operation_id, "approve") == 0
+        assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+        before = await counts(repo, op.plan.operation_id)
+        assert before == {"effects": 1, "execute_calls": 1, "query_calls": 0}
+        assert await spawn_worker(args, op.plan.operation_id, "resume") == 0
+        assert await counts(repo, op.plan.operation_id) == before
+        final = await repo.get(op.plan.operation_id)
+        assert final.status == OperationStatus.SUCCEEDED
+        report["checks"]["approval_process_interrupt_resume_replay"] = True
+        report["operation_id"] = op.plan.operation_id
+        # Reconcile UNKNOWN with a lost reply, using fixed actions and no model.
+        with observation("probe.approval_unknown"):
+            unknown = await prepare(repo, "native-unknown-" + uuid4().hex)
+            async with (
+                httpx.AsyncClient(trust_env=False, timeout=20) as http,
+                AsyncExitStack() as approval_stack,
+            ):
+
+                def lost_response(stage: str) -> None:
+                    if stage == "after_tool":
+                        raise OSError("Synthetic lost observation")
+
+                service = await approval_stack.enter_async_context(
+                    ApprovalService.open(
+                        repo,
+                        RightsClient(http, args.port, args.key.read_bytes()),
+                        proposal_registry().snapshot_hash,
+                        fault=lost_response,
+                    )
+                )
+                await service.pause(unknown.plan.operation_id, ExecutionBudget.start(60, 10, 0))
+                await service.decide(
+                    unknown.plan.identity, unknown.plan.operation_id, decision(unknown)
+                )
+                observed = await service.resume(
+                    unknown.plan.identity,
+                    unknown.plan.operation_id,
+                    resume_command(unknown),
+                    ExecutionBudget.start(60, 10, 0),
+                )
+                assert observed.status == OperationStatus.UNKNOWN
+            assert await spawn_worker(args, unknown.plan.operation_id, "resume") == 0
+            assert await counts(repo, unknown.plan.operation_id) == {
+                "effects": 1,
+                "execute_calls": 1,
+                "query_calls": 1,
+            }
+            report["checks"]["unknown_reconciled_without_redispatch"] = True
+            report["unknown_operation_id"] = unknown.plan.operation_id
+    finally:
+        await repo.aclose()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "command", nargs="?", default="accept", choices=["accept", "worker", "history", "learning"]
+    )
+    parser.add_argument("--live", action="store_true")
+    parser.add_argument("--fixed-only", action="store_true")
+    parser.add_argument("--timeout", type=float, default=900)
+    parser.add_argument("--stage", choices=["feature", "main"], default="feature")
+    parser.add_argument("--output", type=local_path, default=Path(".local/m15/feature.json"))
+    parser.add_argument("--budget-state", type=local_path, default=Path(".local/m15/budget.json"))
+    parser.add_argument("--key", type=local_path, default=Path(".local/m15/rights.key"))
+    parser.add_argument("--auth", default=".local/m08/auth.json")
+    parser.add_argument("--pointer", default=".local/m09/active.json")
+    parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
+    parser.add_argument("--port", type=int, default=0)
+    parser.add_argument("--operation")
+    parser.add_argument("--action", choices=["pause", "approve", "resume"], default="resume")
+    parser.add_argument("--fault", default="")
+    parser.add_argument("--snapshot", type=Path)
+    args = parser.parse_args()
+    with environment("deephelp-app"):
+
+        async def bounded() -> None:
+            async with asyncio.timeout(args.timeout):
+                if args.command == "worker":
+                    await worker(args)
+                elif args.command == "history":
+                    await historical(args)
+                elif args.command == "learning":
+                    await learning(args)
+                else:
+                    await matrix(args)
+
+        asyncio.run(bounded())
+
+
+if __name__ == "__main__":
+    main()

@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from deephelp_app.bootstrap.mvp_runtime import BudgetSession
+from deephelp_app.bootstrap.runtime.budget import BudgetSession
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import BudgetUsed

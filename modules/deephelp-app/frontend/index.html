@@ -126,7 +126,7 @@
               更新金额后，新提问读取新版本；重投旧消息仍返回原事实与证据。旧版本更新会收到冲突，需重新读取资料后再改。另一身份不能读取或修改你的资料。
             </p>
             <p class="code">
-              入口：api/business.py · business_router<br />deephelp_services/business_store.py
+              入口：api/business.py · business_router<br />deephelp_services/business/repository.py
               · BusinessRepository
             </p>
           </div>
@@ -163,7 +163,7 @@
             </p>
             <p class="code">
               adapters/mcp_protocol.py · validate_arguments<br />adapters/tool_gateway.py
-              · ToolGateway.execute<br />deephelp_services/business.py ·
+              · ToolGateway.execute<br />deephelp_services/business/api.py ·
               build_server
             </p>
           </div>

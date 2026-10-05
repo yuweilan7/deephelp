@@ -46,9 +46,9 @@ health只检查可用性，必须用同一trace验证正文、父子、合成usa
 探针只接受显式live、私有loopback、专用langfuse桶、新报告及有界count/timeout：
 
 ```powershell
-py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_probe --live --config .local/m27/probe.json --mode s3 --create-bucket --output .local/m27/s3-new.json
-py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_probe --live --config .local/m27/probe.json --count 1 --output .local/m27/roundtrip-new.json
-py -3.14 -m uv run --locked python -m deephelp_tools.probes.langfuse_probe --live --config .local/m27/probe.json --mode verify --source .local/m27/roundtrip-new.json --output .local/m27/verify-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.platform.langfuse_probe --live --config .local/m27/probe.json --mode s3 --create-bucket --output .local/m27/s3-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.platform.langfuse_probe --live --config .local/m27/probe.json --count 1 --output .local/m27/roundtrip-new.json
+py -3.14 -m uv run --locked python -m deephelp_tools.probes.platform.langfuse_probe --live --config .local/m27/probe.json --mode verify --source .local/m27/roundtrip-new.json --output .local/m27/verify-new.json
 ```
 
 send只证明本地SDK结束/flush，不能当远端存入；roundtrip/verify才断言实际API内容。

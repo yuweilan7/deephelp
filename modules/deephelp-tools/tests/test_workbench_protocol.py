@@ -6,11 +6,11 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.api.app import create_app
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.models.common import VerifiedIdentity
-from deephelp_tools.learning.workbench_protocol import ProtocolAction, learning_router
+from deephelp_tools.learning.workbench.protocol import ProtocolAction, learning_router
 
 pytestmark = pytest.mark.integration
 

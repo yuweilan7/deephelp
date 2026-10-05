@@ -20,8 +20,8 @@ from deephelp_app.domain.models.sop import SOPResult, SOPStatus
 from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolResult, ToolStatus
 from deephelp_tools.demo.mcp_server import MockBackend
 from deephelp_tools.demo.tool_config import MockConfig
-from deephelp_tools.learning.sop_replay import ReplayModel
-from deephelp_tools.probes.sop_probe import sop_question
+from deephelp_tools.learning.replay.sop_replay import ReplayModel
+from deephelp_tools.probes.conversation.sop_probe import sop_question
 
 pytestmark = pytest.mark.unit
 

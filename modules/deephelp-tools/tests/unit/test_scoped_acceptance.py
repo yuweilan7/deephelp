@@ -12,12 +12,17 @@ from pathlib import Path
 import httpx
 import pytest
 
-from deephelp_app.adapters.gateway import QianwenGateway, diagnostic_usage
+from deephelp_app.adapters.model_gateway.gateway import QianwenGateway
+from deephelp_app.adapters.model_gateway.validation import diagnostic_usage
 from deephelp_app.domain.errors import ConfigurationError
-from deephelp_tools.evaluation.core import MODES, audit, targeted_gate
-from deephelp_tools.evaluation.evaluation_cli import select_scope
-from deephelp_tools.probes.live_probe import probe, selected_capabilities, selected_rerank_samples
-from deephelp_tools.probes.text_entity_probe import selected_cases
+from deephelp_tools.evaluation.quality.core import MODES, audit, targeted_gate
+from deephelp_tools.evaluation.quality.evaluation_cli import select_scope
+from deephelp_tools.probes.models.live_probe import (
+    probe,
+    selected_capabilities,
+    selected_rerank_samples,
+)
+from deephelp_tools.probes.models.text_entity_probe import selected_cases
 from deephelp_tools.probes.usage import api_records, summarize_usage
 
 pytestmark = pytest.mark.unit
@@ -48,14 +53,14 @@ def test_loopback_protocol_tests_remain_available():
 @pytest.mark.parametrize(
     "module",
     [
-        "deephelp_app.bootstrap.mvp_cli",
-        "deephelp_tools.evaluation.dense_cli",
-        "deephelp_tools.evaluation.hybrid_cli",
-        "deephelp_tools.probes.live_probe",
-        "deephelp_tools.probes.text_entity_probe",
-        "deephelp_tools.evaluation.evaluation_cli",
-        "deephelp_tools.probes.release_probe",
-        "deephelp_tools.evaluation.flywheel_cli",
+        "deephelp_app.bootstrap.commands.mvp_cli",
+        "deephelp_tools.evaluation.retrieval.dense_cli",
+        "deephelp_tools.evaluation.retrieval.hybrid_cli",
+        "deephelp_tools.probes.models.live_probe",
+        "deephelp_tools.probes.models.text_entity_probe",
+        "deephelp_tools.evaluation.quality.evaluation_cli",
+        "deephelp_tools.probes.releases.release_probe",
+        "deephelp_tools.evaluation.feedback.flywheel_cli",
     ],
 )
 def test_import_and_help_do_not_request_models(module, monkeypatch):
@@ -134,7 +139,7 @@ def test_entity_scope_does_not_silently_expand_to_full_corpus():
 async def test_selected_capability_makes_one_mock_api_call_and_persists_usage(
     capability, tmp_path, monkeypatch
 ):
-    import deephelp_tools.probes.live_probe as cli
+    import deephelp_tools.probes.models.live_probe as cli
 
     state = tmp_path / "budget.json"
     state.write_text(
@@ -273,8 +278,8 @@ def test_rerank_samples_require_explicit_capability():
 async def test_selected_rerank_probe_uses_only_reference_and_shared_budget(
     monkeypatch, tmp_path, outcome
 ):
-    from deephelp_app.adapters.providers import ProviderConfig
-    from deephelp_tools.probes import live_probe as cli
+    from deephelp_app.adapters.model_gateway.providers import ProviderConfig
+    from deephelp_tools.probes.models import live_probe as cli
 
     state = tmp_path / "budget.json"
     state.write_text(

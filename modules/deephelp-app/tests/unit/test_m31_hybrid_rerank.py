@@ -22,8 +22,8 @@ from deephelp_app.domain.models.model_io import (
 )
 from deephelp_app.domain.models.retrieval import DenseHit, HybridScope, RerankPolicy
 from deephelp_app.domain.models.text import DemandType, TextEntityResult
-from deephelp_tools.evaluation.hybrid_eval import dataset, query_digest
-from deephelp_tools.evaluation.rerank_cli import OPTIONS, choose
+from deephelp_tools.evaluation.retrieval.hybrid_eval import dataset, query_digest
+from deephelp_tools.evaluation.retrieval.rerank_cli import OPTIONS, choose
 
 pytestmark = pytest.mark.unit
 SIG = EmbeddingSignature(provider="synthetic", model="offline-only", dimension=3)

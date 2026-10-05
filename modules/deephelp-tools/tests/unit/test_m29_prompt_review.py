@@ -19,16 +19,16 @@ from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.feedback import FeedbackCandidate, RouteReview
 from deephelp_app.domain.models.intents import IntentCode
 from deephelp_app.domain.models.model_io import ChatResult, ModelUsage
-from deephelp_tools.evaluation.flywheel import reviewed
-from deephelp_tools.evaluation.langfuse_mapping import Platform
-from deephelp_tools.evaluation.langfuse_prompt_review import (
+from deephelp_tools.evaluation.feedback.flywheel import reviewed
+from deephelp_tools.evaluation.feedback.langfuse_prompt_review import (
     SCORE_NAME,
     annotations,
     candidate_binding,
     export_prompt,
     require_annotation,
 )
-from deephelp_tools.learning.event_replay import envelope
+from deephelp_tools.evaluation.platform.langfuse_mapping import Platform
+from deephelp_tools.learning.replay.event_replay import envelope
 
 pytestmark = pytest.mark.unit
 

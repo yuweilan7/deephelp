@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from deephelp_app.adapters.asset_integrity import file_digest
+from deephelp_app.adapters.releases.asset_integrity import file_digest
 from deephelp_app.application.artifact_paths import resolve_artifact, state_root
 from deephelp_app.application.dense import load_json
 from deephelp_app.bootstrap.local_paths import local_path

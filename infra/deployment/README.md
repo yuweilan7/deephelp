@@ -51,7 +51,7 @@ sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL
 
 恢复只允许新命名库与新绝对运行根，校验SHA256SUMS、pg_restore单事务和Python tar data filter；只调整部署配置/映射target，原签名资产不改。按备用端口启动恢复副本，核对所有表行hash、历史/关系/官方图与同run平台内容。Langfuse归档通过infra/langfuse/restore.sh另恢复到新根，在容量允许前先停止源平台，验后恢复源；不双挂数据目录。learning.dump同样恢复到独立新库以验证M29记录，禁止把它作为第二活动业务写入口。
 
-工具入口`python -m deephelp_tools.probes.modern_deployment_probe --live --config ABS_CONFIG --compare-config ABS_SOURCE_CONFIG --output NEW_REPORT`对所有PG应用/归档/官方表作只读一致性原值行hash比较；可追加明确auth/base-url与metrics-ports，实际查询Business/历史、鉴权/schema和直接指标，模型0次。平台仍需实际内容/usage/Score、Dataset/Prompt关联读回，health和文件hash不足以替代。
+工具入口`python -m deephelp_tools.probes.platform.modern_deployment_probe --live --config ABS_CONFIG --compare-config ABS_SOURCE_CONFIG --output NEW_REPORT`对所有PG应用/归档/官方表作只读一致性原值行hash比较；可追加明确auth/base-url与metrics-ports，实际查询Business/历史、鉴权/schema和直接指标，模型0次。平台仍需实际内容/usage/Score、Dataset/Prompt关联读回，health和文件hash不足以替代。
 
 ## 切换与回退边界
 
@@ -69,9 +69,9 @@ bash /opt/deephelp-app/bin/control.sh stop
 cd /srv/deephelp-modern
 set -a; source config/runtime.env; set +a
 /opt/deephelp-app/releases/m30-deployment-v1/.venv/bin/python \
-  -m deephelp_app.bootstrap.release_cli status --live --channel m30-personal
+  -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal
 /opt/deephelp-app/releases/m30-deployment-v1/.venv/bin/python \
-  -m deephelp_app.bootstrap.release_cli activate --live --channel m30-personal \
+  -m deephelp_app.bootstrap.commands.release_cli activate --live --channel m30-personal \
   --release eec3f952d3c188b0381dfd8066fb420033f52ca20eb11bc9c2677a5ec6ef8c52 \
   --expected-revision REV --budget-state /srv/deephelp-modern/state/budget.json
 bash /opt/deephelp-app/bin/switch.sh m30-deployment-v1
@@ -108,9 +108,9 @@ set -a
 source config/runtime.env
 set +a
 /opt/deephelp-app/releases/m31-rerank-v1/.venv/bin/python \
-  -m deephelp_app.bootstrap.release_cli status --live --channel m30-personal
+  -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal
 /opt/deephelp-app/releases/m31-rerank-v1/.venv/bin/python \
-  -m deephelp_app.bootstrap.release_cli activate --live --channel m30-personal \
+  -m deephelp_app.bootstrap.commands.release_cli activate --live --channel m30-personal \
   --release RETAINED_OLD_HASH --expected-revision OBSERVED_REVISION \
   --budget-state /srv/deephelp-modern/state/budget.json
 sudo bash /opt/deephelp-app/bin/switch.sh m31-rerank-v1

@@ -6,14 +6,14 @@ from uuid import uuid4
 import pytest
 from mcp.shared.exceptions import MCPError
 
-from deephelp_app.adapters.mcp_protocol import LEDGER_URI, sign_metadata
-from deephelp_app.adapters.tool_gateway import process_alive
+from deephelp_app.adapters.mcp.business.mcp_protocol import LEDGER_URI, sign_metadata
+from deephelp_app.adapters.mcp.business.tool_gateway import process_alive
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
 from deephelp_app.domain.models.tools import ToolInvocationEnvelope, ToolStatus
 from deephelp_tools.demo.assembly import DemoToolGateway as ToolGateway
 from deephelp_tools.demo.tool_config import FaultSpec, MockConfig
-from deephelp_tools.probes.mcp_smoke import accept, invoke, synthetic_request, wait_record
+from deephelp_tools.probes.protocol.mcp_smoke import accept, invoke, synthetic_request, wait_record
 
 pytestmark = pytest.mark.integration
 
@@ -192,7 +192,7 @@ async def test_startup_handshake_timeout_reaps_unresponsive_child(tmp_path):
 
     from mcp import StdioServerParameters
 
-    import deephelp_app.adapters.tool_gateway as module
+    import deephelp_app.adapters.mcp.business.tool_gateway as module
 
     pid_path = tmp_path / "stalled.pid"
     code = (

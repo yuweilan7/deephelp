@@ -4,15 +4,15 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 
-from deephelp_app.adapters.trace import MemoryTrace
+from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.application.cascade import CascadePolicy
 from deephelp_app.application.conversation.tracking import STAGES
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import Outcome, QuestionStatus
 from deephelp_app.domain.models.intents import IntentCode
-from deephelp_tools.learning.cases_fake import MemoryCaseRepository
-from deephelp_tools.learning.event_replay import ReplayJudge, envelope
-from deephelp_tools.learning.mvp_replay import ReplayAssembly
+from deephelp_tools.learning.fakes.cases_fake import MemoryCaseRepository
+from deephelp_tools.learning.replay.event_replay import ReplayJudge, envelope
+from deephelp_tools.learning.replay.mvp_replay import ReplayAssembly
 
 pytestmark = pytest.mark.integration
 

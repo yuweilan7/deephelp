@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from deephelp_tools.probes import approval_probe as probe
+from deephelp_tools.probes.approval import approval_probe as probe
 
 
 async def test_matrix_database_open_failure_stops_owned_rights_process(tmp_path, monkeypatch):

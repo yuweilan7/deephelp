@@ -12,8 +12,8 @@ from typing import Literal
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
-from deephelp_app.adapters.telemetry import observed
-from deephelp_app.adapters.trace import TraceEvent, TraceSink
+from deephelp_app.adapters.observability.telemetry import observed
+from deephelp_app.adapters.observability.trace import TraceEvent, TraceSink
 from deephelp_app.application.dense import load_json
 from deephelp_app.application.reviewed_rules import rule_matches
 from deephelp_app.domain.errors import AppError

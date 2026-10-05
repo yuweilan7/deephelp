@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock
 import psycopg
 import pytest
 
-from deephelp_app.adapters import postgres
-from deephelp_app.adapters.postgres import PostgresConfig, postgres_pool, run_postgres
+from deephelp_app.adapters.persistence import postgres
+from deephelp_app.adapters.persistence.postgres import PostgresConfig, postgres_pool, run_postgres
 
 
 async def test_owned_selector_cancellation_settles_before_close():
