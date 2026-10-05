@@ -175,3 +175,20 @@ M40沿原三包/同源built、PG、个人身份、原providers与两HTTP MCP部�
 M36严格类型不识别M40新字段；旧版只读其原有会话，不继续M40消息/协作。新增任务/回执保留PG，返回M40后读取同一run并核对facts/evidence/call/版本。恢复不回滚数据库或重放业务，UNKNOWN/审批不接管；只读Milvus发布守卫仍计原attempts，模型用量/费用/未知预留不增加。本次33张表仅发布active/events预期变化、旧新receipt与同run观测已验，不证明跨不兼容schema的回退或任意RUNNING重领。
 
 安装器通过sudo运行时显式提供已验证uv的PATH与UV_PYTHON_INSTALL_DIR；本环境uv在原ubuntu的.local/bin，Python3.14.7在其uv目录。首次必须确认目标不存在，不覆盖已有版本；失败先核对实际阶段再续，不把安装成功当内容门禁。
+
+## M41 Skill安装与恢复
+
+M41沿原三包、Python3.14.7及根uv.lock安装；Skill审核快照、原件hash和本次内容PASS纳入原完整ReleaseManifest。当前安装/完整hash/revision见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，正式内容、管理页面、同run观测及恢复证据见[M41交接](../../handoffs/M41.md#特性3管理审核快照精确安装与恢复)。构建仍用根workspace；导出独立安装依赖须包含三个成员，不能只导出无依赖的虚拟根：
+
+```powershell
+$bundlePath = "<本轮已创建bundle的绝对路径>"
+py -3.14 -m uv export --frozen --all-packages --no-dev --no-editable --no-emit-workspace --format requirements-txt --output-file (Join-Path $bundlePath 'requirements.lock')
+```
+
+包wheel由同次sdist构建并单独安装；依赖、三包和start.sh按bundle的SHA256SUMS核对。失败安装未激活时先核对现场阶段和原active，修正依赖或文件所有者后只续未成功步骤，不覆写有效安装或重新套旧PASS。
+
+恢复闭包`/srv/deephelp-modern/recovery/m41-skills-v1`保留原/新runtime.env、原/新learning-catalog、原artifact-map/pointer、recovery.json及已验证bundle。旧目标`m40-collaboration-v1`，新目标`m41-skills-v1`；精确hash取该recovery.json。回退先control.sh stop并核对四单元MainPID=0及其他写者；逐文件以ubuntu所有者/0600恢复原runtime.env、learning-catalog.json、pointer.json，重新source环境。恢复新版本用new-runtime.env/new-learning-catalog.json及原pointer；不要改写累计budget。
+
+两方向都由**目标安装**的`deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`读取当前PG revision，再用目标完整hash、现场`--expected-revision`与原`--budget-state /srv/deephelp-modern/state/budget.json`执行activate；最后switch.sh目标安装、有界检查实际health。现成参数结构见上方恢复命令；不能只切symlink、沿用旧revision或用本机预算替代云累计状态。Skill候选/批准/拒绝记录仍在原catalog的task_root/skills，恢复不回滚它们。
+
+实际M41→M40→M41中完整33张非系统表（业务、官方与旧checkpoint）只见发布active/审计变化，模型计量保持；发布资产读取仍计RPC attempts。M40严格DTO只读原M40历史，新Skill字段/回执保留在PG，回M41读原记录；不让旧版继续新会话，不重放UNKNOWN或业务副作用。
