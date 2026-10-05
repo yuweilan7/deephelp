@@ -320,3 +320,63 @@ pre {
     font-size: 25px;
   }
 }
+
+.two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.evaluation-grid > div {
+  display: grid;
+  gap: 22px;
+}
+section.card > label,
+form > label {
+  display: block;
+  margin: 14px 0 8px;
+}
+input:not([class]),
+select,
+textarea:not([class]) {
+  width: 100%;
+  border: 1px solid #b7c8d4;
+  border-radius: 6px;
+  background: white;
+  color: #23364b;
+  padding: 10px;
+  margin: 5px 0;
+}
+select {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+textarea {
+  min-height: 75px;
+}
+.el-checkbox {
+  height: auto;
+  white-space: normal;
+  margin: 10px 0;
+  align-items: start;
+}
+.el-checkbox__label {
+  white-space: normal;
+  line-height: 1.5;
+}
+.route-result {
+  border-top: 1px solid #dce4e9;
+  padding: 12px 0;
+}
+.card > a {
+  display: inline-block;
+  margin: 6px 14px 6px 0;
+}
+.card p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+}

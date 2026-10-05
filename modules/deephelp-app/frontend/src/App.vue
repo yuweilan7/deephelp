@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { workspace, connect } from "./composables/workspace";
+import { navigation } from "./content/navigation";
 onMounted(connect);
 </script>
 <template>
@@ -10,9 +11,12 @@ onMounted(connect);
         >DeepHelp <span>个人学习工作台</span></router-link
       >
       <nav aria-label="学习任务">
-        <router-link to="/">从哪里开始</router-link
-        ><router-link to="/conversation">对话与全过程</router-link
-        ><a href="/legacy/index.html">业务与全部机制实验</a>
+        <router-link
+          v-for="item in navigation"
+          :key="item.path"
+          :to="item.path"
+          >{{ item.label }}</router-link
+        >
       </nav>
       <p>浏览新增模型调用 0 次</p>
     </aside>

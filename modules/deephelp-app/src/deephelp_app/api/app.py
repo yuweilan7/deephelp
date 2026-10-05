@@ -329,12 +329,6 @@ def create_app(
 
         return static_response("assets/" + name)
 
-    @app.get("/legacy/{name:path}")
-    async def legacy_asset(name: str) -> Response:
-        from deephelp_app.api.workbench import static_response
-
-        return static_response("legacy/" + name)
-
     @app.get("/debug", response_class=HTMLResponse)
     async def debug_page() -> str:
         from importlib.resources import files

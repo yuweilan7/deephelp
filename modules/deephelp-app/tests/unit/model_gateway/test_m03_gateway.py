@@ -496,6 +496,110 @@ async def test_actual_structured_tool_fields_are_accepted_even_with_stop_reason(
         await g.client.aclose()
 
 
+@pytest.mark.parametrize("wire_calls", [None, []])
+async def test_text_action_is_corrected_once_into_actual_native_call(wire_calls):
+    requests = []
+    text = '{"tool_name":"lookup","parameters":{"order_id":"0007"}}'
+    native = [
+        {
+            "id": "native-2",
+            "type": "function",
+            "function": {"name": "lookup", "arguments": '{"order_id":"0007"}'},
+        }
+    ]
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        data = chat_data(text) if len(requests) == 1 else chat_data(None, "tool_calls", native)
+        if len(requests) == 1:
+            data["choices"][0]["message"]["tool_calls"] = wire_calls
+        return httpx.Response(200, json=data)
+
+    g, b = gateway(handler), budget()
+    try:
+        result = await g.chat(
+            chat_request(
+                tools=[ModelTool(name="lookup", parameters=SCHEMA)],
+                tool_choice="lookup",
+                repair_once=True,
+            ),
+            b,
+        )
+        assert len(requests) == b.attempts_used == 2
+        assert result.tool_calls[0].call_id == "native-2"
+        assert result.tool_calls[0].arguments == {"order_id": "0007"}
+        assert result.usage.total_tokens == b.tokens_used == 24
+        assert requests[1]["messages"][-2] == {"role": "assistant", "content": text}
+        assert requests[1]["tool_choice"] == requests[0]["tool_choice"]
+        assert requests[1]["tools"] == requests[0]["tools"]
+    finally:
+        await g.client.aclose()
+
+
+@pytest.mark.parametrize(
+    "repair,attempts,expected_calls,code",
+    [
+        (False, 5, 1, ErrorCode.MODEL_OUTPUT_INVALID),
+        (True, 5, 2, ErrorCode.MODEL_OUTPUT_INVALID),
+        (True, 1, 1, ErrorCode.BUDGET_EXHAUSTED),
+    ],
+)
+async def test_native_correction_is_opt_in_bounded_and_uses_original_budget(
+    repair, attempts, expected_calls, code
+):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=chat_data('{"tool_name":"lookup"}'))
+
+    g, b = gateway(handler), budget(attempts=attempts)
+    try:
+        with pytest.raises(AppError) as error:
+            await g.chat(
+                chat_request(
+                    tools=[ModelTool(name="lookup", parameters=SCHEMA)],
+                    tool_choice="lookup",
+                    repair_once=repair,
+                ),
+                b,
+            )
+        assert error.value.code == code
+        assert len(requests) == b.attempts_used == expected_calls
+    finally:
+        await g.client.aclose()
+
+
+async def test_malformed_native_arguments_are_not_repaired_or_coerced():
+    requests = []
+    native = [
+        {
+            "id": "native-1",
+            "type": "function",
+            "function": {"name": "lookup", "arguments": '{"order_id":7}'},
+        }
+    ]
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=chat_data(None, "tool_calls", native))
+
+    g = gateway(handler)
+    try:
+        with pytest.raises(AppError) as error:
+            await g.chat(
+                chat_request(
+                    tools=[ModelTool(name="lookup", parameters=SCHEMA)],
+                    tool_choice="lookup",
+                    repair_once=True,
+                ),
+                budget(),
+            )
+        assert error.value.code == ErrorCode.MODEL_OUTPUT_INVALID and len(requests) == 1
+    finally:
+        await g.client.aclose()
+
+
 async def test_external_schema_reference_disabled_before_call():
     g = gateway(lambda r: pytest.fail("External schema must be refused"))
     try:

@@ -2,11 +2,11 @@
 
 **来源：** 用户2026-10-05要求引入框架、丰富指引及提升页面组织；当前前端约568行HTML、1350行JS、395行CSS，单文件承担全部机制。
 **前置：** [M34免登录](M34_PERSONAL_ACCESS.md)实际交付；[M32结构](M32_CODE_ORGANIZATION.md)接口/路径交接；M33上手教程至少完成首特性。复用[M22完整页面能力](../../handoffs/M22.md)，不重新造引擎。
-**实施：** [唯一PLAN](../../planning/M35/PLAN.md)。本轮不安装前端依赖、不生成空组件或页面。
+**实施：** [实际交接](../../handoffs/M35.md)。两项均已交付；完成的重复PLAN删除，历史规划由Git追溯，当前状态以PROJECT_STATE为准。
 
 ## 技术与交付形态
 
-选Vue 3 + TypeScript + Vite + Element Plus：用单文件组件/类型化API/成熟表格表单组织学习工作台。依据[Vue组件与渐进采用](https://vuejs.org/guide/introduction.html)、[Vite构建](https://vite.dev/guide/)、[Element Plus安装](https://element-plus.org/en-US/guide/installation.html)。版本/Node要求在实施时核对并精确锁定，当前规划不伪造已安装版本或兼容性。
+选Vue 3 + TypeScript + Vite + Element Plus：用单文件组件/类型化API/成熟表格表单组织学习工作台。依据[Vue组件与渐进采用](https://vuejs.org/guide/introduction.html)、[Vite构建](https://vite.dev/guide/)、[Element Plus安装](https://element-plus.org/en-US/guide/installation.html)。实际版本/Node要求在实施时核对并精确锁定，安装与验证结果记录在handoff。
 
 源码仍只有modules/deephelp-app/frontend一份；增量使用一个前端package清单与对应锁文件，Python继续唯一uv.lock。开发允许Vite本机代理现有API，云运行由原应用同源提供构建静态文件，不新开Node常驻服务，不引入SSR、独立BFF或第二套业务API。依赖本地构建/打包，不运行时拉CDN。
 

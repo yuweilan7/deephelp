@@ -23,7 +23,7 @@
 | [13 观测](13-observations.md) | receipt/run/trace/原证据/usage | course observations |
 | [14 评测发布](14-evaluation-release.md) | 留出/gold/完整版本/CAS/回退 | course evaluation与原反馈/发布反例 |
 
-从根运行 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request`。第一次先看missing→answered→replay→unknown，再沿每章的当前源码链接阅读。M35/M36将消费同一课程；此处不配置云端或激活新发布。下面保留已有机制入口，历史M01指南是补充阅读。
+从根运行 `py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request`。第一次先看missing→answered→replay→unknown，再沿每章的当前源码链接阅读。M35任务页面复用同一课程链接，M36继续沿同一套引擎扩展解释；此处不配置云端或激活新发布。下面保留已有机制入口，历史M01指南是补充阅读。
 
 ## 怎样学、怎样复验
 

@@ -68,6 +68,8 @@ M04增量类型仍在唯一domain/models.py，业务envelope保持0.2.0-m02，�
 
 M03 增量添加 ChatRequest/ChatResult、ChatMessage/ModelTool/ModelToolCall、ModelUsage、EmbeddingSignature/EmbeddingResult，仍在唯一 domain/models.py；ChatPort/EmbeddingPort 在 ports.py。旧 ModelGateway.complete 保留兼容，业务 envelope 版本仍为 0.2.0-m02。预算增加可空 token_upper_bound/cost_upper_bound 与默认 0 的 uncertain_attempts，不改已有状态/身份语义；新增 PROVIDER_QUOTA_EXHAUSTED / MODEL_CAPABILITY_UNAVAILABLE 非重试错误。费用 cost 是配置单价下的保守估计，未知尝试只留上界，真实付款不由 DTO 推断。
 
+强制tool_choice时必须收到唯一、同名且参数schema有效的原生tool_calls。M35为SOP就绪节点显式开启已有repair_once：仅已返回正文、finish=stop且没有原生调用时允许一次格式纠正，保留原消息、工具/schema及已确认参数；第二次仍无原生调用即MODEL_OUTPUT_INVALID。两次API预约与usage计入同一预算，正文JSON不转换成ToolCall或事实；畸形原生调用、错误工具名/类型或传输错误不走此纠正。工具和输出schema不能在同一请求混用，普通请求默认不纠正。
+
 调用者必须共享原 ExecutionBudget，model 调用前有正 token/cost 上限；超时/取消不释放可能已发生的计费预留。ChatResult 保存 usage/finish_reason/provider_request_id 与校验过的 schema/tool 字段，EmbeddingResult 按输入顺序含签名、缓存命中和索引适配标记。模型结果不是业务事实，模型工具调用不是 ToolResult 或 MCP 执行证据；下游仍做白名单、身份/归属和参数核验。接口与版本限制见 [模型矩阵](MODEL_CAPABILITIES.md)。
 
 M31 增加同一 `models.py` 内的 RerankDocument/RerankRequest/RerankHit/RerankResult 与 `ports.py` 的 RerankPort。输入文档为不可变有序 tuple，包含本地 doc_id/content/intent_code/source；仅 query、文档文本及可选 instruct 送模型，top_n 严格为 1..文档数。响应 index 为唯一范围内非bool整数，数量等于 top_n，score 有限且按降序返回，并列按原输入 index 稳定排序；以 index 映射原文档，不采信响应替换内容/标签。score_kind 固定 rerank，无概率/融合含义。完整合法 usage 通过原共享预算结算一次；缺失/不完整 usage 为 null，结构诊断保留已知项，未知尝试保留预留。

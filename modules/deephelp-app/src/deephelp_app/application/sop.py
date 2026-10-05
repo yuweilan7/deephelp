@@ -418,12 +418,17 @@ class SOPExecutor:
                                         "verified_parameters": expected,
                                     },
                                     ensure_ascii=False,
-                                ),
+                                )
+                                + "\nInvoke exactly one native tool_calls function with the "
+                                "verified parameters. Do not describe the action in content "
+                                "or return a JSON/code block instead of a function call.",
                             ),
                         ],
                         tools=[ModelTool(name=node.tool.value, parameters=tool_schema(node.tool))],
                         tool_choice=node.tool.value,
                         max_output_tokens=4096,
+                        # 一次格式纠正仍由原共享预算计费；JSON正文不进入工具执行。
+                        repair_once=True,
                     )
                     try:
                         async with asyncio.timeout(

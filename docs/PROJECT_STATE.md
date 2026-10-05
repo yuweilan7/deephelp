@@ -41,9 +41,9 @@
 | M34 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M34.md) | 固定原个人owner/自动HttpOnly会话/CSRF、删除登录退出；新精确发布/云安装、浏览器维护→补槽→事实/同run/重投、刷新/重启、CAS/外身份/原审批归属及旧版→新版恢复通过；其他学习体验模块仍待实施 |
 | M32 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[交接](../handoffs/M32.md) | 唯一类型/会话/归属及适配器/装配/工具/服务归组；52测试文件按职责移动、独立断言保留；62无消费者过程文件已删除，源码导航可用；模型0次，云安装保持M34 |
 | M33 | IMPLEMENTED_OFFLINE_VERIFIED；全部三项完成；[课程](learning/README.md) · [交接](../handoffs/M33.md) | 完整14章Java课程、11个安装可运行离线topic、原图UNKNOWN/反馈/发布实验及关键中文注释；屏障/取消/线程/子进程/共享候选/交错/证据门禁通过；模型0次，云保持M34，不代替用户学习或真实质量 |
-| M35 | PARTIALLY_IMPLEMENTED_OFFLINE_VERIFIED；[交接](../handoffs/M35.md) | Vue组件/对话历史事实、同源wheel与原云receipt重投已验；完整功能迁移/新云安装待第二项 |
+| M35 | IMPLEMENTED_LIVE_VERIFIED；全部两项完成；[交接](../handoffs/M35.md) | Vue3/TS/Vite/Element Plus八任务入口、全部原能力迁移、唯一源码/前端锁及同源wheel；正式个人安装、14/14内容门禁、事实/重放/检索/记忆/观测、CAS、重启及M34→M35恢复通过；M36未启动 |
 | M36 | SPEC_AND_PLAN_DELIVERED；[规格/PLAN入口](ROADMAP.md#可读性与学习体验m32m36待实施) | 机制/观测学习仍为规格与PLAN |
-| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05通用Chat/归属判断切qwen3.7-flash，三项接口及11会话14消息内容通过；云PG订单/同run Langfuse/零调用重放通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
+| 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05 M35按用户授权将当前Chat切qwen3.8-max，强判仍qwen3.7-flash；最终11会话14消息内容、云PG订单/同run Langfuse/零调用重放通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 现代路线实施与规划
 
@@ -55,13 +55,15 @@
 
 ## 当前运行与验收边界
 
-正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m34-personal-v1`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
+正式业务入口为 `python -m deephelp_app`；M01默认学习骨架保持501。运行代码、SOP/模板、策略/词典、demo事实与learning/probes/evaluation已分开，正式组装不导入学习/验收工具或读取dev/test。根Python3.14.7、uv workspace、单一锁和infra保留；正式云安装为`m35-vue-v3`，唯一活动业务事实库为`deephelp_m25_m30_live`（PG18.6），运行根`/srv/deephelp-modern`。Redis/Milvus可重建，checkpoint不是账本。
 
-完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision9，active为M34个人入口版`6073a176c6fe9800d569cff7ffa0b65c7b041d6782fa402fa781faf37989100a`，previous为原Flash配置版`5d1ac428b714e2913877532300a33f0686def101f25f361d6b945d92929f94a7`。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；其代码字节仍属旧安装，切换须同时恢复匹配安装与应用/检索profile，不能将该清单直接用于M34。M31两版各通过当时的11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
+完整发布以PG单一active/previous及运行引用为准，绑定不可变资产、`runtime-v2`和独立`tooling_digest`。`m30-personal`当前revision17，active为M35最终Vue版`1d74643d654a63d114eb2662a8fa74de8304314463be1b39d766475bc722a6b0`，previous为M34个人入口版`6073a176c6fe9800d569cff7ffa0b65c7b041d6782fa402fa781faf37989100a`。独立`m31-rerank-opt-in` revision1为开启版`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；其代码字节仍属旧安装，切换须同时恢复匹配安装与应用/检索profile，不能将该清单直接用于M35。M31两版各通过当时的11会话14消息完整门禁，开启实测8次重排、关闭0次；reference采用原M09冻结12条/原Embedding集合，正式N6与最终K3分别绑定。旧M30 A/B完整资产/安装及恢复配置保留；M30历史B→A→B的新写/审批一效果证据仍有效于其范围。待审批/UNKNOWN/历史run与审核派生仍需保留工件；旧清单严格核对其绑定字节。M15审批/唯一执行与UNKNOWN对账继续，默认只读；权益仍为合成下游，不修改M20业务表。企业支付/任意RUNNING重领未实现。
 
-2026-10-05按用户要求切换通用Chat与归属判断至qwen3.7-flash，当时复用原安装和不变的运行字节。三项真实接口、修复后的11会话14消息完整内容与云PG订单173.45/12.30、同run Langfuse实际Flash generation、历史/原receipt零调用及外身份拒绝均通过。初验物流被误判优惠，采用原M29不可变本地Prompt机制强化当前诉求与召回样例的范围边界，再验3个相邻样本及全部受影响内容通过。该发布qwen37-flash-default-v1现为previous；原M31开启版及旧版本保持各自历史模型/资产绑定，未伪造改成Flash已验。恢复闭包已保留；证据见[模型切换交接](../handoffs/M03.md#qwen37-flash切换2026-10-05)。
+2026-10-05按用户要求切换通用Chat与归属判断至qwen3.7-flash，当时复用原安装和不变的运行字节。三项真实接口、修复后的11会话14消息完整内容与云PG订单173.45/12.30、同run Langfuse实际Flash generation、历史/原receipt零调用及外身份拒绝均通过。初验物流被误判优惠，采用原M29不可变本地Prompt机制强化当前诉求与召回样例的范围边界，再验3个相邻样本及全部受影响内容通过。该发布qwen37-flash-default-v1已作为历史版本保留，当前active/previous见上段；原M31开启版及旧版本保持各自历史模型/资产绑定，未伪造改成Flash已验。恢复闭包已保留；证据见[模型切换交接](../handoffs/M03.md#qwen37-flash切换2026-10-05)。
 
-同日M34全部两项交付：原个人身份由显式JSON唯一匹配，工作台无需登录，刷新/重启仍读PG历史。新运行/前端字节与三包安装一致；精确11会话14消息内容证据由初验13/14和同配置交错会话4/4局部复验组成，最终14/14，两个原始报告均绑定新清单，不改写初验失败。真实浏览器创建订单、缺槽补充、事实/不可变证据与同run Langfuse、原消息零调用重投通过；维护CAS与外身份读/改/审批/恢复/观测守卫通过。实际m34→m31→m34兼容安装恢复仍保留订单新版本和原receipt；131原操作计划/状态整体hash、80合成效果/138调用不变，累计预算保留。固定个人身份没有旧审批记录，原合成审批继续由原synthetic owner读取；默认业务仍只读。当前模型/Prompt/Embedding/Rerank策略未改，不声称质量提升。随后M32/M33分别完成结构与课程离线交付，源码注释字节已变，原云安装/不可变清单继续属于M34；M35/M36仍待实施。
+同日M34全部两项交付：原个人身份由显式JSON唯一匹配，工作台无需登录，刷新/重启仍读PG历史。新运行/前端字节与三包安装一致；精确11会话14消息内容证据由初验13/14和同配置交错会话4/4局部复验组成，最终14/14，两个原始报告均绑定新清单，不改写初验失败。真实浏览器创建订单、缺槽补充、事实/不可变证据与同run Langfuse、原消息零调用重投通过；维护CAS与外身份读/改/审批/恢复/观测守卫通过。实际m34→m31→m34兼容安装恢复仍保留订单新版本和原receipt；131原操作计划/状态整体hash、80合成效果/138调用不变，累计预算保留。固定个人身份没有旧审批记录，原合成审批继续由原synthetic owner读取；默认业务仍只读。该次M34交付未改模型/Prompt/Embedding/Rerank策略，不声称质量提升。随后M32/M33分别完成结构与课程离线交付，源码注释字节已变，当时云安装/不可变清单仍属M34；随后M35正式更新，当前结果见下段，M36仍待实施。
+
+同日M35两项完成：唯一Vue前端源码/锁、八任务全部原能力迁移，旧巨型文件/legacy路由删除；个人云安装为m35-vue-v3，原身份和PG事实源保持。用户明确授权当前Chat改为qwen3.8-max；强判仍qwen3.7-flash，Embedding/签名/集合、检索资产、Prompt与默认关闭Rerank不变。当前精确provider/资产绑定为.local/m35/current，最终manifest-final.json/content-install-final.json为14/14 PASS，runtime为bc8b10544f1032a6282feb3e844a6cb9433074747175dd56fd72979d133fe757，tooling为d09eae180aa920f67e9ea73d44954c39c7401f1530d7a3946ba8f0f3223ecbef。实际缺槽补充与新消息返回181.23/13.45及活动关联，订单CAS版本3、原receipt重放0新增调用；同run平台usage与原执行/所选返回计数分列。重启及M35→M34→M35恢复保留新订单、三条原receipt整体hash、131操作/547审计/80效果/138调用整体hash及累计预算。当前个人catalog使用m30-personal和最终精确报告/资产；平台历史映射仍未配置、个人身份不接管synthetic审批练习。Flash无原生tool_calls及一次预算文件权限失败已保存必要诊断并恢复，未把失败报为PASS；最终相关回归256 passed/1 skipped。M36未启动。
 
 M31开启版通过三个实际进程的PG订单主链，实付173.45/优惠12.30；一次Embedding/一次Rerank/原600一次Chat，Langfuse三次generation与调用数一致。显式学习比较四路共享同一向量/原候选，实际模型2次；签名usage仅结算一次。重复消息、登录后页面/历史/三视图和越权守卫通过，读取0模型。安装后正式MCP version/profile/签名health/schema与页面/历史检查通过，亦0模型；未把HTTP健康当内容证据。离线全量在来源metadata修复前1216 passed/2 skipped，修复后192项相关回归及格式/类型检查通过。M31全部特性收尾，不启动下一M。
 

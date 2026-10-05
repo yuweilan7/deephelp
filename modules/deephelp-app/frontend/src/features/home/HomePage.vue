@@ -12,9 +12,11 @@ import { workspace } from "../../composables/workspace";
       <router-link to="/conversation" class="card"
         ><b>01 · 运行一段对话</b>
         <p>提问 → 补充 → 阅读原事实 → 核对重投</p></router-link
-      ><a href="/legacy/index.html" class="card"
-        ><b>02 · 维护与机制实验</b>
-        <p>打开现有业务、检索、工具、审批及评测入口</p></a
+      ><router-link to="/business" class="card"
+        ><b>02 · 准备个人业务资料</b>
+        <p>
+          创建订单、优惠券与活动，再核对工具查询的实际金额与版本
+        </p></router-link
       ><a
         href="https://github.com/yuweilan7/deephelp/blob/main/docs/learning/README.md"
         target="_blank"
