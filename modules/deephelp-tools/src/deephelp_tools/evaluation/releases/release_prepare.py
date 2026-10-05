@@ -1,4 +1,8 @@
-"""Prepare only after exact content validation; never a serving dependency."""
+"""只有精确内容验证完成后才构造完整不可变发布清单。
+
+prepare_manifest绑定本次runtime/tooling、providers、资产、审核来源与报告目标。
+准备不等于切active，不能借同hash或旧报告绕过必要内容门禁；生产不依赖此工具。
+"""
 
 from pathlib import Path
 

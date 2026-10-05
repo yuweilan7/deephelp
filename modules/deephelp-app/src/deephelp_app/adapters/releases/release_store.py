@@ -1,4 +1,8 @@
-"""PostgreSQL is the sole active-release authority; switches and run pins use short transactions."""
+"""PG是完整发布active的唯一权威，切换与run版本绑定在短事务完成。
+
+register保存不可变清单，switch先验来源再CAS预期revision；rollback同样走新的切换。
+ReleaseRepository在接收消息时固定版本，审批/旧run引用保留，切版本不回滚业务事实或预算。
+"""
 
 import json
 from collections.abc import Callable
@@ -117,6 +121,7 @@ class ReleaseStore(FeedbackReader):
         fault: Callable[[str], None] | None = None,
     ) -> ReleasePointer:
         manifest = await self.manifest(target)
+        # 文件检查在锁事务之前执行；数据库提交时还会重查READY/审核来源/revision。
         verify_release(manifest)
         return await self._commit_switch(channel, target, expected, manifest, fault=fault)
 
@@ -129,7 +134,11 @@ class ReleaseStore(FeedbackReader):
         *,
         fault: Callable[[str], None] | None = None,
     ) -> ReleasePointer:
-        """Short database commit after public switch has verified the complete runtime."""
+        """原子切换channel的active/previous，expected是调用者看见的revision。
+
+        行锁和CAS阻止两个发布者覆盖彼此；同一target不重复增加revision或写事件。
+        只在commit前能回滚；commit后丢确认必须读原指针确认，不能当作未切换盲重试。
+        """
         # 先在事务外做字节验证，再锁channel/revision并CAS；不在验证时长期占事务。
         async with self.pool.acquire() as conn:
             await conn.begin()
@@ -188,7 +197,10 @@ class ReleaseStore(FeedbackReader):
                 raise
 
     async def retire(self, identity: str) -> None:
-        """Tombstone only; source files and shared models are never implicitly deleted."""
+        """仅标记版本退役；active/previous、运行或审批仍引用时拒绝。
+
+        identity是完整版本hash，退役不是删除文件或共享模型；保留引用先在同事务核对。
+        """
         async with self.pool.acquire() as conn:
             await conn.begin()
             try:

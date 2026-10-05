@@ -1,4 +1,8 @@
-"""Frozen retrieval assets and the shared, bounded HTTP MCP contract."""
+"""冻结检索资产与HTTP MCP两端共用契约，启动和回包均需核对。
+
+RetrievalBinding绑定scope/profile/签名/预算上界，公开query不包含可自填身份。
+validate_results检查每路候选、原语料与重排证据，shape通过仍不足以证明同条件检索。
+"""
 
 import hashlib
 import json

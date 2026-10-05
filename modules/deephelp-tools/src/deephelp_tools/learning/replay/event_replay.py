@@ -1,4 +1,7 @@
-"""Frozen synthetic sequence oracle for offline replay; not a real model substitute."""
+"""冻结合成多轮序列的归属oracle，只供离线回放。
+
+ReplayJudge按原固定案例返回证据引用，不代替live模型；envelope保留当前消息身份/来源。
+"""
 
 import json
 from datetime import UTC, datetime

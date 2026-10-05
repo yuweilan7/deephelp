@@ -1,4 +1,8 @@
-"""Personal browser sessions layered over the existing trusted identity mapping."""
+"""固定个人身份下的工作台、静态资源与原历史读取。
+
+BrowserAuth同时检查同源/CSRF与既有身份，不从浏览器正文创建主体。
+页面、说明和历史读取只投影原记录，明确执行才进入原业务入口与预算。
+"""
 
 import hashlib
 import hmac
@@ -173,6 +177,7 @@ def workbench_router(auth: BrowserAuth, execution: Callable[[], dict[str, Any]])
     ) -> JSONResponse:
         identity = auth(request)
         # Authorize against the durable ledger before reading any optional trace.
+        # 原PG主体/session/run归属通过后才读可选诊断；trace ID本身不能授予读取权限。
         row = await history(request).run(identity, session_id, run_id)
         sink = request.app.state.resources.trace
         reader, key = getattr(sink, "read_debug", None), getattr(sink, "debug_key", None)

@@ -1,4 +1,8 @@
-"""Prepare three traceable routes; explicit local demo activation follows content gates."""
+"""显式从已审核反馈准备三路候选资产，不自动发布。
+
+exports保持来源/route隔离，build领取短租约后用原训练/导入工具，完成前再验审核revision。
+线程训练和Milvus客户端由本次构建拥有并回收，失败保留必要诊断；prepare/activate另有内容门禁。
+"""
 
 import asyncio
 import json
@@ -19,7 +23,6 @@ from deephelp_app.adapters.releases.runtime_assets import verify_files as runtim
 from deephelp_app.adapters.releases.runtime_assets import verify_remote as verify_remote
 from deephelp_app.adapters.retrieval.milvus_dense import (
     MilvusDenseStore,
-    SSHCapacity,
     create_client,
 )
 from deephelp_app.application.corpus import digest, read_corpus, validate_records
@@ -35,6 +38,7 @@ from deephelp_tools.assets import asset_path
 from deephelp_tools.demo.assembly import DemoAssembly as LiveAssembly
 from deephelp_tools.evaluation.feedback.flywheel import FeedbackCandidate, neutral, snapshot
 from deephelp_tools.evaluation.feedback.flywheel_store import FeedbackStore
+from deephelp_tools.probes.retrieval.capacity import SSHCapacity
 
 DEMO_DATA = asset_path("m18_demo.json")
 

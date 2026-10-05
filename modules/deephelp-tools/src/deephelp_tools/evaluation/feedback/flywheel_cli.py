@@ -1,5 +1,9 @@
 """Manual synthetic feedback review, three-route build and explicit demonstration rollback."""
 
+# 手工采集/审核、三路构建、验证与显式演示激活命令。
+#
+# 各动作保留原revision和累计预算，rollback也校验原资产；不因帮助/浏览自动开始训练。
+
 import argparse
 import asyncio
 import json

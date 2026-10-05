@@ -1,4 +1,8 @@
-"""M14 real model/stdio content and same HTTP chain with retained SOP snapshots."""
+"""显式验证无环发布SOP及同HTTP主链的固定版本行为。
+
+content/business分别检查工具事实、节点路径与旧问题继续使用原快照；提案不等于已审批。
+专用集合与进程在原清理范围回收，不改旧不可变SOP资产。
+"""
 
 import argparse
 import asyncio

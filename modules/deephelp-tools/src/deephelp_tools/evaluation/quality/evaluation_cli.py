@@ -1,5 +1,11 @@
 """Audit/frozen same-data incremental comparison with partial evidence on failure."""
 
+# 显式冻结同数据比较与按影响选样入口，失败保留可续跑的部分证据。
+#
+# run审计数据后为所选mode打开原装配，逐消息读真实response/receipt/工具记录。
+# 实时请求、回放计数、实际usage和未知预留分别记录；取消/超时保存PARTIAL而不凑PASS。
+# 完整质量门禁只在明确full目标执行，成功后清理等价逐行journal。
+
 import argparse
 import asyncio
 import json
@@ -158,6 +164,11 @@ def rerank_scope(pointer: Path, capability: str) -> dict[str, Any] | None:
 
 
 async def run(args: argparse.Namespace) -> int:
+    """按显式样本/mode执行冻结比较，返回门禁退出码并保留唯一结果报告。
+
+    先审计来源/划分与控制路径，再打开所选装配；offline结果不能标成live模型质量。
+    输出路径不得覆盖旧报告，live沿原累计预算，失败时保存已得到的部分证据。
+    """
     cases, data_summary = audit(Path(args.data), Path(args.manifest))
     selected, modes = select_scope(args, cases)
     business = bool(data_summary.get("business_catalog"))

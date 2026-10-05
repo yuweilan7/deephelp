@@ -1,4 +1,7 @@
-"""One private pull endpoint per process; no Collector or duplicate export path."""
+"""每进程一个私有拉取指标端点，由原装配打开与关闭。
+
+初始化失败释放已开资源；close结束HTTP服务和线程，不创建第二条Collector导出路径。
+"""
 
 from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from prometheus_client import CollectorRegistry, ProcessCollector, start_http_server

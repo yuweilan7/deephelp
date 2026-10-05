@@ -1,7 +1,7 @@
-"""Owned loopback synthetic rights service. Effects and calls survive service restarts.
+"""只对已签名批准操作调用合成权益下游，客户端不实现企业支付。
 
-No payment/refund integration. Only a signed, approved M15 operation can record a
-synthetic adjustment. The downstream effect commits separately from the agent ledger.
+execute和query共用原operation/绑定hash；下游效果与Agent账本分别提交。
+HTTP丢响应可能已有效果，因此retry_safe=False，由审批恢复先query再决定是否派发。
 """
 
 import hashlib

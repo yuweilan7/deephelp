@@ -1,4 +1,8 @@
-"""Targeted M20 live retrieval parity, process recovery and cross-MCP business acceptance."""
+"""显式同向量检索协议对照、独立进程恢复和跨两个MCP内容验收。
+
+ActualObservedEmbedding共享一次实际向量，parity比较同候选/排序/来源；不是分别调用后凑相同。
+进程与专用数据由本次probe回收，断连未知usage仍保留原预算，失败不转本地demo。
+"""
 
 import argparse
 import asyncio

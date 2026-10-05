@@ -1,3 +1,9 @@
+"""入口的环境配置与live前置校验，默认学习入口保持显式离线。
+
+Settings是配置值，from_env校验必需字段；validate_live只检查选择和凭据是否可用。
+配置通过不是模型内容或真实数据库验收，导入模块不会打开依赖。
+"""
+
 import os
 from collections.abc import Mapping
 from decimal import Decimal

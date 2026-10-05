@@ -1,5 +1,10 @@
 """Real fixed-action repository acceptance for M25; no remote model or cutover."""
 
+# 固定仓储动作验M25实际PG事实，无远程模型或业务切换。
+#
+# 领取/版本/记忆/审批/发布沿原仓储读取，expected与实际内容分开。
+# 隔离配置/专用来源核对后才执行，probe结果不自动改正式active。
+
 import argparse
 import asyncio
 import json

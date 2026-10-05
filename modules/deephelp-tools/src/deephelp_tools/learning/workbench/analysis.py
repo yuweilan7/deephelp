@@ -1,4 +1,8 @@
-"""Read-only memory projection, pure rule practice, explicit single-vector retrieval."""
+"""只读记忆投影、纯规则练习与显式同向量检索对照。
+
+历史窗口从PG授权读取，Redis只展示generation键；检索POST明确执行才用原预算。
+规则练习只解释当前原文证据，不将RuleMatch当最终意图或后台模型调用。
+"""
 
 import asyncio
 import json

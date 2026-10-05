@@ -1,4 +1,8 @@
-"""Small structured trace interface; no prompts, credentials or hidden reasoning."""
+"""小型结构化诊断通道，供主链阶段与调试快照共用。
+
+JsonlTrace拥有有界队列和单个writer，满队列记录丢弃而不阻塞业务；退出发送哨兵并join。
+轮转/期限沿原设置，read_debug按脱敏scope读取；日志不是原receipt或恢复账本。
+"""
 
 import asyncio
 import json

@@ -1,4 +1,9 @@
-"""Explicit PostgreSQL configuration, short transactions and bounded lifecycle."""
+"""显式PG配置、短事务与连接池生命周期，供应用和独立服务复用。
+
+PostgresPool.acquire归还前结束事务；调用者在业务成功时明确commit，失败/取消rollback。
+Windows用PoolLoop专有Selector loop承接libpq，主loop保留子进程支持；包装器把协程送回拥有者。
+先读PostgresPool.open/acquire，再看PoolLoop.call的跨线程结果与取消回收。
+"""
 
 import asyncio
 import json
@@ -130,6 +135,11 @@ class PoolLoop:
             self.loop.close()
 
     async def call[T](self, operation: Coroutine[Any, Any, T]) -> T:
+        """把协程提交到PG专有loop，并异步等待结果或异常。
+
+        Future负责跨线程送回结果，Task在拥有libpq连接的loop创建。
+        调用者取消时通知该Task并等待取消/rollback收口，连接才能安全重用。
+        """
         done = threading.Event()
         future: Future[T] = Future()
         tasks: list[asyncio.Task[T]] = []
@@ -154,6 +164,8 @@ class PoolLoop:
             tasks.append(task)
             task.add_done_callback(finish)
 
+        # call_soon_threadsafe只把启动回调送到PG所属loop；没有在调用线程直接await libpq。
+        # wrap_future把跨线程Future接回当前loop，不等同于阻塞Java Future.get。
         self.loop.call_soon_threadsafe(start)
         try:
             return await asyncio.wrap_future(future)
@@ -177,13 +189,16 @@ async def on_pool_loop[T](owner: PoolLoop | None, operation: Coroutine[Any, Any,
 
 
 class PostgresCursor:
+    """保持原游标API，将异步操作转交给拥有连接的loop，普通属性原样读取。"""
+
     def __init__(self, cursor: Any, owner: PoolLoop | None) -> None:
         self.cursor, self.owner = cursor, owner
 
     def __getattr__(self, name: str) -> Any:
         attribute = getattr(self.cursor, name)
         if callable(attribute):
-
+            # 返回闭包是为了同时绑定原方法和本连接的owner；不是立即执行SQL。
+            # *args/**kwargs保留原驱动参数，类型T的结果仍由await送回调用者。
             async def call(*args: Any, **kwargs: Any) -> Any:
                 return await on_pool_loop(self.owner, attribute(*args, **kwargs))
 
@@ -273,6 +288,11 @@ class PostgresPool:
 
     @asynccontextmanager
     async def acquire(self) -> AsyncIterator[PostgresConnection]:
+        """借出一条连接；调用者提交自己的短事务，退出时回滚剩余事务再归还池。
+
+        双层finally保证rollback失败仍尝试putconn；不能把未结束事务借给下一请求。
+        Windows上的驱动操作始终提交到owner，不在调用线程直接等待libpq。
+        """
         connection = await on_pool_loop(self.owner, self.inner.getconn())
         try:
             yield PostgresConnection(connection, self.owner)

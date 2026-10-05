@@ -1,4 +1,8 @@
-"""M02 recorded labels/slots and deterministic action replay; not model-quality evidence."""
+"""固定标签/实体/动作的显式回放，复用原十三段主链与SDK stdio。
+
+RecordedModel/Dense不调用真实供应商，ReplayAssembly仍打开真实本机协议/合成工具。
+原receipt、槽位/归属与调用计数能验证机制，不能报告新增模型质量。
+"""
 
 import json
 from collections.abc import AsyncIterator

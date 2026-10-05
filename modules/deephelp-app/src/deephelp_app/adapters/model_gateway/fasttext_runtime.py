@@ -1,4 +1,8 @@
-"""Validated local artifacts and one optional adapter for the existing FallbackPort."""
+"""验证本地训练工件并接入原FallbackPort，默认是否启用由发布配置决定。
+
+文件hash、词典/预处理与校准门槛必须匹配，概率未过门槛交给原结构化兜底。
+CPU预测在受限线程任务中运行；取消等待拥有者收回工作，不能假定线程随await被强停。
+"""
 
 import asyncio
 import hashlib

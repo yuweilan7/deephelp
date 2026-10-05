@@ -1,4 +1,8 @@
-"""Native SDK observations at the existing explicit seams, with export-time guards."""
+"""在同一调用路径接入Langfuse原生SDK，并在导出时脱敏。
+
+model_io记录实际请求/输出的受控形状和usage；register_run建立服务器端授权映射。
+平台故障只影响诊断，callback和export不能改变账本、工具效果或预算事实。
+"""
 
 import json
 import os
@@ -113,6 +117,11 @@ class NativeTelemetry(Telemetry):
         parent: context.Context | None,
         links: list[Link],
     ) -> Iterator[Span]:
+        """为当前调用创建平台span/generation，并在退出时恢复原Task上下文。
+
+        parent/links来自实际执行关系，model.attempt才登记generation与已知usage。
+        update失败不改业务返回；关闭时不自动捕获原异常文本，避免凭据进入平台。
+        """
         token = context.attach(parent) if parent is not None else None
         manager = self.client.start_as_current_observation(
             name=name,
@@ -166,6 +175,10 @@ class NativeTelemetry(Telemetry):
 
 
 def graph_callbacks() -> list[Any]:
+    """每次图调用创建独立可变handler，绑定当前有效span，未启用时返回空列表。
+
+    同一个handler的last_trace_id可能被并发调用改写，所以不能用它给业务run授权或归属。
+    """
     runtime = current()
     if not isinstance(runtime, NativeTelemetry) or not runtime.config.get("enabled", True):
         return []

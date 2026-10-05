@@ -1,4 +1,8 @@
-"""Frozen synthetic SOP mechanisms; shared offline/live cases, never enterprise data."""
+"""构造合成SOP情境、冲突事实及待审批注册表，供显式验收使用。
+
+fixtures故意制造券门槛与订单实付不一致，proposal_registry只替换合成提案节点。
+执行仍走原SOPExecutor/ApprovalService；构造计划不等于批准或下游效果。
+"""
 
 from pydantic import Field
 

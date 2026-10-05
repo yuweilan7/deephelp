@@ -1,5 +1,10 @@
 """Explicit synthetic live acceptance with persistent, locked, cumulative budgets."""
 
+# 明确选能力和固定样本的真实模型验收，累计预算由锁定状态跨请求保留。
+#
+# chat/schema/tool/embed/rerank分别检查实际内容与结构，不以HTTP成功代替通过。
+# 失败保留安全请求ID/诊断，免费额度用完不自动换模型；帮助与导入不执行probe。
+
 import argparse
 import asyncio
 import hashlib

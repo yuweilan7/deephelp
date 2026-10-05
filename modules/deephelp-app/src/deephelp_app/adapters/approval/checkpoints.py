@@ -1,4 +1,8 @@
-"""Fact migrations and a configuration key helper; persistence is the official saver."""
+"""审批事实表迁移与配置键辅助，图持久化由官方PG saver负责。
+
+migrate_m15只扩展原账本结构，不执行权益效果；configuration从原run构造稳定图线程键。
+不要因文件名含checkpoint把这里当作第二套保存器。
+"""
 
 from importlib.resources import files
 from typing import Any

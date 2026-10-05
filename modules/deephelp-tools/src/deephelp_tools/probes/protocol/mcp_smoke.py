@@ -1,5 +1,10 @@
 """Standalone real stdio acceptance. Uses only M02 synthetic data, no model/cloud calls."""
 
+# 本机官方SDK stdio协议验收，只用合成资料，不调用模型或云库。
+#
+# 实际initialize/发现/schema/工具返回及取消/退出分别核对；参数拒绝须证明未派发。
+# 拥有的子进程由gateway.open同Task退出，协议真实不等于企业业务真实。
+
 import argparse
 import asyncio
 import json

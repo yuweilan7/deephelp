@@ -1,5 +1,10 @@
 """Bounded Linux sampling of the actual combined host; drive workloads separately."""
 
+# 显式Linux容量采样入口，业务负载由独立拥有者驱动。
+#
+# 限时读取实际cgroup/宿主/服务状态与原trace，报告绑定本次窗口与阈值。
+# 采样只证明该负载，CPU差值和RSS/cgroup不是同一口径；独占输出避免覆盖旧证据。
+
 import argparse
 import base64
 import json

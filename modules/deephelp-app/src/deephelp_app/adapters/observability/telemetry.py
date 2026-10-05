@@ -1,7 +1,8 @@
-"""Explicit, bounded OTel observations. Diagnostic context never grants authority.
+"""在原业务接缝记录有界结构化观测，诊断上下文不授予权限。
 
-Only allowlisted structural attributes leave the process; arguments, exception
-messages, SQL parameters, prompts and hidden reasoning are never inspected.
+observed/observation包住原调用，白名单属性可出进程，参数/SQL值/凭据/隐藏推理不采集。
+业务异常继续抛出，导出失败不重做副作用；上下文拥有者退出时恢复原token。
+ObservedPool/Cursor只包观测，事务提交与回滚仍由原仓储控制。
 """
 
 import asyncio
@@ -268,6 +269,11 @@ def observation(
     links: list[Link] | None = None,
     kind: SpanKind = SpanKind.INTERNAL,
 ) -> Iterator[Span]:
+    """在原调用周围记录span/耗时/计数，退出时结束观察并把原异常交还用例。
+
+    ContextVar选择当前Task观测器；取消、图暂停、拒绝与失败分别计数。
+    已返回的语义失败可覆盖HTTP完成状态；inflight在finally减回，不是成功请求总数。
+    """
     runtime = current()
     tracer = runtime.tracer if runtime else trace.get_tracer("deephelp.disabled")
     started, status = time.perf_counter(), "completed"
@@ -330,6 +336,12 @@ def observation(
 def observed(
     name: str,
 ) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
+    """给原异步函数加观测外壳，参数/返回值仍由原函数决定。
+
+    P表示原参数形状，T表示返回类型；wraps保留原函数身份，异常继续向外传播。
+    相当于调用前后做拦截记录，没有创建第二套业务实现或后台执行任务。
+    """
+
     def decorate(fn: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:
         @functools.wraps(fn)
         async def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:

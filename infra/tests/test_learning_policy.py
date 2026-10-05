@@ -1,3 +1,8 @@
+"""离线校验Redis权限改写保留原密码/其他账号，并拒绝缺失/重复/无密码来源。
+
+测试读取脚本定义不执行其main，断言的是受限改写函数，不证明当前云端权限已应用。
+"""
+
 import hashlib
 import importlib.util
 import unittest

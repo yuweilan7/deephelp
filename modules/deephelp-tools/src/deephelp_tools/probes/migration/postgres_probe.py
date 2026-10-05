@@ -1,5 +1,10 @@
 """Explicit M25 real PostgreSQL protocol qualification; never a business cutover."""
 
+# 显式隔离库的真实PG协议资格验证，不做正式业务切换。
+#
+# 固定动作核对类型/时区/事务、唯一领取、锁/取消/池复用与进程持久性。
+# require_isolated守住专用目标，旧MySQL仅只读库存，失败不能用内存模拟替代。
+
 import argparse
 import asyncio
 import hashlib

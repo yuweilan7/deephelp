@@ -1,4 +1,8 @@
-"""Frozen synthetic retrieval comparison; dev alone selects the weight."""
+"""冻结检索对照的独立指标与dev选择，业务启动不读这些标签。
+
+query_text沿同一槽位规范化，ranking/metrics核对原候选；choose_weight只用dev。
+classify复用原IntentService，检索命中与最终回答质量分别判断。
+"""
 
 import json
 from typing import Any

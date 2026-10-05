@@ -1,4 +1,7 @@
-"""Trusted synthetic service configuration, never model tool arguments."""
+"""显式合成工具资料与故障配置，供demo进程读取。
+
+默认只读固定事实，故障需明确选择；配置不是模型可编写的任意工具脚本。
+"""
 
 from typing import Literal
 

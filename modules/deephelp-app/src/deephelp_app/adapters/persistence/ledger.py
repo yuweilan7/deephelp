@@ -1,4 +1,9 @@
-"""Durable message acceptance. RUNNING receipts are never automatically reclaimed."""
+"""原子接收消息与保存终态的权威账本，RUNNING记录不自动重领。
+
+accept用消息归属键和payload_hash确定新领取/重投/冲突；finish在同事务保存run与问题。
+MemoryLedger只供显式离线实验，PostgresLedger实际持久；数据库失败不会切成演示结果。
+先读lookup/accept/finish，问题扩展钩子在同一事务内接入记忆、审批和发布绑定。
+"""
 
 import hashlib
 import json
@@ -222,6 +227,11 @@ class PostgresLedger:
     async def accept(
         self, request: RequestEnvelope, *, attribution: tuple[str, int] | None = None
     ) -> Receipt:
+        """原子接收当前消息，返回是否获得执行权和原问题/receipt。
+
+        同消息键只允许相同payload，竞争失败回读原receipt；RUNNING不自动重领。
+        问题归属、成员记录和run在同事务提交，事务内不执行模型或远程工具。
+        """
         fresh = new_receipt(request)
         if attribution and not self.supports_continuation:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Base ledger cannot attach events")
@@ -303,6 +313,11 @@ class PostgresLedger:
     async def finish(
         self, receipt: Receipt, question: Question, response: ResponseEnvelope
     ) -> None:
+        """在同一短事务保存run终态、问题版本及扩展事实。
+
+        receipt必须是本次已领取记录，问题version递增与归属守卫同时校验。
+        提交后原receipt是重投权威；失败/取消rollback，不写半个成功结果。
+        """
         validate_terminal(receipt, question, response)
         # 本请求借连接，只在终态更新期间持事务，不跨模型/人工等待占住连接。
         try:

@@ -1,4 +1,8 @@
-"""Fixed protocol experiments and scoped views of the original M15 approval graph."""
+"""固定协议练习与原审批图的归属视图，不提供任意工具/SQL。
+
+客户端非法参数反例在发送前拒绝，服务端反例显式调用SDK并核对结构语义。
+审批/恢复从原repo scoped读取，同个人身份不能接管synthetic owner旧操作；浏览只读。
+"""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

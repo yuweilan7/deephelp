@@ -1,4 +1,8 @@
-"""Feedback facts in PostgreSQL; M10-style short leases never cover external transactions."""
+"""PG保存反馈revision、审核和候选构建租约，外部工作在事务之外。
+
+review按预期revision CAS；claim登记任务后释放行锁，complete再核对token与原来源。
+取消/失败保留未完成尝试，旧导出不因新审核被改写或冒称仍有效。
+"""
 
 import json
 from typing import Any

@@ -1,5 +1,10 @@
 """M09 reproducible native retrieval and dev/test comparison. Default preview is offline."""
 
+# 默认离线预览；显式比较原生Dense/BM25/Hybrid并按dev选择融合权重。
+#
+# 共享实际查询向量，heldout test只检验选定权重；发布绑定分词器/签名/清单。
+# 显式删除只针对合成集合数据，容量/导入使用原工具，失败保留诊断不覆盖旧指针。
+
 import argparse
 import asyncio
 import json
@@ -10,7 +15,6 @@ from typing import Any
 import httpx
 
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig, create_gateway
-from deephelp_app.adapters.retrieval.milvus_dense import SSHCapacity
 from deephelp_app.adapters.retrieval.milvus_hybrid import MilvusHybridStore, publish_hybrid
 from deephelp_app.application.dense import (
     DenseImporter,
@@ -34,6 +38,7 @@ from deephelp_tools.evaluation.retrieval.hybrid_eval import (
     ranking,
     validate_selection,
 )
+from deephelp_tools.probes.retrieval.capacity import SSHCapacity
 
 
 async def run(args: argparse.Namespace) -> int:

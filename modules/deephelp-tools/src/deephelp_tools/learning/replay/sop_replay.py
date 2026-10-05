@@ -1,4 +1,7 @@
-"""Explicit synthetic action replay for stable offline SOP regression."""
+"""固定合成动作回放，供SOP确定性回归复用原执行器。
+
+fixture指定观察序列，不自由编写事实；回放只验证守卫和收口，不证明真实工具选择质量。
+"""
 
 import json
 from collections.abc import Sequence

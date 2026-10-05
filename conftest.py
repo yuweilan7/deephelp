@@ -1,4 +1,8 @@
-"""Workspace-level live options must be registered before pytest parses command-line flags."""
+"""三包共用的离线网络守卫与显式live选项，pytest解析参数前先注册。
+
+收集阶段即封住远程DNS/TCP，允许测试拥有的loopback HTTP/stdio；退出恢复原函数。
+这是Python测试守卫，不是任意子进程沙箱；不因传入--live自动运行完整评测。
+"""
 
 import socket
 from decimal import Decimal, InvalidOperation
@@ -21,6 +25,8 @@ def _allow_local_host(host):
         raise RuntimeError("Offline pytest blocks remote network; use an explicit live probe")
 
 
+# 守卫在收集前安装，而不是每个测试开始后才装，避免模块导入时意外联网。
+# 保留loopback是为了真实本机协议；课程自己的offline_only会进一步拒绝它。
 def _install_offline_network_guard(config):
     # Install before collection, including when --live only checks configuration.
     import psycopg

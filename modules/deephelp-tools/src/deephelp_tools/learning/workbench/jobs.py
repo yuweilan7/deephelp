@@ -1,4 +1,9 @@
-"""Single-process, durable, bounded learning jobs; evidence is separate from state."""
+"""单进程、持久、有界重任务协调器，执行状态与证据PASS分开。
+
+start/cancel共用guard，只有一个worker；恢复原ID时增加attempt并保存旧结果，输出目录不复用。
+进程启动遇RUNNING/CANCELLING标INTERRUPTED，不自动续跑；明确恢复仍沿原共享预算。
+取消先保存CANCELLING再cancel/join，清理结束才释放重任务槽。
+"""
 
 import asyncio
 import json
@@ -47,6 +52,11 @@ class LearningJobs:
             raise AppError(ErrorCode.VERSION_CONFLICT, "One heavy task at a time", 409)
 
     async def start(self, options: dict[str, Any], *, resume: str | None = None) -> dict[str, Any]:
+        """在同一锁内检查空闲并创建/恢复一个worker，返回持久任务记录。
+
+        resume只允许原可恢复状态，增加attempt并保留history；原options与累计预算不重置。
+        先save RUNNING再create_task，进程突然退出仍能识别INTERRUPTED。
+        """
         async with self.guard:
             self.available()
             if resume:
@@ -82,6 +92,11 @@ class LearningJobs:
         return self.root / str(row["id"]) / ("attempt-" + str(row["attempt"]))
 
     async def execute(self, row: dict[str, Any]) -> None:
+        """worker拥有runner的超时/取消，最终保存任务状态与原结果。
+
+        SUCCEEDED只表示runner正常返回，质量是否PASS要看result中的验收证据。
+        CANCELLED/FAILED保留部分证据；错误只存类型及允许的安全诊断，不回显SDK原文。
+        """
         try:
             async with asyncio.timeout(self.timeout):
                 row["result"] = await self.runner(row, self.output(row))
@@ -104,6 +119,11 @@ class LearningJobs:
             self.save(row)
 
     async def cancel(self, identity: str) -> dict[str, Any]:
+        """取消当前worker并等待其finally保存结果；返回记录不等于质量PASS。
+
+        guard在join期间保留，阻止另一个start抢占未清理的资源。
+        Task尚未进入execute就取消时，当前拥有者补写CANCELLED，避免永久RUNNING。
+        """
         async with self.guard:
             row = self.get(identity)
             if self.current != identity or self.worker is None or self.worker.done():

@@ -1,4 +1,8 @@
-"""Reviewed synthetic feedback, with separate candidate and per-route gold records."""
+"""反馈采集、隔离与人工审核的纯规则，候选与各route的gold分开。
+
+采集仅接受专用合成来源，先脱敏再隔离冻结训练/dev/test/发布输入。
+reviewed/withdrawn产生新revision，未审核模型建议不能自动变成标签或active资产。
+"""
 
 import re
 from typing import Any

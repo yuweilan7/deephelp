@@ -1,5 +1,9 @@
 """CPU training, read-back inference and verified atomic rollback."""
 
+# 有界CPU训练、实际工件读回与验证后的原子指针回退。
+#
+# 训练在明确worker中执行，超时回收拥有的进程；默认不开启业务FastText兜底。
+
 import argparse
 import json
 import multiprocessing

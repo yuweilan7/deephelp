@@ -1,4 +1,4 @@
-"""Stable public DTO imports. Each definition lives in one responsibility module."""
+"""保留原公开DTO导入名；此处只导出，定义各自在同目录的唯一职责模块中。"""
 
 from .approval import (
     ApprovalCommand as ApprovalCommand,

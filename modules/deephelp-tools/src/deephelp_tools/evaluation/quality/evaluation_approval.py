@@ -1,4 +1,8 @@
-"""Frozen approval evaluation uses fresh business-ledger observations, never old PASS files."""
+"""审批评测读本次新账本/下游观察，不用旧PASS文件代替效果。
+
+固定动作复用原故障矩阵，统计批准、越权、重投与对账的独立边界。
+协议与副作用验收分开于模型内容，不让每个故障都重新经过模型。
+"""
 
 import argparse
 import json

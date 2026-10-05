@@ -1,4 +1,8 @@
-"""Explicit, finite M10 projection worker and authority-checked related-case read."""
+"""显式有限次数的投影worker和授权相关问题查询。
+
+worker更新可重建投影，不重做原业务；related命中仍回PG核对。
+资源由退出栈关闭，每个动作沿原累计预算，导入不会自动drain。
+"""
 
 import argparse
 import asyncio

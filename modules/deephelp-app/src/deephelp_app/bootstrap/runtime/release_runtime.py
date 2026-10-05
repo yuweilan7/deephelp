@@ -1,4 +1,9 @@
-"""Select a complete PostgreSQL release once per request; retain independent runtime instances."""
+"""每次请求从PG选择完整版本，按不可变版本保留独立运行实例。
+
+router.entry用锁防止同版本重复打开，AsyncExitStack拥有实例资源直到应用退出。
+接收时版本竞争由ReleaseMismatch收口后重新选择，旧run/审批沿原固定版本恢复。
+切active不原地修改已开的服务，不让旧审批借用新快照执行。
+"""
 
 import asyncio
 from contextlib import AsyncExitStack, asynccontextmanager

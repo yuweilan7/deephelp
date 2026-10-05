@@ -1,5 +1,9 @@
 """Inspect, explicitly decide, or reconcile an original M15 operation through authenticated HTTP."""
 
+# 经鉴权HTTP显式读取、决定或对账原审批操作。
+#
+# 命令绑定session/run/operation，读取不批准，resume仍走原唯一领取与UNKNOWN查询。
+
 import argparse
 import asyncio
 import json

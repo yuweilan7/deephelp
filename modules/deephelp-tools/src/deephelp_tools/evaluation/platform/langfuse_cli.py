@@ -1,5 +1,9 @@
 """Explicit historical import; no evaluation runner or model gateway is dispatched."""
 
+# 显式历史导入命令，只执行映射/上传/读回，不启动评测引擎或模型。
+#
+# 原报告与state绑定来源和项目，续传不重置已验行；--live必须显式选择。
+
 import argparse
 import asyncio
 from pathlib import Path

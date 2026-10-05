@@ -1,4 +1,7 @@
-"""Serving boundaries must work even when the developer tooling is unavailable."""
+"""独立运行的导入、包资源、精确指纹与原入口边界，不只检查文件存在。
+
+故意禁止学习/服务依赖与远程网络，确认业务仍从安装包读取运行资源；旧manifest绑定旧字节。
+"""
 
 import copy
 import subprocess

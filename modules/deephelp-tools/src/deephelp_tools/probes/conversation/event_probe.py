@@ -1,5 +1,10 @@
 """Real model/Milvus/PostgreSQL/Redis acceptance on frozen M11 synthetic sequences."""
 
+# 冻结合成多轮序列的真实归属验收，涉及模型与原PG/Redis/Milvus。
+#
+# 先核对来源/窗口，再看归属证据、歧义与持久版本；500不调用600或SOP。
+# 专用collection与累计预算按原入口维护，历史序列的PASS不代表企业泛化。
+
 import argparse
 import asyncio
 import json

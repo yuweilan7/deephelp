@@ -1,4 +1,9 @@
-"""Rebuildable Redis memory projection; never the fact source."""
+"""按身份/session/generation写可重建Redis记忆，读事实仍由PG授权。
+
+两个键在同pipeline事务写入并带TTL；没有latest指针，迟到旧generation不会覆盖新窗口。
+open只在调用时从通用装配配置创建客户端，导入Redis模块不需要Milvus SDK。
+aclose由装配退出栈调用，投影写入失败由MemoryService/worker按原事实边界处理。
+"""
 
 import asyncio
 import hashlib
@@ -8,7 +13,7 @@ from typing import Any
 
 from redis.asyncio import Redis
 
-from deephelp_app.adapters.retrieval.milvus_dense import local_connection
+from deephelp_app.bootstrap.connections import local_connection
 from deephelp_app.domain.models.common import VerifiedIdentity
 from deephelp_app.domain.models.memory import MemoryWindow
 
@@ -52,6 +57,8 @@ class RedisMemory:
         }
         async with asyncio.timeout(5):
             # Immutable generation keys make delayed worker writes harmless; no latest pointer.
+            # 当前put拥有pipeline；execute将窗口与关键词一起提交，退出归还连接。
+            # generation写进键名，迟到旧写不会指向新窗口；这里不能批准问题归属。
             async with self.client.pipeline(transaction=True) as pipe:
                 pipe.set(key, window.model_dump_json(), ex=self.ttl)
                 pipe.set(key + ":keywords", json.dumps(keywords, ensure_ascii=False), ex=self.ttl)

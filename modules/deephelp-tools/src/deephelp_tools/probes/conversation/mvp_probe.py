@@ -1,4 +1,8 @@
-"""Whole API acceptance; offline model replay and live content evidence remain distinct."""
+"""原API全链验收入口，明确区分离线回放与live内容证据。
+
+run复用固定36条/原主链并检查事实、阶段、权限与receipt；live_content才打开真实依赖。
+离线PASS证明机制，真实HTTP/数据库协议与模型质量分别记录，不自动运行历史全量live。
+"""
 
 import argparse
 import asyncio

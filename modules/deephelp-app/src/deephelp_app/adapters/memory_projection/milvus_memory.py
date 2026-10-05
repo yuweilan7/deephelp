@@ -1,4 +1,8 @@
-"""Versioned M10 event index; old rows cannot overwrite newer facts or authorize routing."""
+"""版本化事件记忆索引，只提供归属/关闭问题候选，不能授权或改事实。
+
+行键绑定问题版本，旧投影不覆盖新版；Embedding签名与索引元数据须一致。
+search/candidates的结果由上层回PG逐项核对身份、版本与状态，分数不是归属证明。
+"""
 
 import asyncio
 import hashlib

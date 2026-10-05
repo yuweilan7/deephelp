@@ -1,5 +1,10 @@
 """Fixed synthetic M04 demo and explicit, cumulatively budgeted live content acceptance."""
 
+# 固定实体/否定/更正样本的离线demo或显式live内容验收。
+#
+# selected_cases限定本次变化范围，evaluate读取原偏移/来源/冲突；强模型对照仍共用预算。
+# 合成标签是gold而非模型观察，缺覆盖按未完成记录，不能拿旧PASS补齐。
+
 import argparse
 import asyncio
 import json

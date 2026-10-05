@@ -1,4 +1,8 @@
-"""Business-owned short transactions. Every acquisition ends its snapshot before pooling."""
+"""Business服务拥有的短事务与不可变查询证据，借还连接都结束快照。
+
+query在同一快照读取订单/券/活动关系并保存证据，更新检查原主体与expected_version。
+事务内没有模型/人工等待，失败或取消rollback；证据快照不会随后续记录更新而改写。
+"""
 
 import asyncio
 import hashlib
@@ -64,6 +68,11 @@ class BusinessRepository:
 
     @asynccontextmanager
     async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[Any]:
+        """借出同一短事务的游标，正常退出commit；异常/取消rollback后才归还连接。
+
+        snapshot需要REPEATABLE READ使多条事实查询看见同一版本，事务不跨模型/远程工具。
+        PostgreSQL冲突SQLSTATE归类为版本竞争，其他连接/超时按实际错误返回。
+        """
         try:
             async with asyncio.timeout(10), self.pool.acquire() as conn:
                 await conn.rollback()

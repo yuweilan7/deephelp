@@ -1,5 +1,10 @@
 """Official saver compatibility gate; run each phase in an independent process."""
 
+# 官方saver兼容门禁，每个阶段由独立进程执行。
+#
+# 暂停/保存/重开/恢复都读实际checkpoint与原状态，不用内存结果证明持久协议。
+# 显式schema/setup不改变当前运行图，checkpoint不是审批效果账本。
+
 import argparse
 import asyncio
 from pathlib import Path

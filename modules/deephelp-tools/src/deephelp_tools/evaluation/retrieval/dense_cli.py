@@ -1,5 +1,10 @@
 """M05 offline preview / explicitly enabled real ingestion and candidate evaluation."""
 
+# 默认离线预览；显式live才做真实索引导入与候选评测。
+#
+# 共享预算与写锁覆盖同一运行，容量来自显式SSHCapacity；丢确认反例是客户端故障。
+# 写入后读回向量/元数据与清单，退出关闭Milvus；候选召回不是最终分类质量。
+
 import argparse
 import asyncio
 import json
@@ -13,7 +18,6 @@ import httpx
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig, create_gateway
 from deephelp_app.adapters.retrieval.milvus_dense import (
     MilvusDenseStore,
-    SSHCapacity,
     activate,
     create_client,
     rollback,
@@ -33,6 +37,7 @@ from deephelp_app.domain.execution import AsyncCalls, ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
 from deephelp_app.domain.models.retrieval import DenseScope
 from deephelp_tools.evaluation.retrieval.corpus_preview import frozen_preview
+from deephelp_tools.probes.retrieval.capacity import SSHCapacity
 
 
 class LostAcknowledgementStore(MilvusDenseStore):

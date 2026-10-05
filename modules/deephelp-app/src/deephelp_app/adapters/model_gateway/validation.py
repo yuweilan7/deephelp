@@ -1,4 +1,8 @@
-"""Bounded QianWen adapter for Chat, Embedding and native text Rerank."""
+"""模型响应的纯校验与安全诊断，网关请求前/返回后共用。
+
+validate_schema限制可支持的JSON schema，invalid_output只暴露静态错误与安全请求ID。
+diagnostic_usage保留已知结构而不编造缺失计数；这里不发送HTTP或修改业务事实。
+"""
 
 import re
 
@@ -10,7 +14,10 @@ from deephelp_app.domain.models.common import ErrorCode
 
 
 def diagnostic_usage(value: object) -> dict[str, int | None]:
-    """Only API-provided counts; absent or malformed counts stay unknown."""
+    """只保留API实际返回的非负整数；bool、负数、缺失或格式错误记为未知。
+
+    reasoning是output的细项，只展示，不在这里再次加到total或计算费用。
+    """
     raw = value if isinstance(value, dict) else {}
     details = raw.get("completion_tokens_details")
     details = details if isinstance(details, dict) else {}
@@ -30,7 +37,11 @@ def safe_identifier(value: object) -> str | None:
 
 
 def validate_schema(schema: dict[str, object]) -> Draft202012Validator:
-    """Schemas are local only: remote references must never fetch untrusted URLs."""
+    """递归检查本地schema并返回校验器，远程$ref在解析前拒绝。
+
+    schema来自请求契约；若允许URL引用，纯校验可能意外联网或读取不可信来源。
+    本地引用只能以#开头，非法schema统一收口为INVALID_ARGUMENT。
+    """
 
     def check_refs(value: object) -> None:
         if isinstance(value, dict):

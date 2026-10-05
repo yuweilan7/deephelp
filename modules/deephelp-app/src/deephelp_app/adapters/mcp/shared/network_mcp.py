@@ -1,4 +1,8 @@
-"""Explicit service credentials and short-lived, audience-bound delegation for HTTP MCP."""
+"""HTTP MCP的显式凭据、短期受众绑定委托和官方会话。
+
+Bearer确认调用者服务，签名委托绑定用户/请求/期限/nonce，二者不能相互代替。
+NetworkMCPClient.session拥有本次传输和ClientSession；断连异常组分类后上抛，不重发业务调用。
+"""
 
 import base64
 import json
@@ -122,6 +126,12 @@ class NetworkMCPClient:
 
     @asynccontextmanager
     async def session(self) -> AsyncIterator[Client]:
+        """为本次固定请求拥有一个HTTP客户端和SDK会话，initialize通过后才yield。
+
+        多个async with按反序关闭，既不借旧session重放，也不允许环境代理或重定向。
+        SDK可能聚合多个异常；只有全部叶子都是传输错误才归类为可重试连接失败。
+        业务/协议异常保持原语义，不能被网络分类吞掉。
+        """
         try:
             async with (
                 httpx2.AsyncClient(

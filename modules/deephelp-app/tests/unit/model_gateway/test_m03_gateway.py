@@ -1,3 +1,8 @@
+"""原供应商协议解析、schema/工具守卫、向量签名、usage与未知预留的离线反例。
+
+HTTP Mock固定原始响应以验证代码，不能作为本次真实供应商能力证据。
+"""
+
 import asyncio
 import json
 from decimal import Decimal

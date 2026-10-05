@@ -1,4 +1,8 @@
-"""Fixed read-only registry and authenticated internal metadata for owned stdio servers."""
+"""固定只读工具schema、参数白名单与内部签名元数据的共同契约。
+
+模型只见工具参数，身份/run/问题/预算在可信委托里；正文与trace ID均不能授权。
+validate_observation把返回事实绑定到请求编号、调用ID和来源版本，不把普通JSON成功当事实。
+"""
 
 import hashlib
 import hmac

@@ -1,4 +1,8 @@
-"""Static fallback request contract and immutable, locally published prompt artifact."""
+"""结构化兜底请求契约与不可变本地Prompt资产。
+
+默认系统文字和fallback_contract绑定输出schema；发布Prompt需核对contract与请求摘要。
+read_prompt只读指定版本，模板变量或漂移内容拒绝；本轮未改实际Prompt字符串。
+"""
 
 from importlib.resources import files
 from pathlib import Path

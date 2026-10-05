@@ -1,4 +1,8 @@
-"""Loopback entry point. Explicit commands initialize, migrate, serve, or query the MVP."""
+"""本机显式init/migrate/serve/ask入口，参数选择用途而非自动执行业务。
+
+serve打开原装配，ask通过同可信API；migrate明确初始化PG表与官方saver。
+--help或普通导入只说明选项，不连接模型或创建业务事实。
+"""
 
 import argparse
 import asyncio

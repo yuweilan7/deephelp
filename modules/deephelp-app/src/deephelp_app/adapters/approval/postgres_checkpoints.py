@@ -1,4 +1,9 @@
-"""Lifecycle/loop/observation seam around the locked official PostgreSQL saver."""
+"""官方AsyncPostgresSaver的生命周期、事件循环和观测接缝。
+
+包装器不重写官方保存协议，方法转发到连接所属loop；setup只在显式迁移入口执行。
+显式setup用迁移锁串行建表；运行打开只核对现有迁移版本，旧历史由原thread_id读取。
+checkpoint是图进度，业务批准/UNKNOWN/效果以ApprovalRepository为准。
+"""
 
 import re
 from collections.abc import AsyncIterator, Sequence
@@ -25,11 +30,10 @@ SCHEMA = "deephelp_checkpoints"
 
 
 class PostgresCheckpoints(BaseCheckpointSaver[Any]):
-    """Delegate persistence to AsyncPostgresSaver, including its version generator.
+    """转交官方saver保存协议，复用原序列化器与版本生成接口。
 
-    The separate pool uses the official autocommit/row factory/prepare settings.
-    Windows calls stay on the pool's Selector loop; graph and subprocesses may
-    remain on Proactor. No checkpoint SQL or codec is reimplemented here.
+    专用池使用官方autocommit/行工厂/prepare配置；Windows驱动留在Selector loop，
+    图与子进程仍可用主Proactor loop。这里不另写checkpoint SQL或编码协议。
     """
 
     def __init__(self, saver: AsyncPostgresSaver, owner: PoolLoop | None) -> None:
@@ -37,6 +41,10 @@ class PostgresCheckpoints(BaseCheckpointSaver[Any]):
         self.official, self.owner = saver, owner
 
     def get_next_version(self, current: Any, channel: Any) -> Any:
+        """旧导入thread的整数版本继续递增；其他版本使用官方生成器。
+
+        若把旧整数直接改成字符串，图内部新旧版本比较会失败；不改历史versions_seen。
+        """
         # Imported MySQL threads use integer versions. Switching their next
         # version to a string breaks LangGraph's old/new comparison. Retain the
         # locked base class's public integer sequence for those threads; new
@@ -121,6 +129,12 @@ async def official_checkpoints(
     schema: str = SCHEMA,
     setup: bool = False,
 ) -> AsyncIterator[PostgresCheckpoints]:
+    """拥有独立checkpoint池，返回原官方saver的loop包装器，退出必关池。
+
+    setup只供显式迁移：autocommit适配并发索引DDL，advisory lock在finally释放。
+    普通运行不自动升级库；缺表或版本不符报错，由部署/迁移入口处理。
+    owner由外层借入，函数只关闭自己的池，不关闭其他业务正在用的loop。
+    """
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", schema):
         raise ValueError("Invalid checkpoint schema")
     kwargs = config.connection_kwargs() | {

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Give the private learning application's existing MySQL account full access."""
 
+# 旧源MySQL应用账号的显式完整权限维护与恢复脚本。
+#
+# 原凭据/其他账号保持，实际动作受--apply入口控制；旧部署仍有恢复消费者。
+# 本轮不运行权限变更，不将该入口迁成新的业务事实库。
+
 import argparse
 import json
 import os

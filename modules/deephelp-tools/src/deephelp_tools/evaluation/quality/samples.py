@@ -1,4 +1,8 @@
-"""Frozen synthetic development cases; validation is not classification or tool execution."""
+"""冻结合成开发样本与标签校验，验证数据不等于执行分类或工具。
+
+load/validate检查来源、split、必需字段与预期证据；同来源变体不能跨训练/heldout。
+这些样本只在显式学习/评测读取，生产启动不用dev/test。
+"""
 
 import json
 from datetime import UTC, datetime

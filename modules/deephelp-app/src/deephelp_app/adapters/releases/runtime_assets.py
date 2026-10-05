@@ -1,4 +1,8 @@
-"""Verify consumed prepared runtime files/vectors without reading frozen inputs."""
+"""验证已消费的运行文件和向量，不重新打开冻结dev/test输入。
+
+verify_files校验本地闭包，verify_remote限范围读回集合/清单行与向量hash。
+显式校验结束关闭客户端；失败不覆盖旧资产、不生成新的模型质量证据。
+"""
 
 import asyncio
 from pathlib import Path

@@ -1,5 +1,10 @@
 """Fixed historical import/readback/recovery proof; model and business calls are zero."""
 
+# 固定历史上传、读回与失败/取消续传验证，模型和业务请求为零。
+#
+# 原报告的时间/usage保持历史含义；导入正确并不等于重新运行模型内容。
+# 子进程或SDK队列由本次调用关闭，必要部分state保留供同来源恢复。
+
 import argparse
 import asyncio
 import time

@@ -57,9 +57,23 @@ Conversation保留stage/prepare等原方法入口，绑定的是对应职责模�
 | 观测 | [observability/telemetry](../../modules/deephelp-app/src/deephelp_app/adapters/observability/telemetry.py)、native_observation、langfuse_query、trace、prometheus | 埋点和查询解释实际执行；原用例处理诊断缺失，不让平台失败改变业务副作用 |
 | 完整发布 | [releases/release_assets](../../modules/deephelp-app/src/deephelp_app/adapters/releases/release_assets.py)、asset_integrity、release_store、runtime_assets、feedback_store | 运行装配校验不可变字节/引用/active CAS；tools只在显式准备时参与，旧清单不绑定新源码 |
 | 运行装配 | [runtime/assembly](../../modules/deephelp-app/src/deephelp_app/bootstrap/runtime/assembly.py)、auth、budget、event_runtime、release_runtime | assembly拥有AsyncExitStack并逆序关闭依赖；auth选择原身份，budget在派发前保存累计预留 |
+| 通用连接配置与容量观察 | [bootstrap/connections](../../modules/deephelp-app/src/deephelp_app/bootstrap/connections.py)、tools的[probes/retrieval/capacity](../../modules/deephelp-tools/src/deephelp_tools/probes/retrieval/capacity.py) | Redis/Milvus/旧源读取共用KEY=VALUE解析，导入不读密钥；SSH容量只供显式导入/候选准入，子进程由调用者回收 |
 | 独立服务 | [Business API](../../modules/deephelp-services/src/deephelp_services/business/api.py)、repository；[Retrieval API](../../modules/deephelp-services/src/deephelp_services/retrieval/api.py)、backend；transport/http | Business负责关系维护/查询事务，Retrieval负责冻结语料检索/回执；共享传输只管会话、origin和认证挂载 |
 
 tools/evaluation内部按retrieval、quality、feedback、releases、migration、platform归组；probes按models、retrieval、protocol、conversation、approval、releases、platform、migration归组。learning/workbench组合原协议/分析/评测路由；learning/replay、faults、fakes提供显式实验。正式app没有反向tools/services导入，业务装配仍复用同一组领域类型与用例。
+
+进一步读复杂支撑代码时，把等待和提交对应到实际拥有者：
+
+| 想弄清的时序 | 入口与观察点 |
+|---|---|
+| 一次模型纠正怎样计量 | gateway.chat共用原budget，至多一次纠正且累加两次实际usage；rerank把index绑回原文，embed按原输入还原位置，schema/原生动作仍由本地守卫验证 |
+| Windows的PG等待发生在哪个线程 | persistence/postgres的PoolLoop.call把协程送到连接所属Selector loop，用wrap_future异步取回结果；取消后等驱动收口，PostgresPool.acquire退出先rollback再putconn。它不同于Java线程阻塞Future.get |
+| checkpoint与业务账本怎样分工 | approval/postgres_checkpoints只包装官方saver；setup才持迁移锁，启动不自动升级。旧整数channel版本保持递增，批准/UNKNOWN/效果仍在原审批账本 |
+| 观测为何不改变业务结果 | native_observation每次创建独立图handler，并在finally恢复Task上下文；telemetry.observation把原异常交还用例，返回的语义失败不计成HTTP成功，未知usage不填零 |
+| 工作台任务完成是否表示质量通过 | learning/workbench/jobs的execute保存SUCCEEDED仅表示runner正常返回，PASS要看result；cancel持同一guard等待清理，SharedGate借用原预算writer。路由闭包只选择已允许的原入口 |
+| 发布中断后怎样确认 | releases/release_store先验字节，再锁channel并CAS，原子保存active/previous和事件。commit后丢确认不能靠rollback撤销，恢复需读指针；退役仍须核对运行/审批引用 |
+
+服务端MCP的工具描述、FastAPI的接口说明以及CLI读取的`__doc__`有运行消费者。因此本M在这些位置主要加普通注释，保留原协议/帮助字符串；不能为了翻译文档字符串而暗中改模型看见的工具描述。详细Java类比、反例和练习答案继续使用原课程，不新增一套教材。
 
 原bootstrap/*_cli和tools下已有CLI名字是受支持的命令入口，文件只转调职责模块中的main，具体实现只有一处。消费者包括旧运行文档、部署start.sh、显式任务与历史恢复命令；这不是等待删除的临时别名。新实现路径同样支持明确执行，内部代码和patch定位直接使用新路径。Business/Retrieval/workbench原模块路径变成包，由__main__继续承接受支持的`python -m`命令。找逻辑时进入表中实现，不在薄入口增加业务代码。
 

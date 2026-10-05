@@ -1,4 +1,8 @@
-"""File and package integrity, independent of evaluation and its datasets."""
+"""校验文件与包来源的纯字节证据，不导入评测数据或启动模型。
+
+file_digest绑定精确内容，provenance读取受限Git/安装来源；缺Git按未知处理。
+同hash不能单独证明目标行为适用，完整发布仍有内容、版本和配置门禁。
+"""
 
 import hashlib
 import platform

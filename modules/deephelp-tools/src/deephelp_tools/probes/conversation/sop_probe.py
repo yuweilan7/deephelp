@@ -1,5 +1,10 @@
 """M07 replay demo and explicitly enabled model + owned real MCP content acceptance."""
 
+# 显式SOP回放或真实模型与本机MCP内容验收。
+#
+# scenario经原SOPExecutor读取确认参数/调用记录/事实，demo用固定动作，live用明确配置。
+# 有限步数与共享预算仍由原引擎控制，工具传输真实不能代替选择内容证据。
+
 import argparse
 import asyncio
 import json

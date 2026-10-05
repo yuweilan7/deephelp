@@ -1,4 +1,8 @@
-"""Dev-only independent score gates; test labels never participate in gate selection."""
+"""只用dev选择各来源的独立级联阈值与领先间隔。
+
+校准绑定scope与query来源，当前/记忆召回分别处理；test标签不参与选门槛。
+选参不自动更新生产策略，模型调用沿原共享预算。
+"""
 
 import argparse
 import asyncio

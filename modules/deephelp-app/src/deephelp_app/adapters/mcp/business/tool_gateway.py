@@ -1,4 +1,9 @@
-"""One owned SDK session per lifespan; only verified read-only requests reach MCP."""
+"""当前生命周期拥有的官方MCP SDK会话，只有受验证只读请求可派发。
+
+open由装配同一Task进入/退出；发现工具schema与health版本后才允许execute。
+实际发送前通知on_dispatch保存call_id，取消/超时也保留已尝试标识；回包还需双端语义校验。
+传输与_parse解析错误按原安全错误收口，未知调用不自动重试或转demo。
+"""
 
 import asyncio
 import json
@@ -203,7 +208,11 @@ class ToolGateway:
         context: RequestEnvelope,
         on_dispatch: Callable[[str], None] | None = None,
     ) -> ToolResult:
-        """Context is injected by the authenticated entry point, never model tool arguments."""
+        """校验可信请求与固定工具后派发，返回绑定同调用的ToolResult。
+
+        on_dispatch在发送await前提供实际ID，主链可在丢响应时保留审计。
+        结果schema/编号/事实证据均再校验；取消仍传播，未知执行不自动重试。
+        """
         call_id = "call-" + uuid4().hex
         dispatched = False
         try:

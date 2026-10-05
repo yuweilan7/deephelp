@@ -1,5 +1,10 @@
 """Explicit real-service synthetic demonstration, including review conflict and rollback."""
 
+# 显式真实依赖的合成采集/审核/候选验证/恢复演示。
+#
+# collect仅专用来源，审核冲突与撤回后不可用分别验证；候选与独立发布输入隔离。
+# 模型用量、资产预留和active切换分开记录，失败不将候选自动投入业务。
+
 import argparse
 import asyncio
 import json

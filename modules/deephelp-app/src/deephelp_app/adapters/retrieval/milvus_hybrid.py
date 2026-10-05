@@ -1,4 +1,8 @@
-"""Native Milvus Jieba/BM25 + COSINE schema. Existing M05 collections stay immutable."""
+"""原生Jieba/BM25与COSINE融合适配器，旧Dense集合保持不可变。
+
+同一查询/向量分别读取三路并按SDK规范核对融合值；_hits还原原资料与来源。
+发布前读回所有清单行与真实向量，签名/分词器漂移须新scope，不能原地混入旧集合。
+"""
 
 import json
 import math

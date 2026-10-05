@@ -1,5 +1,10 @@
 """Three real fallback modes plus optional artifact in the existing HTTP conversation."""
 
+# 显式比较三种真实兜底并将选定工件接回原HTTP会话。
+#
+# 同样本/原预算下观察FastText、结构化模型和组合；校准通过也不自动打开正式默认。
+# 业务阶段复验缺槽/重投/固定版本，临时事件集合由本次运行关闭清理。
+
 import argparse
 import asyncio
 import json

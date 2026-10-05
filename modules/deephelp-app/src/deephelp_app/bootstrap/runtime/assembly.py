@@ -1,4 +1,9 @@
-"""Explicit live assembly and cumulative budget gate. Importing this module does no I/O."""
+"""显式打开原业务依赖并组成同一Conversation，引擎不导入学习/探针实现。
+
+构造阶段只选择配置/资产，open才取得PG、HTTP、Milvus、Redis、MCP与审批资源。
+AsyncExitStack拥有已成功打开的资源，后续失败/取消也逆序关闭；先开者最后关。
+调用路径可选本地/远程检索，身份、版本与累计预算仍由原装配守卫。
+"""
 
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
@@ -153,6 +158,11 @@ class LiveAssembly:
     async def open(
         self, client: httpx.AsyncClient, trace: TraceSink
     ) -> AsyncIterator[Conversation]:
+        """打开原引擎的一组依赖并yield Conversation，当前上下文拥有它们。
+
+        同Task进入/退出MCP与AsyncExitStack，部分打开失败也逆序关闭已开资源。
+        实例只读所选运行资产，不从learning/probes或dev/test构造生产结果。
+        """
         if self.tool_server is None and getattr(self, "business_mcp", None) is None:
             raise ConfigurationError(
                 "Select an explicit MCP server before opening runtime dependencies"

@@ -1,4 +1,8 @@
-"""Bounded native projection, reachable only with a server-registered scoped run."""
+"""只有服务器登记且原主体授权的run才能读取原生观测。
+
+先读PG的run到trace映射，再限时分页平台结果并投影；trace_id本身不是授权凭据。
+缺映射、平台失败和退役观测按实际空态/不可用呈现，不伪造节点或重新执行业务。
+"""
 
 import asyncio
 import json

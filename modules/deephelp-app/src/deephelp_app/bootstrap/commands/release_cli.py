@@ -1,5 +1,10 @@
 """Complete releases, compare-and-swap publication, retained versions and serving."""
 
+# 完整版本登记、CAS切换、保留引用查询与显式serve的命令入口。
+#
+# status/references只读；登记与切换先过原精确内容/资产门禁，退役先检查仍存引用。
+# 恢复不回滚业务数据库或共享预算，旧manifest继续属于匹配安装。
+
 import argparse
 import asyncio
 import json

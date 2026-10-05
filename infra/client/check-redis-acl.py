@@ -1,5 +1,10 @@
 """Verify the private learning environment's full Redis application access."""
 
+# 显式检查专用学习环境的Redis完整应用权限，不是常规业务调用。
+#
+# 分别核对鉴权、事务/脚本/连接权限与原配置，沿原单人学习授权不追加企业配额。
+# 本轮只讲解源码，不连接Redis或执行权限调整。
+
 import argparse
 import json
 from pathlib import Path

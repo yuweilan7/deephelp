@@ -1,4 +1,8 @@
-"""Owned synthetic rights process/response fault exercises, opt-in only."""
+"""合成权益进程/响应故障练习，原效果与丢响应分别注入。
+
+before_effect/after_effect说明提交前后边界，必须按原operation查询持久效果。
+工作进程/entered标记供拥有者续跑与诊断，不在成功前随意清理。
+"""
 
 import asyncio
 import json

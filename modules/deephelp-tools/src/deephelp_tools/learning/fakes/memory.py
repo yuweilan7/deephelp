@@ -1,3 +1,9 @@
+"""M01显式离线模型与内存仓储缝隙，供确定性测试/学习使用。
+
+FakeModelGateway用原AsyncCalls模拟等待/有限重试，FakeRepository检查原身份。
+合成返回只证明编排，不是供应商模型能力或持久账本。
+"""
+
 import asyncio
 import hashlib
 import json

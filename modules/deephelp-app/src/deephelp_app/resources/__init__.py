@@ -1,4 +1,4 @@
-"""Runtime-only resources; no lookup into demo or frozen evaluation data."""
+"""只定位包内明确允许的运行资产；正式app不回查demo或冻结评测资料。"""
 
 from pathlib import Path
 

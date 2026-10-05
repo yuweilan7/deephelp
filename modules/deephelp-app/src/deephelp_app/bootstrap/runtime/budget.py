@@ -1,4 +1,9 @@
-"""Explicit live assembly and cumulative budget gate. Importing this module does no I/O."""
+"""一个本地writer维护非重置的累计预算，派发前保存预留。
+
+open独占控制锁，request创建本次ExecutionBudget并通过on_change同步累计状态。
+退出释放锁而不清零用量，未知尝试保留上界；新请求/恢复不额外赠送预算。
+validate_control_paths拒绝控制文件冲突，预算文件不是业务账本。
+"""
 
 from decimal import Decimal
 from pathlib import Path
@@ -11,7 +16,7 @@ from deephelp_app.domain.models.common import ErrorCode
 
 
 class BudgetSession:
-    """One process writer; synchronous reservations persist before external dispatch."""
+    """同一预算文件只有一个进程writer；对外派发前同步保存预留，关闭不清零。"""
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -38,6 +43,11 @@ class BudgetSession:
             self.lock = None
 
     def request(self) -> ExecutionBudget:
+        """从剩余额度建立本请求预算，把每次预留/结算的增量写回同一累计文件。
+
+        previous属于此请求，persist只加current与previous的差，避免多次回调重复计数。
+        未知用量按上界保留；一次请求结束或任务恢复不会重置已有attempts/tokens/费用。
+        """
         if self.lock is None:
             raise ConfigurationError("Budget writer is not open")
         calls = int(self.state["max_calls"]) - int(self.state["attempts"])

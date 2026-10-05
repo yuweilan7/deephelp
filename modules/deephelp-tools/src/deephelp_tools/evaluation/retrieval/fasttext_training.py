@@ -1,4 +1,8 @@
-"""Small audited synthetic experiment. Only train/dev choose artifacts and gates."""
+"""合成CPU训练、工件读回与门槛选择，只用train/dev。
+
+预处理和词典与运行端共用；audit拒绝跨split同源泄漏，heldout只验已选工件。
+train写不可变版本并核对实际推理，线程/子进程生命周期由上层有限入口拥有。
+"""
 
 import itertools
 import json

@@ -1,4 +1,8 @@
-"""Read current feedback facts for immutable runtime releases."""
+"""读取当前反馈审核事实，供不可变运行发布校验来源。
+
+require_current拒绝过期revision或未审核记录；采集候选不等于生效规则。
+写入与候选构建在显式tools入口，正式运行只读取已批准来源。
+"""
 
 from pathlib import Path
 from typing import Any
