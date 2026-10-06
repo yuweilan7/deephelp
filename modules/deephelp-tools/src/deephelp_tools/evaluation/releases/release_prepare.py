@@ -116,12 +116,24 @@ def prepare_manifest(
             "content_sha256": file_digest(memory_report),
         }
         files[str(memory_report.resolve())] = file_digest(memory_report)
-        for source in (memory_content.get("observed_source"),):
+        source = memory_content.get("observed_source")
+        visited: set[str] = set()
+        while source:
+            if source["path"] in visited or len(visited) >= 8:
+                raise ConfigurationError("Memory content source chain is cyclic or too deep")
+            visited.add(source["path"])
             if source:
                 path = Path(source["path"])
                 if file_digest(path) != source["sha256"]:
                     raise ConfigurationError("Original memory content report changed")
                 files[str(path.resolve())] = source["sha256"]
+                original = read_data(path)
+                if review := original.get("runtime_review"):
+                    before = Path(review["before_path"])
+                    if file_digest(before) != review["before_sha256"]:
+                        raise ConfigurationError("Original memory runtime source changed")
+                    files[str(before.resolve())] = review["before_sha256"]
+                source = original.get("observed_source")
         if review := memory_content.get("runtime_review"):
             path = Path(review["before_path"])
             if file_digest(path) != review["before_sha256"]:

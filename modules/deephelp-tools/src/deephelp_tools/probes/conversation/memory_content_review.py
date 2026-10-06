@@ -10,6 +10,7 @@ from typing import Any
 
 from deephelp_app.adapters.releases.asset_integrity import file_digest, provenance
 from deephelp_app.adapters.releases.corpus_binding import corpus_binding, require_quality
+from deephelp_app.adapters.releases.memory_binding import require_memory_content
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.domain.errors import ConfigurationError
@@ -110,3 +111,22 @@ def review_assets(before: Path, assets: Path, content: Path, directory: Path) ->
     new_content = directory / "content-reviewed.json"
     atomic_json(new_content, report)
     return new_assets, new_content
+
+
+def review_memory(before: Path, original: Path, output: Path) -> None:
+    """当前守卫重验八个原run；UNKNOWN_INTENT/HANDOFF是固定反例的合法结果。"""
+    if output.exists():
+        raise ConfigurationError("Use a new immutable memory review")
+    delta = verify_runtime_delta(before)
+    report = json.loads(original.read_text(encoding="utf-8"))
+    if report["code_digest"] != delta["previous_digest"]:
+        raise ConfigurationError("Original memory runtime differs")
+    report.update(
+        code_digest=delta["current_digest"],
+        tooling_digest=evaluation_provenance()["tooling_digest"],
+        observed_source={"path": str(original.resolve()), "sha256": file_digest(original)},
+        runtime_review=delta,
+        execution="Current read-only eight-case verification; original model requests retained",
+    )
+    atomic_json(output, report)
+    require_memory_content(output)

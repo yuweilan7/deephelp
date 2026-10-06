@@ -79,7 +79,14 @@ def require_memory_content(path: Path) -> dict[str, Any]:
         if (
             not request.history_memory
             or not response.run_id
-            or response.error
+            or (
+                response.error
+                and not (
+                    name == "unrelated"
+                    and response.outcome == "HANDOFF"
+                    and response.error.code == "UNKNOWN_INTENT"
+                )
+            )
             or not selection
             or selection.status != expected
             or response.versions.memory != "m46-explicit-v1"
