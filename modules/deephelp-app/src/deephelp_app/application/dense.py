@@ -250,6 +250,9 @@ class DenseImporter:
             "completed_ids": [],
             "status": "PENDING",
             "vector_hashes": {},
+            "pending_rows": {},
+            "pending_hashes": {},
+            "embedding_receipts": [],
             "split_manifest": [
                 {
                     "doc_id": r.doc_id,
@@ -276,6 +279,25 @@ class DenseImporter:
             if not isinstance(vector_hashes, dict):
                 raise ValueError("Invalid persisted vector hashes")
             state["vector_hashes"] = vector_hashes
+            pending_rows = state.setdefault("pending_rows", {})
+            pending_hashes = state.setdefault("pending_hashes", {})
+            receipts = state.setdefault("embedding_receipts", [])
+            if not isinstance(receipts, list):
+                raise ValueError("Invalid embedding receipts")
+            if not isinstance(pending_rows, dict) or not set(pending_rows) <= {
+                r.doc_id for r in preview.index_records
+            }:
+                raise ValueError("Invalid pending vectors in import manifest")
+            if not isinstance(pending_hashes, dict) or set(pending_hashes) != set(pending_rows):
+                raise ValueError("Invalid pending vector hashes")
+            # 恢复时先核对已付费journal，再准入任何新模型调用；有效维度不等于原向量。
+            for record in preview.index_records:
+                if record.doc_id in pending_rows:
+                    row = pending_rows[record.doc_id]
+                    verify_rows([row_for(record, preview, scope, [])], [row])
+                    validate_vector(row["vector"], scope)
+                    if vector_hash(row["vector"]) != pending_hashes[record.doc_id]:
+                        raise AppError(ErrorCode.VERSION_CONFLICT, "Pending vector hash mismatch")
             needs_finish = state.get("status") != "VERIFIED"
             completed = state["completed_ids"]
             if (
@@ -283,6 +305,7 @@ class DenseImporter:
                 or len(completed) != len(set(completed))
                 or not set(completed) <= {r.doc_id for r in preview.index_records}
                 or set(vector_hashes) != set(completed)
+                or set(pending_rows) & set(completed)
             ):
                 raise ValueError("Invalid completed IDs in import manifest")
             async with asyncio.timeout(budget.remaining_seconds()):
@@ -295,10 +318,10 @@ class DenseImporter:
                 for start in range(0, len(preview.index_records), self.batch_size):
                     records = preview.index_records[start : start + self.batch_size]
                     # Completed local IDs still need remote readback on every rerun.
-                    expected = [row_for(r, preview, scope, []) for r in records]
-                    if all(r.doc_id in completed for r in records):
-                        actual = await self.store.read(scope, [r.doc_id for r in records])
-                        verify_rows(expected, actual)
+                    confirmed = [r for r in records if r.doc_id in completed]
+                    if confirmed:
+                        actual = await self.store.read(scope, [r.doc_id for r in confirmed])
+                        verify_rows([row_for(r, preview, scope, []) for r in confirmed], actual)
                         for row in actual:
                             hashed = vector_hash(row["vector"])
                             if (
@@ -309,23 +332,41 @@ class DenseImporter:
                                     ErrorCode.VERSION_CONFLICT, "Persisted vector hash mismatch"
                                 )
                             vector_hashes[row["doc_id"]] = hashed
+                    records = tuple(r for r in records if r.doc_id not in completed)
+                    if not records:
                         continue
                     budget.remaining_seconds()
                     (await self.capacity()).admit(len(records), scope.signature.dimension)
-                    embedded = await self.embeddings.embed([r.content for r in records], budget)
-                    if embedded.signature != scope.signature or len(embedded.vectors) != len(
-                        records
-                    ):
-                        raise AppError(
-                            ErrorCode.VERSION_CONFLICT, "Embedding signature/row count mismatch"
+                    missing = [r for r in records if r.doc_id not in pending_rows]
+                    if missing:
+                        before_embedding = budget.attempts_used
+                        embedded = await self.embeddings.embed([r.content for r in missing], budget)
+                        if embedded.signature != scope.signature or len(embedded.vectors) != len(
+                            missing
+                        ):
+                            raise AppError(
+                                ErrorCode.VERSION_CONFLICT, "Embedding signature/row count mismatch"
+                            )
+                        for record, vector in zip(missing, embedded.vectors, strict=True):
+                            validate_vector(vector, scope)
+                            pending_rows[record.doc_id] = row_for(record, preview, scope, vector)
+                            pending_hashes[record.doc_id] = vector_hash(vector)
+                        receipts.append(
+                            dict(
+                                doc_ids=[r.doc_id for r in missing],
+                                signature=embedded.signature.model_dump(mode="json"),
+                                attempts=budget.attempts_used - before_embedding,
+                                usage=embedded.usage.model_dump(mode="json")
+                                if embedded.usage
+                                else None,
+                            )
                         )
-                    for vector in embedded.vectors:
-                        validate_vector(vector, scope)
-                    rows = [
-                        row_for(r, preview, scope, v)
-                        for r, v in zip(records, embedded.vectors, strict=True)
-                    ]
-                    # Unknown write outcome: leave batch pending; replay deterministic PK upserts.
+                    rows = [pending_rows[r.doc_id] for r in records]
+                    # 返回的已确认向量在下一await前持久化；未知upsert可读回/重写同PK，
+                    # 不再付费生成已有pending向量。重新读取时同样核对元数据、签名和维度。
+                    verify_rows([row_for(r, preview, scope, []) for r in records], rows)
+                    for row in rows:
+                        validate_vector(row["vector"], scope)
                     state["status"] = "IN_PROGRESS"
                     state["pending_ids"] = [r.doc_id for r in records]
                     atomic_json(manifest, state)
@@ -335,6 +376,9 @@ class DenseImporter:
                     for row in rows:
                         vector_hashes[row["doc_id"]] = vector_hash(row["vector"])
                     completed.extend(r.doc_id for r in records if r.doc_id not in completed)
+                    for record in records:
+                        pending_rows.pop(record.doc_id)
+                        pending_hashes.pop(record.doc_id)
                     state["pending_ids"] = []
                     atomic_json(manifest, state)
                 # A verified rerun only reads data. Repeated flushes hit Milvus' 0.1/s

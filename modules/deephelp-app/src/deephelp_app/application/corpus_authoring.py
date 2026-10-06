@@ -6,6 +6,8 @@
 """
 
 import copy
+import hashlib
+import json
 import re
 from datetime import UTC, datetime
 from difflib import SequenceMatcher
@@ -13,6 +15,7 @@ from typing import Any
 from uuid import uuid4
 
 from deephelp_app.application.corpus import (
+    MAX_BYTES,
     MAX_ROWS,
     CorpusPreview,
     digest,
@@ -177,3 +180,84 @@ def review_records(
         row["entries"][doc_id]["status"] = event["status"]
         row["entries"][doc_id]["review_id"] = event["review_id"]
     return row
+
+
+def corpus_bytes(snapshot: dict[str, Any]) -> bytes:
+    """冻结字节沿原CorpusRecord JSONL；明确来源放metadata，不把审核状态当训练标签。"""
+    records = []
+    for _, entry in sorted(snapshot["entries"].items()):
+        record = copy.deepcopy(entry["record"])
+        if "source" not in record.get("metadata", {}) and len(record.get("metadata", {})) >= 16:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Export/freeze needs one metadata slot for source", 400
+            )
+        record["metadata"] = {**record.get("metadata", {}), "source": entry["source"]}
+        records.append(CorpusRecord.model_validate(record).model_dump(mode="json"))
+    encoded = (
+        "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in records)
+        + ("\n" if records else "")
+    ).encode()
+    if len(encoded) > MAX_BYTES:
+        raise AppError(ErrorCode.INVALID_ARGUMENT, "Frozen corpus exceeds byte limit", 400)
+    return encoded
+
+
+def freeze_workspace(
+    workspace: dict[str, Any], version: str, owner: dict[str, Any]
+) -> dict[str, Any]:
+    """只接受完整人工审核聚合，冻结版本与审核闭包；修改工作区不改历史快照。
+
+    当前审核必须匹配记录revision、文本/来源hash与可信owner；不信页面APPROVED字符串。
+    """
+    if not workspace["entries"]:
+        raise AppError(ErrorCode.INVALID_ARGUMENT, "No reviewed corpus records", 400)
+    require_records(
+        [e["record"] for e in workspace["entries"].values()], workspace["catalog_version"]
+    )
+    reviews = {r["review_id"]: r for r in workspace["reviews"]}
+    used = set()
+    for doc_id, entry in workspace["entries"].items():
+        review = reviews.get(entry.get("review_id"))
+        if (
+            entry["status"] != "APPROVED"
+            or not review
+            or review["status"] != "APPROVED"
+            or review["reviewer"] != owner
+            or review["records"].get(doc_id)
+            != {
+                "revision": entry["revision"],
+                "hash": digest({k: entry[k] for k in ("record", "source", "revision")}),
+            }
+        ):
+            raise AppError(
+                ErrorCode.VERSION_CONFLICT, "Every record needs matching human review", 409
+            )
+        used.add(review["review_id"])
+    snapshot = dict(
+        format="m44-corpus-review-v1",
+        version=version,
+        owner=owner,
+        catalog_version=workspace["catalog_version"],
+        workspace_revision=workspace["revision"],
+        entries=copy.deepcopy(workspace["entries"]),
+        reviews=[reviews[r] for r in sorted(used)],
+    )
+    snapshot["corpus_sha256"] = hashlib.sha256(corpus_bytes(snapshot)).hexdigest()
+    snapshot["version_hash"] = digest(snapshot)
+    return snapshot
+
+
+def verify_snapshot(snapshot: dict[str, Any]) -> None:
+    """索引和发布读取审核原件时复算，不把PG/文件存在性当不可变完整证据。"""
+    expected = freeze_workspace(
+        dict(
+            catalog_version=snapshot["catalog_version"],
+            revision=snapshot["workspace_revision"],
+            entries=snapshot["entries"],
+            reviews=snapshot["reviews"],
+        ),
+        snapshot["version"],
+        snapshot["owner"],
+    )
+    if snapshot != expected:
+        raise AppError(ErrorCode.VERSION_CONFLICT, "Frozen corpus review hash differs", 409)

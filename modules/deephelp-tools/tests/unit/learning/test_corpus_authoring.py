@@ -16,9 +16,11 @@ from deephelp_app.application.corpus_authoring import (
     checked_records,
     edit_record,
     empty_workspace,
+    freeze_workspace,
     import_preview,
     review_records,
     stage_preview,
+    verify_snapshot,
 )
 from deephelp_app.bootstrap.settings import Settings
 from deephelp_app.domain.errors import AppError
@@ -32,17 +34,19 @@ FOREIGN = VerifiedIdentity(tenant_id="m44-test", user_id="foreign")
 
 def record(doc_id="one", **changes):
     return CorpusRecord.model_validate(
-        dict(
-            doc_id=doc_id,
-            content="查询这笔订单关联的活动信息",
-            intent_code="ORDER_ACTIVITY_QUERY",
-            split="reference",
-            source_group=doc_id,
-            variant_group=doc_id,
-            synthetic=True,
-            registry_version="complaints-v3",
+        {
+            **dict(
+                doc_id=doc_id,
+                content="查询这笔订单关联的活动信息",
+                intent_code="ORDER_ACTIVITY_QUERY",
+                split="reference",
+                source_group=doc_id,
+                variant_group=doc_id,
+                synthetic=True,
+                registry_version="complaints-v3",
+            ),
             **changes,
-        )
+        }
     )
 
 
@@ -164,6 +168,25 @@ def test_csv_mapping_and_formula_errors_are_rows():
     assert read_corpus_bytes(raw.encode(), ".csv").errors
     bad = raw.replace("询问订单参与活动", "=SUM(A1)")
     assert "row 2" in str(read_corpus_bytes(bad.encode(), ".csv", columns=mapping).errors)
+
+
+def test_freeze_requires_current_review_and_preserves_history():
+    row = edit_record(empty_workspace("complaints-v3"), record(), "合成人工来源", create=True)
+    with pytest.raises(AppError):
+        freeze_workspace(row, "v1", OWNER.model_dump())
+    reviewed = review_records(row, ("one",), True, "逐项人工核对", OWNER.model_dump())
+    snapshot = freeze_workspace(reviewed, "v1", OWNER.model_dump())
+    verify_snapshot(snapshot)
+    edited = edit_record(reviewed, record(content="询问订单是否关联活动"), "新来源", create=False)
+    with pytest.raises(AppError):
+        freeze_workspace(edited, "v2", OWNER.model_dump())
+    assert snapshot["entries"]["one"]["record"]["content"] == "查询这笔订单关联的活动信息"
+    tampered = copy.deepcopy(snapshot)
+    tampered["entries"]["one"]["source"] = "偷换来源"
+    with pytest.raises(AppError):
+        verify_snapshot(tampered)
+    with pytest.raises(AppError):
+        freeze_workspace(reviewed, "v1", FOREIGN.model_dump())
 
 
 async def test_http_scope_cas_preview_export_and_confirmation():

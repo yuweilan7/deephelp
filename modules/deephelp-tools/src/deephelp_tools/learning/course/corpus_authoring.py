@@ -6,6 +6,7 @@ from typing import Any
 from deephelp_app.application.corpus import read_corpus_bytes
 from deephelp_app.application.corpus_authoring import (
     empty_workspace,
+    freeze_workspace,
     import_preview,
     review_records,
     stage_preview,
@@ -45,6 +46,9 @@ async def corpus_authoring_demo() -> dict[str, Any]:
         {"tenant_id": "course", "user_id": "reader"},
     )
     return dict(
+        frozen_version=freeze_workspace(
+            reviewed, "course-v1", {"tenant_id": "course", "user_id": "reader"}
+        )["version"],
         invalid_parent=rejection,
         failed_import_rows=len(rejected["entries"]),
         preview_rows=len(staged["entries"]),

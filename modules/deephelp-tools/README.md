@@ -174,3 +174,5 @@ hybrid_cli支持`--registry-version complaints-v2 --namespace NEW_NAMESPACE --co
 六叶子离线实验为`uv run --locked python -m deephelp_tools.learning.course complaints`。真实两类投诉使用同catalog_probe `--phase complaints`，选择complaints-v3的21条corpus及对应8dev/8test、独立index/pointer/selection/SOP目录/累计预算。hybrid_cli支持`--registry-version complaints-v3`，开发权重选择先于heldout test；默认不让原三叶子FastText或旧分数阈值决定新标签。13条固定内容含两新叶子、缺槽、不存在、等待、已回退、矛盾、未知/外主体及原四相邻路径，维护CAS不经模型。
 
 M44离线机制入口：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course corpus-authoring`，复用原解析/导入/审核纯核心，模型0。在线原“识别与检索”提供PG作者工作区、叶子选择、revision、明确列映射预览/逐行错误/整批确认、人工审核及导出；依赖原ledger PG及learning catalog owner。[10章](../../docs/learning/10-retrieval.md#语料作者导入与审核m44)解释字段、Java类比与响应未知对账，不把草稿导出当正式发布。
+
+审核后在同页明确冻结候选，构建/比较沿`/learning/evaluation/tasks`的唯一重任务，取消与恢复复用原累计writer。learning catalog的`corpus_splits`须同时配置dev/test两条受控路径；构建先冻结再调用模型，候选结果放task_root/corpus/version_hash。配置只读入口不自动构建；候选pointer不是正式release channel，完整发布另验。默认Rerank关闭保持未运行，原三路各自保留分数/文本/来源和实际耗时。

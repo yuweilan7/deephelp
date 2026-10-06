@@ -76,3 +76,13 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course corpus-auth
 预期父标签INVALID_ARGUMENT、失败导入0行、预览0条草稿、导入DRAFT、审核APPROVED，模型0。实验复用纯变换，不证明PG持久协议。Java可类比聚合version乐观锁及单事务批量写；数据库事务不与前端编辑时长绑定。
 
 常见错误：dev/test进入业务索引、同义改写冒充独立split、高置信自动金标、响应超时直接重投。练习：10行中第7行父标签，保存几行？答案0。提交响应丢失时先读同preview_id的IMPORTED/imported_revision对账，不能清零revision绕过冲突。
+
+### 冻结、候选索引与对照
+
+在同页读取冻结版本，给已审核聚合一个新版本名并明确冻结；course现在还输出frozen_version=course-v1。快照保存来源、split、审核主体/理由和各记录revision/hash。以后修改草稿必须重审、冻结新版本；冻结版本不是可编辑的工作区。
+
+确认共享预算后启动候选构建。LearningJobs拥有唯一worker、超时和cancel/join；应用拥有借来的gateway/累计writer；构建函数只拥有新Milvus客户端，在finally关闭。candidate集合由审核hash和完整Embedding签名决定，原正式集合、active/previous不被覆盖。dev/test在调用前冻结，沿原dataset检查来源组/文本泄漏；仅reference/train进入索引。当前权重候选在heldout调用前固定，test不能反选权重。
+
+Java可类比不可变快照、Future取消和可重建查询投影，但远程upsert结果未知不等于事务回滚。模型已返回的向量在下一await前保存pending journal；恢复先核对内容/来源/向量hash，再用同PK写入/读回，不能重新付费生成它。完成观察逐条保存；读取、恢复已完成索引也要复核真实远程字节，缺失或篡改拒绝，不把本地VERIFIED当永真。
+
+明确执行对照后，页面显示候选/正式版本共用的实际查询向量hash、Dense cosine、BM25词项分数、Hybrid归一融合、配置Rerank的实际状态，以及各路耗时/文本/来源。未配置重排为not_run，不能补画第四路。固定合成样本的改善/退化与未运行分类分别记录；召回到物流近似语料仍不能越过最终分类守卫。练习：已写入Milvus但回执丢失，恢复要再Embedding吗？答案：有已确认pending向量时先核对journal，再写/读回同PK；没收到模型结果时用量仍未知，不能伪称已有向量。

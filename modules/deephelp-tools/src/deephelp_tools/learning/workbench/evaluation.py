@@ -19,6 +19,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import Field
 
+from deephelp_app.adapters.persistence.corpus_workspaces import PostgresCorpusWorkspaces
 from deephelp_app.adapters.releases.asset_integrity import file_digest
 from deephelp_app.adapters.releases.release_assets import verify_release
 from deephelp_app.adapters.releases.release_store import ReleaseStore
@@ -74,6 +75,7 @@ class EvaluationCatalog(DTO):
     platform_config: Path | None = None
     imports: dict[Key, HistoricalImport] = Field(default_factory=dict, max_length=16)
     prompt_artifact: Path | None = None
+    corpus_splits: dict[Literal["dev", "test"], Path] = Field(default_factory=dict)
 
 
 class Capture(DTO):
@@ -91,7 +93,15 @@ class Review(DTO):
 
 class JobInput(DTO):
     action: Literal[
-        "audit", "offline", "build", "validate", "prepare", "platform_upload", "platform_candidate"
+        "audit",
+        "offline",
+        "build",
+        "validate",
+        "prepare",
+        "platform_upload",
+        "platform_candidate",
+        "corpus_build",
+        "corpus_compare",
     ]
     candidate_ids: tuple[Hash, ...] = Field(default=(), max_length=10)
     asset_id: Key | None = None
@@ -99,6 +109,8 @@ class JobInput(DTO):
     candidate_revision: Annotated[int, Field(strict=True, ge=0)] | None = None
     skill_candidate: Hash | None = None
     sop_draft: Key | None = None
+    corpus_version: Hash | None = None
+    query: Annotated[str, Field(min_length=1, max_length=2000, pattern=r"\S")] | None = None
     confirmed: Literal[True]
 
 
@@ -265,6 +277,31 @@ def evaluation_router(
         options, action = row["options"], row["options"]["action"]
         # 借用应用已经打开的预算writer，仅提供request；任务恢复不能新建预算文件清零。
         gate = SharedGate(factory, config.budget_state)
+        if action in {"corpus_build", "corpus_compare"}:
+            from deephelp_tools.evaluation.retrieval.corpus_candidate import (
+                build_candidate,
+                compare_candidate,
+            )
+
+            assert assembly.ledger is not None
+            snapshot = await PostgresCorpusWorkspaces(assembly.ledger.pool).version(
+                config.owner, assembly.sop_registry.catalog_version, options["corpus_version"]
+            )
+            if action == "corpus_build":
+                result = await build_candidate(
+                    root,
+                    snapshot,
+                    assembly,
+                    factory,
+                    {s: p for s, p in config.corpus_splits.items()},
+                )
+            else:
+                result = await compare_candidate(
+                    root, snapshot, assembly, options["query"], factory
+                )
+            result["cumulative_budget"] = gate.state
+            atomic_json(output / "corpus.json", result)
+            return result
         if action in {"platform_upload", "platform_candidate"}:
             assert config.platform_config is not None
             if action == "platform_upload":
@@ -775,6 +812,25 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
+        if body.action in {"corpus_build", "corpus_compare"}:
+            if body.corpus_version is None or (body.action == "corpus_compare") != (
+                body.query is not None
+            ):
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "Corpus action needs frozen version and compare query only",
+                    422,
+                )
+            if body.action == "corpus_build" and set(config.corpus_splits) != {"dev", "test"}:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "Frozen dev/test not configured", 422)
+            assert assembly.ledger is not None
+            await PostgresCorpusWorkspaces(assembly.ledger.pool).version(
+                config.owner, assembly.sop_registry.catalog_version, body.corpus_version
+            )
+        elif body.corpus_version is not None or body.query is not None:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "This action does not consume corpus/query", 422
+            )
         if body.skill_candidate and body.action not in {"validate", "prepare"}:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT, "Skill candidate is only used by validate/prepare"
@@ -840,10 +896,19 @@ def evaluation_router(
         owner(request)
         row = jobs.get(identity)
         partial = jobs.output(row) / "evaluation.json"
+        corpus_evidence = None
+        if row["options"].get("corpus_version"):
+            directory = root / "corpus" / row["options"]["corpus_version"]
+            corpus_evidence = {
+                name: await asyncio.to_thread(json.loads, path.read_text(encoding="utf-8"))
+                for name in ("index", "retrieval-gate")
+                if (path := directory / (name + ".json")).is_file()
+            }
         return row | dict(
+            corpus_evidence=corpus_evidence,
             partial_evidence=await asyncio.to_thread(report_view, partial)
             if partial.is_file()
-            else None
+            else None,
         )
 
     @router.post("/tasks/{identity}/{action}")
