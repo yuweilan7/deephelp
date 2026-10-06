@@ -780,7 +780,8 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                         check(name + ":" + key, passed)
                     check(name + ":outcome", response.outcome == expected)
                     if edited := report.get("reviewed_sop"):
-                        # 未知意图不执行SOP，因此不会产生SOP快照；仍须绑定当前语料签名。
+                        # 已识别叶子在缺槽之前就固定SOP版本/快照；澄清没有节点路径，
+                        # 但仍有合法绑定。未知意图没有SOP版本，不能据节点是否执行判断。
                         check(
                             name + ":candidate_snapshot",
                             response.versions.dataset == runtime.scope.dataset_version
@@ -788,7 +789,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                             == runtime.scope.signature.fingerprint
                             and (
                                 response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash
-                                if response.sop_plan is not None
+                                if response.versions.sop is not None
                                 else response.versions.sop_snapshot is None
                             ),
                         )

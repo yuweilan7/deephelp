@@ -22,6 +22,29 @@ from deephelp_app.domain.registry import complaint_registry
 from deephelp_tools.evaluation.retrieval.corpus_release import metric_changes
 
 
+def test_same_session_reuse_rejects_even_one_changed_execution_byte(tmp_path, monkeypatch):
+    import json
+
+    import deephelp_tools.probes.conversation.memory_content_review as review
+
+    old = {"adapters/releases/memory_binding.py": "old-guard", "application/sop.py": "same"}
+    before = tmp_path / "before.json"
+    before.write_text(json.dumps({"package_digest": digest(old), "artifact_hashes": old}))
+    now = old | {"adapters/releases/memory_binding.py": "new-guard"}
+    monkeypatch.setattr(
+        review,
+        "provenance",
+        lambda: {
+            "package_digest": digest(now),
+            "artifact_hashes": now,
+        },
+    )
+    assert review.verify_runtime_delta(before)["unchanged_files"] == 1
+    now["application/sop.py"] = "changed execution"
+    with pytest.raises(ConfigurationError, match="unchanged model/business/DTO/UI"):
+        review.verify_runtime_delta(before)
+
+
 def candidate(**changes):
     return FeedbackCandidate(
         candidate_id="a" * 64,

@@ -1,5 +1,9 @@
 # DeepHelp 独立工具包
 
+M46生命周期实测：`python -m deephelp_tools.probes.conversation.long_memory_delivery --live --config <私有配置> --output <新报告>`，固定开启/关闭、不同订单、当前缺槽、范围外、明确续接、用户更正、遗忘八项；每项仍沿原PG/MCP/模型及原重放。`--read-report`新进程只读原回执/墓碑，0模型；`--quality`沿原quality_gate在新运行字节下核验分类，原向量/检索观察只能在字节与签名保持时复用。完整发布原prepare命令增加`--memory-report <此版本八项PASS>`，绑定策略资源、DTO schema、Prompt=none、index=none和原内容字节；没有绑定的完整清单不启用跨会话入口。正式安装与旧版停止/恢复见[部署说明](../../infra/deployment/README.md)及[M46交接](../../handoffs/M46.md)。
+
+`--resume-report <部分原件>`只用于更正/遗忘之前的已完成行，配置须提供`runtime_before_review`完整原文件hash证明；只允许memory_binding发布比较守卫变化，任何模型/执行/DTO/UI变化均拒绝复用。`memory_content_review`重新调用当前质量/内容守卫并另存原件/hash差异链，不改原FAIL/PASS，不把旧模型用量算作新增。全套已结束后用`--read-report`，不要重新执行生命周期或把已移交的预算副本复制回活动writer。来源须合法且未撤回/遗忘，原墓碑不会为探针复活。
+
 M46两会话实验：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory`，默认离线，沿原Conversation/SOP和确定性来源选择，远程模型0次；范围/版本/当前事实边界见[第11章](../../docs/learning/11-memory.md#两会话长期记忆实验m46)。显式真实内容入口`python -m deephelp_tools.probes.conversation.long_memory_probe --live --config <私有运行配置> --output <新报告>`；`--read-report <原报告> [--protocol]`只回读PG及可选固定CAS反例，不打开模型/预算writer。配置绑定原来源报告/owner、providers/pointer/corpus/cascade/sop_directory和业务凭据，不能将旧安装PASS套新代码。
 
 M45独立数据机制：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course independent-quality`，默认离线/0模型，教学夹具不声称质量。实际私有来源用 `python -m deephelp_tools.evaluation.quality.independent_cli --intake <脱敏输入JSON> --annotation <盲标A收据> --annotation <盲标B收据> [--adjudication <独立裁决>] --postgres <原PG配置> --tenant <已验证主体> --user <主体> --output <新冻结JSON> --report <必要摘要>`；有实际许可/来源声明，输入含固定train/dev/holdout，收据绑定input_hash且不可看被测输出。`--protocol-report <文件>`另验隔离PG竞争/回滚/精确测试行清理；全部0模型。来源、未决/锁定状态沿原评测页，契约见[第14章](../../docs/learning/14-evaluation-release.md#独立来源双盲标与锁定留出集)。

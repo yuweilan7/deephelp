@@ -8,6 +8,8 @@
 
 跨会话明确引用沿[LongMemoryService](../../modules/deephelp-app/src/deephelp_app/application/long_memory.py)与[原PG池适配器](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/long_memory.py)，实验为`course long-memory`，讲解在[第11章](11-memory.md#两会话长期记忆实验m46)。它在当前事实回答后回查/引用合法历史，不进入活动归属或SOP参数；原run选择保存在ResponseEnvelope，浏览不重跑模型。
 
+真实八场景/重启只读入口是[long_memory_delivery](../../modules/deephelp-tools/src/deephelp_tools/probes/conversation/long_memory_delivery.py)，精确绑定从[memory_binding](../../modules/deephelp-app/src/deephelp_app/adapters/releases/memory_binding.py)读策略/schema与原内容；[同会话复核](../../modules/deephelp-tools/src/deephelp_tools/probes/conversation/memory_content_review.py)只允许发布比较守卫变化，逐文件拒绝其他运行变化，保留原件及新复核链。部署与实际限制见[M46交接](../../handoffs/M46.md#f3-生命周期精确发布与两向恢复)。
+
 1. [API](../../modules/deephelp-app/src/deephelp_app/api/app.py)接收不可信输入，从入口注入身份；正文或trace ID不能授权。
 2. [Conversation.run](../../modules/deephelp-app/src/deephelp_app/application/conversation/orchestrator.py)是13段编排入口。先授权hint，查原receipt，再领取新消息；重投返回原结果，不重跑模型或工具。
 3. [preparation](../../modules/deephelp-app/src/deephelp_app/application/conversation/preparation.py)在原子领取前加载窗口和判定归属；[state](../../modules/deephelp-app/src/deephelp_app/application/conversation/state.py)把实体、冲突、来源和固定版本推进到当前问题。一次请求拥有一个可变QuestionState，里面的Question仍是不可变DTO。每个await完成的状态即刻写入该请求对象，后续失败仍保留已经得到的诊断。

@@ -5,7 +5,9 @@ MemoryService借用本服务；它不扩大事件窗口，不改Question.entitie
 """
 
 import hashlib
+import json
 from datetime import UTC, datetime, timedelta
+from importlib.resources import files
 from typing import Protocol
 
 from deephelp_app.domain.cases import CLOSED, summary
@@ -26,7 +28,8 @@ from deephelp_app.domain.models.long_memory import (
 
 def source_hash(question: Question) -> str:
     """绑定原Question的完整规范内容；更新任何来源字段都需要重新保留。"""
-    return hashlib.sha256(question.model_dump_json().encode()).hexdigest()
+    excluded = {"versions": {"memory"}} if question.versions.memory is None else None
+    return hashlib.sha256(question.model_dump_json(exclude=excluded).encode()).hexdigest()
 
 
 class LongMemoryStore(Protocol):
@@ -52,6 +55,9 @@ class LongMemoryService:
 
     def __init__(self, store: LongMemoryStore) -> None:
         self.store = store
+        self.policy = json.loads(
+            files("deephelp_app").joinpath("resources/memory-policy.json").read_text()
+        )
 
     async def preserve(self, owner: VerifiedIdentity, session: str, question_id: str) -> LongMemory:
         source = await self.store.source(owner, session, question_id)
@@ -66,6 +72,9 @@ class LongMemoryService:
             raise AppError(ErrorCode.FORBIDDEN, "Memory source scope differs", 403)
         if question.status not in CLOSED or question.approval_operation_id:
             raise AppError(ErrorCode.VERSION_CONFLICT, "Only ended non-approval sources", 409)
+        for old in await self.store.list(owner, (session,)):
+            if old.source_question == question_id and old.state in {"REVOKED", "FORGOTTEN"}:
+                return old
         now, digest = datetime.now(UTC), source_hash(question)
         key = "|".join((owner.tenant_id, owner.user_id, session, question_id, digest))
         memory = LongMemory(
@@ -79,7 +88,7 @@ class LongMemoryService:
             evidence_ids=evidence,
             text=summary(question).text,
             created_at=now,
-            expires_at=now + timedelta(days=30),
+            expires_at=now + timedelta(days=self.policy["default_valid_days"]),
             confidence="SOURCE_VERIFIED" if question.status == QuestionStatus.RESOLVED else "LOW",
         )
         return await self.store.insert(memory)
@@ -186,7 +195,10 @@ class LongMemoryService:
                     reason = "source_changed"
                 elif current is not None and memory.kind == "closed_summary":
                     reason = current_relevance(source[0], current)
-                if not reason and used_bytes + len(memory.text.encode()) > 8192:
+                if (
+                    not reason
+                    and used_bytes + len(memory.text.encode()) > self.policy["context_bytes"]
+                ):
                     reason = "context_limit"
                 if not reason and not await self.store.authorized(scope, reference):
                     # 来源回查有await；最后单次权威读取是选择的线性化点，晚到撤回/范围改变不漏过。

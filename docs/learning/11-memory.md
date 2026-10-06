@@ -43,6 +43,8 @@ sequenceDiagram
 
 ## 两会话长期记忆实验（M46）
 
+这里先学可观察的派生上下文与当前事实边界，不承诺记忆提高回答质量。当前策略为精确引用，没有自动跨session向量召回或把个人陈述送进模型。正式固定集比较开启/关闭当前facts、不同订单、缺槽/范围外、明确question_hint续接、更正和遗忘；源码/安装/UI字节、schema与策略在完整manifest中绑定。可在对话页看到下一条新消息选中了几条历史，原记忆页读取实际采用/拒绝和版本审计；浏览0模型，原run引用是当时的审计，不随以后遗忘重写。
+
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
 ```
@@ -54,6 +56,8 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
 工作台在“多轮与记忆”填写已结束来源问题并保留，读取目标授权、明确开启有限来源，再勾选候选绑定当前会话的下次新消息。候选合法与原run采用分开显示；原response记录选择理由、来源时间/消息/证据和版本。没开启、外owner、旧scope、源版本漂移都有具体拒绝；历史浏览不发模型或向量请求。
 
 练习：来源摘要含000031时，新消息只说“我的订单未优惠”，能直接查询000031吗？范围revision从1改为2后，旧页面携带1能否继续引用？答案：不能；缺槽仍等待当前确认，旧scope拒绝并重新读取范围/候选。历史也不等于explicit_reopen，已结束问题不自动恢复。
+
+独立业务查询会产生不同evidence_id。比较记忆开启/关闭的事实正确性时，比较名称、类型和值，再分别回查各次查询的证据；要求两个新run证据ID相同反而混淆来源。范围外UNKNOWN_INTENT/HANDOFF是合法转人工状态，仍应没有工具和事实。真实固定八场景与新进程回读入口见[工具命令](../../modules/deephelp-tools/README.md)，正式安装/重启/限定旧schema恢复结果见[M46交接](../../handoffs/M46.md#f3-生命周期精确发布与两向恢复)。
 
 ## 当前源码
 

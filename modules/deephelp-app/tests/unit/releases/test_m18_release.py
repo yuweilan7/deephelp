@@ -119,6 +119,7 @@ def test_new_optional_skill_fields_preserve_original_release_identity(release):
     raw.pop("skill_registry")
     raw.pop("skill_review_path")
     raw.pop("sop_review_path")
+    raw.pop("memory_binding")
     assert release_hash(ReleaseManifest.model_validate(raw)) == digest(raw)
 
 

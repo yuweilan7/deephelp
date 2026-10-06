@@ -15,6 +15,10 @@ from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.corpus_binding import corpus_binding, require_content
+from deephelp_app.adapters.releases.memory_binding import (
+    memory_policy_binding,
+    require_memory_content,
+)
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.adapters.releases.sop_drafts import read_sop_review
 from deephelp_app.application.collaboration import policy_release_binding
@@ -43,6 +47,7 @@ def prepare_manifest(
     skill_review: Path | None = None,
     sop_review: Path | None = None,
     quality_review: Path | None = None,
+    memory_report: Path | None = None,
 ) -> ReleaseManifest:
     quality_files = {}
     if quality_review:
@@ -101,6 +106,40 @@ def prepare_manifest(
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)
+    memory_binding = None
+    if memory_report:
+        memory_content = require_memory_content(memory_report)
+        if memory_content.get("tooling_digest") != evaluation_provenance()["tooling_digest"]:
+            raise ConfigurationError("Memory content tooling changed")
+        memory_binding = memory_policy_binding() | {
+            "content_path": str(memory_report.resolve()),
+            "content_sha256": file_digest(memory_report),
+        }
+        files[str(memory_report.resolve())] = file_digest(memory_report)
+        source = memory_content.get("observed_source")
+        visited: set[str] = set()
+        while source:
+            if source["path"] in visited or len(visited) >= 8:
+                raise ConfigurationError("Memory content source chain is cyclic or too deep")
+            visited.add(source["path"])
+            if source:
+                path = Path(source["path"])
+                if file_digest(path) != source["sha256"]:
+                    raise ConfigurationError("Original memory content report changed")
+                files[str(path.resolve())] = source["sha256"]
+                original = read_data(path)
+                if review := original.get("runtime_review"):
+                    before = Path(review["before_path"])
+                    if file_digest(before) != review["before_sha256"]:
+                        raise ConfigurationError("Original memory runtime source changed")
+                    files[str(before.resolve())] = review["before_sha256"]
+                source = original.get("observed_source")
+        if review := memory_content.get("runtime_review"):
+            path = Path(review["before_path"])
+            if file_digest(path) != review["before_sha256"]:
+                raise ConfigurationError("Memory runtime review source changed")
+            files[str(path.resolve())] = review["before_sha256"]
+        prompts[memory_binding["resource"]] = memory_binding["sha256"]
     if sop_review:
         try:
             reviewed_sop, _ = read_sop_review(sop_review)
@@ -178,4 +217,5 @@ def prepare_manifest(
         skill_registry=skills.content() if skills else None,
         skill_review_path=str(skill_review.resolve()) if skill_review else None,
         sop_review_path=str(sop_review.resolve()) if sop_review else None,
+        memory_binding=memory_binding,
     )

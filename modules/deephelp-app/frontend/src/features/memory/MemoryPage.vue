@@ -19,6 +19,7 @@ const targetSession = ref(workspace.session),
   sourceSessions = ref(""),
   selectedMemories = ref<string[]>([]),
   history = useRead<LongMemoryCandidates>(),
+  memoryDetail = useRead<unknown>(),
   action = useAction(),
   correction = ref("");
 async function changeMemory(
@@ -43,6 +44,7 @@ async function changeMemory(
     "记忆版本已更新。遗忘关闭后续检索；原业务账本和旧回执仍按审计规则保留。";
 }
 async function loadHistory() {
+  memoryDetail.clear();
   selectedMemories.value = [];
   workspace.historyMemory = null;
   await history.load(
@@ -103,6 +105,7 @@ function chooseHistory() {
     : "已取消下次新消息的历史选择。";
 }
 watch(targetSession, () => {
+  memoryDetail.clear();
   history.clear();
   selectedMemories.value = [];
   workspace.historyMemory = null;
@@ -201,6 +204,15 @@ function readTurns() {
           >
           <p>{{ c.reason }} · {{ c.memory?.text || "拒绝，未返回内容" }}</p>
           <el-button
+            @click="
+              memoryDetail.load(
+                '/learning/long-memory/records/' +
+                  encodeURIComponent(c.reference.memory_id),
+              )
+            "
+            >读取版本审计 · 0模型</el-button
+          >
+          <el-button
             v-if="c.memory"
             :disabled="action.busy.value || !correction"
             @click="
@@ -254,6 +266,14 @@ function readTurns() {
           >将选择绑定下次当前会话新消息</el-button
         >
         <RawDetails :value="history.data.value" />
+        <StateNotice
+          :error="memoryDetail.error.value"
+          :loading="memoryDetail.loading.value"
+        />
+        <RawDetails
+          v-if="memoryDetail.data.value"
+          :value="memoryDetail.data.value"
+        />
       </template>
       <template v-if="workspace.selected?.response.memory_selection">
         <h3>所选原run的历史选择</h3>

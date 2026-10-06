@@ -1,12 +1,12 @@
 # M46｜可追溯、可控制的跨会话长期记忆
 
-**状态：** `F1_F2_IMPLEMENTED_VERIFIED / F3_IN_PROGRESS`；2026-10-06，实际证据见[交接](../../handoffs/M46.md)。
+**状态：** `IMPLEMENTED_LIVE_VERIFIED`；2026-10-06，全部三个feature完成，实际内容/安装/恢复范围见[交接](../../handoffs/M46.md)。
 **来源：** PDF文件页62–66及75的长短期记忆/持续上下文方向。当前已有同会话持久状态与向量检索；跨会话选择、冲突和遗忘策略是本项目新增设计。
 **基线：** M39；复用[M10](M10_MEMORY_LIFECYCLE.md)、[M11](M11_EVENT_CLUSTER.md)、[M12](M12_CASCADE_PIPELINE.md)、[M15](M15_DURABILITY_APPROVAL.md)、[M25](M25_POSTGRES_FACTS.md)、[M36](M36_EXPLAINABLE_WORKBENCH.md)。可独立实施；只有向已存在多Agent提供上下文时再核对M40接口。
 
-## 当前缺口与目标
+## 能力与边界
 
-当前`MemoryService`和Milvus查询都按identity+session限制，具备PG回查/版本与可重建投影。持久化不等于已经能在另一个会话正确使用历史。新能力是在同一已验证主体下，明确选择允许的历史来源，形成带证据的记忆候选；保持当前会话状态与历史上下文的不同职责。
+原`MemoryService`和Milvus查询仍按identity+session限制，具备PG回查/版本与可重建投影。M46在同一已验证主体下，明确选择允许的历史来源，形成带证据的记忆候选；当前会话状态与历史上下文各自保持职责。
 
 先支持已结束问题的可引用摘要/来源、用户明确保留的稳定信息以及相关历史候选。业务订单/金额/券状态仍需查询当前权威事实；历史槽位不自动变成当前confirmed，也不借相似度自动合并其他question。默认原同会话行为保持，跨会话使用有明确开关/范围和可读状态。
 
@@ -15,13 +15,13 @@
 | 现有入口 | 本M增量 |
 |---|---|
 | [MemoryService](../../modules/deephelp-app/src/deephelp_app/application/memory.py) | 原同session快照/召回保留，新增单独的授权历史候选入口及选择结果 |
-| [Milvus投影](../../modules/deephelp-app/src/deephelp_app/adapters/memory_projection/milvus_memory.py) | 当前scope包含session；新跨会话索引/查询显式按已验owner与允许来源约束，不能直接移除过滤 |
+| [Milvus投影](../../modules/deephelp-app/src/deephelp_app/adapters/memory_projection/milvus_memory.py) | 原identity+session过滤保持；M46直接读PG，没有新增跨session向量索引 |
 | [事件窗口](../../modules/deephelp-app/src/deephelp_app/application/event_cluster/window.py) | 原活动问题归属/更正保留，历史候选不能偷偷扩大活动窗口或重开终态问题 |
-| [记忆工作台后端](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/analysis.py) | 同一run展示召回来源、回查版本、采用/拒绝理由及未配置/不完整状态 |
+| [记忆工作台后端](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/long_memory.py) | 原页明确来源/精确选择、CAS更正/遗忘/审计；同一run展示采用/拒绝理由 |
 
-拟新增记忆候选至少绑定owner、来源session/question/message、类型、源版本/hash、时间、有效范围、审核/保留状态及证据引用。摘要是派生信息，不替代原始账本；回查当前合法来源后才能注入上下文。来源已删除/被遗忘/过期/越权/版本漂移则拒绝或重建，不只相信向量文字。
+记忆候选绑定owner、来源session/question/message、类型、源版本/hash、时间、有效范围、保留状态及证据引用。确定性摘要是派生信息，回查当前合法来源和当前问题后才作为回答末尾参考；不会填槽或送进模型。遗忘/撤回/过期/越权/版本漂移均拒绝，没有M46向量或缓存副本。
 
-开启、限定来源、纠正与遗忘是明确操作，保持服务端身份/CSRF/CAS边界。新API/类型及与原同session接口的区别在实施时更新CONTRACTS；不预设删除原账本或审计材料的授权。
+开启、限定来源、纠正与遗忘是明确操作，保持服务端身份/CSRF/CAS边界。已实现API/类型及与原同session接口的区别见CONTRACTS；遗忘不删除原账本或审计材料。
 
 ## 三个顺序feature
 

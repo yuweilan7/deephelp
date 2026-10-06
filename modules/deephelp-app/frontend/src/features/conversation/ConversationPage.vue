@@ -254,6 +254,12 @@ onBeforeUnmount(() => {
         >继续读取消息</el-button
       >
       <form @submit.prevent="submit">
+        <p v-if="workspace.historyMemory?.session === workspace.session">
+          当前新消息已选择
+          {{
+            workspace.historyMemory.use.references.length
+          }}条历史精确版本。实际run将再次检查来源、授权与当前问题；可在“多轮与记忆”取消选择。
+        </p>
         <p>
           {{
             hint
