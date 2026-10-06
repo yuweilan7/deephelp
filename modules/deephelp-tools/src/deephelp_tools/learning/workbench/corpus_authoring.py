@@ -49,12 +49,18 @@ class CorpusDelete(DTO):
 def corpus_authoring_router(
     assembly: Any, auth: BrowserAuth, owner: VerifiedIdentity, *, store: Any = None
 ) -> APIRouter:
-    pool = getattr(getattr(assembly, "ledger", None), "pool", None)
-    repository: Any = store or (PostgresCorpusWorkspaces(pool) if pool else None)
-    catalog = assembly.sop_registry.catalog_version
+    pool: Any = None
+    repository: Any = store
+    catalog = ""
 
     @asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[None]:
+        nonlocal pool, repository, catalog
+        # 正式ReleaseRuntime在外层应用lifespan才打开原装配；注册路由时尚无ledger/目录。
+        # 此处在父生命周期就绪后借池并迁移，所有权仍属原装配，退出不关闭借用池。
+        pool = getattr(getattr(assembly, "ledger", None), "pool", None)
+        catalog = assembly.sop_registry.catalog_version
+        repository = store or (PostgresCorpusWorkspaces(pool) if pool else None)
         if repository is not None:
             await repository.migrate()
         yield
@@ -66,6 +72,8 @@ def corpus_authoring_router(
             raise AppError(ErrorCode.NOT_FOUND, "Corpus workspace not found", 404)
         if repository is None:
             raise AppError(ErrorCode.NOT_IMPLEMENTED, "Corpus authoring requires PostgreSQL", 501)
+        if not catalog:
+            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Corpus runtime is not ready", 503)
 
     def view(row: dict[str, Any], offset: int = 0, limit: int = 20) -> dict[str, Any]:
         value = copy.deepcopy(row)

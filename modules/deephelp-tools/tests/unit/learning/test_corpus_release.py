@@ -295,3 +295,29 @@ def test_content_repair_reuses_only_completed_exact_target_rows(tmp_path):
     partial.write_text(json.dumps(new))
     with pytest.raises(ConfigurationError):
         merge_content(original, partial, ["leaf"], required)
+
+
+def test_full_content_verification_binds_original_and_does_not_claim_new_calls(tmp_path):
+    import json
+
+    from deephelp_tools.probes.conversation.catalog_probe import reuse_full_content
+
+    expected = {"code_digest": "runtime", "providers_digest": "same"}
+    report = expected | dict(
+        phase="release",
+        status="PASS",
+        tooling_digest="original",
+        rows=[dict(case_id="one")],
+        checks={"one:history": True, "one:zero_call_replay": True},
+        api_observations=[dict(model="original")],
+        observed_source={"path": "failed.json", "sha256": "old"},
+        content_sources={"part.json": "partial"},
+    )
+    path = tmp_path / "full.json"
+    path.write_text(json.dumps(report))
+    reviewed = reuse_full_content(path, expected, ["one"], "reviewer")
+    assert reviewed["tooling_digest"] == "reviewer" and reviewed["api_observations"] == []
+    assert reviewed["observed_source"]["path"] == str(path.resolve())
+    assert reviewed["content_sources"] == {"part.json": "partial", "failed.json": "old"}
+    with pytest.raises(ConfigurationError):
+        reuse_full_content(path, {"code_digest": "changed"}, ["one"], "reviewer")

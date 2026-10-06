@@ -188,6 +188,36 @@ def merge_content(
     )
 
 
+def reuse_full_content(
+    previous: Path, expected: dict[str, str], requested: list[str], tooling: str
+) -> dict[str, Any]:
+    """管理路由/采集器等tools变化不重跑未改变的业务运行；逐行严格复核相同合同。
+
+    这是零模型的证据复核，当前工具版本说明本次复核者，原模型请求仍归原报告。
+    原FAIL、补验part及完整报告都沿来源hash保留，不声称重新执行了模型业务。
+    """
+    old: dict[str, Any] = json.loads(previous.read_text(encoding="utf-8"))
+    completed = reusable_cases(old, expected, requested)
+    if (
+        old["status"] != "PASS"
+        or set(completed) != set(requested)
+        or not all(v is True for v in old["checks"].values())
+    ):
+        raise ConfigurationError("Full content reuse requires complete exact PASS evidence")
+    sources = dict(old.get("content_sources", {}))
+    if origin := old.get("observed_source"):
+        sources[origin["path"]] = origin["sha256"]
+    return old | dict(
+        tooling_digest=tooling,
+        reused_cases=completed,
+        api_observations=[],
+        observed_source=dict(path=str(previous.resolve()), sha256=file_digest(previous)),
+        content_sources=sources,
+        usage=summarize_usage([]),
+        execution="Read-only exact runtime/content verification; no new business/model execution",
+    )
+
+
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
     if isinstance(error, BaseExceptionGroup):

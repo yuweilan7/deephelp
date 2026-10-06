@@ -506,6 +506,7 @@ def evaluation_router(
                     merge_content,
                     probe,
                     reusable_cases,
+                    reuse_full_content,
                 )
 
                 business = getattr(assembly, "business_mcp", None)
@@ -562,9 +563,27 @@ def evaluation_router(
                                 expected,
                                 requested,
                             )
-                            if accepted and len(accepted) < len(requested):
+                            if accepted:
                                 previous, completed = prior_path, accepted
                                 break
+                if previous and len(completed) == len(requested):
+                    from deephelp_tools.integrity import evaluation_provenance
+
+                    validation_report = reuse_full_content(
+                        previous,
+                        expected,
+                        requested,
+                        str(evaluation_provenance()["tooling_digest"]),
+                    )
+                    validation_report["budget"] = gate.state
+                    atomic_json(output / "validation.json", validation_report)
+                    return dict(
+                        evidence_status="PASS",
+                        checks=validation_report["checks"],
+                        reused_cases=completed,
+                        model_calls=0,
+                        active_changed=False,
+                    )
                 content_path = output / ("content-part.json" if previous else "validation.json")
                 await probe(
                     argparse.Namespace(

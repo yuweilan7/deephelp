@@ -14,6 +14,8 @@ F3 live在调用前核对当前安装/原审核配置，累计M44预算275次基
 
 v2实际16分类全部正确。完整业务首次因新任务根缺SOP索引在模型前停止，接入同审核原件后六叶子均通过；未知样本采集器却错误要求未执行SOP的响应携带SOP快照。修正仅tools采集器，runtime字节不变，分类原证据继续属于其工具版本。新业务任务按相同runtime/provider/pointer/assets/corpus/SOP/Skill指纹，仅复用已有完整history+zero-call-replay的成功行，补验两未知；新合并报告绑定原FAIL及新part原件，全部进入manifest闭包。新独立m44-corpus-v2安装绑定修正tools字节，初版安装及报告保持。
 
+真实release模式启动在路由注册阶段暴露F1集成缺口：ReleaseRuntime要在父lifespan打开，语料router却提前读sop_registry/ledger。已真实停止、恢复M43，40→41→42；新请求未派发。修正router在父启动后借同PG池并迁移，补生命周期独立测试。业务runtime仍同摘要，仅tools管理路由变化；完整8场景同指纹PASS按原件/hash零模型复核，新manifest绑定原FAIL/part/完整报告链。M44累计预算在无writer时按最新云账本受控回交本机维护，完成后再移交；不恢复旧预算快照。最终精确安装用m44-corpus-v3，不覆盖前两个安装或清单。
+
 真实依赖前读LOCAL_SETUP、DEPENDENCIES和所需模型摘要；每次live先列明确样本/调用/token及修复余量上限。同会话同事实路径复用证据。未配置Rerank显示未运行，语料召回不升级为业务事实。
 
 每feature独立feature分支验收、中文commit/push、main no-ff保存、六SHA同步后继续。handoffs/M44与STATE记录必要最终证据/未验范围；本轮临时资源在Temp或.local/tmp/m44，退出后精确清理。完成PLAN被规格/handoff覆盖后删除。
