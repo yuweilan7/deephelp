@@ -24,7 +24,7 @@ from deephelp_app.bootstrap.runtime.budget import BudgetSession
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import Outcome, QuestionStatus, VerifiedIdentity
 from deephelp_app.domain.models.conversation import RequestEnvelope
-from deephelp_app.domain.models.long_memory import MemoryReference, MemoryUse
+from deephelp_app.domain.models.long_memory import MemoryChange, MemoryReference, MemoryUse
 
 
 async def run(config: dict[str, Any], output: Path) -> None:
@@ -151,7 +151,14 @@ async def run(config: dict[str, Any], output: Path) -> None:
         gate.close()
 
 
-async def read(report_path: Path, output: Path, *, protocol: bool = False) -> None:
+async def read(
+    report_path: Path,
+    output: Path,
+    *,
+    protocol: bool = False,
+    lifecycle: bool = False,
+    check_memory: str | None = None,
+) -> None:
     """新进程直接回读原PGscope/source/receipt；不打开模型、MCP或预算writer。"""
     original = json.loads(await asyncio.to_thread(report_path.read_text, encoding="utf-8"))
     request = RequestEnvelope.model_validate(original["input"])
@@ -168,7 +175,85 @@ async def read(report_path: Path, output: Path, *, protocol: bool = False) -> No
         )
         assert source and source[0].version == original["memory"]["source_version"]
         scope = await service.store.scope(request.identity, request.session_id)
-        checks: dict[str, bool] = {}
+        checks: dict[str, Any] = {}
+        if check_memory:
+            head = await service.store.get(request.identity, check_memory)
+            assert head and head.state == "FORGOTTEN" and head.text == "[forgotten]"
+            assert head.revision == 4
+            assert len(await service.store.versions(request.identity, check_memory)) == 4
+            checks.update(restarted_head_forgotten=True, revision=4)
+        if lifecycle:
+            # 本次来源是F1新问题，不能改原M44摘要。所有动作只写派生记忆/范围，模型0。
+            before = receipt.response.model_dump_json()
+            assert receipt.response.question_id
+            memory = await service.preserve(
+                request.identity, request.session_id, receipt.response.question_id
+            )
+            target = "m46-lifecycle-" + uuid4().hex
+            await service.configure(request.identity, target, 0, True, (request.session_id,))
+            note = await service.change(
+                request.identity,
+                memory.memory_id,
+                MemoryChange(
+                    expected_revision=memory.revision,
+                    action="retain",
+                    edit_id=uuid4().hex,
+                    text="请先列依据，再给结果。",
+                ),
+            )
+            correction_results = await asyncio.gather(
+                *(
+                    service.change(
+                        request.identity,
+                        memory.memory_id,
+                        MemoryChange(
+                            expected_revision=note.revision,
+                            action="correct",
+                            edit_id=uuid4().hex,
+                            text="请先给结果，再列依据。",
+                        ),
+                    )
+                    for _ in range(2)
+                ),
+                return_exceptions=True,
+            )
+            assert (
+                sum(isinstance(r, AppError) and r.status_code == 409 for r in correction_results)
+                == 1
+            )
+            current = await service.store.get(request.identity, memory.memory_id)
+            assert current and current.revision == note.revision + 1
+            forgotten = await service.change(
+                request.identity,
+                memory.memory_id,
+                MemoryChange(
+                    expected_revision=current.revision, action="forget", edit_id=uuid4().hex
+                ),
+            )
+            assert (
+                await service.preserve(
+                    request.identity, request.session_id, receipt.response.question_id
+                )
+            ).state == "FORGOTTEN"
+            use = MemoryUse(
+                scope_revision=1,
+                references=(
+                    MemoryReference(memory_id=memory.memory_id, revision=forgotten.revision),
+                ),
+            )
+            assert (await service.select(request.identity, target, use)).decisions[
+                0
+            ].reason == "memory_forgotten"
+            detail = await service.detail(request.identity, memory.memory_id)
+            assert "请先给结果" not in str(detail)
+            reloaded = await repository.lookup(request)
+            assert reloaded and reloaded.response and reloaded.response.model_dump_json() == before
+            checks.update(
+                correction_cas_one_winner=True,
+                forget_no_revive=True,
+                original_receipt_unchanged=True,
+            )
+            checks["memory_id"] = memory.memory_id
         if protocol:
             foreign = request.identity.model_copy(update={"user_id": "m46-foreign"})
             assert await service.store.get(foreign, original["memory"]["memory_id"]) is None
@@ -227,9 +312,19 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--read-report", type=Path)
     parser.add_argument("--protocol", action="store_true")
+    parser.add_argument("--lifecycle", action="store_true")
+    parser.add_argument("--check-memory")
     args = parser.parse_args()
     if args.read_report:
-        asyncio.run(read(args.read_report, args.output, protocol=args.protocol))
+        asyncio.run(
+            read(
+                args.read_report,
+                args.output,
+                protocol=args.protocol,
+                lifecycle=args.lifecycle,
+                check_memory=args.check_memory,
+            )
+        )
     else:
         asyncio.run(run(json.loads(args.config.read_text(encoding="utf-8")), args.output))
 

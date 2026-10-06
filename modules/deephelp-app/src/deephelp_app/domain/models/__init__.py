@@ -223,6 +223,7 @@ from .intents import (
     RuleMatch as RuleMatch,
 )
 from .long_memory import LongMemory as LongMemory
+from .long_memory import MemoryChange as MemoryChange
 from .long_memory import MemoryDecision as MemoryDecision
 from .long_memory import MemoryReference as MemoryReference
 from .long_memory import MemoryScope as MemoryScope

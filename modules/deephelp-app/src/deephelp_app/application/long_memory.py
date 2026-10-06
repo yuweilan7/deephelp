@@ -10,10 +10,12 @@ from typing import Protocol
 
 from deephelp_app.domain.cases import CLOSED, summary
 from deephelp_app.domain.errors import AppError
-from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
+from deephelp_app.domain.models.common import ErrorCode, QuestionStatus, VerifiedIdentity
 from deephelp_app.domain.models.conversation import Question
+from deephelp_app.domain.models.entities import EntityName
 from deephelp_app.domain.models.long_memory import (
     LongMemory,
+    MemoryChange,
     MemoryDecision,
     MemoryReference,
     MemoryScope,
@@ -38,6 +40,11 @@ class LongMemoryStore(Protocol):
     ) -> tuple[LongMemory, ...]: ...
     async def scope(self, owner: VerifiedIdentity, session: str) -> MemoryScope: ...
     async def save_scope(self, scope: MemoryScope, expected_revision: int) -> MemoryScope: ...
+    async def change(
+        self, owner: VerifiedIdentity, memory_id: str, command: MemoryChange
+    ) -> LongMemory: ...
+    async def versions(self, owner: VerifiedIdentity, memory_id: str) -> tuple[LongMemory, ...]: ...
+    async def authorized(self, scope: MemoryScope, reference: MemoryReference) -> bool: ...
 
 
 class LongMemoryService:
@@ -73,8 +80,43 @@ class LongMemoryService:
             text=summary(question).text,
             created_at=now,
             expires_at=now + timedelta(days=30),
+            confidence="SOURCE_VERIFIED" if question.status == QuestionStatus.RESOLVED else "LOW",
         )
         return await self.store.insert(memory)
+
+    async def change(
+        self, owner: VerifiedIdentity, memory_id: str, command: MemoryChange
+    ) -> LongMemory:
+        """来源不被改写，CAS在仓储锁内执行；遗忘是不可复活的检索墓碑。"""
+        return await self.store.change(owner, memory_id, command)
+
+    async def detail(self, owner: VerifiedIdentity, memory_id: str) -> dict[str, object]:
+        memory = await self.store.get(owner, memory_id)
+        if memory is None:
+            raise AppError(ErrorCode.NOT_FOUND, "Memory not found", 404)
+        # 旧版本仅返回审计元数据。遗忘不删除原业务/审批记录，也不把旧文字再次交给检索。
+        versions = await self.store.versions(owner, memory_id)
+        return {
+            "memory": memory.model_dump(mode="json"),
+            "versions": [
+                {
+                    k: r.model_dump(mode="json")[k]
+                    for k in (
+                        "revision",
+                        "state",
+                        "change_action",
+                        "edit_id",
+                        "changed_at",
+                        "source_session",
+                        "source_question",
+                        "source_version",
+                        "source_hash",
+                    )
+                }
+                for r in versions
+            ],
+            "model_calls": 0,
+        }
 
     async def configure(
         self,
@@ -102,6 +144,7 @@ class LongMemoryService:
         owner: VerifiedIdentity,
         session: str,
         use: MemoryUse | None,
+        current: Question | None = None,
     ) -> MemorySelection:
         if use is None:
             return MemorySelection(target_session=session, status="DISABLED")
@@ -125,6 +168,8 @@ class LongMemoryService:
                 reason = "memory_" + memory.state.lower()
             elif memory.expires_at <= datetime.now(UTC):
                 reason = "expired"
+            elif memory.confidence == "LOW":
+                reason = "low_confidence"
             else:
                 source = await self.store.source(
                     owner, memory.source_session, memory.source_question
@@ -139,8 +184,14 @@ class LongMemoryService:
                     source_hash(source[0]) != memory.source_hash or source[1] != memory.evidence_ids
                 ):
                     reason = "source_changed"
-                elif used_bytes + len(memory.text.encode()) > 8192:
+                elif current is not None and memory.kind == "closed_summary":
+                    reason = current_relevance(source[0], current)
+                if not reason and used_bytes + len(memory.text.encode()) > 8192:
                     reason = "context_limit"
+                if not reason and not await self.store.authorized(scope, reference):
+                    # 来源回查有await；最后单次权威读取是选择的线性化点，晚到撤回/范围改变不漏过。
+                    # 此前已完成的原run是审计记录，不因以后遗忘而被改写。
+                    reason = "authorization_changed"
             if reason:
                 # 拒绝不回传越权或撤回内容；引用ID/原因足以解释原选择。
                 results.append(
@@ -194,8 +245,63 @@ def history_reference(selection: MemorySelection) -> str:
     """只渲染合法历史引用。金额/订单状态仍只在原fact_reply渲染当前事实。"""
     return "".join(
         f"历史参考（会话 {m.source_session}，问题 {m.source_question}，"
-        f"源版本 {m.source_version}）："
+        f"源版本 {m.source_version}，记忆版本 {m.revision}，{m.confidence}）："
         f"{m.text}。历史仅供参考，当前结论以上述本次查询为准。"
         for r in selection.decisions
         if r.status == "ADOPTED" and (m := r.memory)
     )
+
+
+def current_relevance(source: Question, current: Question) -> str | None:
+    """业务摘要只对应当前已确认同一问题类型与槽位；不借历史填空或消除冲突。"""
+    if current.conflicts and any(c.resolution == "unresolved" for c in current.conflicts):
+        return "current_conflict"
+    if current.unresolved_fields or not current.entities or current.active_intent is None:
+        return "current_unconfirmed"
+    if source.active_intent != current.active_intent:
+        return "intent_mismatch"
+    old = {e.name: e.value for e in source.entities}
+    new = {e.name: e.value for e in current.entities}
+    if not old:
+        return "source_unclassified"
+    if any(name not in new for name in old):
+        return "current_unconfirmed"
+    if any(new[name] != value for name, value in old.items()):
+        return (
+            "order_mismatch"
+            if old.get(EntityName.ORDER_ID) != new.get(EntityName.ORDER_ID)
+            else "slot_mismatch"
+        )
+    return None
+
+
+def changed_memory(memory: LongMemory, command: MemoryChange) -> LongMemory:
+    """锁内纯转换；更正只能更新主动保留的用户信息，不篡改来源摘要和工具事实。"""
+    if memory.revision != command.expected_revision:
+        raise AppError(ErrorCode.VERSION_CONFLICT, "Memory changed; reload", 409)
+    if memory.state == "FORGOTTEN":
+        raise AppError(ErrorCode.VERSION_CONFLICT, "Forgotten memory cannot be revived", 409)
+    if command.action == "correct" and (memory.kind != "user_retained" or memory.state != "ACTIVE"):
+        raise AppError(ErrorCode.VERSION_CONFLICT, "Correct an active retained note", 409)
+    if command.action == "retain" and memory.state != "ACTIVE":
+        raise AppError(ErrorCode.VERSION_CONFLICT, "Revoked memory cannot be revived", 409)
+    now = datetime.now(UTC)
+    update: dict[str, object] = {
+        "revision": memory.revision + 1,
+        "changed_at": now,
+        "edit_id": command.edit_id,
+        "change_action": command.action,
+    }
+    if command.action in {"retain", "correct"}:
+        update.update(
+            kind="user_retained",
+            retained=True,
+            text=command.text,
+            confidence=command.confidence,
+            expires_at=now + timedelta(days=command.valid_days),
+        )
+    else:
+        update["state"] = "REVOKED" if command.action == "revoke" else "FORGOTTEN"
+        if command.action == "forget":
+            update["text"] = "[forgotten]"
+    return LongMemory.model_validate(memory.model_copy(update=update).model_dump())

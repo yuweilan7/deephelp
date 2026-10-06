@@ -8,12 +8,17 @@ import asyncio
 from importlib.resources import files
 from typing import Any
 
-from deephelp_app.application.long_memory import source_hash
+from deephelp_app.application.long_memory import changed_memory, source_hash
 from deephelp_app.domain.cases import CLOSED
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 from deephelp_app.domain.models.conversation import Question
-from deephelp_app.domain.models.long_memory import LongMemory, MemoryScope
+from deephelp_app.domain.models.long_memory import (
+    LongMemory,
+    MemoryChange,
+    MemoryReference,
+    MemoryScope,
+)
 from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
@@ -128,6 +133,71 @@ class PostgresLongMemory:
             )
             row = await cursor.fetchone()
             return LongMemory.model_validate_json(row[0]) if row else None
+
+    async def change(
+        self, owner: VerifiedIdentity, memory_id: str, command: MemoryChange
+    ) -> LongMemory:
+        """一条head行锁拥有更正时序，head与不可变版本同事务提交；取消/异常回滚。"""
+        await self.migrate()
+        key = (owner.tenant_id, owner.user_id, memory_id)
+        async with self.pool.acquire() as conn, conn.cursor() as cursor:
+            await cursor.execute(
+                "SELECT body FROM dh_m46_memories WHERE tenant_id=%s AND user_id=%s "
+                "AND memory_id=%s FOR UPDATE",
+                key,
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                raise AppError(ErrorCode.NOT_FOUND, "Memory not found", 404)
+            memory = changed_memory(LongMemory.model_validate_json(row[0]), command)
+            await cursor.execute(
+                "UPDATE dh_m46_memories SET revision=%s,body=%s WHERE tenant_id=%s AND user_id=%s "
+                "AND memory_id=%s",
+                (memory.revision, memory.model_dump_json(), *key),
+            )
+            await cursor.execute(
+                "INSERT INTO dh_m46_memory_versions(tenant_id,user_id,memory_id,revision,body) "
+                "VALUES(%s,%s,%s,%s,%s)",
+                (*key, memory.revision, memory.model_dump_json()),
+            )
+            await conn.commit()
+            return memory
+
+    async def versions(self, owner: VerifiedIdentity, memory_id: str) -> tuple[LongMemory, ...]:
+        await self.migrate()
+        async with self.pool.acquire() as conn, conn.cursor() as cursor:
+            await cursor.execute(
+                "SELECT body FROM dh_m46_memory_versions WHERE tenant_id=%s AND user_id=%s "
+                "AND memory_id=%s ORDER BY revision DESC LIMIT 32",
+                (owner.tenant_id, owner.user_id, memory_id),
+            )
+            return tuple(LongMemory.model_validate_json(r[0]) for r in await cursor.fetchall())
+
+    async def authorized(self, scope: MemoryScope, reference: MemoryReference) -> bool:
+        """一条PG语句读当前授权及head，作为派生上下文选择的最终版本检查。"""
+        async with self.pool.acquire() as conn, conn.cursor() as cursor:
+            await cursor.execute(
+                "SELECT m.body,s.body FROM dh_m46_memories m JOIN dh_m46_scopes s "
+                "ON m.tenant_id=s.tenant_id AND m.user_id=s.user_id "
+                "WHERE m.tenant_id=%s AND m.user_id=%s AND m.memory_id=%s "
+                "AND s.target_session=%s",
+                (
+                    scope.owner.tenant_id,
+                    scope.owner.user_id,
+                    reference.memory_id,
+                    scope.target_session,
+                ),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return False
+            memory = LongMemory.model_validate_json(row[0])
+            current = MemoryScope.model_validate_json(row[1])
+            return (
+                current == scope
+                and memory.revision == reference.revision
+                and memory.state == "ACTIVE"
+            )
 
     async def list(
         self, owner: VerifiedIdentity, sessions: tuple[str, ...]

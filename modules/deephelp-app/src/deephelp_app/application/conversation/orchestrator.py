@@ -472,6 +472,7 @@ class Conversation:
                             request.identity,
                             request.session_id,
                             request.history_memory,
+                            question,
                         )
                 except asyncio.CancelledError:
                     cancelled = True

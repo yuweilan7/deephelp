@@ -1,6 +1,6 @@
 # M46 当前实施计划
 
-判断：DECOMPOSE / VERIFY_EXISTING。基线main d7fe5a3，工作区干净；M10/M25原记忆与PG、M44正式安装、M45拒绝候选闭环复用。
+判断：DECOMPOSE / VERIFY_EXISTING。F1合并14d6fcb六SHA同步；F2范围/更正/遗忘及实库生命周期已验，交付后继续F3。M10/M25原记忆与PG、M44正式安装、M45拒绝候选闭环复用。
 
 1. F1：原MemoryService增加独立历史入口，PG保存同owner来源摘要和目标session授权范围，明确选择精确版本。原Conversation在当前槽位/事实回答后附带来源引用，历史不进入实体、600归属或审批。新增类型/仓储解释scope、摘要与回查；第11章/course long-memory、原记忆页及原response显示真实候选/选择。没有旧跨session实现需删除。
 2. F2：在同一入口补充当前槽位冲突、订单/意图不匹配、时间/可信与长度边界，CAS纠正/停用/遗忘及来源范围修改。PG直读而不创建额外缓存/向量副本，旧Milvus同session过滤保持；无延迟投影可复活。补充中文事务/撤回时序与离线反例。

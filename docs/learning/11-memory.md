@@ -57,6 +57,14 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
 
 ## 当前源码
 
+M46实验还执行“保留用户陈述→更正→遗忘”，预期`correction_versions=[2,3,4]`及`forget_did_not_revive=true`。用户陈述只代表用户明确提供的信息，不能成为工具金额/订单状态。对照`current_relevance`：000031的摘要遇到000032时是order_mismatch；当前没有确认订单是current_unconfirmed；意图不同、未解冲突、LOW和到期都有独立拒绝原因。业务回答仍先完成，候选浏览本身无法判断下一条消息是否相关。
+
+像Java数据库的`SELECT ... FOR UPDATE`加version校验，M46更正在短事务内同时写head与新版本；锁由该连接事务拥有，异常/取消回滚，提交后才返回。等待来源读取期间可能有人撤回，最终同一PG语句再检查head与scope，防止使用已改变的授权。旧run保留当时的选择；遗忘停止未来引用，不改写历史审计。
+
+工作台用“明确保留或更正的稳定信息”写用户陈述，再用更正/撤回/遗忘按钮；需要重新读取并选择新revision。低可信/撤回/遗忘候选不返回内容。墓碑仍有版本ID和来源，原业务事实、审批及审计版本保护；旧版本详情仅公开审计元数据。这里直接读PG，没有M46向量/缓存/outbox副本，原M10worker只消费同session问题投影；晚到任务没有写M46表的入口。
+
+练习：同时从revision2提交两次更正，谁获胜？遗忘revision4后重复preserve能否复活？答案：一个提交版本3，另一个409需重新读取；preserve返回FORGOTTEN，同一来源不能重新保留。回看[M46固定反例](../../modules/deephelp-app/tests/unit/conversation/test_m46_long_memory.py)，其中取消、晚到撤回和CSRF不是模型判断。
+
 [MemoryService.load/ProjectionWorker.once](../../modules/deephelp-app/src/deephelp_app/application/memory.py)展示权威快照、摘要复核、cache_error、取消不ack；[PostgresCaseRepository](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/cases.py)负责关系状态与outbox。[preparation.prepare](../../modules/deephelp-app/src/deephelp_app/application/conversation/preparation.py)在领取前准备归属，原账本原子绑定问题与消息。
 
 [事件aggregation/policy](../../modules/deephelp-app/src/deephelp_app/application/event_cluster/aggregation.py)限制候选和合并，更正保留旧/新来源，不把不同订单当同一实体；[state.advance_question](../../modules/deephelp-app/src/deephelp_app/application/conversation/state.py)推进实体、冲突与固定版本。显式question_hint仍必须授权，不能从正文猜身份。
