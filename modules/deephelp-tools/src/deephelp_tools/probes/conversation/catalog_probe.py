@@ -573,9 +573,13 @@ async def probe(args: argparse.Namespace) -> int:
                 cascade_policy=Path(args.cascade_policy),
                 event_collection="dh_m10_events_m42_" + args.phase,
                 reviewed_rules=Path(data["rules"]) if args.assets else None,
+                skill_review=Path(args.skill_review) if args.skill_review else None,
             )
             report["sop_snapshot"] = runtime.sop_registry.snapshot_hash
             report["catalog_version"] = runtime.sop_registry.catalog_version
+            if args.skill_review:
+                report["skills_digest"] = runtime.skills_registry.digest
+                report["skills_review_digest"] = file_digest(Path(args.skill_review))
             app = create_app(
                 Settings(
                     mode="mvp", request_timeout=90, child_timeout=45, max_attempts=40, retry_limit=2
@@ -722,6 +726,7 @@ def main() -> int:
     parser.add_argument(
         "--assets", help="Exact immutable catalog assets for complete release content"
     )
+    parser.add_argument("--skill-review", help="Retained approved Skill snapshot for the candidate")
     parser.add_argument(
         "--cases", nargs="+", choices=sorted({c[0] for c in (*ELIGIBILITY_CASES, *RELEASE_CASES)})
     )

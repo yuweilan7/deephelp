@@ -85,6 +85,7 @@ class LiveAssembly:
         release_manifest: ReleaseManifest | None = None,
         release_channel: str | None = None,
         prompt_artifact: Path | None = None,
+        skill_review: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -135,10 +136,19 @@ class LiveAssembly:
         self.agent_policy = load_agent_policy()
         from deephelp_app.application.skills import SkillRegistry, load_skills
 
+        if release_manifest and skill_review:
+            raise ConfigurationError("Released Skill must come from its immutable manifest")
+        # 候选读取原审核快照，不让包内默认Skill替代云端现行版本。
+        # 只有文件验证，不提交审核或扩大工具许可。
+        reviewed_skills = None
+        if skill_review:
+            from deephelp_app.adapters.releases.skill_store import read_skill_review
+
+            reviewed_skills, _ = read_skill_review(skill_review)
         self.skills_registry = (
             SkillRegistry.model_validate(release_manifest.skill_registry)
             if release_manifest and release_manifest.skill_registry
-            else load_skills()
+            else reviewed_skills or load_skills()
         )
         self.skills_enabled = (
             release_manifest is None or release_manifest.skill_registry is not None
