@@ -223,7 +223,12 @@ class LiveAssembly:
                 )
             cache = RedisMemory.open(self.root)
             stack.push_async_callback(cache.aclose)
-            memory = MemoryService(ledger, cache)
+            from deephelp_app.adapters.persistence.long_memory import PostgresLongMemory
+            from deephelp_app.application.long_memory import LongMemoryService
+
+            memory = MemoryService(
+                ledger, cache, long_term=LongMemoryService(PostgresLongMemory(ledger.pool))
+            )
             gateway = create_gateway(client, self.config, AsyncCalls(2, 30))
             self.gateway = gateway
             model = CountedModel(gateway, gateway, gateway)

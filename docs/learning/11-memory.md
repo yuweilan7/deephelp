@@ -41,6 +41,20 @@ sequenceDiagram
     W->>P: 以token确认ack
 ```
 
+## 两会话长期记忆实验（M46）
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
+```
+
+实验沿原Conversation和SOP执行两次订单查询。第一次结束后明确保留来源，在另一个session开启此来源范围并选择精确版本。预期`selection.status=SELECTED`，当前回答仍含合成工具99.90/10.00及“历史参考”；`history_did_not_fill_slots=true`、`source_stayed_ended=true`，重投四类调用都为0，远程模型0。内存仓储与固定模型只证明机制，真实PG/模型范围见[M46交接](../../handoffs/M46.md)。
+
+阅读[LongMemoryService](../../modules/deephelp-app/src/deephelp_app/application/long_memory.py)的preserve→configure→select，再读[PG适配器](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/long_memory.py)的来源RR快照与scope行锁CAS。授权范围属于当前owner/目标session；记忆属于原owner/来源问题。`await`读取后再核对版本，摘要是派生值，不能变成当前confirmed。类似Java聚合的version和不可变事件引用，但这里没有用旧事件重放业务，也没有分布式事务。
+
+工作台在“多轮与记忆”填写已结束来源问题并保留，读取目标授权、明确开启有限来源，再勾选候选绑定当前会话的下次新消息。候选合法与原run采用分开显示；原response记录选择理由、来源时间/消息/证据和版本。没开启、外owner、旧scope、源版本漂移都有具体拒绝；历史浏览不发模型或向量请求。
+
+练习：来源摘要含000031时，新消息只说“我的订单未优惠”，能直接查询000031吗？范围revision从1改为2后，旧页面携带1能否继续引用？答案：不能；缺槽仍等待当前确认，旧scope拒绝并重新读取范围/候选。历史也不等于explicit_reopen，已结束问题不自动恢复。
+
 ## 当前源码
 
 [MemoryService.load/ProjectionWorker.once](../../modules/deephelp-app/src/deephelp_app/application/memory.py)展示权威快照、摘要复核、cache_error、取消不ack；[PostgresCaseRepository](../../modules/deephelp-app/src/deephelp_app/adapters/persistence/cases.py)负责关系状态与outbox。[preparation.prepare](../../modules/deephelp-app/src/deephelp_app/application/conversation/preparation.py)在领取前准备归属，原账本原子绑定问题与消息。

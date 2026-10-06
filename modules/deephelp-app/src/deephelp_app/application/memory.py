@@ -14,6 +14,7 @@ from deephelp_app.adapters.memory_projection.redis_memory import RedisMemory as 
 from deephelp_app.adapters.memory_projection.redis_memory import scope_key as scope_key
 from deephelp_app.adapters.observability.telemetry import observed
 from deephelp_app.adapters.persistence.cases import PostgresCaseRepository
+from deephelp_app.application.long_memory import LongMemoryService
 from deephelp_app.domain.cases import CLOSED, summary
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import VerifiedIdentity
@@ -35,8 +36,10 @@ class MemoryService:
         repository: CaseRepository,
         cache: RedisMemory | None = None,
         index: EventIndex | None = None,
+        long_term: LongMemoryService | None = None,
     ) -> None:
         self.repository, self.cache, self.index = repository, cache, index
+        self.long_term = long_term
         self.last_cache_error: str | None = None
 
     @observed("memory.load")

@@ -47,6 +47,8 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/approval/test
 
 ## 怎样学、怎样复验
 
+跨会话能力从[第11章两会话实验](11-memory.md#两会话长期记忆实验m46)进入，运行`course long-memory`观察明确来源/精确版本、当前缺槽不继承历史、终态不重开与原receipt零调用重放。它复用同一Conversation，不另建教学记忆引擎。
+
 第一轮读01–03、08–09，能指出DTO、唯一600、缺槽0工具、原receipt与事实回复。第二轮按04–07运行屏障实验，再回看主链的await/事务/shield。第三轮读10–14，用交错问题、UNKNOWN和原版本门禁深化。读不懂时先看当前行的输入/返回值/拥有者，不一次铺开全部适配器。
 
 安装tools wheel后同样使用 `python -m deephelp_tools.learning.course <topic>`；具体topic见上表，`--help`列当前主题，没有live选项。实验只在终端输出结果，不写新的运行指针、预算或报告。每次CLI30秒上限，线程另有有限退出兜底。主进程网络守卫与受控stdio边界见01章，真实模型质量/PG持久性/云平台必须由对应显式probe验收。

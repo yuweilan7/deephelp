@@ -1,5 +1,7 @@
 # DeepHelp 独立工具包
 
+M46两会话实验：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory`，默认离线，沿原Conversation/SOP和确定性来源选择，远程模型0次；范围/版本/当前事实边界见[第11章](../../docs/learning/11-memory.md#两会话长期记忆实验m46)。显式真实内容入口`python -m deephelp_tools.probes.conversation.long_memory_probe --live --config <私有运行配置> --output <新报告>`；`--read-report <原报告> [--protocol]`只回读PG及可选固定CAS反例，不打开模型/预算writer。配置绑定原来源报告/owner、providers/pointer/corpus/cascade/sop_directory和业务凭据，不能将旧安装PASS套新代码。
+
 M45独立数据机制：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course independent-quality`，默认离线/0模型，教学夹具不声称质量。实际私有来源用 `python -m deephelp_tools.evaluation.quality.independent_cli --intake <脱敏输入JSON> --annotation <盲标A收据> --annotation <盲标B收据> [--adjudication <独立裁决>] --postgres <原PG配置> --tenant <已验证主体> --user <主体> --output <新冻结JSON> --report <必要摘要>`；有实际许可/来源声明，输入含固定train/dev/holdout，收据绑定input_hash且不可看被测输出。`--protocol-report <文件>`另验隔离PG竞争/回滚/精确测试行清理；全部0模型。来源、未决/锁定状态沿原评测页，契约见[第14章](../../docs/learning/14-evaluation-release.md#独立来源双盲标与锁定留出集)。
 
 本地核心先运行`course request`，不需PG、云凭据、旧.local或前端built；环境准备和最短路径见[课程](../../docs/learning/README.md#本地核心最短路径)。真实业务/完整工作台才按[PG入口](../../infra/postgres/README.md)配置并迁移，M26审批使用官方保存器。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，旧完整发布绑定其原安装字节。

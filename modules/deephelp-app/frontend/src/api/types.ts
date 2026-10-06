@@ -23,6 +23,49 @@ export interface MessageInput {
   question_hint: string | null;
   expected_question_version: number | null;
   execution_mode?: "single" | "collaboration";
+  history_memory?: MemoryUse;
+}
+export interface MemoryUse {
+  scope_revision: number;
+  references: { memory_id: string; revision: number }[];
+}
+export interface LongMemory {
+  memory_id: string;
+  revision: number;
+  source_session: string;
+  source_question: string;
+  source_version: number;
+  source_hash: string;
+  source_messages: string[];
+  evidence_ids: string[];
+  state: string;
+  text: string;
+  created_at: string;
+  expires_at: string;
+}
+export interface MemorySelection {
+  status: string;
+  strategy: string;
+  scope_revision: number;
+  decisions: {
+    reference: { memory_id: string; revision: number };
+    status: string;
+    reason: string;
+    memory: LongMemory | null;
+  }[];
+  context_bytes: number;
+  model_calls: number;
+}
+export interface LongMemoryCandidates {
+  scope: {
+    revision: number;
+    enabled: boolean;
+    source_sessions: string[];
+    target_session: string;
+  };
+  candidates: MemorySelection["decisions"];
+  model_calls: number;
+  retrieval: string;
 }
 export interface Question {
   question_id: string;
@@ -30,6 +73,8 @@ export interface Question {
   status: string;
 }
 export interface RunResponse {
+  question_id?: string | null;
+  memory_selection?: MemorySelection | null;
   skill_receipts?: SkillReceipt[];
   agent_receipts?: AgentReceipt[];
   run_id: string | null;

@@ -134,6 +134,9 @@ function submit() {
     void send({
       ...newMessage(workspace.session, text.value, hint.value),
       execution_mode: collaboration.value ? "collaboration" : "single",
+      ...(workspace.historyMemory?.session === workspace.session
+        ? { history_memory: workspace.historyMemory.use }
+        : {}),
     });
 }
 function selectRun(message: HistoryMessage) {

@@ -135,6 +135,12 @@ from .conversation import (
 from .conversation import (
     RequestEnvelope as RequestEnvelope,
 )
+from .corpus_authoring import CorpusEdit as CorpusEdit
+from .corpus_authoring import CorpusFeedback as CorpusFeedback
+from .corpus_authoring import CorpusFreeze as CorpusFreeze
+from .corpus_authoring import CorpusImport as CorpusImport
+from .corpus_authoring import CorpusReview as CorpusReview
+from .corpus_authoring import CorpusUpload as CorpusUpload
 from .entities import (
     Entity as Entity,
 )
@@ -216,6 +222,12 @@ from .intents import (
 from .intents import (
     RuleMatch as RuleMatch,
 )
+from .long_memory import LongMemory as LongMemory
+from .long_memory import MemoryDecision as MemoryDecision
+from .long_memory import MemoryReference as MemoryReference
+from .long_memory import MemoryScope as MemoryScope
+from .long_memory import MemorySelection as MemorySelection
+from .long_memory import MemoryUse as MemoryUse
 from .memory import (
     CaseSummary as CaseSummary,
 )

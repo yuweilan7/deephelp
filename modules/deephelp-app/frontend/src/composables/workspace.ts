@@ -1,6 +1,11 @@
 import { reactive } from "vue";
 import { api } from "../api/client";
-import type { Workspace, MessageInput, RunResponse } from "../api/types";
+import type {
+  Workspace,
+  MessageInput,
+  RunResponse,
+  MemoryUse,
+} from "../api/types";
 
 // Only identity/budget, the current run, and an uncertain original send cross pages.
 export const workspace = reactive({
@@ -10,6 +15,7 @@ export const workspace = reactive({
   selected: null as { session_id: string; response: RunResponse } | null,
   pending: null as MessageInput | null,
   sending: false,
+  historyMemory: null as { session: string; use: MemoryUse } | null,
 });
 api.onWorkspace = (value) => {
   workspace.connection = value;

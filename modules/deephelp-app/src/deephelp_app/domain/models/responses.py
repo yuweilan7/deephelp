@@ -32,6 +32,7 @@ from .entities import EntityName
 from .events import EventClusterResult
 from .evidence import EvidenceRef, EvidenceSource, Fact, validate_facts
 from .intent_decisions import IntentDecision
+from .long_memory import MemorySelection
 from .release import VersionManifest
 from .skills import SkillReceipt
 from .sop import SOPPlan
@@ -107,6 +108,7 @@ class ResponseEnvelope(DTO):
     approval_operation_id: Identifier | None = None
     agent_receipts: tuple[AgentReceipt, ...] = ()
     skill_receipts: tuple[SkillReceipt, ...] = ()
+    memory_selection: MemorySelection | None = None
 
     @model_validator(mode="after")
     def closeout(self) -> ResponseEnvelope:
