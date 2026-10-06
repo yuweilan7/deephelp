@@ -1,12 +1,12 @@
 # M44｜知识与意图语料的管理、检索和发布工作台
 
-**状态：** `F1_F2_VERIFIED / F3_IN_PROGRESS`；2026-10-06，实际证据见[交接](../../handoffs/M44.md)。
+**状态：** `IMPLEMENTED_LIVE_VERIFIED`；三项顺序交付，2026-10-06；实际内容、精确安装、恢复和限制见[交接](../../handoffs/M44.md)。
 **来源：** PDF文件页35–41的语料导入/检索、70的后台维护及检索调试。先管理当前系统实际消费的意图例句、解释/来源与关联材料；不泛化成任意文档RAG平台。
 **基线：** M39；复用[M05](M05_DENSE_INGEST.md)、[M09](M09_HYBRID_RETRIEVAL.md)、[M18](M18_DATA_FLYWHEEL.md)、[M20](M20_BUSINESS_SOURCE.md)、[M29](M29_LANGFUSE_ENGINEERING.md)、[M31](M31_RERANK_INTEGRATION.md)、[M35](M35_FRONTEND_FOUNDATION.md)。M42只影响已经实际交付的新标签，不是本M硬前置。
 
-## 当前缺口与交付边界
+## 当前能力与交付边界
 
-已有命令可导入冻结语料、建索引、比较检索，飞轮页面能审核特定候选；还没有一般语料新增/编辑/导入预览/标签校验/版本发布的完整作者闭环。本M复用这些入口，提供可操作、可追溯的候选管理。
+原识别/检索页现已提供语料草稿新增/编辑/删除、明确列映射导入预览、合法标签/split校验、人工审核/导出、不可变冻结、候选索引、同向量比较、版本diff及质量门禁。原评测/反馈页负责原run采集和独立人工标签，再导入作者草稿重新审核；最终沿原完整ReleaseManifest和PG CAS发布，精确安装/重启及双向恢复已验证。
 
 语料是检索/分类/训练证据，不是订单、退款或券状态事实。新增文档命中不能覆盖PG业务数据，不允许标签文字或文件内容变成工具指令。公共仓库只放必要合成样本；原内部PDF、客户数据和私有导入文件不提交。
 
@@ -19,7 +19,7 @@
 | [飞轮](../../modules/deephelp-tools/src/deephelp_tools/evaluation/feedback/flywheel.py) | 复用采集→人工审核→候选资产→发布，不增加高置信自动金标链 |
 | [评测工作台](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/evaluation.py) | 复用唯一重任务、取消/累计预算、报告与发布；新增语料作者入口 |
 
-候选记录至少有doc_id、文本、合法叶子标签、来源/审核状态、所属split、去重组、revision与目录版本。资料/审核持久记录复用PG职责，正式数据集及manifest不可原位编辑；索引只是按冻结字节/签名可重建的投影。拟新增DTO/API在实施时同步CONTRACTS。
+候选记录包含doc_id、文本、合法叶子标签、来源/审核状态、所属split、去重组、revision与目录版本。PG作者聚合与不可变版本按owner/catalog隔离；正式数据集及manifest不可原位编辑，索引是按冻结字节/签名可重建的投影。DTO/API与精确反馈revision、版本diff及任务动作见[CONTRACTS](../CONTRACTS.md)。
 
 ## 三个顺序feature
 
@@ -44,6 +44,10 @@
 交付版本差异、审核记录、冻结split与受影响检索/分类门禁，通过原完整发布绑定数据字节/索引/规则/Prompt/SOP/代码后才能切换。至少一次候选从采集/修订到审核、索引、内容验收、正式安装及恢复的实际闭环。
 
 反馈来自原run/人工确认，审核后成为新候选，不自动把模型答案或高置信预测当金标。已发布条目删除/修正生成新版本；原run、审批及发布仍能读取依赖的历史版本。页面显示本次候选改善/退化和未验范围，教程/源码导航随实际入口更新；无消费者的候选副本按保护关系删除。
+
+正式门禁以服务端当前装配的RetrievalBinding.mode及pointer确定消费路线，浏览器不能自选；相同冻结test和原级联策略比较当前/候选，至少覆盖六合法叶子及未知范围。正式路线指标退化、最终分类错误、审核不匹配或撤销在后续模型派发/prepare前阻止；Dense/BM25及可配置Rerank仍完整保留对照差值。本次正式Hybrid指标与分类均持平，BM25 test MRR下降，不将发布PASS解释成所有路线改善。
+
+完整发布绑定作者/原反馈审核、语料/索引/split/分类与六叶子+2未知业务原件，规则/FastText/阈值/Prompt/SOP/Skill仍用原发布职责。修复工具采集器时只在runtime/providers/pointer/assets/corpus/SOP/Skill完全相同且成功行已含history/零调用重放证据时复用；新报告明确记录复用/新执行，并绑定原FAIL/part/完整报告hash，不能改旧PASS或把不完整行算成功。最终安装启动后仍独立验证实际业务、原运行观测、重启与恢复。
 
 ## 可观察的验收
 
