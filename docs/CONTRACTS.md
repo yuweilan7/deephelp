@@ -428,3 +428,9 @@ complaints-v3显式六叶子，新增ORDER_CREATION_FAILED（父ORDER_QUERY，at
 业务维护增加attempts/refunds/coupon_returns三种资源与042_complaints.sql三张表，均按tenant/user/record隔离并沿原POST幂等、PUT expected_version CAS。退款记录引用同主体订单/券且券属于该订单；回退记录引用同主体退款/券。同主体来源关联矛盾允许保留原记录，查询返回conflict，不覆盖来源或推定退款完成。旧表/旧行/evidence不修改。
 
 尝试查询精确TEXT事实attempt_id/attempt_status/failure_code/failure_reason/follow_up；退款查询精确TEXT事实refund_id/coupon_id/refund_status/return_status/return_reason。退款状态pending/completed/failed/unknown；券回退pending/returned/failed/unknown/conflict。关联矛盾或退款未完成而券声称returned优先conflict；缺回退行unknown；returned必须关联正确且退款completed。查询在同一REPEATABLE READ事务读取版本并保存不可变证据，NOT_FOUND不能泄漏外主体存在性；模型仅选允许工具，原因从PG维护记录来。
+
+## M44 语料作者协议
+
+`/learning/corpus`复用BrowserAuth/CSRF/同源，唯一catalog owner之外404；无原PG池501。GET按offset/limit分页，PUT/POST/DELETE正文revision与真实PG聚合CAS不符409。record复用CorpusRecord合法叶子/split/固定目录，source是有界非空来源说明；owner、审核者、路径不由正文指定。相同ID仅PUT修改，不允许改ID；修改恢复DRAFT。草稿删除不影响发布、审批或业务事实。
+
+`POST /previews`接受有界base64原字节、jsonl/csv/xlsx与显式列映射，复用原解析器，保存hash/逐行诊断；`POST /imports`必须confirmed=true及server preview_id，锁内再次校验完整目标，一次提交全部行与IMPORTED/imported_revision回执，失败entries/revision均不变。响应未知先读回执，不自动重投。浏览/解析/审核/导出模型0；导入不自动审核。`POST /reviews`明确确认、合法所选ID及理由，PG保存主体、时间、记录revision/hash和APPROVED/REJECTED；历史审核不被编辑覆写。导出只是作者JSONL，不代表正式数据/索引激活。

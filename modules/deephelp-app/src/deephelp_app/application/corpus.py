@@ -189,11 +189,23 @@ def _decode_strings(row: dict[str, str]) -> dict[str, object]:
 def read_corpus(path: Path, *, columns: dict[str, str] | None = None) -> CorpusPreview:
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("Corpus exceeds byte limit")
-    data = path.read_bytes()
+    return read_corpus_bytes(path.read_bytes(), path.suffix.lower(), columns=columns)
+
+
+def read_corpus_bytes(
+    data: bytes, suffix: str, *, columns: dict[str, str] | None = None
+) -> CorpusPreview:
+    """文件CLI与浏览器上传共用解析；映射只选择列，不执行公式或推断标签。
+
+    解析失败返回位置，原始上传不需落盘。CSV有映射时要求所有必需字段唯一映射；
+    JSONL仍使用冻结协议字段，Excel仍要求文本列与明确A/B列字母。
+    """
+    if len(data) > MAX_BYTES:
+        raise ValueError("Corpus exceeds byte limit")
     file_hash = hashlib.sha256(data).hexdigest()
     rows: list[tuple[int, object]] = []
     errors: list[str] = []
-    if path.suffix.lower() == ".xlsx":
+    if suffix == ".xlsx":
         try:
             rows = _cell_values(data, columns or {})
         except CorpusFormatError as exc:
@@ -204,7 +216,7 @@ def read_corpus(path: Path, *, columns: dict[str, str] | None = None) -> CorpusP
                 (),
                 ("Invalid XLSX: explicit text columns required; formula/structure rejected",),
             )
-    elif path.suffix.lower() == ".jsonl":
+    elif suffix == ".jsonl":
         for number, line in enumerate(data.decode("utf-8-sig").splitlines(), 1):
             try:
                 if not line.strip():
@@ -212,19 +224,32 @@ def read_corpus(path: Path, *, columns: dict[str, str] | None = None) -> CorpusP
                 rows.append((number, json.loads(line)))
             except ValueError:
                 errors.append(f"row {number}: Empty line or invalid JSON")
-    elif path.suffix.lower() == ".csv":
+    elif suffix == ".csv":
         reader = csv.reader(io.StringIO(data.decode("utf-8-sig")), strict=True)
-        headers = next(reader, [])
-        if not REQUIRED <= set(headers) or len(set(headers)) != len(headers):
+        try:
+            headers = next(reader, [])
+        except csv.Error:
+            return CorpusPreview(file_hash, (), ("Invalid CSV header",))
+        mapping = columns or {h: h for h in headers}
+        if (
+            not REQUIRED <= mapping.keys()
+            or len(set(headers)) != len(headers)
+            or len(set(mapping.values())) != len(mapping)
+            or not set(mapping.values()) <= set(headers)
+        ):
             return CorpusPreview(file_hash, (), ("Missing/duplicate CSV headers",))
-        for number, cells in enumerate(reader, 2):
+        try:
+            cells_by_line = list(enumerate(reader, 2))
+        except csv.Error:
+            return CorpusPreview(file_hash, (), (f"row {reader.line_num}: Invalid CSV quoting",))
+        for number, cells in cells_by_line:
             try:
                 if len(cells) != len(headers):
                     raise ValueError("Missing/extra CSV cells")
                 row = dict(zip(headers, cells, strict=True))
                 if any(str(v).lstrip().startswith(("=", "+", "-", "@")) for v in row.values()):
                     raise ValueError("Formula-like CSV cell")
-                rows.append((number, _decode_strings(row)))
+                rows.append((number, _decode_strings({k: row[v] for k, v in mapping.items()})))
             except ValueError:
                 errors.append(f"row {number}: Missing, extra, formula-like or invalid JSON cell")
     else:
