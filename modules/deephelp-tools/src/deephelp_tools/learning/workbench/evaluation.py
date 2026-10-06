@@ -322,6 +322,8 @@ def evaluation_router(
                     evidence_status=classification_report["status"],
                     version_hash=snapshot["version_hash"],
                     metric_changes=classification_report["metric_changes"],
+                    deployed_route=classification_report["deployed_route"],
+                    diagnostic_regressions=classification_report["diagnostic_regressions"],
                     checks=classification_report["checks"],
                     classification_accuracy=classification_report["classification_accuracy"],
                     unverified=classification_report["unverified"],

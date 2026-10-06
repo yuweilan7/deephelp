@@ -60,6 +60,8 @@ const query = ref("优惠券满足门槛却无法抵扣"),
             result: string;
           }[];
           classification_accuracy?: unknown;
+          deployed_route?: string;
+          diagnostic_regressions?: unknown[];
           unverified?: string[];
         };
         corpus_evidence?: unknown;
@@ -261,7 +263,8 @@ async function control(op: "cancel" | "resume") {
     </button>
     <p>
       最终分类使用已完成的同向量观察和原级联策略；冻结 test
-      包含合法叶子及未知范围。检索退化、分类错误或审核撤销都会阻止准备。完整业务内容仍须原发布验收。
+      包含合法叶子及未知范围。正式装配路线退化、分类错误或审核撤销都会阻止准备。Dense
+      / BM25 等对照差值完整保留，完整业务内容仍须原发布验收。
     </p>
     <button
       :disabled="!selected || !confirmed || action.busy.value"
@@ -330,6 +333,16 @@ async function control(op: "cancel" | "resume") {
       {{ task.state }} · attempt {{ task.attempt }} ·
       {{ task.error || task.result?.evidence_status || "等待实际结果" }}
     </p>
+    <p v-if="task?.result?.deployed_route">
+      正式路线门禁：{{
+        task.result.deployed_route
+      }}。其他路线为诊断对照，下表保留其改善与退化。
+    </p>
+    <RawDetails
+      v-if="task?.result?.diagnostic_regressions?.length"
+      title="诊断路线实际退化（不计为正式路线改善）"
+      :value="task.result.diagnostic_regressions"
+    />
     <table v-if="task?.result?.metric_changes">
       <thead>
         <tr>

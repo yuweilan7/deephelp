@@ -296,7 +296,11 @@ async def build_candidate(
                         ],
                         m,
                     )
-                    for m in ("dense", "bm25", "hybrid")
+                    for m in (
+                        ("dense", "bm25", "hybrid", "hybrid_rerank")
+                        if current.rerank_policy
+                        else ("dense", "bm25", "hybrid")
+                    )
                 }
                 for n in ("published", "candidate")
             }

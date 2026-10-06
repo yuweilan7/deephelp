@@ -17,14 +17,18 @@ from deephelp_app.domain.feedback import FeedbackCandidate
 from deephelp_app.domain.registry import complaint_registry
 
 
-def require_quality(gate: dict[str, Any], retrieval: dict[str, Any], catalog: str) -> None:
-    """独立重算必要质量条件；检查标记不能掩盖退化、漏样本或错误最终标签。"""
+def require_quality(
+    gate: dict[str, Any], retrieval: dict[str, Any], catalog: str, deployed_route: str = "hybrid"
+) -> None:
+    """重算正式路线非退化与分类覆盖；诊断路线差值保留，不能改选路线骗过发布。"""
     if set(retrieval["metrics"]) != {"dev", "test"} or any(
-        set(v["candidate"]) != {"dense", "bm25", "hybrid"}
-        or set(v["published"]) != {"dense", "bm25", "hybrid"}
+        not {"dense", "bm25", "hybrid", deployed_route}.issubset(v["candidate"])
+        or not {"dense", "bm25", "hybrid", deployed_route}.issubset(v["published"])
         for v in retrieval["metrics"].values()
     ):
         raise ConfigurationError("Corpus retrieval coverage is incomplete")
+    if gate.get("contract", {}).get("deployed_route") != deployed_route:
+        raise ConfigurationError("Corpus gate differs from the deployed retrieval route")
     expected = {o["query_id"]: o["gold"] for o in retrieval["observations"] if o["split"] == "test"}
     labels = {c.value for c in complaint_registry(catalog).actionable_codes}
     candidate = {r["query_id"]: r for r in gate["rows"] if r["version"] == "candidate"}
@@ -34,6 +38,7 @@ def require_quality(gate: dict[str, Any], retrieval: dict[str, Any], catalog: st
         or candidate.keys() != expected.keys()
         or baseline.keys() != expected.keys()
         or len(gate["rows"]) != 2 * len(expected)
+        or any(r["route"] != deployed_route for r in gate["rows"])
         or any(
             r["gold"] != expected[q]
             or r["final_code"] != expected[q]
@@ -54,7 +59,7 @@ def require_quality(gate: dict[str, Any], retrieval: dict[str, Any], catalog: st
                     or new is None
                     or not 0 <= old <= 1
                     or not 0 <= new <= 1
-                    or new < old - 1e-9
+                    or (mode == deployed_route and new < old - 1e-9)
                 ):
                     raise ConfigurationError("Corpus retrieval quality regressed or is unknown")
 
@@ -105,7 +110,13 @@ def corpus_binding(data: dict[str, Any]) -> dict[str, Any] | None:
     gate = read(binding["classification_gate"])
     retrieval = read(binding["retrieval_gate"])
     pointer = read(data["dense_pointer"])
-    require_quality(gate, retrieval, snapshot["catalog_version"])
+    selection = pointer["selection"]
+    deployed_route = (
+        "hybrid_rerank"
+        if selection["format"] == "m31-dev-selection-v1" and selection["rerank_policy"]["enabled"]
+        else "hybrid"
+    )
+    require_quality(gate, retrieval, snapshot["catalog_version"], deployed_route)
     source = {}
     for entry in snapshot["entries"].values():
         if raw := entry.get("feedback"):

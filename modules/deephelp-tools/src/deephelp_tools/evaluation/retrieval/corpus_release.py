@@ -83,6 +83,9 @@ async def quality_gate(
     if gateway is None:
         raise ConfigurationError("Original Chat gateway unavailable")
     changes = metric_changes(retrieval)
+    # 正式链由原RetrievalBinding决定路线，不让浏览器或测试结果选择门禁目标。
+    deployed_route = assembly.retrieval_binding.mode
+    deployed_changes = [r for r in changes if r["route"] == deployed_route]
     contract = dict(
         version_hash=snapshot["version_hash"],
         retrieval_digest=digest(retrieval),
@@ -91,6 +94,7 @@ async def quality_gate(
         providers_digest=assets["providers_digest"],
         baseline_assets_digest=digest(assets),
         cascade_sha256=file_digest(Path(catalog["cascade_policy"])),
+        deployed_route=deployed_route,
     )
     path = directory / "classification-gate.json"
     progress: dict[str, Any] = (
@@ -98,7 +102,7 @@ async def quality_gate(
     )
     if progress["contract"] != contract:
         raise ConfigurationError("Corpus classification input/code/config changed")
-    if not changes or any(row["delta"] < -1e-9 for row in changes):
+    if not deployed_changes or any(row["delta"] < -1e-9 for row in deployed_changes):
         # 已知召回退化先留真实拒绝，不消耗Chat为一个不能准备的候选补分类故事。
         progress.update(
             status="FAIL",
@@ -106,6 +110,10 @@ async def quality_gate(
             version_hash=snapshot["version_hash"],
             retrieval_digest=digest(retrieval),
             metric_changes=changes,
+            deployed_route=deployed_route,
+            diagnostic_regressions=[
+                r for r in changes if r["delta"] < -1e-9 and r["route"] != deployed_route
+            ],
             classification_accuracy=dict(candidate=None, published=None),
             unverified=[
                 "classification skipped: retrieval quality rejected",
@@ -127,7 +135,7 @@ async def quality_gate(
                 if any(row["key"] == key for row in progress["rows"]):
                     continue
                 routes = observation["comparison"]["results"][version]["routes"]
-                route = "hybrid_rerank" if "hybrid_rerank" in routes else "hybrid"
+                route = deployed_route
                 result = DenseResult.model_validate(routes[route])
                 # 同阈值/兜底策略只重绑定各自源hash/scope，绝不根据盲测放宽门槛。
                 from dataclasses import replace
@@ -160,7 +168,8 @@ async def quality_gate(
         candidate = [r for r in progress["rows"] if r["version"] == "candidate"]
         baseline = [r for r in progress["rows"] if r["version"] == "published"]
         checks = dict(
-            retrieval_no_regression=bool(changes) and all(r["delta"] >= -1e-9 for r in changes),
+            retrieval_no_regression=bool(deployed_changes)
+            and all(r["delta"] >= -1e-9 for r in deployed_changes),
             classification_complete=len(candidate) == len(baseline) == len(queries["test"]),
             candidate_classification_correct=all(r["classification_correct"] for r in candidate),
             classification_no_regression=sum(r["classification_correct"] for r in candidate)
@@ -174,6 +183,10 @@ async def quality_gate(
             version_hash=snapshot["version_hash"],
             retrieval_digest=digest(retrieval),
             metric_changes=changes,
+            deployed_route=deployed_route,
+            diagnostic_regressions=[
+                r for r in changes if r["delta"] < -1e-9 and r["route"] != deployed_route
+            ],
             classification_accuracy={
                 v: sum(r["classification_correct"] for r in rows) / len(rows)
                 for v, rows in (("candidate", candidate), ("published", baseline))

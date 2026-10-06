@@ -110,11 +110,19 @@ def evidence():
         },
     )
     gate = dict(
+        contract=dict(deployed_route="hybrid"),
         rows=[
-            dict(query_id=str(i), gold=g, final_code=g, classification_correct=True, version=v)
+            dict(
+                query_id=str(i),
+                gold=g,
+                final_code=g,
+                classification_correct=True,
+                version=v,
+                route="hybrid",
+            )
             for v in ("published", "candidate")
             for i, g in enumerate(golds)
-        ]
+        ],
     )
     return gate, retrieval
 
@@ -189,7 +197,7 @@ async def test_known_retrieval_regression_rejects_before_chat(tmp_path, monkeypa
 
     _, retrieval = evidence()
     retrieval.update(status="PASS", observations=[])
-    retrieval["metrics"]["test"]["candidate"]["bm25"]["mrr"] = 0.85
+    retrieval["metrics"]["test"]["candidate"]["hybrid"]["mrr"] = 0.85
     (tmp_path / "retrieval-gate.json").write_text(json.dumps(retrieval))
     policy = tmp_path / "policy.json"
     policy.write_text("{}")
@@ -207,10 +215,24 @@ async def test_known_retrieval_regression_rejects_before_chat(tmp_path, monkeypa
     result = await module.quality_gate(
         tmp_path,
         {"version_hash": "a" * 64, "catalog_version": "complaints-v3"},
-        SimpleNamespace(gateway=NeverChat()),
+        SimpleNamespace(gateway=NeverChat(), retrieval_binding=SimpleNamespace(mode="hybrid")),
         lambda: None,
         policy,
     )
     assert result["status"] == "FAIL" and result["rows"] == []
     assert result["checks"] == {"retrieval_no_regression": False}
     assert result["classification_accuracy"] == dict(candidate=None, published=None)
+
+
+def test_diagnostic_decline_remains_visible_and_route_cannot_be_selected_by_browser():
+    gate, retrieval = evidence()
+    retrieval["metrics"]["test"]["candidate"]["bm25"]["mrr"] = 0.85
+    require_quality(gate, retrieval, "complaints-v3")
+    assert any(
+        r["route"] == "bm25" and r["result"] == "regressed" for r in metric_changes(retrieval)
+    )
+    with pytest.raises(ConfigurationError, match="deployed"):
+        require_quality(gate, retrieval, "complaints-v3", "bm25")
+    gate["rows"][0]["route"] = "dense"
+    with pytest.raises(ConfigurationError):
+        require_quality(gate, retrieval, "complaints-v3")

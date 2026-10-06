@@ -443,6 +443,6 @@ complaints-v3显式六叶子，新增ORDER_CREATION_FAILED（父ORDER_QUERY，at
 
 `POST /feedback`要求工作区revision、原candidate_id/精确candidate_revision及confirmed；只读原PG候选，corpus路线必须当前owner人工批准、明确独立于heldout。服务器派生文本/叶子/原run/来源组，进入DRAFT并保留完整反馈revision；再经作者审核后才能冻结。普通编辑移除旧反馈绑定并重回DRAFT。`GET /versions/{hash}/diff/{base}`只比较同owner/catalog不可变快照，返回added/removed/changed/unchanged及model_calls=0。
 
-原重任务增加`corpus_gate`，分类消费已完成同向量观察及当前policy，逐条保存/恢复，代码、配置和输入变化409；检索非退化、八test完整分类及未知范围均正确后才准备原assets，返回task资产ID。validate/prepare必须同corpus_version/资产，沿原六叶子业务与两未知内容验证及同SOP/Skill，prepare匹配最新同目标PASS。
+原重任务增加`corpus_gate`，分类消费已完成同向量观察及当前policy，逐条保存/恢复，代码、配置和输入变化409。门禁路线由原RetrievalBinding.mode决定并与候选pointer复核，不能由浏览器或盲测结果选择；该正式路线dev/test指标非退化、八test完整分类及未知范围均正确后才准备原assets，返回task资产ID。Dense/BM25及已配置Rerank的全部差值继续展示，诊断下降不能被标为改善。validate/prepare必须同corpus_version/资产，沿原六叶子业务与两未知内容验证及同SOP/Skill，prepare匹配最新同目标PASS。
 
 原assets可带`corpus_binding`：绑定作者审核、JSONL、索引/集合、合同、冻结split/selection、检索及分类门禁的精确文件hash；完整清单files/source照原合同保护。runtime独立重算必要检索/分类覆盖条件，完整报告必须phase=release且六叶子/未知八场景及事实/重投检查齐全；反馈采集、召回PASS或漏样本均不能替代。ReleaseStore提交时仍锁读原审核revision与active CAS，撤销不自动删除历史或重放业务。旧ReleaseManifest格式/hash兼容，无新可选字段改写历史身份。
