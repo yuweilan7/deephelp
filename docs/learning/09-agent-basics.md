@@ -157,6 +157,18 @@ Java类比：attempt像请求处理日志，refund与return像两个独立业务
 
 练习与答案：1. 尝试编号不存在？NOT_FOUND，不编造失败原因。2. 退款pending但券声称returned？conflict，不能据券推定退款完成。3. 用户给别人的券号？同主体读取失败，不泄漏券存在性。4. 同主体不同券的回退来源？保留矛盾并人工核对，不把它改成returned。5. completed但没有回退行？unknown，不能承诺发券。6. completed/returned再重投？原receipt重放0模型/工具，不再次发券。7. 缺coupon_id只有refund_id？询问券号，不把退款记录里的券偷当用户确认槽位。
 
+### SOP可视草稿与CAS（M43）
+
+在“工具与工作流”创建已有SOP的独立草稿，编辑lookup查询、branch有限条件和end结论，通过下拉框连接节点。槽位直接对应原工具参数，不提供任意脚本、URL或工具扩权。保存返回服务端真实revision和校验；无效中间图仍可保存修正，错误指出字段/节点。重载读取已保存版本；两个页面竞争时旧revision返回409，应读回再决定修改。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-authoring
+```
+
+预期invalid_graph.valid=false并指出order悬空边，修正后saved_revision=3、reloaded_equal=true、stale_revision=VERSION_CONFLICT、published_unchanged=true、model_calls=0。实验使用正式[SOPDraftStore](../../modules/deephelp-app/src/deephelp_app/adapters/releases/sop_drafts.py)与原GovernedSOP，Temp由context manager释放。草稿事实源是文件，官方checkpoint不保存作者内容；新版本只有审核、内容门禁和完整发布后才用于新运行。
+
+Java类比是不可变配置快照、乐观版本锁和服务端Bean Validation；这里验证每条有向无环路径上的事实可用性，不能将其当成任意规则脚本。writer短同步锁只覆盖回读/CAS/原子替换，不跨模型或工具await。练习与答案：1. 删除被连线引用的节点？保存为无效并定位，修正连线后再验。2. 将失败查询接到成功终点？原契约拒绝，缺证据不能成功。3. 加环或eval条件？拒绝。4. 修改外主体草稿？404。5. 旧revision覆盖？409且新稿保持。6. 保存通过等于业务批准？不是；只证明结构，正式运行/审批仍走原守卫。
+
 ### 同一目录的完整发布
 
 新增叶子不仅是扩大枚举。[发布绑定守卫](../../modules/deephelp-app/src/deephelp_app/adapters/releases/catalog_binding.py)把六叶子目录、语料、冻结dev/test、索引选择和级联策略连接起来；原ReleaseManifest继续绑定代码、工具、提供方、SOP与实际内容报告。旧目录的提示词输出只有三标签，新目录的请求schema允许六个叶子与null，不能让旧Prompt为新目录背书。核验只读资产，不在服务启动时打开测试集或调用模型。
