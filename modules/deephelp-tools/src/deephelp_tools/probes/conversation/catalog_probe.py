@@ -117,6 +117,77 @@ CORPUS_FEEDBACK_CASES = (
 )
 
 
+def reusable_cases(
+    report: dict[str, Any], expected: dict[str, str], requested: list[str]
+) -> list[str]:
+    """只复用同运行字节/资产/审核的完整成功行；未完成断言或失败行必须重验。
+
+    采集器修正不改变运行时：原FAIL原件保留，最终合并报告绑定其hash。
+    每行必须已有原receipt重投及PG历史断言，不能把HTTP200当成内容成功。
+    """
+    if report.get("phase") != "release" or any(report.get(k) != v for k, v in expected.items()):
+        return []
+    checks = report.get("checks", {})
+    result = []
+    for row in report.get("rows", []):
+        name = row["case_id"]
+        scoped = {k: v for k, v in checks.items() if k.startswith(name + ":")}
+        if (
+            name in requested
+            and scoped
+            and all(v is True for v in scoped.values())
+            and (
+                checks.get(name + ":history") is True
+                and checks.get(name + ":zero_call_replay") is True
+            )
+        ):
+            result.append(name)
+    return result
+
+
+def merge_content(
+    previous: Path, partial: Path, completed: list[str], requested: list[str]
+) -> dict[str, Any]:
+    """合并原成功行与本次修复行；不改两份原件，不把旧失败断言变成成功。
+
+    全部来源hash进入发布清单，复用行计量属于原报告，当前writer只新增本次调用。
+    """
+    old = json.loads(previous.read_text(encoding="utf-8"))
+    new: dict[str, Any] = json.loads(partial.read_text(encoding="utf-8"))
+    signatures = (
+        "code_digest",
+        "providers_digest",
+        "pointer_digest",
+        "assets_digest",
+        "corpus_binding_digest",
+        "sop_review_digest",
+        "skills_review_digest",
+    )
+    if reusable_cases(old, {k: new[k] for k in signatures}, requested) != completed:
+        raise ConfigurationError("Reused content target or completed rows changed")
+    checks = {
+        k: v
+        for k, v in old["checks"].items()
+        if any(k.startswith(name + ":") for name in completed)
+    } | new["checks"]
+    rows = [r for r in old["rows"] if r["case_id"] in completed] + new["rows"]
+    passed = (
+        new["status"] == "PASS"
+        and all(v is True for v in checks.values())
+        and len(rows) == len(requested)
+        and {r["case_id"] for r in rows} == set(requested)
+    )
+    return new | dict(
+        status="PASS" if passed else "FAIL",
+        rows=rows,
+        checks=checks,
+        reused_cases=completed,
+        observed_source=dict(path=str(previous.resolve()), sha256=file_digest(previous)),
+        content_sources={str(partial.resolve()): file_digest(partial)},
+        usage_scope="Current repaired rows only; reused API usage remains in original bound report",
+    )
+
+
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
     if isinstance(error, BaseExceptionGroup):
@@ -679,9 +750,17 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                         check(name + ":" + key, passed)
                     check(name + ":outcome", response.outcome == expected)
                     if edited := report.get("reviewed_sop"):
+                        # 未知意图不执行SOP，因此不会产生SOP快照；仍须绑定当前语料签名。
                         check(
                             name + ":candidate_snapshot",
-                            response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash,
+                            response.versions.dataset == runtime.scope.dataset_version
+                            and response.versions.embedding_signature
+                            == runtime.scope.signature.fingerprint
+                            and (
+                                response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash
+                                if response.sop_plan is not None
+                                else response.versions.sop_snapshot is None
+                            ),
                         )
                         if (
                             response.intent_decision

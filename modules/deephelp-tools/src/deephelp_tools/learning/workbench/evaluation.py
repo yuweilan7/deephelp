@@ -499,8 +499,14 @@ def evaluation_router(
                 sop_review or options.get("corpus_version")
             ) and registry.catalog_version == "complaints-v3":
                 # 旧M18 stdio只发现三工具；六叶子作者候选沿现有真实PG/HTTP目录探针。
-                # 冻结三个相邻样本，任务/预算仍由当前app拥有，不另开累计writer。
-                from deephelp_tools.probes.conversation.catalog_probe import probe
+                # SOP只验相邻样本；语料验六叶子及未知，预算仍由当前app拥有。
+                from deephelp_app.adapters.releases.asset_integrity import provenance
+                from deephelp_app.application.corpus import digest
+                from deephelp_tools.probes.conversation.catalog_probe import (
+                    merge_content,
+                    probe,
+                    reusable_cases,
+                )
 
                 business = getattr(assembly, "business_mcp", None)
                 if business is None or skill_review is None:
@@ -512,9 +518,57 @@ def evaluation_router(
 
                 binding = catalog_binding(data, registry.catalog_version)
                 assert binding is not None
+                requested = (
+                    [
+                        "order-adjacent",
+                        "coupon-adjacent",
+                        "discount-adjacent",
+                        "eligible",
+                        "attempt",
+                        "refund-pending",
+                        "unsupported-logistics",
+                        "unsupported-refund",
+                    ]
+                    if options.get("corpus_version")
+                    else ["order-adjacent", "coupon-adjacent", "discount-adjacent"]
+                )
+                previous = None
+                completed: list[str] = []
+                if options.get("corpus_version"):
+                    assert sop_review is not None
+                    expected = dict(
+                        code_digest=provenance()["package_digest"],
+                        providers_digest=file_digest(config.providers),
+                        pointer_digest=file_digest(Path(data["dense_pointer"])),
+                        assets_digest=digest(data),
+                        corpus_binding_digest=digest(corpus_binding(data)),
+                        sop_review_digest=file_digest(sop_review),
+                        skills_review_digest=file_digest(skill_review),
+                    )
+                    # 只读同目标已结束任务；原失败行和未结束任务不能被复用。
+                    for prior in sorted(
+                        jobs.rows.values(), key=lambda t: t["updated_at"], reverse=True
+                    ):
+                        if (
+                            prior["id"] == row["id"]
+                            or prior["state"] != "SUCCEEDED"
+                            or prior["options"] != options
+                        ):
+                            continue
+                        prior_path = jobs.output(prior) / "validation.json"
+                        if prior_path.is_file():
+                            accepted = reusable_cases(
+                                json.loads(prior_path.read_text(encoding="utf-8")),
+                                expected,
+                                requested,
+                            )
+                            if accepted and len(accepted) < len(requested):
+                                previous, completed = prior_path, accepted
+                                break
+                content_path = output / ("content-part.json" if previous else "validation.json")
                 await probe(
                     argparse.Namespace(
-                        output=str(output / "validation.json"),
+                        output=str(content_path),
                         budget_state=str(config.budget_state),
                         auth=str(config.auth),
                         service_credentials=str(business.credentials_path),
@@ -527,21 +581,15 @@ def evaluation_router(
                         assets=str(assets),
                         skill_review=str(skill_review),
                         sop_review=str(sop_review),
-                        cases=[
-                            "order-adjacent",
-                            "coupon-adjacent",
-                            "discount-adjacent",
-                            "eligible",
-                            "attempt",
-                            "refund-pending",
-                            "unsupported-logistics",
-                            "unsupported-refund",
-                        ]
-                        if options.get("corpus_version")
-                        else ["order-adjacent", "coupon-adjacent", "discount-adjacent"],
+                        cases=[name for name in requested if name not in completed],
                     ),
                     borrowed_gate=gate,
                 )
+                if previous:
+                    atomic_json(
+                        output / "validation.json",
+                        merge_content(previous, content_path, completed, requested),
+                    )
                 validation_report = json.loads(
                     (output / "validation.json").read_text(encoding="utf-8")
                 )

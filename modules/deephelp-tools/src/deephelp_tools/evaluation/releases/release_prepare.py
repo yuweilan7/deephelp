@@ -122,6 +122,12 @@ def prepare_manifest(
         if file_digest(source_path) != observed["sha256"]:
             raise ConfigurationError("Reviewed original content report changed")
         files[str(source_path.resolve())] = observed["sha256"]
+    for source, fingerprint in validation.get("content_sources", {}).items():
+        # 修复采集器只重跑受影响行；合并报告消费的每份原件也进入完整字节闭包。
+        source_path = Path(source)
+        if file_digest(source_path) != fingerprint:
+            raise ConfigurationError("Partial content source report changed")
+        files[str(source_path.resolve())] = fingerprint
     if prompt_artifact:
         prompt = read_prompt(prompt_artifact, registry.catalog_version)
         if validation.get("intent_prompt_request_digest") != prompt.request_digest:

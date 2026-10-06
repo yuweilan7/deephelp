@@ -12,6 +12,8 @@ F3 live在调用前核对当前安装/原审核配置，累计M44预算275次基
 
 实际22条追加版本的test BM25 MRR从0.9167降到0.8889，Dense/Hybrid保持；初始全诊断路线门禁FAIL且0Chat，原件保持。以原反馈直接订单问法替代间接SKU例句的新21条版本仍有同一BM25下降，停止继续改语料。核对原装配实际消费Hybrid，门禁改为显式绑定RetrievalBinding.mode并与pointer核对：正式路线非退化、完整分类正确和完整业务PASS；诊断差值及BM25下降完整展示。此调整纠正原先把对照路线也视作正式路径的范围判断，未改heldout、阈值、权重或旧FAIL。仍沿同900累计上限，仅续新版本分类及必要发布；sdist生成资源按原hook映射回唯一datasets/demo-data源核对。
 
+v2实际16分类全部正确。完整业务首次因新任务根缺SOP索引在模型前停止，接入同审核原件后六叶子均通过；未知样本采集器却错误要求未执行SOP的响应携带SOP快照。修正仅tools采集器，runtime字节不变，分类原证据继续属于其工具版本。新业务任务按相同runtime/provider/pointer/assets/corpus/SOP/Skill指纹，仅复用已有完整history+zero-call-replay的成功行，补验两未知；新合并报告绑定原FAIL及新part原件，全部进入manifest闭包。新独立m44-corpus-v2安装绑定修正tools字节，初版安装及报告保持。
+
 真实依赖前读LOCAL_SETUP、DEPENDENCIES和所需模型摘要；每次live先列明确样本/调用/token及修复余量上限。同会话同事实路径复用证据。未配置Rerank显示未运行，语料召回不升级为业务事实。
 
 每feature独立feature分支验收、中文commit/push、main no-ff保存、六SHA同步后继续。handoffs/M44与STATE记录必要最终证据/未验范围；本轮临时资源在Temp或.local/tmp/m44，退出后精确清理。完成PLAN被规格/handoff覆盖后删除。

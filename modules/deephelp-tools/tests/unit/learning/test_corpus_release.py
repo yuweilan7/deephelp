@@ -236,3 +236,62 @@ def test_diagnostic_decline_remains_visible_and_route_cannot_be_selected_by_brow
     gate["rows"][0]["route"] = "dense"
     with pytest.raises(ConfigurationError):
         require_quality(gate, retrieval, "complaints-v3")
+
+
+def test_content_repair_reuses_only_completed_exact_target_rows(tmp_path):
+    import json
+
+    from deephelp_tools.probes.conversation.catalog_probe import merge_content, reusable_cases
+
+    signature = {
+        k: "a" * 64
+        for k in (
+            "code_digest",
+            "providers_digest",
+            "pointer_digest",
+            "assets_digest",
+            "corpus_binding_digest",
+            "sop_review_digest",
+            "skills_review_digest",
+        )
+    }
+    old = signature | dict(
+        phase="release",
+        status="FAIL",
+        rows=[dict(case_id="leaf"), dict(case_id="unknown")],
+        checks={
+            "leaf:intent": True,
+            "leaf:history": True,
+            "leaf:zero_call_replay": True,
+            "unknown:no_tool": True,
+            "unknown:candidate_snapshot": False,
+        },
+    )
+    new = signature | dict(
+        phase="release",
+        status="PASS",
+        rows=[dict(case_id="unknown")],
+        checks={
+            "unknown:no_tool": True,
+            "unknown:candidate_snapshot": True,
+            "unknown:history": True,
+            "unknown:zero_call_replay": True,
+        },
+    )
+    required = ["leaf", "unknown"]
+    assert reusable_cases(old, signature, required) == ["leaf"]
+    assert reusable_cases(old, signature | dict(code_digest="b" * 64), required) == []
+    incomplete = copy.deepcopy(old)
+    incomplete["checks"].pop("leaf:history")
+    assert reusable_cases(incomplete, signature, required) == []
+    original, partial = tmp_path / "failed.json", tmp_path / "partial.json"
+    original.write_text(json.dumps(old))
+    partial.write_text(json.dumps(new))
+    before = original.read_bytes()
+    merged = merge_content(original, partial, ["leaf"], required)
+    assert merged["status"] == "PASS" and original.read_bytes() == before
+    assert merged["observed_source"]["sha256"] and len(merged["rows"]) == 2
+    new["code_digest"] = "changed"
+    partial.write_text(json.dumps(new))
+    with pytest.raises(ConfigurationError):
+        merge_content(original, partial, ["leaf"], required)
