@@ -788,7 +788,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                             == runtime.scope.signature.fingerprint
                             and (
                                 response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash
-                                if response.sop_plan is not None
+                                if response.sop_node_path
                                 else response.versions.sop_snapshot is None
                             ),
                         )

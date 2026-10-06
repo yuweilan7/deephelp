@@ -263,6 +263,10 @@ def prepare_corpus_assets(
         "catalog-binding.json",
     )
     files = {str((directory / n).resolve()): file_digest(directory / n) for n in names}
+    # 复用已验指针时manifest可能仍指向旧目录。它是实际消费者，必须保留原字节指纹；
+    # directory里的等价副本不能代替运行时读取的原件，不能为打包方便改旧指针。
+    consumed_index = Path(pointer["manifest"])
+    files[str(consumed_index.resolve())] = file_digest(consumed_index)
     binding = dict(
         format="m44-corpus-binding-v1",
         version_hash=snapshot["version_hash"],
