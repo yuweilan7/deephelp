@@ -17,6 +17,7 @@ from .resources import resources_demo
 from .retrieval import retrieval_demo
 from .skills import skills_demo
 from .sop_authoring import sop_authoring_demo
+from .sop_rehearsal import sop_rehearsal_demo
 
 TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "types": types_demo,
@@ -35,6 +36,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "catalog": catalog_demo,
     "complaints": complaints_demo,
     "sop-authoring": sop_authoring_demo,
+    "sop-rehearsal": sop_rehearsal_demo,
 }
 
 

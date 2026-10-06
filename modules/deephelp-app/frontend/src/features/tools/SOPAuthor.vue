@@ -4,6 +4,7 @@ import { api } from "../../api/client";
 import { useAction, useRead } from "../../composables/requests";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
+import SOPRehearsal from "./SOPRehearsal.vue";
 type Condition = {
   fact: string;
   op: string;
@@ -49,6 +50,7 @@ type Catalog = {
   drafts: Draft[];
   facts: Record<string, Record<string, string>>;
   grants: Record<string, string[]>;
+  live_readonly_available: boolean;
 };
 const catalog = useRead<Catalog>(),
   action = useAction();
@@ -386,6 +388,11 @@ function operand(c: Condition) {
         >重载已保存草稿</el-button
       >
       <RawDetails title="草稿契约、hash与服务端校验" :value="draft" />
+      <SOPRehearsal
+        :draft="draft"
+        :dirty="dirty"
+        :live-available="catalog.data.value?.live_readonly_available || false"
+      />
     </template>
     <StateNotice :error="action.error.value" :loading="action.busy.value" />
   </section>

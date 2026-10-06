@@ -13,6 +13,7 @@ evaluation按retrieval/quality/feedback/releases/migration/platform归组；prob
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course request
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-authoring
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-rehearsal
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.experiments
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.replay.event_cli --help
 py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.retrieval.dense_cli preview

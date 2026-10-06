@@ -1,6 +1,6 @@
 # M43｜可视化SOP草稿、预演与受控发布
 
-**状态：** `F1_ACCEPTED / F2_F3_NOT_STARTED`；2026-10-06草稿/CAS/校验及离线学习、实际浏览器编辑/错误定位/修正/刷新重载通过，模型0次。结果见[交接](../../handoffs/M43.md)，后两项顺序续做见[短计划](../../planning/M43/PLAN.md)。2026-10-05规格边界保持。
+**状态：** `F1_F2_ACCEPTED / F3_NOT_STARTED`；2026-10-06作者闭环与原执行器受控预演、取消/持久重载通过；浏览/离线0模型，另有1条真实模型/HTTP MCP/PG候选内容PASS。结果见[交接](../../handoffs/M43.md)，审核发布顺序续做见[短计划](../../planning/M43/PLAN.md)。2026-10-05规格边界保持。
 **来源：** PDF文件页69的流程节点/条件、可修改SOP及人工介入方向。当前拓扑继续采用已验证的有向无环图；本M不因PDF画出循环就开放任意回环。
 **基线：** M39；复用[M14](M14_SOP_GOVERNANCE.md)、[M15](M15_DURABILITY_APPROVAL.md)、[M18](M18_DATA_FLYWHEEL.md)、[M35](M35_FRONTEND_FOUNDATION.md)、[M36](M36_EXPLAINABLE_WORKBENCH.md)。先支持现有三类SOP；新增目录/Skill节点分别以M42/M41实际交付接口为前置。
 

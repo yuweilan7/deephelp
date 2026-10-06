@@ -35,6 +35,25 @@ def validate_content(content: dict[str, Any]) -> dict[str, Any]:
     return {"valid": True, "errors": []}
 
 
+def draft_registry(value: dict[str, Any]) -> SOPRegistry:
+    """把合法草稿放入其原完整依赖闭包；构造候选，不触碰active指针。
+
+    预演和审核共用同一个确定性候选hash。旧定义/工具schema/提示及目录从保存基准取得，
+    只替换稳定ID对应的一个定义；再过完整SOPRegistry校验，不信保存的valid布尔值。
+    """
+    definition = GovernedSOP.model_validate(value["content"])
+    base = SOPRegistry.model_validate(value["base_registry"])
+    raw = base.model_dump(mode="json")
+    raw["registry_version"] = "m43-candidate-" + digest(value["content"])[7:23]
+    raw["definitions"] = [
+        definition.model_dump(mode="json")
+        if d.sop_id == definition.sop_id
+        else d.model_dump(mode="json")
+        for d in base.definitions
+    ]
+    return SOPRegistry.model_validate(raw)
+
+
 class SOPDraftStore:
     """一个草稿一个文件；基准和owner永不由更新正文替换。
 

@@ -109,6 +109,7 @@ M41版本化Skill：[机器契约/执行](../../modules/deephelp-app/src/deephel
 
 管理阅读：[候选/审核原件](../../modules/deephelp-app/src/deephelp_app/adapters/releases/skill_store.py) → [原工作台管理](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/skills.py) → [完整发布](../../modules/deephelp-tools/src/deephelp_tools/evaluation/releases/release_prepare.py)。管理API无模型，试运行复用原converse/course；生产装配在原LiveAssembly消费审核后的清单快照。
 M43作者从[草稿事实源](../../modules/deephelp-app/src/deephelp_app/adapters/releases/sop_drafts.py)进入[作者API](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/sop_authoring.py)，图校验仍是原GovernedSOP；[09章实验](09-agent-basics.md#sop可视草稿与casm43)给出CAS、无效中间图及Java边界。前端WorkflowLab只生成契约，不执行业务判断。
+预演继续读[候选执行作用域](../../modules/deephelp-tools/src/deephelp_tools/learning/replay/sop_rehearsal.py)→原SOPExecutor→[持久任务及cancel/join](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/jobs.py)；course sop-rehearsal提供正常、缺槽和坏证据原结果。原observe_sop_node直接记录命中规则，不由页面重新判断。
 
 ## M42 新目录的阅读入口
 
