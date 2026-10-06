@@ -42,7 +42,17 @@ def prepare_manifest(
     prompt_artifact: Path | None = None,
     skill_review: Path | None = None,
     sop_review: Path | None = None,
+    quality_review: Path | None = None,
 ) -> ReleaseManifest:
+    quality_files = {}
+    if quality_review:
+        from deephelp_tools.evaluation.quality.improvement import require_eligible
+
+        quality_files = require_eligible(quality_review, prompt_artifact)
+    elif prompt_artifact and read_prompt(prompt_artifact, registry.catalog_version).name.startswith(
+        "m45-reviewed-"
+    ):
+        raise ConfigurationError("M45 reviewed Prompt requires its independent quality closure")
     data = verify_files(assets, validation_inputs=True)
     catalog = catalog_binding(data, registry.catalog_version)
     validation_path = validation_path or assets.parent / "validation.json"
@@ -87,6 +97,7 @@ def prepare_manifest(
     ):
         raise ConfigurationError("Complete release regression must match SOP/code/providers")
     files = data["files"] | {str(assets.resolve()): file_digest(assets)}
+    files.update(quality_files)
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)

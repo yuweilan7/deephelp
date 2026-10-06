@@ -85,4 +85,20 @@ py -3.14 -m uv run --locked pytest modules/deephelp-tools/tests/unit/feedback/te
 
 真实入口`python -m deephelp_tools.evaluation.quality.paired_cli freeze --help`与`run --help`。先freeze固定独立数据/开发split、精确配置与字节、单因素，再run指定同一budget；不得靠另建budget或加repeat消除退化。原评测页“独立版本配对”显示冻结范围/来源/版本、实际报告；明确启动进入原任务队列，等待/取消/失败/UNKNOWN按原任务读取，GET不调用模型。恢复完整report为0调用，不重抽结果。
 
-M45 F2实际比较16个dev首条消息：Hybrid与Dense各15/16，macro F1均0.9333；拒识4/5，已支持叶子的检索分母11，Hit@1 9/11、Hit@3 11/11、MRR 59/66，逐例结果无变化。95% Wilson准确率区间约0.717–0.989；一轮AI小样本既不能证明两策略等价，也不能证明客户泛化。每查询共享一次向量，32次强判与16次Embedding实际响应；用量缺字段仍未知，不把预算预留称为实耗。原语料21条、分类qwen3.7-flash；通用Chat仍固定qwen3.8-flash。唯一共同差例的优惠金额方向不明确；只能作为dev审核输入，尚未修改策略或使用holdout。
+M45 F2实际比较16个dev首条消息：Hybrid与Dense各15/16，macro F1均0.9333；拒识4/5，已支持叶子的检索分母11，Hit@1 9/11、Hit@3 11/11、MRR 59/66，逐例结果无变化。95% Wilson准确率区间约0.717–0.989；一轮AI小样本既不能证明两策略等价，也不能证明客户泛化。每查询共享一次向量，32次强判与16次Embedding实际响应；用量缺字段仍未知，不把预算预留称为实耗。原语料21条、分类qwen3.7-flash；通用Chat仍固定qwen3.8-flash。唯一共同差例的优惠金额方向不明确，F3只根据这条dev差例产生一次修订，未按holdout答案调参。
+
+## 事前审核与一次留出集复验
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course quality-improvement
+```
+
+预期zero_gain_checks.minimum_gain=false；regression_checks.no_regression和critical_correct=false，quality_claim=false，远程模型/PG均0。课程调用真实评分器与事前守卫，固定教学观察不读取本次私有holdout。平均提高不能抵消关键拒识错误，完成执行也不能替代收益判断。
+
+阅读 [improvement.review/revise/close](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/improvement.py)：review先证明问题来自完整dev原报告，再把最小收益、退化、样本数、关键覆盖及统计标准冻结到hash；revise只追加已审补充，并复用原m29 PromptArtifact。像Java不可变审核DTO与可追溯制品，区别是调用模型前还须在 [ImprovementStore.claim](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/improvement_store.py) 的短PG事务锁定整个数据/目标。事务退出后才await模型，避免持锁等待网络；原池由CLI或应用lifespan关闭。取消/pending沿原实验日志，原消息完成不重跑。
+
+实际一轮由AI开发审查，未冒称人类批准：修订前冻结24例、提升至少5个百分点、退化0、unknown/multiple各至少3例且全对、配对符号检验p≤0.05。两版均Hybrid，唯一因素是兜底Prompt补充。24个holdout首条消息原版23/24、候选24/24，macro F1 0.9571→1，改善1/退化0；拒识两版6/6，检索分母18且路线相同。提升4.17个百分点、p=1，所以minimum_gain/paired_evidence=false，结果REJECTED，正式M44保持。这里候选100%也不足以证明客户质量或稳定收益；一次预设重复没有估计模型随机性。
+
+原评测页展开“原 PG 改进证据链”可看dev来源→事前标准/AI审查→候选→唯一holdout→拒绝原因与原active；展开holdout合同看实际24分母、23/24与24/24、差例、API/未知用量。读页面/完整报告0模型。使用过的holdout不能换review ID重复调参，后续实验须新独立集。采用资格才进入原 [prepare_manifest](../../modules/deephelp-tools/src/deephelp_tools/evaluation/releases/release_prepare.py) 附加闭环核验，仍须完整内容与安装/恢复门禁，不能用质量报告绕过业务审批。
+
+本次journal在21个完整配对后超过原2MiB容量，存储修复把评测日志独立限制设为8MB，保留原清单2MiB。原冻结合同、完成观察及修复前后精确字节凭据均保留；剩余三对显式恢复，没有重跑已完成模型。日志修复不变分类/输入/Prompt，逐行execution_source解释前后来源；细节见[M45交接](../../handoffs/M45.md)。练习：结果刚好提高一条，可以下调事前5%标准或换review再跑这批holdout吗？答案：不能；记录拒绝并保留原版，另取独立集开展下一项实验。

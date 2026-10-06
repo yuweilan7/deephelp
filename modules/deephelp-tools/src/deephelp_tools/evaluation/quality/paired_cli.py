@@ -54,6 +54,22 @@ def freeze_contract(args: argparse.Namespace) -> dict[str, Any]:
     config = ProviderConfig.load(args.providers)
     judge = EndpointConfig.model_validate_json(args.judge.read_text(encoding="utf-8"))
     env = read_env(args.root / ".env.local")
+    if args.split == "holdout":
+        from deephelp_tools.evaluation.quality.improvement import verify_review
+
+        value = json.loads(args.review.read_text(encoding="utf-8"))
+        verify_review(value)
+        if value["review_hash"] != args.review_hash or value["owner"] != {
+            "tenant_id": args.tenant,
+            "user_id": args.user,
+        }:
+            raise ValueError("Holdout review owner/hash differs")
+        paths.update(
+            review=str(args.review.resolve()),
+            postgres=str(args.postgres.resolve()),
+            tenant=args.tenant,
+            user=args.user,
+        )
     spec = Experiment(
         dataset_id=data["dataset_id"],
         freeze_hash=data["freeze_hash"],
@@ -62,7 +78,9 @@ def freeze_contract(args: argparse.Namespace) -> dict[str, Any]:
         baseline=Variant(route="hybrid", system_prompt=prompt),
         candidate=Variant(route="hybrid" if args.prompt else "dense", system_prompt=candidate),
         selection_hash=digest(selected(data, args.split)),
-        files={p: file_digest(Path(p)) for k, p in paths.items() if k != "root"},
+        files={
+            p: file_digest(Path(p)) for k, p in paths.items() if k not in {"root", "tenant", "user"}
+        },
         source=source_identity(),
         endpoint_hashes={
             "embedding": digest(endpoint_credentials(config.embedding, env)[0]),
@@ -96,6 +114,22 @@ async def run_contract(
     gate = BudgetSession(budget_path)
     gate.open()
     try:
+        spec, _ = read_contract(contract)
+        if spec.split == "holdout":
+            from deephelp_app.adapters.persistence.postgres import PostgresConfig, PostgresPool
+            from deephelp_app.domain.models.common import VerifiedIdentity
+            from deephelp_tools.evaluation.quality.improvement_store import ImprovementStore
+            from deephelp_tools.evaluation.quality.independent_store import IndependentDatasets
+            from deephelp_tools.evaluation.quality.paired_runtime import validate_contract
+
+            owner = VerifiedIdentity(tenant_id=paths["tenant"], user_id=paths["user"])
+            pool = await PostgresPool.open(PostgresConfig.read(Path(paths["postgres"])))
+            try:
+                frozen = (await IndependentDatasets(pool).get(owner, spec.dataset_id))["frozen"]
+                validate_contract(spec, frozen, repair_path=directory / "repair.json")
+                await ImprovementStore(pool).claim(owner, spec)
+            finally:
+                await pool.aclose()
         async with httpx.AsyncClient(timeout=90) as client:
             env = read_env(Path(paths["root"]) / ".env.local")
             embedding = create_gateway(client, config, AsyncCalls(1, 60), env=env)
@@ -130,9 +164,17 @@ def main() -> None:
     parser.add_argument("--split", choices=("dev", "holdout"), default="dev")
     parser.add_argument("--prompt", type=Path)
     parser.add_argument("--review-hash")
+    parser.add_argument("--review", type=Path)
+    parser.add_argument("--postgres", type=Path)
+    parser.add_argument("--tenant")
+    parser.add_argument("--user")
     parser.add_argument("--retry-uncertain", action="store_true")
     args = parser.parse_args()
     if args.action == "freeze":
+        if args.split == "holdout" and not all(
+            (args.review, args.review_hash, args.postgres, args.tenant, args.user, args.prompt)
+        ):
+            parser.error("holdout freeze requires review/hash/PG/owner/revised prompt")
         if not all((args.dataset, args.providers, args.judge, args.pointer, args.binding)):
             parser.error("freeze requires dataset/providers/judge/pointer/binding")
         result = freeze_contract(args)

@@ -81,6 +81,7 @@ class EvaluationCatalog(DTO):
     corpus_sop_review: Path | None = None
     corpus_skill_review: Path | None = None
     quality_experiments: dict[Key, Path] = Field(default_factory=dict, max_length=16)
+    quality_review: Path | None = None
 
 
 class Capture(DTO):
@@ -319,6 +320,17 @@ def evaluation_router(
             snapshot = (
                 await IndependentDatasets(assembly.ledger.pool).get(config.owner, spec.dataset_id)
             )["frozen"]
+            if spec.split == "holdout":
+                from deephelp_tools.evaluation.quality.improvement_store import ImprovementStore
+                from deephelp_tools.evaluation.quality.paired_runtime import validate_contract
+
+                await asyncio.to_thread(
+                    validate_contract,
+                    spec,
+                    snapshot,
+                    repair_path=root / "independent" / spec.fingerprint / "repair.json",
+                )
+                await ImprovementStore(assembly.ledger.pool).claim(config.owner, spec)
             result = await execute(
                 path,
                 snapshot,
@@ -718,6 +730,7 @@ def evaluation_router(
             validation_path=validation_path,
             skill_review=skill_review,
             sop_review=sop_review,
+            quality_review=config.quality_review,
         )
         # This registers an immutable full release only after the original M18 exact gate.
         identity = await release().register(manifest)
@@ -742,6 +755,24 @@ def evaluation_router(
     from deephelp_tools.learning.workbench.independent_quality import independent_router
 
     router.include_router(independent_router(assembly, auth, config.owner))
+
+    @router.get("/quality-improvements")
+    async def improvements(request: Request) -> dict[str, Any]:
+        owner(request)
+        from deephelp_tools.evaluation.quality.improvement_store import ImprovementStore
+
+        assert assembly.ledger is not None
+        store = ImprovementStore(assembly.ledger.pool)
+        await store.migrate()
+        rows = await store.list(config.owner)
+        return dict(
+            improvements=rows,
+            model_calls=0,
+            note=(
+                "AI developer review is disclosed; original human feedback and "
+                "complete release guards still apply"
+            ),
+        )
 
     @router.get("/independent-experiments")
     async def experiments(request: Request) -> dict[str, Any]:
@@ -1035,7 +1066,12 @@ def evaluation_router(
             snapshot = (
                 await IndependentDatasets(assembly.ledger.pool).get(config.owner, spec.dataset_id)
             )["frozen"]
-            await asyncio.to_thread(validate_contract, spec, snapshot)
+            await asyncio.to_thread(
+                validate_contract,
+                spec,
+                snapshot,
+                repair_path=root / "independent" / spec.fingerprint / "repair.json",
+            )
         elif body.experiment_id is not None:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT, "Only independent pair consumes experiment", 422

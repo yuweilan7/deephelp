@@ -1,6 +1,6 @@
 # M45｜独立盲测与可验证的质量改进闭环
 
-**状态：** `IN_PROGRESS`；2026-10-06 F1独立AI冻结及F2真实dev配对已验，Hybrid/Dense各15/16、无逐例变化，F3审核修订/holdout继续；证据见[交接](../../handoffs/M45.md)。
+**状态：** `IMPLEMENTED_LIVE_VERIFIED`；2026-10-06全部三项已验：独立AI来源/盲审冻结、真实dev配对、事前审核及唯一holdout复验。候选23/24→24/24未达预设收益/统计标准，明确REJECTED并保留正式M44；负面结果证明闭环完成，不宣称客户质量提升。证据见[交接](../../handoffs/M45.md)。
 **来源：** PDF文件页70–71的标准化评测、消融与审核反馈，以及页75–76的持续优化。PDF提到500条真实样本/15类场景等目标，不能写成本项目已有数据或既定成绩。
 **基线：** M39；复用[M17](M17_EVALUATION.md)、[M18](M18_DATA_FLYWHEEL.md)、[M29](M29_LANGFUSE_ENGINEERING.md)、[M31](M31_RERANK_INTEGRATION.md)、[M35](M35_FRONTEND_FOUNDATION.md)。可直接评测当前引擎，不等待M40–M44/M46全部完成；新能力只在实际交付后进入对应实验。
 

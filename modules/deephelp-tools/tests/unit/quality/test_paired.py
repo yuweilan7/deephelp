@@ -78,13 +78,24 @@ def test_single_factor_and_label_guards():
         label(dict(final_code="unregistered"))
 
 
+def test_evaluation_journal_capacity_does_not_weaken_original_manifest(tmp_path):
+    from deephelp_app.application.dense import atomic_json
+    from deephelp_tools.evaluation.quality.paired_runtime import save_journal
+
+    payload = {"bounded_test": "x" * (3 * 1024**2)}
+    with pytest.raises(ValueError, match="size"):
+        atomic_json(tmp_path / "manifest.json", payload)
+    save_journal(tmp_path / "journal.json", payload)
+    assert (tmp_path / "journal.json").stat().st_size > 2 * 1024**2
+
+
 @pytest.mark.asyncio
 async def test_completed_resume_zero_calls_and_changed_source_rejected(tmp_path: Path, monkeypatch):
     # 不需连接Fake模型：已完成journal必须在create_client之前直接返回。
     import deephelp_tools.evaluation.quality.paired_runtime as runtime
 
     frozen = {"dataset_id": "data", "freeze_hash": "frozen"}
-    monkeypatch.setattr(runtime, "validate_contract", lambda *_: [])
+    monkeypatch.setattr(runtime, "validate_contract", lambda *_, **__: [])
     monkeypatch.setattr(
         runtime, "create_client", lambda *_: pytest.fail("completed replay opened client")
     )
@@ -130,7 +141,7 @@ async def test_completed_resume_zero_calls_and_changed_source_rejected(tmp_path:
 async def test_unknown_requires_explicit_resume_and_releases_lock(tmp_path, monkeypatch):
     import deephelp_tools.evaluation.quality.paired_runtime as runtime
 
-    monkeypatch.setattr(runtime, "validate_contract", lambda *_: [])
+    monkeypatch.setattr(runtime, "validate_contract", lambda *_, **__: [])
     contract = tmp_path / "contract.json"
     contract.write_text(
         json.dumps(
