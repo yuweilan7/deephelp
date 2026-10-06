@@ -17,11 +17,15 @@ interface Experiment {
 }
 const emit = defineEmits<{ task: [id: string] }>();
 const data = useRead<{ experiments: Experiment[]; model_calls: number }>();
+const reviews = useRead<{ improvements: unknown[]; model_calls: number }>();
 const action = useAction(),
   confirmed = ref(false),
   selected = ref("");
 async function refresh() {
-  await data.load("/learning/evaluation/independent-experiments", true);
+  await Promise.all([
+    data.load("/learning/evaluation/independent-experiments", true),
+    reviews.load("/learning/evaluation/quality-improvements", true),
+  ]);
 }
 async function start() {
   await action.run(async () => {
@@ -49,6 +53,18 @@ onMounted(refresh);
       0 模型。
     </p>
     <el-button @click="refresh">刷新合同与实际报告</el-button>
+    <p>
+      一轮改进按开发差例→事前标准与审查身份→唯一候选→锁定留出集→采用资格或拒绝保存。AI
+      开发审查明确披露；采用资格仍需原完整内容、审核、安装与恢复门禁。
+    </p>
+    <RawDetails
+      title="原 PG 改进证据链 / 事前标准 / 采用或拒绝原因"
+      :value="reviews.data.value"
+    />
+    <StateNotice
+      :error="reviews.error.value"
+      :loading="reviews.loading.value"
+    />
     <StateNotice
       :loading="data.loading.value || action.busy.value"
       :error="data.error.value || action.error.value"

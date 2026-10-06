@@ -40,7 +40,9 @@ def source_identity() -> dict[str, str]:
     return {k: str(p[k]) for k in ("package_digest", "tooling_digest")}
 
 
-def validate_contract(spec: Experiment, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+def validate_contract(
+    spec: Experiment, snapshot: dict[str, Any], *, repair_path: Path | None = None
+) -> list[dict[str, Any]]:
     """零调用前置核验；冻结后任何输入/参数/实现变化均拒绝套用旧实验。"""
     spec.require_factor()
     rows = selected(snapshot, spec.split)
@@ -48,11 +50,44 @@ def validate_contract(spec: Experiment, snapshot: dict[str, Any]) -> list[dict[s
         snapshot["dataset_id"] != spec.dataset_id
         or snapshot["freeze_hash"] != spec.freeze_hash
         or digest(rows) != spec.selection_hash
-        or source_identity() != spec.source
+        or (source_identity() != spec.source and not storage_repair(spec, repair_path))
         or any(file_digest(Path(p)) != sha for p, sha in spec.files.items())
     ):
         raise ConfigurationError("Frozen experiment source/data/config bytes changed")
     return rows
+
+
+def storage_repair(spec: Experiment, path: Path | None) -> bool:
+    """原合同不改写：仅接受有前后完整字节证据的日志容量修复，分类/模型/参数不得变化。"""
+    if path is None or not path.is_file():
+        return False
+    value = json.loads(path.read_text(encoding="utf-8"))
+    allowed = {
+        "deephelp_app/application/dense.py",
+        "deephelp_tools/evaluation/quality/paired_runtime.py",
+        "deephelp_tools/evaluation/quality/paired_cli.py",
+        "deephelp_tools/evaluation/quality/improvement.py",
+        "deephelp_tools/learning/workbench/evaluation.py",
+    }
+    before, after = value["before_artifacts"], value["after_artifacts"]
+    changed = {k for k in before.keys() | after.keys() if before.get(k) != after.get(k)}
+    return bool(
+        value.get("format") == "m45-storage-repair-v1"
+        and value.get("repair_hash")
+        == digest({k: v for k, v in value.items() if k != "repair_hash"})
+        and value["experiment_fingerprint"] == spec.fingerprint
+        and value["before_source"] == spec.source
+        and value["after_source"] == source_identity()
+        and after == evaluation_provenance()["evaluation_artifact_hashes"]
+        and changed
+        and changed <= allowed
+        and value["kind"] == "journal_size_bound_only"
+    )
+
+
+def save_journal(path: Path, value: dict[str, Any]) -> None:
+    """评测日志含真实向量/原路由，独立8MB边界；不放宽原索引清单默认2MiB。"""
+    atomic_json(path, value, max_bytes=8_000_000)
 
 
 def read_contract(path: Path) -> tuple[Experiment, dict[str, Any]]:
@@ -79,7 +114,8 @@ async def execute(
     不拥有借用gateway/预算；取消通过finally保存原观察与实际API记录并释放自己的资源。
     """
     spec, paths = read_contract(contract_path)
-    rows = validate_contract(spec, snapshot)
+    repair_path = directory / "repair.json"
+    rows = validate_contract(spec, snapshot, repair_path=repair_path)
     directory.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240 -- bounded journal path
     lock = directory / ".writer"
     try:
@@ -117,6 +153,10 @@ async def execute(
         if state["experiment_fingerprint"] != spec.fingerprint:
             raise ConfigurationError("Journal contract changed")
         valid_state = True
+        for cached in state.get("cache", {}).values():
+            for mode in ("baseline", "candidate"):
+                if mode in cached and "label" in cached[mode]:
+                    cached[mode].setdefault("execution_source", spec.source)
         if state.get("pending") and not retry_uncertain:
             raise ConfigurationError("UNKNOWN inference requires explicit read-only recovery")
         attempts = int(state.get("executions", 0))
@@ -131,6 +171,10 @@ async def execute(
         if attempts >= 3:
             raise ConfigurationError("Three bounded experiment executions exhausted")
         state["executions"] = attempts + 1
+        restored_pairs = sum(
+            all(m in c and "label" in c[m] for m in ("baseline", "candidate"))
+            for c in state["cache"].values()
+        )
         config = ProviderConfig.load(Path(paths["providers"]))
         binding = load_binding(
             json.loads(await asyncio.to_thread(Path(paths["pointer"]).read_text, encoding="utf-8")),
@@ -175,7 +219,7 @@ async def execute(
             )
             if "embedding" not in cached:
                 state["pending"] = dict(turn_id=tid, phase="embedding")
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
                 call_budget = gate.request()
                 try:
                     embedded = await embedding.embed([query_text(q)], call_budget)
@@ -185,20 +229,20 @@ async def execute(
                 cached["embedding"] = embedded.model_dump(mode="json")
                 cached["vector_hash"] = vector_hash(embedded.vectors[0])
                 state["pending"] = None
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
             else:
                 embedded = EmbeddingResult.model_validate(cached["embedding"])
             if "routes" not in cached:
                 store.budget = gate.request()
                 state["pending"] = dict(turn_id=tid, phase="retrieval")
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
                 routes = await retriever.compare_embedded(
                     query_text(q), binding.scope, gate.request(), embedded, top_k=binding.top_k
                 )
                 cached["routes"] = {k: v.model_dump(mode="json") for k, v in routes.items()}
                 cached["retrieval_latency"] = store.latencies.copy()
                 state["pending"] = None
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
             for mode in ("baseline", "candidate") if i % 2 == 0 else ("candidate", "baseline"):
                 if mode in cached and "error" not in cached[mode]:
                     continue
@@ -206,7 +250,7 @@ async def execute(
                 raw = cached["routes"][variant.route]
                 result = DenseResult.model_validate(raw | dict(scope=binding.scope))
                 state["pending"] = dict(turn_id=tid, phase=mode)
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
                 started = time.perf_counter()
                 call_budget = gate.request()
                 try:
@@ -225,6 +269,7 @@ async def execute(
                         ranking=ranking(q, result),
                         elapsed_ms=(time.perf_counter() - started) * 1000,
                         route=variant.route,
+                        execution_source=source_identity(),
                     )
                 except Exception as exc:
                     cached[mode] = dict(
@@ -232,12 +277,12 @@ async def execute(
                         code=exc.code.value if isinstance(exc, AppError) else None,
                         request_id=exc.provider_request_id if isinstance(exc, AppError) else None,
                     )
-                    atomic_json(state_path, state)
+                    save_journal(state_path, state)
                     raise
                 finally:
                     state["remote_attempts"] += call_budget.attempts_used
                 state["pending"] = None
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
         observations = [
             r
             | {m: state["cache"][r["turn_id"]][m] for m in ("baseline", "candidate")}
@@ -249,6 +294,13 @@ async def execute(
         ]
         value = report(spec, observations, [r["turn_id"] for r in rows])
         value["usage"] = summarize_usage(state["api_records"], attempts=state["remote_attempts"])
+        if repair_path.is_file():
+            value["storage_repair"] = dict(
+                path=str(repair_path.resolve()),
+                sha256=file_digest(repair_path),
+                after_source=source_identity(),
+                completed_pairs_before=restored_pairs,
+            )
         value["shared_dependency_attempts"] = gate.state["attempts"] - state["attempts_start"]
         value["cumulative_budget"] = gate.state
         atomic_json(directory / "report.json", value)
@@ -277,7 +329,7 @@ async def execute(
                         state["api_records"], attempts=state["remote_attempts"]
                     )
                     atomic_json(directory / "report.json", partial)
-                atomic_json(state_path, state)
+                save_journal(state_path, state)
         finally:
             try:
                 if client is not None:

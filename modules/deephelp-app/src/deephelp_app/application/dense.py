@@ -72,9 +72,10 @@ class DenseStore(Protocol):
     ) -> list[DenseHit]: ...
 
 
-def atomic_json(path: Path, data: object) -> None:
+def atomic_json(path: Path, data: object, *, max_bytes: int = 2 * 1024**2) -> None:
+    """原子保存有界JSON；索引默认2MiB，较大评测日志必须显式声明自己的边界。"""
     encoded = json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2)
-    if len(encoded.encode()) > 2 * 1024**2:
+    if max_bytes <= 0 or len(encoded.encode()) > max_bytes:
         raise ValueError("Manifest size limit exceeded")
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")

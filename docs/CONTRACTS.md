@@ -457,6 +457,12 @@ GET只投影来源/计数/revision/分歧/锁定hash；`/datasets/{id}/inputs`�
 
 原assets可带`corpus_binding`：绑定作者审核、JSONL、索引/集合、合同、冻结split/selection、检索及分类门禁的精确文件hash；完整清单files/source照原合同保护。runtime独立重算必要检索/分类覆盖条件，完整报告必须phase=release且六叶子/未知八场景及事实/重投检查齐全；反馈采集、召回PASS或漏样本均不能替代。ReleaseStore提交时仍锁读原审核revision与active CAS，撤销不自动删除历史或重放业务。旧ReleaseManifest格式/hash兼容，无新可选字段改写历史身份。
 
-M45配对合同为`m45-paired-contract-v1`：冻结dataset/freeze/selection、首条消息目标、单因素、baseline/candidate路由与Prompt全文、源码/工具字节、providers/judge/pointer/corpus/policy/binding文件hash及实际endpoint hash。重复预先固定为1；holdout须另有review_hash。任何字节变化在派发前拒绝，不能沿旧实验换实现。原`IntentService`只消费已执行的同查询检索观察，不复制分类引擎；Hybrid与Dense共享每查询一次真实向量。
+M45配对合同为`m45-paired-contract-v1`：冻结dataset/freeze/selection、首条消息目标、单因素、baseline/candidate路由与Prompt全文、源码/工具字节、providers/judge/pointer/corpus/policy/binding文件hash及实际endpoint hash。重复预先固定为1；holdout须另有review_hash。字节变化默认在派发前拒绝，只有下述独立存储修复凭据可续读原观察，不能沿旧实验换分类实现。原`IntentService`只消费已执行的同查询检索观察，不复制分类引擎；Hybrid与Dense共享每查询一次真实向量。
 
 `learning catalog.quality_experiments`只接受服务器登记路径；`GET /learning/evaluation/independent-experiments`只读合同摘要/原报告，0模型；`POST /learning/evaluation/tasks {action:independent_pair,experiment_id,confirmed:true}`沿原owner/CSRF/LearningJobs与共享预算，PG冻结身份重新校验。单实验OS writer锁，每await前pending、返回后同步落盘，原ID恢复最多三次，UNKNOWN须显式只读恢复；已完成报告hash核对后零调用返回。失败完整分母保留NOT_COMPLETED/错误，COMPLETE是执行完成而非收益。分类混淆/各类P/R/F1/拒识及检索Hit/MRR、改善/退化与Wilson区间/配对符号检验分开。API actual/unknown与RPC累计attempts/预算预留分别计量，缺输出或reasoning usage保持null。
+
+M45审核原件`m45-improvement-review-v1`只消费完整dev报告的原差例，冻结owner、dataset/freeze、原Prompt、dev字节、候选补充、审核者身份与主指标标准；`ai_developer_review`明确不是人类业务批准。`review→revise→claim→close`借原PG池，在`dh_m45_improvements`按owner/review_hash短事务revision CAS；模型调用在事务外。候选复用原m29 PromptArtifact，全文/schema/request_digest一致。holdout派发前重新核对原PG冻结及已审候选；`dh_m45_holdout_claims`按owner/dataset/freeze/target唯一绑定合同，另写review或改变参数不能再次消费同一holdout，同合同恢复/重投只读幂等。
+
+闭环核对完整holdout逐例输入/gold/分母并重算统计；完整、最小样本、准确率最低提升、配对符号检验、零退化、无协议错误、关键unknown/multiple覆盖与正确均达事前标准才为`ADOPTION_ELIGIBLE`，否则`REJECTED`。这只是采用资格；原`prepare_manifest(..., quality_review=...)`附加核对原件hash/Prompt/闭环并继续原完整内容、资产、审核与字节门禁。原`release_cli prepare --quality-review`及catalog.quality_review接同一入口；m45-reviewed Prompt省略闭环仍拒绝。闭环不切active、不批准业务操作；拒绝候选不会触发安装或恢复切换。`GET /learning/evaluation/quality-improvements`只读当前owner真实PG证据链，浏览0模型。
+
+评测journal单独使用`atomic_json(max_bytes=8_000_000)`，原索引/发布清单默认2MiB边界保持。已冻结实验的日志容量修复只接受服务器控制的`m45-storage-repair-v1`原件：原合同不改写，绑定实验fingerprint、修复前/后完整源码hash映射、前/后source及存储修复类型，只允许dense原子保存与配对执行/CLI/审核/工作台五条路径变化；分类/Prompt/模型/输入/资产文件不允许变化。恢复行记录各自execution_source，report绑定修复receipt及已保留完成行数；闭环绑定receipt文件hash。此例外证明存储修复与续跑来源，不能证明源码变动天然语义等价，具体差异仍须审查/测试且完整披露。

@@ -184,3 +184,16 @@ M44发布仍在同页：原反馈采集/人工批准corpus→导入精确revisio
 实际独立反馈来源的有限入口为原catalog_probe `--phase corpus-feedback`，auth第一条必须为原`synthetic-tenant/synthetic-user-a`，原Conversation消息channel固定m18-collect；新合成订单事实及新固定措辞通过原PG/HTTP MCP，采集报告不能替代release阶段八场景。完整发布仍选择`--phase release`及六叶子/两未知范围，corpus_binding进入原assets/files与ReleaseManifest，旧资产/hash不改。详细学习/错误/练习见[10章](../../docs/learning/10-retrieval.md#原反馈新版本与完整发布)。
 
 M45配对课程：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course paired-quality`，0模型、PARTIAL/完整分母反例。真实`paired_cli freeze`必填`--contract --dataset --providers --judge --pointer --binding`；默认dev，源/配置/输入与单因素不可覆写。`paired_cli run --contract <冻结合同> --directory <原实验目录> --budget <同一累计文件>`；UNKNOWN恢复另明确`--retry-uncertain`，最多三次，不重复已完成观察。服务器catalog的`quality_experiments`登记固定合同路径；原评测页读报告0模型，明确`independent_pair`才进入原LearningJobs。详见[第14章](../../docs/learning/14-evaluation-release.md#同版本条件与配对分母)。
+
+M45审核课程：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course quality-improvement`，0模型/PG，输出零收益及关键退化拒绝。真实审核/修订/关闭复用原PG，命令参数中的路径均为已核定私有原件；先固定标准，再候选，再唯一holdout，不能从holdout选问题。`review/revise/close`自身0模型；只有显式paired run调用远端。
+
+```powershell
+# 以下占位参数用于新独立实验；本次M45留出集已消费，不能重复调参。
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.improvement_cli review --postgres PRIVATE_PG --tenant OWNER_TENANT --user OWNER_USER --dev-report COMPLETE_DEV_REPORT --proposal PREDECLARED_PROPOSAL --output NEW_REVIEW
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.improvement_cli revise --postgres PRIVATE_PG --tenant OWNER_TENANT --user OWNER_USER --review NEW_REVIEW --prompt-text NEW_PROMPT_TEXT --output NEW_PROMPT_ARTIFACT
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.paired_cli freeze --split holdout --review NEW_REVIEW --review-hash EXACT_REVIEW_HASH --postgres PRIVATE_PG --tenant OWNER_TENANT --user OWNER_USER --prompt NEW_PROMPT_TEXT --contract NEW_HOLDOUT_CONTRACT --dataset NEW_FROZEN_DATASET --providers EXACT_PROVIDERS --judge EXACT_JUDGE --pointer EXACT_POINTER --binding EXACT_BINDING
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.paired_cli run --contract NEW_HOLDOUT_CONTRACT --directory NEW_EXPERIMENT_DIRECTORY --budget EXISTING_CUMULATIVE_BUDGET
+py -3.14 -m uv run --locked python -m deephelp_tools.evaluation.quality.improvement_cli close --postgres PRIVATE_PG --tenant OWNER_TENANT --user OWNER_USER --review NEW_REVIEW --prompt NEW_PROMPT_ARTIFACT --holdout-report COMPLETE_HOLDOUT_REPORT --contract NEW_HOLDOUT_CONTRACT --output NEW_CLOSURE
+```
+
+Proposal字段/事前标准见`improvement.Proposal/Criteria`及[14章](../../docs/learning/14-evaluation-release.md#事前审核与一次留出集复验)。闭环REJECTED保留baseline；ADOPTION_ELIGIBLE才可给原`release_cli prepare`增加`--quality-review NEW_CLOSURE --prompt-artifact NEW_PROMPT_ARTIFACT`，仍须原assets/validation/完整门禁，发布/安装另沿原链。catalog可登记`quality_review`供原prepare同一附加门禁，GET quality-improvements读取真实PG证据，不执行模型。完整实验同合同重读0调用；输入/实现漂移默认拒绝。日志容量修复只接受有完整前后源码证据的服务端repair原件，原清单边界和冻结合同不改写。

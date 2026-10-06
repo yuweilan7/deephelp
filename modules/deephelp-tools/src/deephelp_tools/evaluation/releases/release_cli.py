@@ -37,6 +37,7 @@ async def run(args: argparse.Namespace) -> int:
             args.version,
             validation_path=local_path(args.validation) if args.validation else None,
             prompt_artifact=local_path(args.prompt_artifact) if args.prompt_artifact else None,
+            quality_review=local_path(args.quality_review) if args.quality_review else None,
             skill_review=local_path(args.skill_review) if args.skill_review else None,
             sop_review=local_path(args.sop_review) if args.sop_review else None,
         )
@@ -86,6 +87,9 @@ def main() -> None:
     parser.add_argument("--sop")
     parser.add_argument("--validation")
     parser.add_argument("--prompt-artifact")
+    parser.add_argument(
+        "--quality-review", help="Reviewed independent improvement closure; extra gate only"
+    )
     parser.add_argument("--skill-review")
     parser.add_argument(
         "--sop-review", help="Immutable approved SOP artifact for exact content gate"
