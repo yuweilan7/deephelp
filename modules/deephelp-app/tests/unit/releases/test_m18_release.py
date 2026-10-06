@@ -118,7 +118,56 @@ def test_new_optional_skill_fields_preserve_original_release_identity(release):
     raw = release.model_dump(mode="json")
     raw.pop("skill_registry")
     raw.pop("skill_review_path")
+    raw.pop("sop_review_path")
     assert release_hash(ReleaseManifest.model_validate(raw)) == digest(raw)
+
+
+def test_approved_sop_requires_exact_new_content_and_immutable_review(release, tmp_path):
+    """固定门禁依赖只验机制；旧PASS不能覆盖新SOP，原件/完整闭包须双向绑定。"""
+    from deephelp_app.adapters.releases.sop_drafts import SOPDraftStore, read_sop_review
+    from deephelp_app.domain.models.common import VerifiedIdentity
+
+    base = bundled_registry()
+    owner = VerifiedIdentity(tenant_id="test", user_id="a")
+    store = SOPDraftStore(tmp_path / "sop")
+    draft = store.create(owner, base, base.definitions[0].sop_id)
+    draft["content"]["version"] = "reviewed-order-v43"
+    saved = store.update(draft["draft_id"], owner, 1, draft["content"])
+    store.review(saved["draft_id"], owner, 2, base, "明确核对字段差异", True)
+    reviewed = store.approved(saved["draft_id"], owner)
+    candidate, _ = read_sop_review(reviewed)
+    with pytest.raises(ConfigurationError, match="SOP/code/providers"):
+        prepare_manifest(
+            Path(release.assets_path),
+            Path(release.providers_path),
+            candidate,
+            "old-report",
+            sop_review=reviewed,
+        )
+    report = Path(release.validation_path)
+    value = json.loads(report.read_text())
+    value.update(sop_snapshot=candidate.snapshot_hash, sop_review_digest=file_digest(reviewed))
+    report.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="approved artifact"):
+        prepare_manifest(
+            Path(release.assets_path), Path(release.providers_path), candidate, "absent"
+        )
+    complete = prepare_manifest(
+        Path(release.assets_path),
+        Path(release.providers_path),
+        candidate,
+        "sop-v43",
+        sop_review=reviewed,
+    )
+    assert verify_release(complete)
+    omitted = complete.model_copy(update={"sop_review_path": None})
+    with pytest.raises(ConfigurationError, match="immutable review"):
+        verify_release(omitted)
+    altered = json.loads(reviewed.read_text())
+    altered["reason"] = "审核原件后来被替换"
+    reviewed.write_text(json.dumps(altered), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="artifact changed"):
+        verify_release(complete)
 
 
 def test_approved_skill_snapshot_exact_content_and_file_binding(release, tmp_path):

@@ -38,6 +38,7 @@ async def run(args: argparse.Namespace) -> int:
             validation_path=local_path(args.validation) if args.validation else None,
             prompt_artifact=local_path(args.prompt_artifact) if args.prompt_artifact else None,
             skill_review=local_path(args.skill_review) if args.skill_review else None,
+            sop_review=local_path(args.sop_review) if args.sop_review else None,
         )
         atomic_json(output, manifest.model_dump(mode="json"))
         print(json.dumps(dict(release_hash=release_hash(manifest), output=str(output))))
@@ -66,6 +67,7 @@ async def run(args: argparse.Namespace) -> int:
             persist_assets_validation=False,
             prompt_artifact=local_path(args.prompt_artifact) if args.prompt_artifact else None,
             skill_review=local_path(args.skill_review) if args.skill_review else None,
+            sop_review=local_path(args.sop_review) if args.sop_review else None,
         )
         print(json.dumps(dict(status=report["status"], output=args.output)))
         return 0 if report["status"] == "PASS" else 1
@@ -85,6 +87,9 @@ def main() -> None:
     parser.add_argument("--validation")
     parser.add_argument("--prompt-artifact")
     parser.add_argument("--skill-review")
+    parser.add_argument(
+        "--sop-review", help="Immutable approved SOP artifact for exact content gate"
+    )
     parser.add_argument("--providers", default="modules/deephelp-app/providers.example.json")
     parser.add_argument("--budget-state", default=".local/m18-release/budget.json")
     parser.add_argument("--auth", default=".local/m17/auth.json")

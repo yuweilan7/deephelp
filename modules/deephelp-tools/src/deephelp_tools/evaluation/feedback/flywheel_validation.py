@@ -101,6 +101,7 @@ async def validate(
     persist_assets_validation: bool = True,
     prompt_artifact: Path | None = None,
     skill_review: Path | None = None,
+    sop_review: Path | None = None,
 ) -> dict[str, Any]:
     if await asyncio.to_thread(output.exists):
         raise ConfigurationError("Use a new immutable validation report")
@@ -118,6 +119,12 @@ async def validate(
         runtime.intent_prompt = read_prompt(prompt_artifact)
     if registry:
         runtime.sop_registry, runtime.sop_snapshots = registry, (registry,)
+    if sop_review:
+        from deephelp_app.adapters.releases.sop_drafts import read_sop_review
+
+        reviewed_sop, _ = read_sop_review(sop_review)
+        if reviewed_sop != runtime.sop_registry:
+            raise ConfigurationError("Reviewed SOP differs from selected content runtime")
     from deephelp_tools.integrity import evaluation_provenance as provenance
 
     auth = LocalAuth(auth_path)
@@ -144,6 +151,7 @@ async def validate(
         collaboration_policy_digest=runtime.agent_policy.digest,
         skills_digest=runtime.skills_registry.digest,
         skills_review_digest=file_digest(skill_review) if skill_review else None,
+        sop_review_digest=file_digest(sop_review) if sop_review else None,
         code_digest=code["package_digest"],
         code_integrity_scope=code["integrity_scope"],
         tooling_digest=code["tooling_digest"],

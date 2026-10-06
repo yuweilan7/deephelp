@@ -397,6 +397,10 @@ M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额
 
 M43预演：POST `/learning/sop/drafts/{id}/rehearsals`提交已保存revision、mode=offline/live-readonly、有限required_slots、合成scenario及真实模式confirmed=true。未知槽位、无效图、旧revision、含审批proposal在任何Port前拒绝；真实模式同时核对原base与已打开模型/只读MCP/累计writer。GET同路径列原任务，GET `/learning/sop/rehearsals/{id}`读取，POST `/{id}/cancel`取消并join，均沿原owner/BrowserAuth。读页面不恢复任务；进程启动未结束记录标INTERRUPTED。
 
+GET `/learning/sop/drafts/{id}/diff`只读保存后的字段差异、完整candidate_hash和base_current；无效图不能形成候选。POST `/{id}/review`须revision、当前base_hash、approve、非空reason及confirmed=true；锁内CAS与新SOP版本校验，生成包含完整base_registry/registry、owner/reviewer、摘要和理由的不可变m43-sop-review-v1原件。APPROVED/REJECTED草稿冻结；隔离RegistryStore防版本复用，不切正式active。外主体404、旧基准/revision/已审核/版本复用409。
+
+原评测JobInput新增可选sop_draft，仅validate/prepare接受服务端草稿ID，拒绝路径/未审核/旧基准；内容报告与prepare按同asset/Skill/SOP选择。六叶子验证复用原catalog_probe的三个固定相邻样本及原预算writer；GET不派发。完整ReleaseManifest新增可选sop_review_path，None在release_hash中省略保持历史身份；有值须prompts的sop:review、files原件hash、完整SOPRegistry与内容报告sop_review_digest匹配，缺失或漂移拒绝。准备登记完整READY，原发布接口仍以完整hash和PG revision CAS切active；旧Question/SOPPlan/审批/UNKNOWN继续使用原版本和原receipt，不因作者审核或发布获得业务批准。
+
 任务固定完整候选registry/hash、draft_hash/revision、可信owner和作者确认槽位来源，结果保存实际run/question、原节点起止/规则/路径、工具/证据/预算、未运行项。LearningJobs.SUCCEEDED只表示runner返回，须另看SOP结果RESOLVED/WAITING_SLOT/FAILED/HANDED_OFF；CANCELLED只有清理结束才返回。离线固定建议/合成事实不是模型质量；远程model_calls=0、业务写入0。真实预演借用原Port与共享预算，只进入原1000执行器，不创建会话账本/审批或调用600/回复润色。预演只验图，Skills组合关闭且正式内容门禁另核对原Skills路径。
 
 ## M41 版本化业务Skill

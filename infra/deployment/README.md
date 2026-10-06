@@ -200,3 +200,13 @@ py -3.14 -m uv export --frozen --all-packages --no-dev --no-editable --no-emit-w
 M41目标使用原state/budget.json，M42目标使用state-m42/budget.json；M42预算由本次本机累计值移交，切换不清零，不把old-budget.json等快照复制到活动账本。目标配置同时决定catalog、providers、pointer、state_root及task_root；不能只切symlink。新task_root在state-m42/tasks，保留原16份已结束任务/审核字节；原任务根不改。业务MCP启动通过DEEPHELP_BUSINESS_CATALOG选择complaints-v3，旧配置默认complaints-v1。登记清单须满足原state目录路径守卫。
 
 旧新切换不回滚PG、不重放业务或审批/UNKNOWN。新诊断密钥下读取旧run采用停写后的PG主体/session验证与原日志HMAC核对，只重映射scope hash；原事件内容、时间、事实/工具版本及原密钥/日志保持。对应diagnostic-scope-import.json与new-restored-final.json保留来源核验，跨主体仍404，读取与重放零模型调用。manifest绑定的辅助.gitignore也要原字节安装并通过SHA256SUMS；不能为方便修改完整清单或覆盖旧共享providers。
+
+## M43 审核SOP安装与恢复
+
+当前完整hash、revision、运行/工具摘要见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，本次实际内容与37张PG表恢复比较见[M43交接](../../handoffs/M43.md#f3-不可变审核完整发布与精确恢复)。新安装`m43-sop-author-v1`，旧目标`m42-business-v1`；恢复闭包`/srv/deephelp-modern/recovery/m43-sop-author-v1`保存旧runtime.env/learning-catalog.json/artifact-map.json/pointer.json、新new-runtime.env/new-learning-catalog.json/new-artifact-map.json、原字节bundle、recovery.json。被绑定的完整清单及审核/内容原件在`/srv/deephelp-modern/artifacts-m43/.local/m43`；旧state-m42/legacy与更早闭包继续保留。
+
+新配置使用`artifacts-m43/.local/m43`作为state和task_root，单一artifact-map把原Windows仓库根映射到`/srv/deephelp-modern/artifacts-m43`；不能叠加与旧根重叠的多个映射。首次旧共享judge配置hash不匹配时已拒绝覆盖，完整M43依赖放入独立根；不得用旧文件替代或改写原清单。
+
+恢复仍用既有控制脚本：先`sudo bash /opt/deephelp-app/bin/control.sh stop`，核对四单元MainPID=0及目标预算无writer；以ubuntu/0600从闭包恢复**目标**runtime/catalog/artifact-map并重新source。使用**目标安装**的`.venv/bin/python -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`读取现场revision，再activate目标完整hash与现场expected-revision，最后`sudo bash /opt/deephelp-app/bin/switch.sh 目标安装ID`并有界核对health。M42使用原state-m42/budget.json，M43使用artifacts-m43/.local/m43/budget.json；不把old-budget-at-cutover.json、任何报告快照或本机已移交的预算复制到活动账本。恢复时原模型tokens/费用保持，元数据核验仍计RPC attempts；budget.lock由原writer关闭，不手工清除有效锁。
+
+M43实际采用37→38→39→40 CAS链并回到M43；后续操作必须读现场revision。旧问题/审批/UNKNOWN的原SOP及参数未迁移或重演，旧安装只读自身兼容历史。新完整版本的登记/激活会先复核审核原件、相同候选内容及安装字节；保存/预演/审核/prepare都不能替代完整发布。Windows→云路径解析属于精确闭包适配，原报告与清单路径/hash保持不可变。

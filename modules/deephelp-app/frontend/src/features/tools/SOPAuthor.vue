@@ -5,6 +5,7 @@ import { useAction, useRead } from "../../composables/requests";
 import RawDetails from "../../components/RawDetails.vue";
 import StateNotice from "../../components/StateNotice.vue";
 import SOPRehearsal from "./SOPRehearsal.vue";
+import SOPReview from "./SOPReview.vue";
 type Condition = {
   fact: string;
   op: string;
@@ -38,6 +39,8 @@ type Draft = {
   status: string;
   base_hash: string;
   content_hash: string;
+  candidate_hash?: string;
+  review_digest?: string;
   content: Flow;
   validation: {
     valid: boolean;
@@ -78,6 +81,10 @@ function adopt(value: Draft) {
   draft.value = value;
   content.value = structuredClone(value.content);
   dirty.value = false;
+}
+function reviewed(value: unknown) {
+  adopt(value as Draft);
+  void refresh();
 }
 function create() {
   void action.run(async () => {
@@ -393,6 +400,7 @@ function operand(c: Condition) {
         :dirty="dirty"
         :live-available="catalog.data.value?.live_readonly_available || false"
       />
+      <SOPReview :draft="draft" :dirty="dirty" @reviewed="reviewed" />
     </template>
     <StateNotice :error="action.error.value" :loading="action.busy.value" />
   </section>

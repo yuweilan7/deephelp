@@ -17,6 +17,7 @@ from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest,
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.adapters.releases.skill_store import read_skill_review
+from deephelp_app.adapters.releases.sop_drafts import read_sop_review
 from deephelp_app.application.artifact_paths import resolve_artifact
 from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
@@ -28,14 +29,16 @@ from deephelp_app.application.intent_prompt import (
 )
 from deephelp_app.application.sop_governance import SOPRegistry
 from deephelp_app.bootstrap.runtime.budget import BudgetSession
-from deephelp_app.domain.errors import ConfigurationError
+from deephelp_app.domain.errors import AppError, ConfigurationError
 from deephelp_app.domain.models.release import ReleaseManifest
 
 
 def release_hash(manifest: ReleaseManifest) -> str:
     # 新可选字段为空时不进入旧清单身份；历史原字节/hash不改写。
     omitted = {
-        key for key in ("skill_registry", "skill_review_path") if getattr(manifest, key) is None
+        key
+        for key in ("skill_registry", "skill_review_path", "sop_review_path")
+        if getattr(manifest, key) is None
     }
     return digest(manifest.model_dump(mode="json", exclude=omitted))
 
@@ -65,6 +68,25 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }
     collaboration = policy_release_binding()
+    if manifest.sop_review_path:
+        review_path = resolve_artifact(manifest.sop_review_path)
+        try:
+            reviewed_sop, _ = read_sop_review(review_path)
+        except ValueError, KeyError, OSError, AppError:
+            raise ConfigurationError("SOP review is invalid") from None
+        review_sha = file_digest(review_path)
+        if (
+            reviewed_sop != registry
+            or validation.get("sop_review_digest") != review_sha
+            or not any(
+                resolve_artifact(p) == review_path and h == review_sha
+                for p, h in manifest.files.items()
+            )
+        ):
+            raise ConfigurationError("SOP approval has no exact registry/content/file binding")
+        prompts["sop:review"] = review_sha
+    elif validation.get("sop_review_digest"):
+        raise ConfigurationError("Validated SOP candidate requires its immutable review")
     if collaboration["resource"] in manifest.prompts:
         prompts[collaboration["resource"]] = collaboration["sha256"]
         if validation.get("collaboration_policy_digest") != collaboration["policy_digest"]:
