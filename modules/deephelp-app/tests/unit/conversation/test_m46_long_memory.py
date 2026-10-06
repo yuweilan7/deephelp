@@ -425,3 +425,26 @@ def test_release_memory_binding_rejects_old_pass_and_policy_drift(tmp_path):
     )
     with pytest.raises(ConfigurationError, match="complete current content"):
         require_memory_content(report)
+
+
+def test_independent_query_evidence_ids_do_not_hide_fact_value_changes():
+    from types import SimpleNamespace
+
+    from deephelp_app.adapters.releases.memory_binding import fact_values
+    from deephelp_app.domain.models.evidence import Fact
+
+    def response(amount, evidence):
+        return SimpleNamespace(
+            facts=(
+                Fact(
+                    name="paid",
+                    kind="money",
+                    value={"amount": amount, "currency": "CNY"},
+                    evidence_ids=(evidence,),
+                ),
+            )
+        )
+
+    first = response("173.45", "original-current-evidence")
+    assert fact_values(first) == fact_values(response("173.45", "independent-current-evidence"))
+    assert fact_values(first) != fact_values(response("71.23", "independent-current-evidence"))

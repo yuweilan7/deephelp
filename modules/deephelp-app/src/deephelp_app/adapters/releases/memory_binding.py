@@ -23,6 +23,11 @@ from deephelp_app.domain.models.long_memory import (
 from deephelp_app.domain.models.responses import ResponseEnvelope
 
 
+def fact_values(response: ResponseEnvelope) -> dict[str, tuple[str, Any]]:
+    """独立查询比较名称/类型/值；证据ID归各自原run，不能要求两个新查询共用快照。"""
+    return {fact.name: (fact.kind, fact.value) for fact in response.facts}
+
+
 def memory_policy_binding() -> dict[str, Any]:
     """显式固定策略与领域schema共同绑定；Prompt/索引明确为none，不虚构Embedding召回。"""
     resource = files("deephelp_app").joinpath("resources/memory-policy.json")
@@ -87,7 +92,7 @@ def require_memory_content(path: Path) -> dict[str, Any]:
                 "Memory content has incomplete actual run/source/current facts"
             )
     if (
-        responses["enabled"].facts != responses["disabled"].facts
+        fact_values(responses["enabled"]) != fact_values(responses["disabled"])
         or responses["unrelated"].facts
         or responses["unrelated"].tool_call_ids
         or not responses["missing-current"].missing_slots

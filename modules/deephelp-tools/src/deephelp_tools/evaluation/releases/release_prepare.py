@@ -116,6 +116,17 @@ def prepare_manifest(
             "content_sha256": file_digest(memory_report),
         }
         files[str(memory_report.resolve())] = file_digest(memory_report)
+        for source in (memory_content.get("observed_source"),):
+            if source:
+                path = Path(source["path"])
+                if file_digest(path) != source["sha256"]:
+                    raise ConfigurationError("Original memory content report changed")
+                files[str(path.resolve())] = source["sha256"]
+        if review := memory_content.get("runtime_review"):
+            path = Path(review["before_path"])
+            if file_digest(path) != review["before_sha256"]:
+                raise ConfigurationError("Memory runtime review source changed")
+            files[str(path.resolve())] = review["before_sha256"]
         prompts[memory_binding["resource"]] = memory_binding["sha256"]
     if sop_review:
         try:

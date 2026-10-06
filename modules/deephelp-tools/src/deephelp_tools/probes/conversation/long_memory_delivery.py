@@ -6,6 +6,7 @@ PG仍是来源和当前事实，明确用户陈述不送给模型、600、工具
 
 import argparse
 import asyncio
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,18 +21,19 @@ from deephelp_app.adapters.observability.trace import MemoryTrace
 from deephelp_app.adapters.persistence.cases import PostgresCaseRepository
 from deephelp_app.adapters.persistence.long_memory import PostgresLongMemory
 from deephelp_app.adapters.releases.asset_integrity import provenance
-from deephelp_app.adapters.releases.memory_binding import memory_policy_binding
+from deephelp_app.adapters.releases.memory_binding import fact_values, memory_policy_binding
 from deephelp_app.application.dense import atomic_json
 from deephelp_app.application.long_memory import LongMemoryService
 from deephelp_app.bootstrap.runtime.budget import BudgetSession
 from deephelp_app.domain.models.common import Outcome, VerifiedIdentity
 from deephelp_app.domain.models.conversation import RequestEnvelope
 from deephelp_app.domain.models.long_memory import MemoryChange, MemoryReference, MemoryUse
+from deephelp_app.domain.models.responses import ResponseEnvelope
 from deephelp_tools.integrity import evaluation_provenance
 from deephelp_tools.probes.conversation.long_memory_probe import assembly_from_config
 
 
-async def delivery(config: dict[str, Any], output: Path) -> None:
+async def delivery(config: dict[str, Any], output: Path, resume: Path | None = None) -> None:
     if await asyncio.to_thread(output.exists):
         raise ValueError("Use a new immutable delivery report")
     source = json.loads(
@@ -48,6 +50,22 @@ async def delivery(config: dict[str, Any], output: Path) -> None:
         "code_digest": provenance()["package_digest"],
         "tooling_digest": evaluation_provenance()["tooling_digest"],
     }
+    previous_bytes = await asyncio.to_thread(resume.read_bytes) if resume else None
+    previous = json.loads(previous_bytes) if previous_bytes else None
+    if previous:
+        # 只允许发布内容比较守卫变化，执行/模型/工具/DTO的任何字节变化均拒绝复用。
+        from deephelp_tools.probes.conversation.memory_content_review import verify_runtime_delta
+
+        report["runtime_review"] = await asyncio.to_thread(
+            verify_runtime_delta, Path(config["runtime_before_review"])
+        )
+        assert resume and previous_bytes
+        report["observed_source"] = {
+            "path": str(await asyncio.to_thread(resume.resolve)),
+            "sha256": hashlib.sha256(previous_bytes).hexdigest(),
+        }
+        assert previous["code_digest"] == report["runtime_review"]["previous_digest"]
+        assert previous["memory_policy_binding"] == report["memory_policy_binding"]
     try:
         runtime = assembly_from_config(config)
         async with (
@@ -178,7 +196,20 @@ async def delivery(config: dict[str, Any], output: Path) -> None:
                             "expected_question_version": question.version,
                         }
                     )
-                response = await conversation.run(request, gate.request())
+                prior = (
+                    next((r for r in previous["rows"] if r["case_id"] == case), None)
+                    if previous
+                    else None
+                )
+                if prior:
+                    request = RequestEnvelope.model_validate(prior["input"])
+                    response = ResponseEnvelope.model_validate(prior["response"])
+                    stable = dict(gate.state)
+                    replay = await conversation.run(request, gate.request())
+                    assert replay.replayed and replay.run_id == response.run_id
+                    assert gate.state == stable
+                else:
+                    response = await conversation.run(request, gate.request())
                 report["rows"].append(
                     {
                         "case_id": case,
@@ -194,10 +225,10 @@ async def delivery(config: dict[str, Any], output: Path) -> None:
                 else:
                     assert selected.status == "REJECTED" and "历史参考" not in response.reply
                 if case == "enabled":
-                    enabled_facts = response.facts
+                    enabled_facts = fact_values(response)
                 if case == "disabled":
                     assert (
-                        response.facts == enabled_facts
+                        fact_values(response) == enabled_facts
                         and selected.decisions[0].reason == "scope_disabled"
                     )
                 if case == "different-order":
@@ -366,6 +397,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--read-report", type=Path)
     parser.add_argument("--quality", action="store_true")
+    parser.add_argument("--resume-report", type=Path)
     args = parser.parse_args()
     if args.read_report:
         asyncio.run(reread(args.read_report, args.output))
@@ -374,7 +406,11 @@ def main() -> None:
             refresh_quality(json.loads(args.config.read_text(encoding="utf-8")), args.output)
         )
     else:
-        asyncio.run(delivery(json.loads(args.config.read_text(encoding="utf-8")), args.output))
+        asyncio.run(
+            delivery(
+                json.loads(args.config.read_text(encoding="utf-8")), args.output, args.resume_report
+            )
+        )
 
 
 if __name__ == "__main__":
