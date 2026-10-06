@@ -146,7 +146,10 @@ def sop_authoring_router(
             draft["content"]["intent_code"]
         )
         return dict(
-            changes=sop_diff(old.model_dump(mode="json"), draft["content"]),
+            changes=sop_diff(
+                old.model_dump(mode="json"),
+                registry.definition(old.intent_code).model_dump(mode="json"),
+            ),
             base_current=draft["base_hash"] == base.snapshot_hash,
             candidate_hash=registry.snapshot_hash,
             reviewed=draft["status"],

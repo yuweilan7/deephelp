@@ -87,6 +87,26 @@ def test_review_requires_valid_new_version_and_current_base(tmp_path):
         store.approved(rejected["draft_id"], OWNER)
 
 
+def test_browser_numeric_json_has_one_candidate_and_review_identity(tmp_path):
+    """独立模拟浏览器整数化的JSON，不能以Python自己的float输出替代页面输入。"""
+    from deephelp_app.adapters.releases.sop_drafts import draft_registry
+
+    base = bundled_registry()
+    store = SOPDraftStore(tmp_path)
+    row = store.create(OWNER, base, base.definitions[0].sop_id)
+    raw = copy.deepcopy(row["content"])
+    raw["version"] = "browser-numeric-v43"
+    raw["limits"] = {k: int(v) if isinstance(v, float) else v for k, v in raw["limits"].items()}
+    saved = store.update(row["draft_id"], OWNER, 1, raw)
+    candidate = draft_registry(saved)
+    assert sop_diff(base.definitions[0].model_dump(mode="json"), saved["content"]) == [
+        {"path": ["version"], "before": base.definitions[0].version, "after": raw["version"]}
+    ]
+    store.review(row["draft_id"], OWNER, 2, base, "浏览器规范JSON核对", True)
+    reviewed, record = read_sop_review(store.approved(row["draft_id"], OWNER))
+    assert reviewed == candidate and record["candidate_hash"] == candidate.snapshot_hash
+
+
 async def test_http_diff_review_explicit_confirmation_and_stale_base(tmp_path):
     base = bundled_registry()
     runtime = SimpleNamespace(sop_registry=base)

@@ -51,7 +51,7 @@ def draft_registry(value: dict[str, Any]) -> SOPRegistry:
         ) from None
     base = SOPRegistry.model_validate(value["base_registry"])
     raw = base.model_dump(mode="json")
-    raw["registry_version"] = "m43-candidate-" + digest(value["content"])[7:23]
+    raw["registry_version"] = "m43-candidate-" + digest(definition.model_dump(mode="json"))[7:23]
     raw["definitions"] = [
         definition.model_dump(mode="json")
         if d.sop_id == definition.sop_id
@@ -143,7 +143,17 @@ class SOPDraftStore:
         content = value["content"]
         if len(json.dumps(content, ensure_ascii=False)) > 64000:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "SOP draft exceeds content limit", 400)
-        value = {**value, "content_hash": digest(content), "validation": validate_content(content)}
+        validation = validate_content(content)
+        if validation["valid"]:
+            # 浏览器JSON会把45.0传成45；合法图统一原DTO表示，避免伪diff或审核hash漂移。
+            # 无效中间图保留原输入和真实字段诊断，不能借规范化掩盖错误。
+            content = GovernedSOP.model_validate(content).model_dump(mode="json")
+        value = {
+            **value,
+            "content": content,
+            "content_hash": digest(content),
+            "validation": validation,
+        }
         path = self._path(value["draft_id"])
         temporary = path.with_suffix(".pending")
         try:
@@ -241,6 +251,9 @@ class SOPDraftStore:
                 )
             registry = draft_registry(current)
             flow = registry.definition(current["content"]["intent_code"])
+            # 已保存的早期合法草稿也按同一DTO表示冻结；原预演仍保留它当时的候选hash。
+            current = {**current, "content": flow.model_dump(mode="json")}
+            current["content_hash"] = digest(current["content"])
             if flow.version == base.definition(flow.intent_code).version:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "SOP review requires a new version", 400)
             if approved:
