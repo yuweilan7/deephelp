@@ -14,6 +14,7 @@ from .corpus_authoring import corpus_authoring_demo
 from .evidence import evaluation_demo, observations_demo
 from .independent_quality import independent_quality_demo
 from .offline import offline_only
+from .paired_quality import paired_quality_demo
 from .request import memory_demo, request_demo
 from .resources import resources_demo
 from .retrieval import retrieval_demo
@@ -34,6 +35,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "observations": observations_demo,
     "evaluation": evaluation_demo,
     "independent-quality": independent_quality_demo,
+    "paired-quality": paired_quality_demo,
     "collaboration": collaboration_demo,
     "skills": skills_demo,
     "catalog": catalog_demo,

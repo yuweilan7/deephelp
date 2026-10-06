@@ -80,6 +80,7 @@ class EvaluationCatalog(DTO):
     corpus_baseline: Key | None = None
     corpus_sop_review: Path | None = None
     corpus_skill_review: Path | None = None
+    quality_experiments: dict[Key, Path] = Field(default_factory=dict, max_length=16)
 
 
 class Capture(DTO):
@@ -107,6 +108,7 @@ class JobInput(DTO):
         "corpus_build",
         "corpus_compare",
         "corpus_gate",
+        "independent_pair",
     ]
     candidate_ids: tuple[Hash, ...] = Field(default=(), max_length=10)
     asset_id: Key | None = None
@@ -116,6 +118,7 @@ class JobInput(DTO):
     sop_draft: Key | None = None
     corpus_version: Hash | None = None
     query: Annotated[str, Field(min_length=1, max_length=2000, pattern=r"\S")] | None = None
+    experiment_id: Key | None = None
     confirmed: Literal[True]
 
 
@@ -177,6 +180,26 @@ def report_view(path: Path, offset: int = 0, limit: int = 20) -> dict[str, Any]:
     if path.stat().st_size > 8_000_000:
         raise ConfigurationError("Report exceeds browser catalog bound; use its summary index")
     data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("format") == "m45-paired-report-v1":
+        return dict(
+            sha256=file_digest(path),
+            summary={
+                k: data[k]
+                for k in (
+                    "format",
+                    "status",
+                    "experiment_fingerprint",
+                    "acceptance_scope",
+                    "interpretation",
+                )
+            },
+            metrics=data["routes"],
+            paired=data["paired"],
+            usage=data.get("usage"),
+            rows=data["rows"][offset : offset + limit],
+            next_offset=offset + limit if offset + limit < len(data["rows"]) else None,
+            model_calls=0,
+        )
     summary = {
         k: data[k]
         for k in (
@@ -286,6 +309,34 @@ def evaluation_router(
         options, action = row["options"], row["options"]["action"]
         # 借用应用已经打开的预算writer，仅提供request；任务恢复不能新建预算文件清零。
         gate = SharedGate(factory, config.budget_state)
+        if action == "independent_pair":
+            from deephelp_tools.evaluation.quality.independent_store import IndependentDatasets
+            from deephelp_tools.evaluation.quality.paired_runtime import execute, read_contract
+
+            path = config.quality_experiments[options["experiment_id"]]
+            spec, _ = read_contract(path)
+            assert assembly.ledger is not None
+            snapshot = (
+                await IndependentDatasets(assembly.ledger.pool).get(config.owner, spec.dataset_id)
+            )["frozen"]
+            result = await execute(
+                path,
+                snapshot,
+                root / "independent" / spec.fingerprint,
+                assembly.gateway,
+                assembly.judge_gateway,
+                gate,
+                retry_uncertain=row["attempt"] > 1,
+            )
+            atomic_json(output / "independent.json", result)
+            return dict(
+                evidence_status=result["status"],
+                experiment_fingerprint=spec.fingerprint,
+                routes=result["routes"],
+                paired=result["paired"],
+                usage=result["usage"],
+                active_changed=False,
+            )
         if action in {"corpus_build", "corpus_compare", "corpus_gate"}:
             from deephelp_tools.evaluation.retrieval.corpus_candidate import (
                 build_candidate,
@@ -692,6 +743,30 @@ def evaluation_router(
 
     router.include_router(independent_router(assembly, auth, config.owner))
 
+    @router.get("/independent-experiments")
+    async def experiments(request: Request) -> dict[str, Any]:
+        owner(request)
+        from deephelp_tools.evaluation.quality.paired_runtime import read_contract
+
+        values = []
+        for key, path in config.quality_experiments.items():
+            spec, _ = read_contract(path)
+            report_path = root / "independent" / spec.fingerprint / "report.json"
+            values.append(
+                dict(
+                    id=key,
+                    fingerprint=spec.fingerprint,
+                    split=spec.split,
+                    target=spec.target,
+                    repeats=spec.repeats,
+                    factor=spec.factor,
+                    source=spec.source,
+                    freeze_hash=spec.freeze_hash,
+                    report=report_view(report_path) if report_path.is_file() else None,
+                )
+            )
+        return dict(experiments=values, model_calls=0)
+
     @router.get("")
     async def catalog(request: Request) -> dict[str, Any]:
         owner(request)
@@ -944,6 +1019,27 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
+        if body.action == "independent_pair":
+            if body.experiment_id not in config.quality_experiments:
+                raise AppError(
+                    ErrorCode.NOT_FOUND, "Frozen independent experiment unavailable", 404
+                )
+            from deephelp_tools.evaluation.quality.independent_store import IndependentDatasets
+            from deephelp_tools.evaluation.quality.paired_runtime import (
+                read_contract,
+                validate_contract,
+            )
+
+            spec, _ = read_contract(config.quality_experiments[body.experiment_id])
+            assert assembly.ledger is not None
+            snapshot = (
+                await IndependentDatasets(assembly.ledger.pool).get(config.owner, spec.dataset_id)
+            )["frozen"]
+            await asyncio.to_thread(validate_contract, spec, snapshot)
+        elif body.experiment_id is not None:
+            raise AppError(
+                ErrorCode.INVALID_ARGUMENT, "Only independent pair consumes experiment", 422
+            )
         corpus_actions = {"corpus_build", "corpus_compare", "corpus_gate"}
         if body.action in corpus_actions or (
             body.action in {"validate", "prepare"} and body.corpus_version is not None
@@ -1042,6 +1138,11 @@ def evaluation_router(
         owner(request)
         row = jobs.get(identity)
         partial = jobs.output(row) / "evaluation.json"
+        if row["options"]["action"] == "independent_pair":
+            from deephelp_tools.evaluation.quality.paired_runtime import read_contract
+
+            spec, _ = read_contract(config.quality_experiments[row["options"]["experiment_id"]])
+            partial = root / "independent" / spec.fingerprint / "report.json"
         corpus_evidence = None
         if row["options"].get("corpus_version"):
             directory = root / "corpus" / row["options"]["corpus_version"]

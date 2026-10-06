@@ -456,3 +456,7 @@ GET只投影来源/计数/revision/分歧/锁定hash；`/datasets/{id}/inputs`�
 语料内容任务修复后仅复用相同runtime、provider、pointer、assets、corpus、SOP及Skill指纹的完整成功行，每行必须已有PG历史与零调用重投断言；失败或未完成行重验。未知意图不执行SOP，SOP快照为空，同时语料dataset/signature仍须匹配。合并报告保持原FAIL与修复part原件，来源hash纳入完整发布文件，不重复计算旧行的本次用量。
 
 原assets可带`corpus_binding`：绑定作者审核、JSONL、索引/集合、合同、冻结split/selection、检索及分类门禁的精确文件hash；完整清单files/source照原合同保护。runtime独立重算必要检索/分类覆盖条件，完整报告必须phase=release且六叶子/未知八场景及事实/重投检查齐全；反馈采集、召回PASS或漏样本均不能替代。ReleaseStore提交时仍锁读原审核revision与active CAS，撤销不自动删除历史或重放业务。旧ReleaseManifest格式/hash兼容，无新可选字段改写历史身份。
+
+M45配对合同为`m45-paired-contract-v1`：冻结dataset/freeze/selection、首条消息目标、单因素、baseline/candidate路由与Prompt全文、源码/工具字节、providers/judge/pointer/corpus/policy/binding文件hash及实际endpoint hash。重复预先固定为1；holdout须另有review_hash。任何字节变化在派发前拒绝，不能沿旧实验换实现。原`IntentService`只消费已执行的同查询检索观察，不复制分类引擎；Hybrid与Dense共享每查询一次真实向量。
+
+`learning catalog.quality_experiments`只接受服务器登记路径；`GET /learning/evaluation/independent-experiments`只读合同摘要/原报告，0模型；`POST /learning/evaluation/tasks {action:independent_pair,experiment_id,confirmed:true}`沿原owner/CSRF/LearningJobs与共享预算，PG冻结身份重新校验。单实验OS writer锁，每await前pending、返回后同步落盘，原ID恢复最多三次，UNKNOWN须显式只读恢复；已完成报告hash核对后零调用返回。失败完整分母保留NOT_COMPLETED/错误，COMPLETE是执行完成而非收益。分类混淆/各类P/R/F1/拒识及检索Hit/MRR、改善/退化与Wilson区间/配对符号检验分开。API actual/unknown与RPC累计attempts/预算预留分别计量，缺输出或reasoning usage保持null。
