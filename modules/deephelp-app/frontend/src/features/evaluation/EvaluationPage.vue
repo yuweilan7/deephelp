@@ -10,6 +10,7 @@ import CandidatePanel from "./CandidatePanel.vue";
 import TaskPanel from "./TaskPanel.vue";
 import ReleasePanel from "./ReleasePanel.vue";
 import IndependentPanel from "./IndependentPanel.vue";
+import PairedPanel from "./PairedPanel.vue";
 const catalog = useRead<Catalog>(),
   plan = useRead<Plan>(),
   taskId = ref("");
@@ -46,6 +47,7 @@ onMounted(refresh);
   </p>
   <template v-if="catalog.data.value"
     ><IndependentPanel />
+    <PairedPanel @task="(id) => (taskId = id)" />
     <p>
       当前工具冻结集 {{ catalog.data.value.dataset.cases }} 会话 /
       {{ catalog.data.value.dataset.turns }} 消息 · 独立审计

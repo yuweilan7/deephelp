@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from deephelp_app.application.cascade import CascadePolicy
+from deephelp_app.application.cascade import CascadePolicy, StructuredFallback
 from deephelp_app.application.corpus import CorpusPreview, digest, read_corpus
 from deephelp_app.application.hybrid import ANALYZER
 from deephelp_app.application.intent import IntentService
@@ -163,6 +163,7 @@ async def classify(
     budget: ExecutionBudget,
     *,
     policy: CascadePolicy | None = None,
+    system_prompt: str | None = None,
 ) -> dict[str, object]:
     class RecordedRetriever:
         async def retrieve(
@@ -181,7 +182,13 @@ async def classify(
         layers=[ExtractionLayerStat(layer="regex", elapsed_ms=0, accepted=0)],
     )
     decision = await IntentService(
-        model, RecordedRetriever(), result.scope, policy=policy
+        model,
+        RecordedRetriever(),
+        result.scope,
+        policy=policy,
+        fallback=StructuredFallback(
+            model, system_prompt=system_prompt, catalog_version=result.scope.registry_version
+        ),
     ).recognize(prepared, budget)
     code = decision.final_code.value if decision.final_code else None
     return {
@@ -189,4 +196,5 @@ async def classify(
         "decision": decision.decision.value,
         "reason": decision.reason_code,
         "classification_correct": code == (q.gold.value if q.gold else None),
+        "observation": decision.model_dump(mode="json"),
     }

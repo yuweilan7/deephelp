@@ -78,3 +78,11 @@ py -3.14 -m uv run --locked pytest modules/deephelp-tools/tests/unit/feedback/te
 答案：注释AST不变时无需live证明质量，精确源码字节仍变，旧安装/manifest仍属旧字节；未来正式发布另取匹配证据。来自留出组的候选即使点批准仍被isolation拒绝，人工操作不能消除污染。
 
 完成课程后回到01章，用原请求解释每个等待者、判断者、事实源与收尾者；然后再按M35/M36明确授权进入页面学习路线。本M交付不启动下一模块。
+
+## 同版本条件与配对分母
+
+先运行`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course paired-quality`：固定两条观察，一条改善、一条退化，准确率差为0；baseline的协议错误仍占一条分母，所以结果为PARTIAL。练习答案：总平均不变不代表行为不变；只删除失败行会虚增正确率；重复测试到通过会破坏预设试验。Java可类比不可变实验DTO及持久任务日志，async取消与跨await恢复还需显式资源拥有者，不能只靠对象finalizer。
+
+真实入口`python -m deephelp_tools.evaluation.quality.paired_cli freeze --help`与`run --help`。先freeze固定独立数据/开发split、精确配置与字节、单因素，再run指定同一budget；不得靠另建budget或加repeat消除退化。原评测页“独立版本配对”显示冻结范围/来源/版本、实际报告；明确启动进入原任务队列，等待/取消/失败/UNKNOWN按原任务读取，GET不调用模型。恢复完整report为0调用，不重抽结果。
+
+M45 F2实际比较16个dev首条消息：Hybrid与Dense各15/16，macro F1均0.9333；拒识4/5，已支持叶子的检索分母11，Hit@1 9/11、Hit@3 11/11、MRR 59/66，逐例结果无变化。95% Wilson准确率区间约0.717–0.989；一轮AI小样本既不能证明两策略等价，也不能证明客户泛化。每查询共享一次向量，32次强判与16次Embedding实际响应；用量缺字段仍未知，不把预算预留称为实耗。原语料21条、分类qwen3.7-flash；通用Chat仍固定qwen3.8-flash。唯一共同差例的优惠金额方向不明确；只能作为dev审核输入，尚未修改策略或使用holdout。
