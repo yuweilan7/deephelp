@@ -5,6 +5,7 @@ classify复用原IntentService，检索命中与最终回答质量分别判断�
 """
 
 import json
+from pathlib import Path
 from typing import Any
 
 from deephelp_app.application.corpus import CorpusPreview, digest, read_corpus
@@ -30,13 +31,19 @@ class RetrievalQuery(DTO):
     variant_group: str
 
 
-def dataset() -> tuple[CorpusPreview, dict[str, list[RetrievalQuery]]]:
-    corpus = read_corpus(asset_path("m09_corpus.jsonl"))
+def dataset(
+    corpus_path: Path | None = None, query_paths: dict[str, Path] | None = None
+) -> tuple[CorpusPreview, dict[str, list[RetrievalQuery]]]:
+    corpus = read_corpus(corpus_path or asset_path("m09_corpus.jsonl"))
     corpus.require_valid()
     queries = {
         split: [
             RetrievalQuery.model_validate(row)
-            for row in json.loads(asset_path(f"m09_{split}.json").read_text(encoding="utf-8"))
+            for row in json.loads(
+                (query_paths[split] if query_paths else asset_path(f"m09_{split}.json")).read_text(
+                    encoding="utf-8"
+                )
+            )
         ]
         for split in ("dev", "test")
     }

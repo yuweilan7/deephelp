@@ -13,7 +13,8 @@ from deephelp_tools.learning.workbench.analysis import analysis_router
 pytestmark = pytest.mark.integration
 
 
-async def test_rule_provenance_and_shared_budget_context():
+@pytest.mark.parametrize("catalog_version", ["complaints-v1", "complaints-v2"])
+async def test_rule_provenance_and_shared_budget_context(catalog_version):
     identity = VerifiedIdentity(tenant_id="t", user_id="u")
     seen = []
 
@@ -37,7 +38,11 @@ async def test_rule_provenance_and_shared_budget_context():
         return budget
 
     app = create_app(Settings(mode="test"), trace=MemoryTrace(), budget_factory=gate)
-    assembly = SimpleNamespace(retrieval=Retriever(), scope="owned")
+    assembly = SimpleNamespace(
+        retrieval=Retriever(),
+        scope="owned",
+        sop_registry=SimpleNamespace(catalog_version=catalog_version),
+    )
     app.include_router(analysis_router(assembly, lambda r: identity))
     async with (
         app.router.lifespan_context(app),
@@ -46,12 +51,19 @@ async def test_rule_provenance_and_shared_budget_context():
         text = "不是订单90220000，是订单90221004，优惠未到账"
         d = (await c.post("/learning/rules", json={"text": text})).json()
         assert d["model_calls"] == 0 and len(seen) == 0
+        assert d["catalog_version"] == catalog_version
         assert any(e["disposition"] == "negated" for e in d["observations"])
         assert d["confirmed"][0]["value"] == "90221004"
         for observation in d["observations"]:
             assert (
                 text[observation["start"] : observation["end"]] == observation["source"]["excerpt"]
             )
+        qualification = (
+            await c.post("/learning/rules", json={"text": "活动编号ACT-42，查询参与资格与名额"})
+        ).json()
+        codes = {row["candidate_code"] for row in qualification["rule_matches"]}
+        assert ("ACTIVITY_ELIGIBILITY_QUERY" in codes) == (catalog_version == "complaints-v2")
+        assert qualification["model_calls"] == 0 and len(seen) == 0
         assert (
             await c.post("/learning/retrieval", json={"text": "query", "scope": "foreign"})
         ).status_code == 422

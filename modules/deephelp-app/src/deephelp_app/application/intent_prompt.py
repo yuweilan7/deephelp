@@ -28,9 +28,18 @@ class PromptArtifact(DTO):
     request_digest: Identifier
 
 
-def default_system() -> str:
+def default_system(catalog_version: str = "complaints-v1") -> str:
+    from deephelp_app.domain.registry import catalog_codes
+
+    catalog_codes(catalog_version)
     return (
-        files("deephelp_app.resources").joinpath("intent_fallback.txt").read_text(encoding="utf-8")
+        files("deephelp_app.resources")
+        .joinpath(
+            "intent_fallback.txt"
+            if catalog_version == "complaints-v1"
+            else "intent_fallback_v2.txt"
+        )
+        .read_text(encoding="utf-8")
     )
 
 

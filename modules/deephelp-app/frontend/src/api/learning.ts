@@ -25,6 +25,7 @@ export interface ProtocolResult {
 }
 export interface RulesResult {
   model_calls: number;
+  catalog_version: string;
   observations: {
     start: number;
     end: number;

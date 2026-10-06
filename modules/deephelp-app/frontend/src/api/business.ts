@@ -1,11 +1,11 @@
-export type BusinessKind = "orders" | "coupons" | "activities";
+export type BusinessKind = "orders" | "coupons" | "activities" | "eligibilities";
 export interface Money {
   amount: string;
   currency: "CNY";
 }
 export interface BusinessRecord {
   version: number;
-  data: Record<string, string | string[] | Money>;
+  data: Record<string, string | string[] | Money | number | null>;
 }
 export interface Field {
   key: string;
@@ -13,6 +13,12 @@ export interface Field {
   options?: string[];
 }
 export const fields: Record<BusinessKind, Field[]> = {
+  eligibilities: [
+    { key: "activity_id", label: "所属活动编号（须已维护同主体活动）" },
+    { key: "eligibility", label: "资格状态", options: ["eligible", "ineligible", "unknown"] },
+    { key: "remaining_slots", label: "剩余名额（非负整数，unknown表示未维护）" },
+    { key: "reason", label: "资格记录依据（合成资料）" },
+  ],
   orders: [
     { key: "order_id", label: "订单编号" },
     { key: "paid", label: "实付金额（CNY）" },
@@ -63,11 +69,12 @@ export function editorValues(
     fields[kind].map((f) => {
       const value = record?.data[f.key];
       let text =
-        typeof value === "object" && !Array.isArray(value)
+        value != null && typeof value === "object" && !Array.isArray(value)
           ? value.amount
           : Array.isArray(value)
             ? value.join(",")
             : value;
+      if (f.key === "remaining_slots" && value == null) text = "unknown";
       text ??=
         f.options?.[0] ??
         (["paid", "discount", "minimum_spend"].includes(f.key)
@@ -79,7 +86,7 @@ export function editorValues(
               : f.key === "valid_until"
                 ? new Date(Date.now() + 365 * 86400000).toISOString()
                 : "");
-      return [f.key, text];
+      return [f.key, String(text)];
     }),
   );
 }
@@ -87,6 +94,15 @@ export function recordBody(kind: BusinessKind, values: Record<string, string>) {
   const data: BusinessRecord["data"] = {};
   for (const f of fields[kind]) {
     const value = values[f.key].trim();
+    if (f.key === "remaining_slots") {
+      if (value === "unknown") data[f.key] = null;
+      else {
+        if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)))
+          throw new Error("剩余名额必须是可准确表示的非负整数，未维护时填写 unknown。");
+        data[f.key] = Number(value);
+      }
+      continue;
+    }
     data[f.key] = ["paid", "discount", "minimum_spend"].includes(f.key)
       ? { amount: value, currency: "CNY" }
       : f.key === "sku_ids"

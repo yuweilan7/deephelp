@@ -61,7 +61,14 @@ async def run(args: argparse.Namespace) -> int:
         )
         print(json.dumps({"status": "INITIALIZED", "budget": str(state_path)}))
         return 0
-    corpus, queries = dataset()
+    if bool(args.dev_queries) != bool(args.test_queries):
+        raise ConfigurationError("Provide both frozen dev/test query files")
+    corpus, queries = dataset(
+        Path(args.corpus) if args.corpus else None,
+        {"dev": Path(args.dev_queries), "test": Path(args.test_queries)}
+        if args.dev_queries
+        else None,
+    )
     if args.command == "preview":
         print(
             json.dumps(
@@ -88,10 +95,11 @@ async def run(args: argparse.Namespace) -> int:
     budget_path, manifest, pointer, selection_path = paths
     config = ProviderConfig.load(Path(args.providers))
     scope = HybridScope(
-        namespace="m09_synthetic",
+        namespace=args.namespace,
         dataset_version=args.dataset_version,
         signature=config.signature(),
         index_kind="intent_hybrid",
+        registry_version=args.registry_version,
     )
     report: dict[str, Any] = {
         "status": "PENDING",
@@ -184,7 +192,8 @@ async def run(args: argparse.Namespace) -> int:
                     report["server_latency_ms"] = store.latencies
             elif args.command in {"tune", "evaluate"}:
                 selected = None
-                weights = [0.25, 0.5, 0.75] if args.command == "tune" else []
+                # 可明确沿用已有候选权重；只在dev选择，不能看test后再改候选。
+                weights = (args.tune_weight or [0.25, 0.5, 0.75]) if args.command == "tune" else []
                 split = "dev" if args.command == "tune" else "test"
                 if split == "test":
                     selected = load_json(selection_path)
@@ -264,6 +273,8 @@ async def run(args: argparse.Namespace) -> int:
                         "objective": "candidate_recall_1,mrr,nearest_0.5,lower_weight",
                         "analyzer": ANALYZER,
                     }
+                    if args.tune_weight:
+                        selected["weight_candidates"] = weights
                     from deephelp_app.application.corpus import digest
 
                     selected["selection_digest"] = digest(selected)
@@ -330,9 +341,23 @@ def main() -> int:
     parser.add_argument("--selection", default=".local/m09/selection.json")
     parser.add_argument("--output", default=".local/m09/report.json")
     parser.add_argument("--dataset-version", default="m09-ab-v1")
+    parser.add_argument("--namespace", default="m09_synthetic")
+    parser.add_argument(
+        "--registry-version", choices=["complaints-v1", "complaints-v2"], default="complaints-v1"
+    )
+    parser.add_argument("--corpus")
+    parser.add_argument("--dev-queries")
+    parser.add_argument("--test-queries")
     parser.add_argument("--query", default="优惠券不能使用，订单00123457")
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--dense-weight", type=float, default=0.5)
+    parser.add_argument(
+        "--tune-weight",
+        type=float,
+        choices=[0.25, 0.5, 0.75],
+        action="append",
+        help="Freeze dev candidate weights explicitly; default searches all three",
+    )
     parser.add_argument("--timeout", type=float, default=1800)
     parser.add_argument("--doc-id")
     parser.add_argument("--allow-delete-synthetic", action="store_true")

@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from .common import DTO, Identifier, Money, PositiveCount, VerifiedIdentity
+from .common import DTO, Count, Identifier, Money, PositiveCount, VerifiedIdentity
 
 
 class BusinessOrderInput(DTO):
@@ -77,7 +77,22 @@ class BusinessActivityInput(DTO):
         return self
 
 
-BusinessInput = BusinessOrderInput | BusinessCouponInput | BusinessActivityInput
+class BusinessEligibilityInput(DTO):
+    """当前主体的活动资格记录；缺失名额为未知，不等于零。
+
+    rules由关联活动提供；维护事务必须确认同主体活动存在。
+    资格与名额是两种事实，eligible且remaining_slots=0也不能承诺报名成功。
+    """
+
+    activity_id: Identifier
+    eligibility: Literal["eligible", "ineligible", "unknown"]
+    remaining_slots: Count | None = None
+    reason: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+
+
+BusinessInput = (
+    BusinessOrderInput | BusinessCouponInput | BusinessActivityInput | BusinessEligibilityInput
+)
 
 
 class BusinessRecord(DTO):

@@ -18,7 +18,7 @@ from deephelp_app.domain.models.business import (
 )
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 
-Kind = Literal["orders", "coupons", "activities"]
+Kind = Literal["orders", "coupons", "activities", "eligibilities"]
 
 
 def business_router(
@@ -64,7 +64,12 @@ def business_router(
 
     @router.put("/{kind}/{record_id}", response_model=BusinessRecord)
     async def updating(kind: Kind, record_id: str, body: BusinessUpdate, request: Request) -> Any:
-        id_field = {"orders": "order_id", "coupons": "coupon_id", "activities": "activity_id"}[kind]
+        id_field = {
+            "orders": "order_id",
+            "coupons": "coupon_id",
+            "activities": "activity_id",
+            "eligibilities": "activity_id",
+        }[kind]
         if getattr(body.data, id_field, None) != record_id:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Path and business ID differ")
         return await client.request(

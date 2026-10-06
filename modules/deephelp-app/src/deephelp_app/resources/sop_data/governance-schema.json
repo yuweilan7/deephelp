@@ -328,7 +328,8 @@
         "ORDER_QUERY",
         "DISCOUNT_MISSING",
         "COUPON_UNUSABLE",
-        "ORDER_ACTIVITY_QUERY"
+        "ORDER_ACTIVITY_QUERY",
+        "ACTIVITY_ELIGIBILITY_QUERY"
       ],
       "title": "IntentCode",
       "type": "string"
@@ -392,7 +393,8 @@
     "ToolName": {
       "enum": [
         "get_order_benefits",
-        "check_coupon"
+        "check_coupon",
+        "check_activity_eligibility"
       ],
       "title": "ToolName",
       "type": "string"
@@ -432,11 +434,20 @@
       "title": "Prompt",
       "type": "string"
     },
+    "catalog_version": {
+      "default": "complaints-v1",
+      "enum": [
+        "complaints-v1",
+        "complaints-v2"
+      ],
+      "title": "Catalog Version",
+      "type": "string"
+    },
     "definitions": {
       "items": {
         "$ref": "#/$defs/GovernedSOP"
       },
-      "maxItems": 3,
+      "maxItems": 6,
       "minItems": 3,
       "title": "Definitions",
       "type": "array"

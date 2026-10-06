@@ -434,6 +434,10 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 py -3.14 -m uv run --locked python -m deephelp_app.bootstrap.commands.sop_cli publish --source modules/deephelp-app/src/deephelp_app/resources/sop_data/business-registry-v2.json --directory .local/m14/business-registry
 ```
 
+## M42 活动资格候选
+
+M42活动资格采用显式`complaints-v2`。使用`sop_cli publish --source modules/deephelp-app/src/deephelp_app/resources/sop_data/business-registry-v3.json --directory NEW_SOP_DIRECTORY`保存独立快照；应用serve传同目录`--sop-directory`、四叶子语料、新pointer及绑定新scope/corpus/dev的`--cascade-policy`，未标定分数接管时gates明确为空，不能沿用旧三叶子阈值。Business服务显式`--catalog-version complaints-v2`。原业务与检索消费者的目录必须一致，否则启动拒绝。新leaf需要activity_id，回复沿实际PG资格/名额/规则，不提供报名动作；学习入口见[09章](../../docs/learning/09-agent-basics.md#版本目录与活动资格m42)。这组显式参数不自动切正式channel，现行安装看STATE。
+
 ## M16 事实回复与三类调试
 
 运行同一只读主链，在页面查看意图、多轮和流程三个视图。金额、编号、业务结论由事实模板输出；`--reply-polish`可选，模型只选固定语气，新增事实/坏结构/失败直接回退。M14的计划回复明确尚未申请/批准/执行。机制见[M16规格](../../docs/MODULES/M16_OUTPUT_DEBUG.md)，接口见[契约](../../docs/CONTRACTS.md#m16-事实回复与调试契约)。

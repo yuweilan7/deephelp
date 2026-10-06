@@ -403,3 +403,10 @@ M41组合使用SkillStep精确子ID/version/hash与输入来源映射，SkillCom
 `/learning/skills`沿原catalog owner/BrowserAuth；GET详情和`/{digest}/diff`0模型。POST `/candidates`只收base_digest、已知skill_id、新version、goal、confirmed=true；依赖组合形成新版本。POST `/{digest}/review`收正revision、approve、reason、confirmed=true，短文件writer内CAS审核并保存不可变原件；不切业务active。客户端不可传路径/工具URL/代码。原评测JobInput.skill_candidate仅validate/prepare可用，必须选择已审核候选；prepare只接受同资产/候选的最新成功验证。浏览器试运行走原converse，新session/message产生实际行为，未知启动先核对pending，不自动重发。
 
 ReleaseManifest新增可选skill_registry/skill_review_path，空值在release_hash中省略以保持历史清单身份；有Skill时prompts保留keys `skills:registry`/`skills:review`，files绑定审核原件。内容报告skills_digest/skills_review_digest必须精确匹配审核与快照；模型/工具观察沿原runtime-v2/PG回执。生产只用清单快照；旧无Skill清单不启用默认Skill，管理明确501。运行时目标说明进入受信机器Skill系统消息，原工具schema/参数/事实许可不变；选择仍为确定性匹配。
+## M42 版本目录与资格事实
+
+complaints-v1保持原三叶子；complaints-v2增加ACTIVITY_ELIGIBILITY_QUERY，父ORDER_QUERY、必需槽位ACTIVITY_ID、只读CHECK_ACTIVITY_ELIGIBILITY。目录须精确包含该版本code集合，拒绝重复/错父级/槽位/未知版本；SOPRegistry.catalog_version明确绑定完整可执行叶子和对应schema_signature，拒绝漏SOP及跨意图工具扩权。原v1序列化省略新增默认字段，旧SOP/corpus/参数hash与discovery保持；scope/Question/IntentDecision/CorpusRecord不能把新叶子塞进旧版本。
+
+新ToolParameters只有activity_id；身份/URL/order_id/coupon_id或额外键在双端拒绝。旧工具继续要求order_id、保持coupon_id原语义及原两键hash。Business MCP按显式catalog_version发现工具，默认complaints-v1；新应用和服务目录必须一致。SOPPlan仍只允许原ORDER_ID写提案，资格查询不创建报名/扣减/退款动作。
+
+BusinessEligibilityInput包含activity_id、eligibility=eligible/ineligible/unknown、remaining_slots非负整数或null、reason非空；新增dh_m20_eligibilities以tenant/user/activity为键并引用同主体活动。POST幂等创建、PUT expected_version CAS与原维护鉴权相同。查询在原REPEATABLE READ事务中读活动/资格并保存不可变evidence；缺活动NOT_FOUND，缺资格为unknown，活动有效期/停用覆盖资格。六个TEXT事实activity_id/activity_label/activity_rules/eligibility/remaining_slots/eligibility_reason全部精确绑定原call、locator与content_hash；名额文本unknown代表未维护，0代表已满。只读结果不保证报名成功；原receipt/历史重读0调用，资料更新不改旧证据。

@@ -16,7 +16,9 @@ py -3.14 -m uv run --locked python -m deephelp_services.business.api migrate --c
 py -3.14 -m uv run --locked python -m deephelp_services.business.api serve --credentials .local/m20/service.json --port 8011
 ```
 
-migrate增量创建`dh_m20_orders/coupons/activities/order_activities/evidence`，不重建数据库、不导入样例；重复迁移安全。配置继续来自现有infra连接与本机秘密，独立安装时可用`--root`指定这些配置的根目录。
+migrate增量创建`dh_m20_orders/coupons/activities/order_activities/evidence`及M42资格表，不重建数据库、不导入样例；重复迁移安全。配置继续来自现有infra连接与本机秘密，独立安装时可用`--root`指定这些配置的根目录。
+
+M42新目录显式启动`serve --catalog-version complaints-v2`，配合应用的同目录SOP快照和新索引。默认complaints-v1仍只发现原两个工具，新服务v2增加只读check_activity_eligibility；没有模型维护/报名工具。`POST/GET/PUT /business/eligibilities`沿原维护API，记录含activity_id/eligibility/remaining_slots/reason；先维护同主体活动。remaining_slots=null表示未知，0表示已满，expected_version负责竞争保存。旧安装/问题和原恢复资产保持，实际安装范围看STATE。
 
 另一个终端启动应用：
 

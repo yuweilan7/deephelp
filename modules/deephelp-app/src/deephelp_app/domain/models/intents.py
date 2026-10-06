@@ -1,4 +1,4 @@
-"""三类可执行业务意图、所需槽位与目录条目。
+"""版本目录中的业务意图、所需槽位与目录条目。
 
 RuleMatch只是当前原文中的候选，不授权执行工具；required_slots是代码统一的业务契约。
 目录层级与是否有SOP须一致，未注册标签不能变成新的业务能力。
@@ -24,9 +24,12 @@ class IntentCode(StrEnum):
     DISCOUNT_MISSING = "DISCOUNT_MISSING"
     COUPON_UNUSABLE = "COUPON_UNUSABLE"
     ORDER_ACTIVITY_QUERY = "ORDER_ACTIVITY_QUERY"
+    ACTIVITY_ELIGIBILITY_QUERY = "ACTIVITY_ELIGIBILITY_QUERY"
 
     @property
     def required_slots(self) -> tuple[EntityName, ...]:
+        if self == IntentCode.ACTIVITY_ELIGIBILITY_QUERY:
+            return (EntityName.ACTIVITY_ID,)
         if self == IntentCode.COUPON_UNUSABLE:
             return (EntityName.ORDER_ID, EntityName.COUPON_ID)
         if self in {IntentCode.DISCOUNT_MISSING, IntentCode.ORDER_ACTIVITY_QUERY}:
@@ -65,7 +68,7 @@ class IntentDefinition(DTO):
     is_actionable: bool
     required_slots: tuple[EntityName, ...] = ()
     sop_id: Identifier | None = None
-    version: Literal["complaints-v1"] = REGISTRY_VERSION
+    version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
 
     @model_validator(mode="after")
     def current_catalog(self) -> IntentDefinition:

@@ -1,0 +1,42 @@
+[
+  {
+    "query_id": "m42-v2-dev-0",
+    "text": "我还没参加活动，可以报名吗，还有多少位置",
+    "category": "adjacent",
+    "gold": "ACTIVITY_ELIGIBILITY_QUERY",
+    "source_group": "m42-dev-source-0",
+    "variant_group": "m42-dev-variant-0"
+  },
+  {
+    "query_id": "m42-v2-dev-1",
+    "text": "已付钱的订单承诺减免没有体现",
+    "category": "adjacent",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m42-dev-source-1",
+    "variant_group": "m42-dev-variant-1"
+  },
+  {
+    "query_id": "m42-v2-dev-2",
+    "text": "订单里输入优惠券被拒绝",
+    "category": "adjacent",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m42-dev-source-2",
+    "variant_group": "m42-dev-variant-2"
+  },
+  {
+    "query_id": "m42-v2-dev-3",
+    "text": "请列出这个已成单订单参与过的活动",
+    "category": "adjacent",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m42-dev-source-3",
+    "variant_group": "m42-dev-variant-3"
+  },
+  {
+    "query_id": "m42-v2-dev-4",
+    "text": "请查物流到哪里了",
+    "category": "unknown",
+    "gold": null,
+    "source_group": "m42-dev-source-4",
+    "variant_group": "m42-dev-variant-4"
+  }
+]

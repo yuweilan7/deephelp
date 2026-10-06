@@ -110,13 +110,8 @@ class MilvusHybridStore(MilvusDenseStore):
             lambda: self.client.has_collection(scope.collection_name, timeout=None, retry_times=0)
         )
         if not exists:
-            collections = await self._rpc(
-                lambda: self.client.list_collections(timeout=None, retry_times=0)
-            )
-            if sum(c.startswith("m09_intent_") for c in collections) >= 2:
-                raise AppError(
-                    ErrorCode.BUDGET_EXHAUSTED, "Two Hybrid versions allowed; maintenance required"
-                )
+            # 与Dense同一导入协议：分配前Importer实测容量，不能用全局集合数
+            # 逼迫删除旧发布/审批引用。独立目录由scope/hash隔离，容量仍须准入。
             schema = MilvusClient.create_schema(
                 auto_id=False,
                 enable_dynamic_field=False,

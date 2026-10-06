@@ -26,7 +26,7 @@ from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
 from deephelp_app.domain.models.conversation import RequestEnvelope
 from deephelp_app.domain.models.entities import Entity, EntityConflict, EntityName, EntitySource
-from deephelp_app.domain.models.intents import RuleMatch
+from deephelp_app.domain.models.intents import IntentCode, RuleMatch
 from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
 from deephelp_app.domain.models.text import (
     DemandType,
@@ -372,12 +372,35 @@ RULES = (
 )
 
 
-def match_rules(request: RequestEnvelope) -> list[RuleMatch]:
+def match_rules(
+    request: RequestEnvelope, catalog_version: str = "complaints-v1"
+) -> list[RuleMatch]:
     from deephelp_app.domain.models.intents import IntentCode
+    from deephelp_app.domain.registry import complaint_registry
 
     text = width_normalize(request.raw_text)
     matches = []
-    for rule in RULES:
+    allowed = complaint_registry(catalog_version).actionable_codes
+    extra = (
+        (
+            RuleDefinition(
+                "activity_eligibility",
+                "ACTIVITY_ELIGIBILITY_QUERY",
+                40,
+                r"活动.{0,28}(?:资格|名额|能否参加|可以参加|能参加)|(?:资格|名额).{0,16}活动",
+                r"不是.{0,12}(?:资格|名额)|已经参加|已参加",
+            ),
+        )
+        if IntentCode.ACTIVITY_ELIGIBILITY_QUERY in allowed
+        else ()
+    )
+    for rule in (*extra, *RULES):
+        if (
+            rule.candidate_code == "ORDER_ACTIVITY_QUERY"
+            and extra
+            and re.search(r"资格|名额|能否参加|可以参加|能参加", text)
+        ):
+            continue
         if re.search(rule.exclusions, text) or INJECTION.search(text):
             continue
         match = re.search(rule.pattern, text)
@@ -498,11 +521,13 @@ class TextEntityProcessor:
         policy: TextPolicy | None = None,
         trace: TraceSink | None = None,
         reviewed_rules: Path | None = None,
+        catalog_version: str = "complaints-v1",
     ) -> None:
         self.primary, self.strong = primary, strong
         self.policy = policy or TextPolicy()
         self.trace = trace
         self.reviewed_rules = reviewed_rules
+        self.catalog_version = catalog_version
         self.reviewed_rule_data = load_json(reviewed_rules) if reviewed_rules else None
 
     async def _emit(self, request: RequestEnvelope, event: str, **values: object) -> None:
@@ -545,6 +570,13 @@ class TextEntityProcessor:
         ]
         await asyncio.sleep(0)
         coverage_missing: set[EntityName] = set()
+        # 新资格叶子的明确缺编号句可直接澄清。所有可信编号观察都要求含数字，
+        # 原文无数字时模型也不能产生合法编号；不为这个已知缺槽再发提取请求。
+        if not re.search(r"\d", width_normalize(request.raw_text)) and any(
+            match.candidate_code == IntentCode.ACTIVITY_ELIGIBILITY_QUERY
+            for match in match_rules(request, self.catalog_version)
+        ):
+            return observations, layers, []
         # At most one primary and one strong pass, sharing the original budget.
         # 补提取先主模型、必要时强模型，两个阶段共用原预算。
         # 只处理仍缺失/未覆盖字段，但每个选定块都看完，后块出现第二个值仍须形成冲突。
@@ -698,7 +730,7 @@ class TextEntityProcessor:
                 conflicts=conflicts,
                 unresolved_fields=unresolved,
                 demand_type=demand_type(request.raw_text, bool(confirmed)),
-                rule_matches=match_rules(request)
+                rule_matches=match_rules(request, self.catalog_version)
                 + (
                     rule_matches(self.reviewed_rule_data, request)
                     if self.reviewed_rule_data
