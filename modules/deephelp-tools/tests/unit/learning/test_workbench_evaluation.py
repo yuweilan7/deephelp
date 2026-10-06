@@ -288,6 +288,8 @@ async def test_heavy_routes_reuse_budget_registry_and_original_gate(tmp_path, mo
     monkeypatch.setattr(module, "build", build)
     monkeypatch.setattr(module, "validate", validate)
     monkeypatch.setattr(module, "prepare_manifest", prepare)
+    # 本场景只证明原任务/预算/验证选择；旧资产的真实字节守卫由发布测试独立覆盖。
+    monkeypatch.setattr(module, "verify_files", lambda *args, **kwargs: {})
     assembly = SimpleNamespace(ledger=SimpleNamespace(pool=object()), sop_registry=registry)
     app = create_app(Settings(mode="test"), trace=MemoryTrace())
     app.include_router(evaluation_router(assembly, lambda r: identity, config, lambda: budget))

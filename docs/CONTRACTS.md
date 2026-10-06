@@ -440,3 +440,9 @@ complaints-v3显式六叶子，新增ORDER_CREATION_FAILED（父ORDER_QUERY，at
 原`/learning/evaluation/tasks`增加`corpus_build`与`corpus_compare`，只接受服务端冻结version_hash，compare才接受有界非空query。构建由catalog配置独立dev/test、原模型签名/检索配置和唯一重任务/预算writer决定，不能提交集合、文件路径或向量。候选集合与pointer独立于正式active/previous。原DenseImporter在模型返回后、下一await前保存pending向量/hash/usage回执，写入未知可按同PK续跑；已完成ID仍读回核对，篡改/缺失不能借恢复PASS。旧清单缺逐批回执时保持未知，不补造。
 
 比较要求正式/候选同签名、K、权重、重排配置；一次EmbeddingResult进入两个原HybridRetriever，保留向量hash、实际Embedding attempts/usage、三路原结果与各路服务耗时。未配置Rerank明确not_run/not_configured；分数不是分类概率、召回不是最终意图/事实。GET任务只读原manifest/部分观察；取消等待资源退出，重载后显式resume，完成观察不重跑模型。
+
+`POST /feedback`要求工作区revision、原candidate_id/精确candidate_revision及confirmed；只读原PG候选，corpus路线必须当前owner人工批准、明确独立于heldout。服务器派生文本/叶子/原run/来源组，进入DRAFT并保留完整反馈revision；再经作者审核后才能冻结。普通编辑移除旧反馈绑定并重回DRAFT。`GET /versions/{hash}/diff/{base}`只比较同owner/catalog不可变快照，返回added/removed/changed/unchanged及model_calls=0。
+
+原重任务增加`corpus_gate`，分类消费已完成同向量观察及当前policy，逐条保存/恢复，代码、配置和输入变化409；检索非退化、八test完整分类及未知范围均正确后才准备原assets，返回task资产ID。validate/prepare必须同corpus_version/资产，沿原六叶子业务与两未知内容验证及同SOP/Skill，prepare匹配最新同目标PASS。
+
+原assets可带`corpus_binding`：绑定作者审核、JSONL、索引/集合、合同、冻结split/selection、检索及分类门禁的精确文件hash；完整清单files/source照原合同保护。runtime独立重算必要检索/分类覆盖条件，完整报告必须phase=release且六叶子/未知八场景及事实/重投检查齐全；反馈采集、召回PASS或漏样本均不能替代。ReleaseStore提交时仍锁读原审核revision与active CAS，撤销不自动删除历史或重放业务。旧ReleaseManifest格式/hash兼容，无新可选字段改写历史身份。

@@ -5,11 +5,13 @@ from typing import Any
 
 from deephelp_app.application.corpus import read_corpus_bytes
 from deephelp_app.application.corpus_authoring import (
+    delete_record,
     empty_workspace,
     freeze_workspace,
     import_preview,
     review_records,
     stage_preview,
+    version_diff,
 )
 from deephelp_app.domain.errors import AppError
 
@@ -45,7 +47,21 @@ async def corpus_authoring_demo() -> dict[str, Any]:
         "核对合法叶子与来源",
         {"tenant_id": "course", "user_id": "reader"},
     )
+    first = freeze_workspace(reviewed, "course-v1", {"tenant_id": "course", "user_id": "reader"})
+    # 删除工作区条目不影响原快照；新版本仍需至少一条资料，这里比较审核修改。
+    revised = review_records(
+        reviewed,
+        (raw["doc_id"],),
+        True,
+        "复核来源独立性",
+        {"tenant_id": "course", "user_id": "reader"},
+    )
+    second = freeze_workspace(revised, "course-v2", {"tenant_id": "course", "user_id": "reader"})
+    removed = delete_record(reviewed, raw["doc_id"])
     return dict(
+        version_diff_changed=len(version_diff(first, second)["changed"]),
+        old_snapshot_rows=len(first["entries"]),
+        deleted_workspace_rows=len(removed["entries"]),
         frozen_version=freeze_workspace(
             reviewed, "course-v1", {"tenant_id": "course", "user_id": "reader"}
         )["version"],

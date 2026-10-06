@@ -210,6 +210,51 @@ class FeedbackStore(FeedbackReader):
             for row in rows
         ]
 
+    async def record_corpus_derivatives(
+        self, source: dict[str, Any], paths: dict[str, str]
+    ) -> None:
+        """原lineage记录作者资产，锁内核对精确审核；LearningJobs已拥有本次构建。
+
+        不领取旧三路构建任务或改其租约。撤销与本次登记串行，旧衍生文件继续保留。
+        同路径只接受同hash，确认丢失后的重试不会篡改已登记来源。
+        """
+        import json
+
+        async with self.pool.acquire() as conn:
+            await conn.begin()
+            try:
+                async with conn.cursor() as cursor:
+                    for key, expected in source["candidates"].items():
+                        await cursor.execute(
+                            "SELECT body FROM dh_m18_candidates WHERE candidate_id=%s FOR SHARE",
+                            (key,),
+                        )
+                        row = await cursor.fetchone()
+                        if row is None or json.loads(row[0]) != expected:
+                            raise ConfigurationError("Corpus derivative review changed")
+                        for path, sha in paths.items():
+                            values = (key, expected["revision"], "corpus", path, sha)
+                            await cursor.execute(
+                                "INSERT INTO dh_m18_derivatives VALUES (%s,%s,%s,%s,%s) "
+                                "ON CONFLICT DO NOTHING",
+                                values,
+                            )
+                            await cursor.execute(
+                                "SELECT artifact_sha256 FROM dh_m18_derivatives "
+                                "WHERE candidate_id=%s "
+                                "AND revision=%s AND route=%s AND artifact_path=%s",
+                                values[:4],
+                            )
+                            bound = await cursor.fetchone()
+                            if bound is None or bound[0] != sha:
+                                raise ConfigurationError(
+                                    "Corpus derivative path already binds different bytes"
+                                )
+                await conn.commit()
+            except BaseException:
+                await conn.rollback()
+                raise
+
     async def tasks(self, candidate_id: str) -> list[dict[str, Any]]:
         rows = await self.fresh_rows(
             "SELECT revision,route,state,attempts FROM dh_m18_tasks "

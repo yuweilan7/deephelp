@@ -176,3 +176,7 @@ hybrid_cli支持`--registry-version complaints-v2 --namespace NEW_NAMESPACE --co
 M44离线机制入口：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course corpus-authoring`，复用原解析/导入/审核纯核心，模型0。在线原“识别与检索”提供PG作者工作区、叶子选择、revision、明确列映射预览/逐行错误/整批确认、人工审核及导出；依赖原ledger PG及learning catalog owner。[10章](../../docs/learning/10-retrieval.md#语料作者导入与审核m44)解释字段、Java类比与响应未知对账，不把草稿导出当正式发布。
 
 审核后在同页明确冻结候选，构建/比较沿`/learning/evaluation/tasks`的唯一重任务，取消与恢复复用原累计writer。learning catalog的`corpus_splits`须同时配置dev/test两条受控路径；构建先冻结再调用模型，候选结果放task_root/corpus/version_hash。配置只读入口不自动构建；候选pointer不是正式release channel，完整发布另验。默认Rerank关闭保持未运行，原三路各自保留分数/文本/来源和实际耗时。
+
+M44发布仍在同页：原反馈采集/人工批准corpus→导入精确revision为DRAFT→作者人审/新冻结→corpus_build→corpus_gate→原validate/prepare/publish。learning catalog额外配置`corpus_baseline`（已有assets键）及`corpus_sop_review`/`corpus_skill_review`（当前已批准原件）；不是客户端路径。corpus_gate借当前Chat/policy消费已执行检索观察，不再Embedding，返回task资产ID供原validate/prepare，并记录原反馈lineage。代码/配置变化拒绝续用旧分类门禁；只读版本diff、任务和报告0模型。
+
+实际独立反馈来源的有限入口为原catalog_probe `--phase corpus-feedback`，auth第一条必须为原`synthetic-tenant/synthetic-user-a`，原Conversation消息channel固定m18-collect；新合成订单事实及新固定措辞通过原PG/HTTP MCP，采集报告不能替代release阶段八场景。完整发布仍选择`--phase release`及六叶子/两未知范围，corpus_binding进入原assets/files与ReleaseManifest，旧资产/hash不改。详细学习/错误/练习见[10章](../../docs/learning/10-retrieval.md#原反馈新版本与完整发布)。

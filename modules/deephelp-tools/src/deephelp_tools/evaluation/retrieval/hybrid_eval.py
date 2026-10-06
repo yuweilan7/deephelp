@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from deephelp_app.application.cascade import CascadePolicy
 from deephelp_app.application.corpus import CorpusPreview, digest, read_corpus
 from deephelp_app.application.hybrid import ANALYZER
 from deephelp_app.application.intent import IntentService
@@ -156,7 +157,12 @@ def validate_selection(
 
 
 async def classify(
-    q: RetrievalQuery, result: DenseResult, model: ChatPort, budget: ExecutionBudget
+    q: RetrievalQuery,
+    result: DenseResult,
+    model: ChatPort,
+    budget: ExecutionBudget,
+    *,
+    policy: CascadePolicy | None = None,
 ) -> dict[str, object]:
     class RecordedRetriever:
         async def retrieve(
@@ -174,9 +180,9 @@ async def classify(
         demand_type=DemandType.MAIN,
         layers=[ExtractionLayerStat(layer="regex", elapsed_ms=0, accepted=0)],
     )
-    decision = await IntentService(model, RecordedRetriever(), result.scope).recognize(
-        prepared, budget
-    )
+    decision = await IntentService(
+        model, RecordedRetriever(), result.scope, policy=policy
+    ).recognize(prepared, budget)
     code = decision.final_code.value if decision.final_code else None
     return {
         "final_code": code,

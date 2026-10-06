@@ -14,6 +14,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
+from deephelp_app.adapters.releases.corpus_binding import corpus_binding, require_content
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.adapters.releases.sop_drafts import read_sop_review
 from deephelp_app.application.collaboration import policy_release_binding
@@ -46,6 +47,9 @@ def prepare_manifest(
     catalog = catalog_binding(data, registry.catalog_version)
     validation_path = validation_path or assets.parent / "validation.json"
     validation = read_data(validation_path)
+    authored = corpus_binding(data)
+    if authored is not None:
+        require_content(validation, authored)
     if validation.get("status") != "PASS" or validation.get("assets_digest") != digest(data):
         raise ConfigurationError("Complete release requires this asset's successful regression")
     if catalog and validation.get("catalog_binding_digest") != digest(catalog):

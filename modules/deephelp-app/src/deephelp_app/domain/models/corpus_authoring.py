@@ -45,3 +45,10 @@ class CorpusFreeze(DTO):
     revision: Revision
     version: Identifier
     confirmed: Literal[True]
+
+
+class CorpusFeedback(DTO):
+    revision: Revision
+    candidate_id: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    candidate_revision: Revision
+    confirmed: Literal[True]

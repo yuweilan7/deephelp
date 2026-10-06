@@ -33,13 +33,38 @@ type Comparison = {
 const action = useAction(),
   versions = ref<Version[]>([]),
   selected = ref("");
+const base = ref(""),
+  diff = ref<unknown>(null),
+  feedbackId = ref(""),
+  feedbackRevision = ref(0),
+  assetId = ref(""),
+  releaseHash = ref(""),
+  releaseState = ref<unknown>(null);
 const name = ref(""),
   confirmed = ref(false),
   snapshot = ref<unknown>(null);
 const query = ref("优惠券满足门槛却无法抵扣"),
   taskId = ref(""),
   task = ref<
-    (Task & { result?: Comparison; corpus_evidence?: unknown }) | null
+    | (Task & {
+        result?: Comparison & {
+          asset_id?: string;
+          release_hash?: string;
+          metric_changes?: {
+            split: string;
+            route: string;
+            metric: string;
+            published: number;
+            candidate: number;
+            delta: number;
+            result: string;
+          }[];
+          classification_accuracy?: unknown;
+          unverified?: string[];
+        };
+        corpus_evidence?: unknown;
+      })
+    | null
   >(null);
 async function load() {
   versions.value = (
@@ -62,22 +87,66 @@ async function readTask() {
   task.value = await api.request(
     `/learning/evaluation/tasks/${encodeURIComponent(taskId.value)}`,
   );
+  if (task.value?.result?.asset_id) assetId.value = task.value.result.asset_id;
+  if (task.value?.result?.release_hash)
+    releaseHash.value = task.value.result.release_hash;
 }
 async function readSnapshot() {
   snapshot.value = await api.request(
     "/learning/corpus/versions/" + selected.value,
   );
 }
-async function start(mode: "corpus_build" | "corpus_compare") {
+async function start(
+  mode:
+    | "corpus_build"
+    | "corpus_compare"
+    | "corpus_gate"
+    | "validate"
+    | "prepare",
+) {
   const row = await api.request<Task>("/learning/evaluation/tasks", "POST", {
     action: mode,
     corpus_version: selected.value,
     query: mode === "corpus_compare" ? query.value : null,
+    asset_id: ["validate", "prepare"].includes(mode) ? assetId.value : null,
     confirmed: true,
   });
   taskId.value = row.id;
   confirmed.value = false;
   await readTask();
+}
+async function readDiff() {
+  diff.value = await api.request(
+    `/learning/corpus/versions/${selected.value}/diff/${base.value}`,
+  );
+}
+async function importFeedback() {
+  const row = await api.request<{ revision: number }>("/learning/corpus");
+  snapshot.value = await api.request("/learning/corpus/feedback", "POST", {
+    revision: row.revision,
+    candidate_id: feedbackId.value,
+    candidate_revision: feedbackRevision.value,
+    confirmed: true,
+  });
+  confirmed.value = false;
+}
+async function readRelease() {
+  releaseState.value = await api.request(
+    `/learning/evaluation/releases/${releaseHash.value}`,
+  );
+}
+async function publish() {
+  const catalog = await api.request<{ pointer: { revision: number } }>(
+    "/learning/evaluation",
+  );
+  await api.request("/learning/evaluation/release", "POST", {
+    action: "publish",
+    target: releaseHash.value,
+    revision: catalog.pointer.revision,
+    confirmed: true,
+  });
+  confirmed.value = false;
+  await readRelease();
 }
 async function control(op: "cancel" | "resume") {
   await api.request(
@@ -112,6 +181,26 @@ async function control(op: "cancel" | "resume") {
       冻结已审核语料
     </button>
     <StateNotice :error="action.error.value" :loading="action.busy.value" />
+    <p>
+      在原评测与反馈页面采集已结束 run，人工选择 corpus
+      标签并确认与盲测独立。下面仅导入该精确审核 revision
+      为草稿；还需在语料作者入口审核，随后冻结。
+    </p>
+    <label for="corpus-feedback">已人审反馈候选 ID</label
+    ><input id="corpus-feedback" v-model="feedbackId" />
+    <label for="corpus-feedback-revision">反馈审核 revision</label
+    ><input
+      id="corpus-feedback-revision"
+      v-model.number="feedbackRevision"
+      type="number"
+      min="0"
+    />
+    <button
+      :disabled="!confirmed || !feedbackId || action.busy.value"
+      @click="action.run(importFeedback)"
+    >
+      导入原反馈为新草稿
+    </button>
     <label for="corpus-version">不可变候选版本</label>
     <select id="corpus-version" v-model="selected" @change="snapshot = null">
       <option
@@ -133,6 +222,23 @@ async function control(op: "cancel" | "resume") {
       title="冻结记录、split、来源 hash 与人工审核"
       :value="snapshot"
     />
+    <label for="corpus-diff-base">版本差异的基线</label>
+    <select id="corpus-diff-base" v-model="base">
+      <option
+        v-for="v in versions"
+        :key="v.version_hash"
+        :value="v.version_hash"
+      >
+        {{ v.version }}
+      </option>
+    </select>
+    <button
+      :disabled="!selected || !base || action.busy.value"
+      @click="action.run(readDiff)"
+    >
+      读取新增、修改、删除与原审核差异
+    </button>
+    <RawDetails v-if="diff" title="不可变版本差异（零模型）" :value="diff" />
     <p>
       构建只写候选专用集合和 pointer。正式 active / previous
       通过完整发布另行切换。独立 dev / test
@@ -153,6 +259,53 @@ async function control(op: "cancel" | "resume") {
     >
       执行同向量检索对照
     </button>
+    <p>
+      最终分类使用已完成的同向量观察和原级联策略；冻结 test
+      包含合法叶子及未知范围。检索退化、分类错误或审核撤销都会阻止准备。完整业务内容仍须原发布验收。
+    </p>
+    <button
+      :disabled="!selected || !confirmed || action.busy.value"
+      @click="action.run(() => start('corpus_gate'))"
+    >
+      执行最终分类与退化门禁
+    </button>
+    <label for="corpus-assets">已通过分类门禁的资产 ID</label
+    ><input id="corpus-assets" v-model="assetId" />
+    <button
+      :disabled="!assetId || !confirmed || action.busy.value"
+      @click="action.run(() => start('validate'))"
+    >
+      执行六叶子业务与未知范围内容验收
+    </button>
+    <button
+      :disabled="!assetId || !confirmed || action.busy.value"
+      @click="action.run(() => start('prepare'))"
+    >
+      准备原完整发布清单
+    </button>
+    <label for="corpus-release">完整发布 hash</label
+    ><input id="corpus-release" v-model="releaseHash" />
+    <button
+      :disabled="!releaseHash || action.busy.value"
+      @click="action.run(readRelease)"
+    >
+      核对完整发布守卫
+    </button>
+    <button
+      :disabled="!releaseHash || !confirmed || action.busy.value"
+      @click="action.run(publish)"
+    >
+      通过原 CAS 切换完整发布
+    </button>
+    <p>
+      切换后按原部署协议安装匹配字节并重启；当前进程仍固定其启动版本。旧
+      run、审批与历史语料保持原版本。
+    </p>
+    <RawDetails
+      v-if="releaseState"
+      title="完整清单、审核与真实发布状态"
+      :value="releaseState"
+    />
     <label for="corpus-task">原重任务 ID（重载后可继续读取）</label
     ><input id="corpus-task" v-model="taskId" />
     <button
@@ -176,6 +329,35 @@ async function control(op: "cancel" | "resume") {
     <p v-if="task">
       {{ task.state }} · attempt {{ task.attempt }} ·
       {{ task.error || task.result?.evidence_status || "等待实际结果" }}
+    </p>
+    <table v-if="task?.result?.metric_changes">
+      <thead>
+        <tr>
+          <th>split / 路线 / 指标</th>
+          <th>正式</th>
+          <th>候选</th>
+          <th>差值 / 结果</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="row in task.result.metric_changes"
+          :key="`${row.split}/${row.route}/${row.metric}`"
+        >
+          <td>{{ row.split }} / {{ row.route }} / {{ row.metric }}</td>
+          <td>{{ row.published }}</td>
+          <td>{{ row.candidate }}</td>
+          <td>{{ row.delta }} / {{ row.result }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <RawDetails
+      v-if="task?.result?.classification_accuracy"
+      title="同条件最终分类正确率"
+      :value="task.result.classification_accuracy"
+    />
+    <p v-if="task?.result?.unverified">
+      未验范围：{{ task.result.unverified.join("、") }}
     </p>
     <template v-if="task?.result?.results">
       <p>

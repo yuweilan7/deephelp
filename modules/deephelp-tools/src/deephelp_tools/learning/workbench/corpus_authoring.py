@@ -15,20 +15,24 @@ from fastapi import APIRouter, Query, Request
 from pydantic import Field
 
 from deephelp_app.adapters.persistence.corpus_workspaces import PostgresCorpusWorkspaces
+from deephelp_app.adapters.releases.feedback_store import FeedbackReader
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.corpus import read_corpus_bytes
 from deephelp_app.application.corpus_authoring import (
     corpus_bytes,
     delete_record,
     edit_record,
+    import_feedback,
     import_preview,
     review_records,
     stage_preview,
+    version_diff,
 )
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import DTO, ErrorCode, VerifiedIdentity
 from deephelp_app.domain.models.corpus_authoring import (
     CorpusEdit,
+    CorpusFeedback,
     CorpusFreeze,
     CorpusImport,
     CorpusReview,
@@ -196,6 +200,32 @@ def corpus_authoring_router(
         scoped(request)
         value: dict[str, Any] = await repository.freeze(owner, catalog, body.revision, body.version)
         return value
+
+    @router.post("/feedback")
+    async def from_feedback(body: CorpusFeedback, request: Request) -> dict[str, Any]:
+        scoped(request)
+        if pool is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Original feedback requires PostgreSQL", 501)
+        candidate = await FeedbackReader(pool).get(body.candidate_id)
+        if candidate.revision != body.candidate_revision:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Feedback revision changed", 409)
+        review = candidate.reviews.get("corpus")
+        if review is None or review.reviewer != f"{owner.tenant_id}/{owner.user_id}":
+            raise AppError(
+                ErrorCode.NOT_FOUND, "Feedback approval belongs to another reviewer", 404
+            )
+        return view(
+            await repository.change(
+                owner, catalog, body.revision, lambda row: import_feedback(row, candidate)
+            )
+        )
+
+    @router.get("/versions/{identity}/diff/{base}")
+    async def differences(identity: str, base: str, request: Request) -> dict[str, Any]:
+        scoped(request)
+        before = await repository.version(owner, catalog, base)
+        after = await repository.version(owner, catalog, identity)
+        return version_diff(before, after)
 
     @router.get("/versions")
     async def versions(request: Request) -> dict[str, Any]:

@@ -15,6 +15,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
+from deephelp_app.adapters.releases.corpus_binding import corpus_binding, require_content
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.adapters.releases.sop_drafts import read_sop_review
@@ -54,6 +55,11 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     binding_catalog = catalog_binding(data, registry.catalog_version)
     package = PACKAGE
     validation = read_data(Path(manifest.validation_path))
+    authored = corpus_binding(data)
+    if authored is not None:
+        require_content(validation, authored)
+    if authored is None and validation.get("corpus_binding_digest"):
+        raise ConfigurationError("Validated corpus authoring binding is missing")
     if dense.get("selection", {}).get("format") == "m31-dev-selection-v1":
         pointer = resolve_artifact(data["dense_pointer"])
         corpus = pointer.parent / "corpus.jsonl"

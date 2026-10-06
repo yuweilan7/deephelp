@@ -23,6 +23,7 @@ from deephelp_app.application.corpus import (
     validate_records,
 )
 from deephelp_app.domain.errors import AppError
+from deephelp_app.domain.feedback import FeedbackCandidate
 from deephelp_app.domain.models.common import ErrorCode
 from deephelp_app.domain.models.retrieval import CorpusRecord
 
@@ -261,3 +262,73 @@ def verify_snapshot(snapshot: dict[str, Any]) -> None:
     )
     if snapshot != expected:
         raise AppError(ErrorCode.VERSION_CONFLICT, "Frozen corpus review hash differs", 409)
+
+
+def feedback_record(candidate: FeedbackCandidate, catalog: str) -> CorpusRecord:
+    """只消费原run的人审corpus路线，文本/标签/来源均来自该精确revision。
+
+    独立性是人工声明加数据集泄漏守卫；预测正确或高置信不能自动成为金标。
+    """
+    review = candidate.reviews.get("corpus")
+    if (
+        review is None
+        or review.state != "approved"
+        or review.method != "human"
+        or not review.independent_from_heldout
+        or review.label is None
+    ):
+        raise AppError(
+            ErrorCode.VERSION_CONFLICT, "Feedback needs independent human corpus approval", 409
+        )
+    return CorpusRecord.model_validate(
+        dict(
+            doc_id="FB-" + candidate.candidate_id[:32],
+            content=candidate.text,
+            intent_code=review.label,
+            registry_version=catalog,
+            split="reference",
+            source_group=candidate.source_group,
+            variant_group=candidate.variant_group,
+            synthetic=candidate.synthetic,
+            metadata={
+                "feedback_candidate": candidate.candidate_id,
+                "review_revision": str(candidate.revision),
+                "original_run": candidate.run_id,
+            },
+        )
+    )
+
+
+def import_feedback(workspace: dict[str, Any], candidate: FeedbackCandidate) -> dict[str, Any]:
+    """进入DRAFT后仍需作者审核；后续修改会移除旧反馈绑定，发布再次核对原审核事实。"""
+    record = feedback_record(candidate, workspace["catalog_version"])
+    row = edit_record(
+        workspace,
+        record,
+        "reviewed original run: " + candidate.run_id,
+        create=record.doc_id not in workspace["entries"],
+    )
+    row["entries"][record.doc_id]["feedback"] = candidate.model_dump(mode="json")
+    return row
+
+
+def version_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    """以完整条目而非名称比较不可变版本；删除只属于新版本，旧快照保持。"""
+    verify_snapshot(before)
+    verify_snapshot(after)
+    if before["owner"] != after["owner"] or before["catalog_version"] != after["catalog_version"]:
+        raise AppError(ErrorCode.NOT_FOUND, "Versions belong to different workspace", 404)
+    old, new = before["entries"], after["entries"]
+    return dict(
+        before=before["version_hash"],
+        after=after["version_hash"],
+        model_calls=0,
+        added={k: new[k] for k in sorted(new.keys() - old.keys())},
+        removed={k: old[k] for k in sorted(old.keys() - new.keys())},
+        changed={
+            k: dict(before=old[k], after=new[k])
+            for k in sorted(old.keys() & new.keys())
+            if old[k] != new[k]
+        },
+        unchanged=sum(old[k] == new[k] for k in old.keys() & new.keys()),
+    )

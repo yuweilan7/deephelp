@@ -105,6 +105,17 @@ RELEASE_CASES = (
     ("unsupported-refund", "只查询退款进度，不查优惠券回退。", "HANDOFF", None, None),
 )
 
+# 新反馈样本在独立盲测之外预先声明；仍走原Conversation/PG事实，不复制测试措辞。
+CORPUS_FEEDBACK_CASES = (
+    (
+        "order-adjacent",
+        "订单{order}是不是挂了本轮促销活动关联，帮我核对这次关联。",
+        "ANSWERED",
+        None,
+        None,
+    ),
+)
+
 
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
@@ -383,6 +394,12 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
     if len(auth.rows) < 2:
         raise ConfigurationError("Catalog probe needs two distinct synthetic owners")
     token, owner = auth.rows[0]
+    if args.phase == "corpus-feedback" and (
+        owner.tenant_id != "synthetic-tenant" or owner.user_id != "synthetic-user-a"
+    ):
+        raise ConfigurationError(
+            "Original feedback collection requires its isolated synthetic owner"
+        )
     other = auth.rows[1][1]
     if owner == other:
         raise ConfigurationError("Catalog ownership counterexample needs a distinct owner")
@@ -445,6 +462,10 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
             data = verify_files(Path(args.assets))
             binding = catalog_binding(data, catalog_version)
             assert binding is not None
+            from deephelp_app.adapters.releases.corpus_binding import corpus_binding
+
+            if authored := corpus_binding(data):
+                report["corpus_binding_digest"] = digest(authored)
             if any(
                 resolve_artifact(actual) != resolve_artifact(expected)
                 for actual, expected in (
@@ -607,7 +628,9 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
             )
             async with app.router.lifespan_context(app), api_client(app, http=True) as http:
                 for name, text, expected, state, remaining in (
-                    RELEASE_CASES
+                    CORPUS_FEEDBACK_CASES
+                    if args.phase == "corpus-feedback"
+                    else RELEASE_CASES
                     if args.phase == "release"
                     else COMPLAINT_CASES
                     if args.phase == "complaints"
@@ -616,7 +639,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                     if args.cases and name not in args.cases:
                         continue
                     body = dict(
-                        channel="m42-catalog",
+                        channel="m18-collect" if args.phase == "corpus-feedback" else "m42-catalog",
                         session_id="m42-" + uuid4().hex,
                         message_id=uuid4().hex,
                         raw_text=text.format(**ids),
@@ -760,7 +783,9 @@ def main() -> int:
     )
     parser.add_argument("--live", action="store_true")
     parser.add_argument(
-        "--phase", choices=["eligibility", "complaints", "release"], default="eligibility"
+        "--phase",
+        choices=["eligibility", "complaints", "release", "corpus-feedback"],
+        default="eligibility",
     )
     parser.add_argument(
         "--assets", help="Exact immutable catalog assets for complete release content"
