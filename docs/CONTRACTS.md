@@ -1,5 +1,15 @@
 # 跨模块语义契约
 
+## M46 明确跨会话历史引用
+
+原`MemoryService.load`、活动归属窗口和Milvus identity+session过滤保持。独立`LongMemoryService`只读取同VerifiedIdentity明确允许的来源。`ConverseInput.history_memory`缺省为空；显式值含scope_revision和1–4个唯一memory_id/revision引用，绑定消息payload_hash，不能用同message_id改变历史选择。目标session授权scope含revision/enabled及最多8个其他来源session；CAS改变范围后旧选择拒绝。
+
+`POST /learning/long-memory/preserve`仅收source_session/source_question，服务端回PG核对owner、已结束非审批状态，生成确定性摘要；稳定ID绑定owner/来源/hash，重复保留返回原版本/时间，不复活撤回记录。`GET /learning/long-memory/{session}`浏览合法候选，`PUT /{session}/scope`收expected_revision/enabled/source_sessions；均沿原BrowserAuth/CSRF，不接路径、SQL、身份或模型。来源必须是同owner已保留的session，外主体及伪造来源404，CAS冲突409。空目标scope可创建在当前新会话提问之前。
+
+PG `dh_m46_memories`保存当前记忆，`dh_m46_memory_versions`保留版本，`dh_m46_scopes`保存授权；借原池，默认未选历史不迁移或读取新表。记录绑定owner、session/question/message、源版本与完整Question hash、时间/30天有效期、证据ID及记忆revision/state。来源与终态证据使用RR快照，保留提交前再锁定源问题核对。每次采用回查PG，删除/越权/已重开/版本漂移/到期/撤回拒绝，不信摘要文本或向量相似度。
+
+`ResponseEnvelope.memory_selection`仅在显式请求时记录本run的策略/授权版本/逐引用采用或拒绝原因/来源/context_bytes（上限8192），浏览候选不表示原run已采用。历史只附在当前事实回复之后，不注入Question.entities、600归属、SOP参数、审批或当前facts/evidence_refs；缺槽仍等待本次用户确认，旧终态不重开。回查不可用显示UNAVAILABLE，不当空历史，不重做业务。当前订单/金额/券状态仍由原Business MCP/PG支撑。浏览/生成/回查0模型，原重投读取保存的选择与原receipt，新增调用0。
+
 当前发布契约：`0.2.0-m02`，唯一类型见 `modules/deephelp-app/src/deephelp_app/domain/models/__init__.py`。从 M01 的 `0.1.2-m01` 升级：facts/evidence 由自由 dict/string 改为 Fact/EvidenceRef，next_action 改为枚举，新增 run_status、tool_call_ids、missing_slots；旧版本 envelope 拒收。现有 API、预算、fake 和离线消费者按新类型回归；converse 的业务执行边界见 PROJECT_STATE。
 
 本文约束接口语义，不充当实现状态或运行说明。旧阶段的MySQL/自建saver名称保留其历史契约背景，当前后端以M25/M26装配和ARCHITECTURE为准；已交付/未实现项只查PROJECT_STATE，具体源码路径见学习导航。新增消费者时增量细化，破坏已有消费者的变更需版本和影响说明；普通字段细化不必每项新增 ADR。

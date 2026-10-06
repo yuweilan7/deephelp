@@ -13,6 +13,7 @@ from deephelp_app.bootstrap.runtime.assembly import LiveAssembly
 from deephelp_tools.learning.workbench.analysis import analysis_router
 from deephelp_tools.learning.workbench.corpus_authoring import corpus_authoring_router
 from deephelp_tools.learning.workbench.evaluation import EvaluationCatalog, evaluation_router
+from deephelp_tools.learning.workbench.long_memory import long_memory_router
 from deephelp_tools.learning.workbench.protocol import learning_router
 from deephelp_tools.learning.workbench.skills import skills_router
 from deephelp_tools.learning.workbench.sop_authoring import sop_authoring_router
@@ -32,6 +33,7 @@ def install(app: FastAPI, assembly: LiveAssembly) -> None:
         )
     )
     app.include_router(analysis_router(assembly, app.state.browser_auth))
+    app.include_router(long_memory_router(app.state.browser_auth))
     if catalog := os.getenv("DEEPHELP_LEARNING_CATALOG"):
         config = EvaluationCatalog.model_validate_json(Path(catalog).read_text(encoding="utf-8"))
         app.include_router(corpus_authoring_router(assembly, app.state.browser_auth, config.owner))

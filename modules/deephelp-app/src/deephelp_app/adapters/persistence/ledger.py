@@ -37,6 +37,7 @@ def payload_hash(request: RequestEnvelope) -> str:
             "schema_version",
             "expected_question_version",
             "execution_mode",
+            "history_memory",
         },
     )
     # Preserve the hash of pre-M10 messages that did not provide a version.
@@ -45,6 +46,9 @@ def payload_hash(request: RequestEnvelope) -> str:
     # 默认单路径沿用原消息hash；显式协作不能以同message_id改变已接收的执行语义。
     if payload.get("execution_mode") == "single":
         payload.pop("execution_mode", None)
+    # 未选跨会话记忆维持原幂等hash；选择/版本改变则是不同消息语义。
+    if payload.get("history_memory") is None:
+        payload.pop("history_memory", None)
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
     ).hexdigest()

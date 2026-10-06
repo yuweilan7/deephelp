@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { workspace } from "../../composables/workspace";
-import { useRead } from "../../composables/requests";
+import { useRead, useAction } from "../../composables/requests";
+import { api } from "../../api/client";
+import type { LongMemoryCandidates } from "../../api/types";
 import type { MemoryResult } from "../../api/learning";
 import PageGuide from "../../components/PageGuide.vue";
 import RawDetails from "../../components/RawDetails.vue";
@@ -11,6 +13,78 @@ import { explanationPath, type Explanation } from "../../api/explanation";
 const session = ref(workspace.selected?.session_id || workspace.session),
   memory = useRead<MemoryResult>(),
   turns = useRead<Explanation>();
+const targetSession = ref(workspace.session),
+  sourceSession = ref(session.value),
+  sourceQuestion = ref(workspace.selected?.response.question_id || ""),
+  sourceSessions = ref(""),
+  selectedMemories = ref<string[]>([]),
+  history = useRead<LongMemoryCandidates>(),
+  action = useAction();
+async function loadHistory() {
+  selectedMemories.value = [];
+  workspace.historyMemory = null;
+  await history.load(
+    "/learning/long-memory/" + encodeURIComponent(targetSession.value),
+  );
+  sourceSessions.value =
+    history.data.value?.scope.source_sessions.join(",") || "";
+}
+async function preserveHistory() {
+  await api.request("/learning/long-memory/preserve", "POST", {
+    source_session: sourceSession.value,
+    source_question: sourceQuestion.value,
+  });
+  action.notice.value = "已保留当前合法来源摘要。允许来源后读取候选。";
+}
+async function configureHistory(enabled: boolean) {
+  const revision = history.data.value?.scope.revision;
+  if (revision === undefined) throw new Error("请先读取目标会话的授权范围。");
+  await api.request(
+    "/learning/long-memory/" +
+      encodeURIComponent(targetSession.value) +
+      "/scope",
+    "PUT",
+    {
+      expected_revision: revision,
+      enabled,
+      source_sessions: sourceSessions.value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    },
+  );
+  await loadHistory();
+}
+function chooseHistory() {
+  const data = history.data.value;
+  if (!data || targetSession.value !== workspace.session) {
+    action.error.value = "选择仅绑定当前对话会话；先在对话页切到目标会话。";
+    return;
+  }
+  const references = data.candidates
+    .filter(
+      (c) => c.memory && selectedMemories.value.includes(c.reference.memory_id),
+    )
+    .map((c) => c.reference);
+  if (references.length > 4) {
+    action.error.value = "一次最多选择4条历史。";
+    return;
+  }
+  workspace.historyMemory = references.length
+    ? {
+        session: targetSession.value,
+        use: { scope_revision: data.scope.revision, references },
+      }
+    : null;
+  action.notice.value = references.length
+    ? "下次新消息将使用所选精确版本；原消息重投保持原选择。"
+    : "已取消下次新消息的历史选择。";
+}
+watch(targetSession, () => {
+  history.clear();
+  selectedMemories.value = [];
+  workspace.historyMemory = null;
+});
 watch(
   () => workspace.selected,
   () => {
@@ -44,6 +118,89 @@ function readTurns() {
     lesson="https://github.com/yuweilan7/deephelp/blob/main/docs/learning/11-memory.md"
   />
   <div class="two-column">
+    <section class="card">
+      <h2>跨会话历史 · 明确保留与选择</h2>
+      <p>
+        摘要是派生上下文。当前订单、金额和券状态仍查询原业务事实；历史不会确认当前槽位、重开旧问题或批准旧操作。所有保留、设置和浏览为0模型。
+      </p>
+      <label>来源会话<input v-model="sourceSession" /></label>
+      <label>已结束来源问题<input v-model="sourceQuestion" /></label>
+      <el-button
+        :disabled="action.busy.value"
+        @click="action.run(preserveHistory)"
+        >保留合法来源摘要</el-button
+      >
+      <label>目标会话<input v-model="targetSession" /></label>
+      <el-button @click="loadHistory">读取授权与候选 · 0模型</el-button>
+      <label
+        >允许的来源会话（逗号分隔，最多8个）<input v-model="sourceSessions"
+      /></label>
+      <el-button
+        :disabled="action.busy.value || !history.data.value"
+        @click="action.run(() => configureHistory(true))"
+        >明确开启此来源范围</el-button
+      >
+      <el-button
+        :disabled="action.busy.value || !history.data.value"
+        @click="action.run(() => configureHistory(false))"
+        >停用跨会话使用</el-button
+      >
+      <StateNotice
+        :error="action.error.value || history.error.value"
+        :loading="action.busy.value || history.loading.value"
+      />
+      <p>{{ action.notice.value }}</p>
+      <template v-if="history.data.value">
+        <p>
+          授权版本 {{ history.data.value.scope.revision }} ·
+          {{ history.data.value.scope.enabled ? "已开启" : "未开启" }} · 候选
+          {{
+            history.data.value.candidates.length
+          }}条。候选合法不等于原run已采用。
+        </p>
+        <div
+          v-for="c in history.data.value.candidates"
+          :key="c.reference.memory_id"
+        >
+          <label v-if="c.memory"
+            ><input
+              v-model="selectedMemories"
+              type="checkbox"
+              :value="c.reference.memory_id"
+            />候选版本 {{ c.reference.revision }} · 来源
+            {{ c.memory.source_session }} / {{ c.memory.source_question }} /
+            源版本 {{ c.memory.source_version }}</label
+          >
+          <p>{{ c.reason }} · {{ c.memory?.text || "拒绝，未返回内容" }}</p>
+          <p v-if="c.memory">
+            保留时间 {{ c.memory.created_at }} · 有效至
+            {{ c.memory.expires_at }} · 原消息
+            {{ c.memory.source_messages.join(", ") }} · 证据
+            {{ c.memory.evidence_ids.join(", ") || "原问题未带工具证据" }}
+          </p>
+        </div>
+        <el-button @click="chooseHistory"
+          >将选择绑定下次当前会话新消息</el-button
+        >
+        <RawDetails :value="history.data.value" />
+      </template>
+      <template v-if="workspace.selected?.response.memory_selection">
+        <h3>所选原run的历史选择</h3>
+        <p>
+          {{ workspace.selected.response.memory_selection.status }} · 策略
+          {{ workspace.selected.response.memory_selection.strategy }} ·
+          {{ workspace.selected.response.memory_selection.context_bytes }}字节
+        </p>
+        <p
+          v-for="c in workspace.selected.response.memory_selection.decisions"
+          :key="c.reference.memory_id"
+        >
+          {{ c.status }} · {{ c.reason }} ·
+          {{ c.memory?.source_session || "无合法内容" }}
+        </p>
+        <RawDetails :value="workspace.selected.response.memory_selection" />
+      </template>
+    </section>
     <section class="card">
       <MechanismGuide mechanism="memory" />
       <form

@@ -26,6 +26,7 @@ from .common import (
 )
 from .entities import Entity, EntityConflict, EntityName
 from .intents import IntentCode
+from .long_memory import MemoryUse
 from .release import VersionManifest
 
 
@@ -40,6 +41,7 @@ class ConverseInput(DTO):
     question_hint: Identifier | None = None
     expected_question_version: PositiveCount | None = None
     execution_mode: Literal["single", "collaboration"] = "single"
+    history_memory: MemoryUse | None = None
 
     @model_validator(mode="after")
     def continuation_version(self) -> ConverseInput:

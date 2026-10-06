@@ -19,6 +19,7 @@ from deephelp_app.application.cascade import enhanced_query
 from deephelp_app.application.event_cluster.aggregation import EventAggregationService
 from deephelp_app.application.event_cluster.policy import EventLedger
 from deephelp_app.application.intent import IntentService
+from deephelp_app.application.long_memory import LongMemoryService, history_reference
 from deephelp_app.application.reply import ReplyComposer
 from deephelp_app.application.sop import SOPExecutor
 from deephelp_app.application.sop_config import SOPDefinition, load_sops
@@ -38,6 +39,7 @@ from deephelp_app.domain.models.common import (
 from deephelp_app.domain.models.conversation import Question, RequestEnvelope
 from deephelp_app.domain.models.intent_decisions import Decision, IntentDecision
 from deephelp_app.domain.models.intents import IntentCode
+from deephelp_app.domain.models.long_memory import MemoryDecision, MemorySelection
 from deephelp_app.domain.models.memory import MemoryWindow
 from deephelp_app.domain.models.release import VersionManifest
 from deephelp_app.domain.models.responses import (
@@ -81,6 +83,7 @@ class Conversation:
         events: EventAggregationService | None = None,
         reply_composer: ReplyComposer | None = None,
         approvals: ApprovalService | None = None,
+        long_memory: LongMemoryService | None = None,
     ) -> None:
         self.ledger, self.text, self.intent, self.sop, self.trace = ledger, text, intent, sop, trace
         self.versions = versions
@@ -89,6 +92,7 @@ class Conversation:
         self.events = events
         self.reply_composer = reply_composer or ReplyComposer()
         self.approvals = approvals
+        self.long_memory = long_memory or getattr(memory, "long_term", None)
         self.event_ledger = cast(EventLedger, ledger)
         if events and not getattr(ledger, "supports_continuation", False):
             raise ValueError("Automatic events require a continuation-capable ledger")
@@ -127,6 +131,8 @@ class Conversation:
 
     async def _run(self, request: RequestEnvelope, budget: ExecutionBudget) -> ResponseEnvelope:
         initial = budget.usage()
+        if request.history_memory and self.long_memory is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Cross-session memory is not configured", 501)
         annotate(
             **{
                 "deephelp.registry_version": self.versions.registry,
@@ -433,6 +439,64 @@ class Conversation:
                     request, receipt, ErrorCode.INTERNAL_ERROR, "执行未完成，请联系人工。"
                 )
             assert response is not None
+            if request.history_memory and (
+                cancelled or response.outcome not in {Outcome.ANSWERED, Outcome.CLARIFY}
+            ):
+                response = response.model_copy(
+                    update={
+                        "memory_selection": MemorySelection(
+                            target_session=request.session_id,
+                            status="CANCELLED" if cancelled else "REJECTED",
+                            decisions=tuple(
+                                MemoryDecision(
+                                    reference=r,
+                                    status="REJECTED",
+                                    reason="current_run_not_eligible",
+                                )
+                                for r in request.history_memory.references
+                            ),
+                        )
+                    }
+                )
+            if (
+                request.history_memory
+                and not cancelled
+                and response.outcome in {Outcome.ANSWERED, Outcome.CLARIFY}
+            ):
+                assert self.long_memory is not None
+                try:
+                    # 当前业务完成后才回查历史；历史永不进入归属、confirmed实体或审批路径。
+                    # 本请求只拥有有界PG读取，失败显示未知，不编造空候选或重做业务。
+                    async with asyncio.timeout(min(5, budget.remaining_seconds())):
+                        selection = await self.long_memory.select(
+                            request.identity,
+                            request.session_id,
+                            request.history_memory,
+                        )
+                except asyncio.CancelledError:
+                    cancelled = True
+                    selection = MemorySelection(
+                        target_session=request.session_id, status="CANCELLED"
+                    )
+                    response = self.error(request, receipt, ErrorCode.TIMEOUT, "执行已取消。")
+                    response = response.model_copy(
+                        update={
+                            "run_status": RunStatus.CANCELLED,
+                            "question_status": QuestionStatus.CANCELLED,
+                        }
+                    )
+                except Exception:
+                    selection = MemorySelection(
+                        target_session=request.session_id, status="UNAVAILABLE"
+                    )
+                response = response.model_copy(
+                    update={
+                        "memory_selection": selection,
+                        "reply": response.reply + history_reference(selection)
+                        if response.outcome in {Outcome.ANSWERED, Outcome.CLARIFY}
+                        else response.reply,
+                    }
+                )
             if response.error and stats.tool_call_ids and not response.tool_call_ids:
                 response = response.model_copy(
                     update={"tool_call_ids": tuple(stats.tool_call_ids), "outcome": Outcome.ERROR}

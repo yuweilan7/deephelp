@@ -13,6 +13,7 @@ from .collaboration import collaboration_demo
 from .corpus_authoring import corpus_authoring_demo
 from .evidence import evaluation_demo, observations_demo
 from .independent_quality import independent_quality_demo
+from .long_memory import long_memory_demo
 from .offline import offline_only
 from .paired_quality import paired_quality_demo
 from .quality_improvement import quality_improvement_demo
@@ -33,6 +34,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "resources": resources_demo,
     "retrieval": retrieval_demo,
     "memory": memory_demo,
+    "long-memory": long_memory_demo,
     "observations": observations_demo,
     "evaluation": evaluation_demo,
     "independent-quality": independent_quality_demo,
