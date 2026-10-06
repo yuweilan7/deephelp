@@ -57,6 +57,8 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
 
 练习：来源摘要含000031时，新消息只说“我的订单未优惠”，能直接查询000031吗？范围revision从1改为2后，旧页面携带1能否继续引用？答案：不能；缺槽仍等待当前确认，旧scope拒绝并重新读取范围/候选。历史也不等于explicit_reopen，已结束问题不自动恢复。
 
+独立业务查询会产生不同evidence_id。比较记忆开启/关闭的事实正确性时，比较名称、类型和值，再分别回查各次查询的证据；要求两个新run证据ID相同反而混淆来源。范围外UNKNOWN_INTENT/HANDOFF是合法转人工状态，仍应没有工具和事实。真实固定八场景与新进程回读入口见[工具命令](../../modules/deephelp-tools/README.md)，正式安装/重启/限定旧schema恢复结果见[M46交接](../../handoffs/M46.md#f3-生命周期精确发布与两向恢复)。
+
 ## 当前源码
 
 M46实验还执行“保留用户陈述→更正→遗忘”，预期`correction_versions=[2,3,4]`及`forget_did_not_revive=true`。用户陈述只代表用户明确提供的信息，不能成为工具金额/订单状态。对照`current_relevance`：000031的摘要遇到000032时是order_mismatch；当前没有确认订单是current_unconfirmed；意图不同、未解冲突、LOW和到期都有独立拒绝原因。业务回答仍先完成，候选浏览本身无法判断下一条消息是否相关。

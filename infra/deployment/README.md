@@ -222,3 +222,11 @@ M43实际采用37→38→39→40 CAS链并回到M43；后续操作必须读现�
 首次作者工作台与云正式实例之间只在双方writer退出后移交同一累计账本，当前writer归云端；本机保留只读移交/最终预算证据，不重新打开。质量/完整内容依赖的旧FAIL/part/成功报告链、审核、索引、不可变版本及旧run/审批/UNKNOWN继续保留。当前装配的PG池在父ReleaseRuntime lifespan启动后才可借用，学习router不能在注册阶段读取未就绪资源，也不拥有关闭该池的权利。
 
 本次最终发布/双向恢复43→44→45，最终回到M44；后续操作仍必须读现场revision。停写比较39张非系统表，只允许发布active/审计预期变化；新旧receipt、其他37张行数/摘要及模型计量不变，实际元数据RPC仍计attempts。旧安装只读兼容历史，不继续执行M44问题；恢复不回滚PG或重放副作用。
+
+## M46 跨会话记忆安装与恢复
+
+当前安装/完整hash/revision只见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，真实八场景、正式原run观测及45表恢复结果见[M46交接](../../handoffs/M46.md#f3-生命周期精确发布与两向恢复)。目标新安装`m46-long-memory-v5`，匹配旧目标`m44-corpus-v3`。恢复闭包`/srv/deephelp-modern/recovery/m46-long-memory-v5`保留old-runtime.env、old-learning-catalog.json、old-artifact-map.json、对应new文件、精确bundle与recovery.json。新绑定资产在`artifacts-m46/.local/m46`；原M44根/账本和受引用旧安装保留。未发布候选v1/v4无release/run/进程消费者，诊断提取及替代覆盖后删除，不作为恢复目标。
+
+仍用原control/switch及**目标安装**的release_cli：先control.sh stop核对四单元MainPID=0、目标预算无writer；按目标从闭包逐文件`sudo install -o ubuntu -g ubuntu -m 600`恢复runtime.env/learning-catalog.json/artifact-map.json到原config位置，重新source runtime.env。目标安装`.venv/bin/python -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`读取现场revision，再activate闭包记录的完整hash/现场expected-revision及该目标当前`$DEEPHELP_STATE_ROOT/budget.json`；最后switch.sh目标安装并有界核对真实health。命令参数结构沿本页已有恢复示例，不沿用历史revision。M44用artifacts-m44/.local/m44/budget.json，M46用artifacts-m46/.local/m46/budget.json；本机已移交副本、报告快照均不能复制回活动账本。
+
+恢复不回滚PG、不重放业务。M44原旧回执可读，对M46带history_memory/记忆版本/选择等字段的记录按严格DTO停止；回M46再读取原记录。不能为旧版删新字段、改manifest或放宽schema。跨版本接续任意RUNNING/审批不在已验范围。M46新完整manifest必须有精确memory_binding及八项内容原件；旧manifest不因新版安装自动启用历史。恢复后的原receipt/墓碑/原生观测均只读0模型，元数据核验仍计原RPC预算。

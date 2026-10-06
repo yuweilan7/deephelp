@@ -51,30 +51,31 @@
 | M42 | 三项能力/精确云安装与恢复已验；LOCAL_CLOSEOUT_BLOCKED；[交接](../handoffs/M42.md) | complaints-v3六叶子、PG维护/CAS、真实HTTP MCP/600/澄清/事实、15例候选及6例正式内容、冻结对照、同run原生观测与旧新零调用恢复通过；F2七文件/两目录及已覆盖短PLAN删除被工具拒绝 |
 | M43 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M43.md) | 可视草稿/CAS/校验、原执行器预演/取消/持久重载、不可变审核与原完整内容发布门禁；实际浏览器闭环、修改分支及相邻PG/HTTP内容、同run Langfuse、精确云安装/M42↔M43恢复通过；浏览/历史0模型，35张非发布表恢复时行数/内容摘要不变 |
 | M44 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M44.md) | PG语料草稿/CAS/导入审核、不可变冻结/独立候选索引/同向量诊断、原反馈人审回流及完整发布；正式Hybrid不退化、固定test两版本8/8分类正确、六叶子及2未知业务通过；精确三包安装/重启/M43↔M44恢复通过，37张非发布表不变。BM25诊断MRR下降，无质量提升或客户泛化结论 |
-| M45 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M45.md) | 独立AI合成48会话86消息，train/dev/holdout 8/16/24，两位AI盲标与一轮第三方裁决；dev两路均15/16。事前审核/唯一holdout原版23/24、候选24/24，提升4.17个百分点、p=1，未达5个百分点/p≤0.05，REJECTED；正式安装仍M44，未证明客户泛化 |
+| M45 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M45.md) | 独立AI合成48会话86消息，train/dev/holdout 8/16/24，两位AI盲标与一轮第三方裁决；dev两路均15/16。事前审核/唯一holdout原版23/24、候选24/24，提升4.17个百分点、p=1，未达5个百分点/p≤0.05，REJECTED；该项当时保留M44，未证明客户泛化 |
+| M46 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M46.md) | PG可追溯历史/精确选择、当前冲突/CAS更正与遗忘；八场景真实内容/原回执零调用、精确三包安装与M44两向恢复；45表中43非发布表不变，旧schema严格停下；无自动向量召回或质量提升结论 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 后续规格与实施边界
 
-2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部交付，M41三项能力已验收部署、本地清理尚有工具拒绝；M42三项能力已顺序验收部署，本地清理仍有工具拒绝。M43、M44各三个feature均已顺序验收交付，见[M44交接](../handoffs/M44.md)；M45三项已验并以拒绝候选闭环完成；M46合法历史来源/精确选择及冲突/更正/遗忘已通过内容与PG生命周期反例，正式发布继续，见[M46交接](../handoffs/M46.md)。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不启动远期能力或调度。
+2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部交付，M41三项能力已验收部署、本地清理尚有工具拒绝；M42三项能力已顺序验收部署，本地清理仍有工具拒绝。M43、M44各三个feature均已顺序验收交付，见[M44交接](../handoffs/M44.md)；M45三项已验并以拒绝候选闭环完成；M46三项已完成，合法历史来源/精确选择、冲突/更正/遗忘、真实生命周期/精确安装与M44两向恢复通过，见[M46交接](../handoffs/M46.md)。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不启动远期能力或调度。
 
 ## 当前运行与验收边界
 
-以下云事实为2026-10-06本次M44实际安装、正式PG/HTTP内容及双向恢复后的只读观察。精确安装来自干净源码a0da035f494d9ec1d021dc3932699cf628b1c711，后续交付文档不改安装字节；M43及更早安装/恢复原件保留。
+以下云事实为2026-10-06本次M46正式PG/HTTP内容、新安装重启及M44↔M46两向恢复后的观察。精确安装来自干净源码d9fb43c325e8e59dbffda40b2db705e646a6b399，后续交付文档不改安装字节；原M44及更早有效安装/恢复资料保留。
 
 | 当前运行项 | 已记录值/边界 |
 |---|---|
-| 正式云安装 | `m44-corpus-v3`；运行根`/srv/deephelp-modern`，活动业务事实库`deephelp_m25_m30_live`（PG18.6） |
-| 业务/观测 | app、Business/Retrieval MCP、合成权益四服务；Langfuse原生SDK/官方图callback，直接指标→Prometheus/Grafana |
-| 模型/检索 | 通用Chat `qwen3.8-flash`，归属/强判 `qwen3.7-flash`，原1024维Embedding签名；正式Hybrid绑定M44独立21条语料/候选集合，Rerank当前未配置 |
-| 当前channel | `m30-personal` revision45；active为M44审核语料版，previous为M43审核SOP版 |
-| 浏览器教学 | 个人免登录、原事实/13段/解释/同run观测、协作/Skill/SOP原回执；新增语料作者、导入审核、冻结/索引/diff/质量及原完整发布；浏览/历史/管理不调用模型 |
-| 仍未配置/未实现 | 当前catalog的Langfuse历史映射未配置；个人主体不接管synthetic审批；企业支付、任意RUNNING重领未实现 |
-| 旧路线 | MySQL/Collector/Tempo及旧指标/应用已停用且取消自启；原数据/冷备/配置/身份、受引用资产和旧安装保留 |
+| 正式云安装 | `m46-long-memory-v5`；运行根`/srv/deephelp-modern`，原活动PG事实库及PG18.6保持 |
+| 业务/观测 | app、Business/Retrieval MCP、合成权益四服务；同run原Langfuse/官方图callback与直接指标 |
+| 模型/检索 | 通用Chat `qwen3.8-flash`，归属/强判 `qwen3.7-flash`，原1024维Embedding；正式Hybrid复用M44独立21条语料/集合，Rerank未配置 |
+| 当前channel | `m30-personal` revision48；active为M46精确记忆版，previous为M44审核语料版 |
+| 浏览器教学 | 原事实/13段/解释/同run观测和作者入口；跨会话明确范围/精确引用、拒绝原因/版本审计及原run采用；浏览/历史0模型 |
+| 仍未配置/未实现 | 自动跨session语义召回/个人画像没有实现；历史不送模型、不填当前槽位、不扩大工具/审批许可；catalog历史映射未配置、任意RUNNING重领及企业支付未实现 |
+| 旧路线 | MySQL/Collector/Tempo与旧应用/指标已停用且取消自启；原数据/冷备/配置/受引用资产和有效旧安装保留 |
 
-当前完整发布active：`3ebb539f7ba8bce8b9907127765c02a51959f462b877118803e705bee8a08c18`；previous：`43764c2349b9b8bac3fa0c285b6432a52a6aaf69d77797181cb4f385bf2835c9`。当前安装runtime：`d31544537991e993b68b14e000bdc98785e564908f2dd463c04f48114a1eee8c`，tooling：`964f7b51be5937dc1d4fa3db27dea481e9f64e4e0715a4bc85efba921d4a3f84`。完整发布绑定M44作者/反馈精确审核、冻结语料d2bad7e3…39def、独立索引/同向量观察/分类门禁及八组业务内容原件，复用M43批准SOP和M41批准Skill。当前固定dev/test各8，正式Hybrid recall@1 5/6、recall@3 6/6、MRR 11/12，均与基线相同；两版本test最终分类各8/8。BM25 test MRR从11/12降至8/9，页面保留退化；未配置Rerank及独立客户分布未验，不宣称质量提升。
+当前完整发布active：`1acb39608adbf3686f75e0df9cf9b302a86fb2876498b9aef285312a0fe9fa52`；previous：`3ebb539f7ba8bce8b9907127765c02a51959f462b877118803e705bee8a08c18`。runtime：`ac46b075a6af4715eb5824c1b65d090e58ad4d9b691482c3365511843fd3ef6d`，tooling：`a0204cb9c460aa76091db79f1732eccbca8cd5b8f42d478a0d08e128ec6c3a72`。完整清单绑定m46-explicit-v1/m46-memory-v1策略/schema和八记忆内容场景，复用M44冻结语料/作者人审、M43批准SOP与M41批准Skill。固定16分类/15业务行实际通过；最后仅记忆发布守卫修正时，逐文件核对模型/执行/DTO/UI未变，当前守卫重新验证原件并绑定独立复核链，没有重复模型请求。正式Hybrid与固定test分类保持，BM25诊断下降仍保留，不宣称记忆质量提升或客户泛化。
 
-M44独立资产与state/task_root在`artifacts-m44/.local/m44`，单一artifact-map将原Windows根映射到`artifacts-m44`；旧M43根和有效预算继续保留。实际同一累计M44账本在已退出writer之间移交，云端保持唯一活动writer，本机副本仅为已移交/只读证据。首次m44-corpus-v2路由提前读取ReleaseRuntime资源导致启动失败，真实恢复M43（40→41→42）后修复父lifespan就绪时序；原失败与安装保持。最终m44-corpus-v3页面发布/正式启动及M43↔M44恢复实际43→44→45。39张非系统PG表仅active/发布审计变化，其余37张（含业务、作者/冻结、审批/UNKNOWN/checkpoint）行数/摘要不变，新旧回执摘要一致；重启/恢复后history及重放新增模型0，元数据RPC仍计attempts。正式新请求实际使用新dataset、原600、两HTTP MCP、PG实付/活动事实，原Langfuse同run三条generation（Embedding、qwen3.7-flash判定、qwen3.8-flash回答各一次）和order/decide/present节点通过。恢复闭包和续跑协议见[部署说明](../infra/deployment/README.md#m44-审核语料安装与恢复)与[M44交接](../handoffs/M44.md)。
+M46独立state/task_root在`artifacts-m46/.local/m46`，原Windows根映射到`artifacts-m46`。同一M46累计账本只在已关闭本机writer后移交一次，云端原应用拥有活动writer；原M44账本不覆写。正式新请求实际绑定当前manifest/记忆版本，PG当前金额/活动事实与历史参考分开；同run原Langfuse三条generation及零调用重放/读取通过。原四服务重启、M44↔M46恢复46→47→48通过，45张非系统PG表只有active/发布事件变化，其余43张含业务/作者/记忆/审批/UNKNOWN/checkpoint行数与hash不变，新旧模型用量不变。M44原记录可读，对M46新字段严格停止；回M46后原回执/墓碑/原观测可读。恢复与剩余适用边界见[部署说明](../infra/deployment/README.md#m46-跨会话记忆安装与恢复)及[M46交接](../handoffs/M46.md)。M44自身原验收/失败历史只见其[交接](../handoffs/M44.md)。
 
 独立`m31-rerank-opt-in` revision1开启版为`449ff2b23a7b8d495782429786608bea5d01978b78acbaa2ec59f935d3dcc090`；仍属旧安装，不能直接用于M35及后续安装。M31同候选dev/test与主链真实内容通过，但test总体持平且一条退化，不宣称统一收益。M36历史14/14内容、八场景、安装/重启通过；M40新增六类两模式12条内容对照与正式两源PG/HTTP内容、两任务持久读取、150节点/6 generation同run观测及旧新恢复通过。M41新增六类single/审核快照内容、正式两源及浏览器分支，116节点/3 generation同run读取；完整33张业务/官方及旧checkpoint表恢复检查只见预期发布指针/审计变化，模型0。M37原PG事实181.23/13.45、资料version3、原13段与Langfuse85节点/2 generation/1082 tokens可读，新增模型0次。完整范围见各handoff，原观测里的调用不计为本轮新增调用。
 
