@@ -1,4 +1,11 @@
-export type BusinessKind = "orders" | "coupons" | "activities" | "eligibilities";
+export type BusinessKind =
+  | "orders"
+  | "coupons"
+  | "activities"
+  | "eligibilities"
+  | "attempts"
+  | "refunds"
+  | "coupon_returns";
 export interface Money {
   amount: string;
   currency: "CNY";
@@ -13,10 +20,49 @@ export interface Field {
   options?: string[];
 }
 export const fields: Record<BusinessKind, Field[]> = {
+  attempts: [
+    { key: "attempt_id", label: "下单尝试编号" },
+    {
+      key: "status",
+      label: "尝试状态",
+      options: ["failed", "succeeded", "unknown"],
+    },
+    { key: "failure_code", label: "来源原因代码（未知填 unknown）" },
+    { key: "reason", label: "来源原因（合成维护记录）" },
+    { key: "follow_up", label: "来源后续指引（查询不会执行）" },
+  ],
+  refunds: [
+    { key: "refund_id", label: "退款编号" },
+    { key: "order_id", label: "所属订单编号" },
+    { key: "coupon_id", label: "关联优惠券编号（须属于该订单）" },
+    {
+      key: "status",
+      label: "退款事实状态",
+      options: ["pending", "completed", "failed", "unknown"],
+    },
+    { key: "reason", label: "来源退款说明" },
+  ],
+  coupon_returns: [
+    { key: "refund_id", label: "退款编号（须已维护同主体退款）" },
+    { key: "coupon_id", label: "来源回退券编号" },
+    {
+      key: "status",
+      label: "回退来源状态",
+      options: ["pending", "returned", "failed", "unknown"],
+    },
+    { key: "reason", label: "来源回退说明（关联矛盾将显示 conflict）" },
+  ],
   eligibilities: [
     { key: "activity_id", label: "所属活动编号（须已维护同主体活动）" },
-    { key: "eligibility", label: "资格状态", options: ["eligible", "ineligible", "unknown"] },
-    { key: "remaining_slots", label: "剩余名额（非负整数，unknown表示未维护）" },
+    {
+      key: "eligibility",
+      label: "资格状态",
+      options: ["eligible", "ineligible", "unknown"],
+    },
+    {
+      key: "remaining_slots",
+      label: "剩余名额（非负整数，unknown表示未维护）",
+    },
     { key: "reason", label: "资格记录依据（合成资料）" },
   ],
   orders: [
@@ -98,7 +144,9 @@ export function recordBody(kind: BusinessKind, values: Record<string, string>) {
       if (value === "unknown") data[f.key] = null;
       else {
         if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)))
-          throw new Error("剩余名额必须是可准确表示的非负整数，未维护时填写 unknown。");
+          throw new Error(
+            "剩余名额必须是可准确表示的非负整数，未维护时填写 unknown。",
+          );
         data[f.key] = Number(value);
       }
       continue;

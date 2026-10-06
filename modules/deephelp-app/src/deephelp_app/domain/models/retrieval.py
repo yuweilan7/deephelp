@@ -61,7 +61,7 @@ class CorpusRecord(DTO):
     source_group: Identifier
     variant_group: Identifier
     synthetic: Literal[True]
-    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
+    registry_version: Literal["complaints-v1", "complaints-v2", "complaints-v3"] = REGISTRY_VERSION
     label_path: tuple[Identifier, ...] | None = None
     metadata: dict[str, str] = Field(default_factory=dict, max_length=16)
 
@@ -96,7 +96,7 @@ class DenseScope(DTO):
     namespace: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,63}$")]
     dataset_version: Identifier
     signature: EmbeddingSignature
-    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
+    registry_version: Literal["complaints-v1", "complaints-v2", "complaints-v3"] = REGISTRY_VERSION
 
     @model_validator(mode="after")
     def milvus_byte_limits(self) -> DenseScope:

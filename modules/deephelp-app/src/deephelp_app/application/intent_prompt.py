@@ -37,7 +37,7 @@ def default_system(catalog_version: str = "complaints-v1") -> str:
         .joinpath(
             "intent_fallback.txt"
             if catalog_version == "complaints-v1"
-            else "intent_fallback_v2.txt"
+            else f"intent_fallback_{catalog_version.removeprefix('complaints-')}.txt"
         )
         .read_text(encoding="utf-8")
     )

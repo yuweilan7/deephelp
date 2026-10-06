@@ -18,7 +18,9 @@ from deephelp_app.domain.models.business import (
 )
 from deephelp_app.domain.models.common import ErrorCode, VerifiedIdentity
 
-Kind = Literal["orders", "coupons", "activities", "eligibilities"]
+Kind = Literal[
+    "orders", "coupons", "activities", "eligibilities", "attempts", "refunds", "coupon_returns"
+]
 
 
 def business_router(
@@ -69,6 +71,9 @@ def business_router(
             "coupons": "coupon_id",
             "activities": "activity_id",
             "eligibilities": "activity_id",
+            "attempts": "attempt_id",
+            "refunds": "refund_id",
+            "coupon_returns": "refund_id",
         }[kind]
         if getattr(body.data, id_field, None) != record_id:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Path and business ID differ")

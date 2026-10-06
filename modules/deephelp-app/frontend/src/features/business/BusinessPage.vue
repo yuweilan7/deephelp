@@ -24,7 +24,15 @@ const values = ref(editorValues("orders", null)),
   saved = ref<unknown>(null);
 const list = useRead<Page<BusinessRecord>>(),
   action = useAction();
-const labels = { orders: "订单", coupons: "优惠券", activities: "活动", eligibilities: "活动资格与名额" };
+const labels = {
+  orders: "订单",
+  coupons: "优惠券",
+  activities: "活动",
+  eligibilities: "活动资格与名额",
+  attempts: "下单尝试",
+  refunds: "退款记录",
+  coupon_returns: "券回退记录",
+};
 const rows = computed(
   () =>
     list.data.value?.items.filter((r) =>
@@ -126,7 +134,7 @@ function saveRelations() {
       '保存后核对返回版本',
       '回到对话，用新消息查询；旧消息重投仍返回旧事实',
     ]"
-    expected="服务端确认保存才显示新版本。旧版本 CAS 冲突会拒绝；活动资格须先维护同主体活动，unknown名额与0名额含义不同。新目录未发布时对话不可执行新标签。"
+    expected="服务端确认保存才显示新版本，旧版本 CAS 冲突会拒绝。活动资格须先维护同主体活动，unknown名额与0含义不同。退款须先维护同主体订单及券，回退须有退款记录；关联矛盾保留为 conflict。资料维护与对话查询均不会执行退款/发券。对话使用其发布目录。"
     lesson="https://github.com/yuweilan7/deephelp/blob/main/docs/learning/08-message-path.md"
   />
   <div class="two-column">

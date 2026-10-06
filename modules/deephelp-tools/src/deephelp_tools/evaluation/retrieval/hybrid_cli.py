@@ -343,7 +343,9 @@ def main() -> int:
     parser.add_argument("--dataset-version", default="m09-ab-v1")
     parser.add_argument("--namespace", default="m09_synthetic")
     parser.add_argument(
-        "--registry-version", choices=["complaints-v1", "complaints-v2"], default="complaints-v1"
+        "--registry-version",
+        choices=["complaints-v1", "complaints-v2", "complaints-v3"],
+        default="complaints-v1",
     )
     parser.add_argument("--corpus")
     parser.add_argument("--dev-queries")

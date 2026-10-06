@@ -57,6 +57,48 @@ ELIGIBILITY_CASES = (
 )
 
 
+COMPLAINT_CASES = (
+    ("attempt", "下单失败，尝试编号{attempt}，请查记录原因。", "ANSWERED", None, None),
+    ("attempt-missing", "下单失败，请查询尝试记录。", "CLARIFY", None, None),
+    ("attempt-absent", "下单失败，尝试编号{absent}，查原因。", "ERROR", None, None),
+    ("refund-pending", "退款编号{pending}，优惠券{coupon}没退回，请核对。", "ANSWERED", None, None),
+    (
+        "refund-returned",
+        "退款编号{returned}，优惠券{coupon}没退回，请核对。",
+        "ANSWERED",
+        None,
+        None,
+    ),
+    (
+        "refund-conflict",
+        "退款编号{conflict}，优惠券{coupon}没退回，请核对。",
+        "HANDOFF",
+        None,
+        None,
+    ),
+    (
+        "refund-unknown",
+        "退款编号{untracked}，优惠券{coupon}没退回，请核对。",
+        "HANDOFF",
+        None,
+        None,
+    ),
+    (
+        "refund-foreign",
+        "退款编号{returned}，优惠券{foreign_coupon}没退回，请核对。",
+        "ERROR",
+        None,
+        None,
+    ),
+    ("refund-missing", "退款后优惠券没退回，请查询记录。", "CLARIFY", None, None),
+    *[
+        c
+        for c in ELIGIBILITY_CASES
+        if c[0] in {"eligible", "order-adjacent", "coupon-adjacent", "discount-adjacent"}
+    ],
+)
+
+
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
     if isinstance(error, BaseExceptionGroup):
@@ -83,8 +125,15 @@ def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     ]
 
 
-def content_checks(response: ResponseEnvelope, name: str, ids: dict[str, str]) -> dict[str, bool]:
+def content_checks(
+    response: ResponseEnvelope,
+    name: str,
+    ids: dict[str, str],
+    catalog_version: str = "complaints-v2",
+) -> dict[str, bool]:
     """核对独立业务预期的600/事实/节点，可只读复核已采集响应而不重调模型。"""
+    if name.startswith("attempt") or name.startswith("refund"):
+        return complaint_checks(response, name, ids, catalog_version)
     expected = {
         "order-adjacent": "ORDER_ACTIVITY_QUERY",
         "coupon-adjacent": "COUPON_UNUSABLE",
@@ -94,8 +143,8 @@ def content_checks(response: ResponseEnvelope, name: str, ids: dict[str, str]) -
     checks = {
         "intent": response.intent_decision is not None
         and response.intent_decision.final_code == expected
-        and response.intent_decision.registry_version == "complaints-v2",
-        "catalog": response.versions.registry == "complaints-v2",
+        and response.intent_decision.registry_version == catalog_version,
+        "catalog": response.versions.registry == catalog_version,
         "600": response.call_counts.intent_calls == 1
         and sum(s.intent_calls for s in response.stages if s.stage.startswith("600")) == 1,
     }
@@ -127,6 +176,180 @@ def content_checks(response: ResponseEnvelope, name: str, ids: dict[str, str]) -
     return checks
 
 
+def complaint_checks(
+    response: ResponseEnvelope, name: str, ids: dict[str, str], catalog_version: str
+) -> dict[str, bool]:
+    """独立固定预期核对尝试/退款状态及闭环，模型回复不能作为业务事实源。"""
+    attempt = name.startswith("attempt")
+    code = "ORDER_CREATION_FAILED" if attempt else "REFUND_COUPON_NOT_RETURNED"
+    facts = {f.name: f.value for f in response.facts}
+    checks = dict(
+        intent=response.intent_decision is not None
+        and response.intent_decision.final_code == code
+        and response.intent_decision.registry_version == catalog_version,
+        catalog=response.versions.registry == catalog_version,
+        stage600=response.call_counts.intent_calls == 1
+        and sum(s.intent_calls for s in response.stages if s.stage.startswith("600")) == 1,
+        no_write=response.sop_plan is None,
+    )
+    if name.endswith("missing"):
+        checks["missing_slots"] = (
+            set(response.missing_slots)
+            == ({"attempt_id"} if attempt else {"refund_id", "coupon_id"})
+            and not facts
+            and not response.tool_call_ids
+        )
+    elif name in {"attempt-absent", "refund-foreign"}:
+        checks["not_found"] = (
+            response.error is not None and response.error.code == "NOT_FOUND" and not facts
+        )
+    elif attempt:
+        checks["record_cause"] = (
+            facts.get("attempt_id") == ids["attempt"]
+            and facts.get("attempt_status") == "failed"
+            and facts.get("failure_code") == "STOCK_CHANGED"
+            and facts.get("failure_reason") == "合成库存变更导致创建失败。"
+            and facts.get("follow_up") == "核对库存后由用户另行发起下单。"
+            and response.sop_node_path[-1] == "explained"
+        )
+    else:
+        key, state, refund, node = {
+            "refund-pending": ("pending", "unknown", "pending", "waiting"),
+            "refund-returned": ("returned", "returned", "completed", "returned"),
+            "refund-conflict": ("conflict", "conflict", "completed", "conflict"),
+            "refund-unknown": ("untracked", "unknown", "completed", "unknown"),
+        }[name]
+        checks["association_state"] = (
+            facts.get("refund_id") == ids[key]
+            and facts.get("coupon_id") == ids["coupon"]
+            and facts.get("refund_status") == refund
+            and facts.get("return_status") == state
+            and response.sop_node_path[-1] == node
+        )
+    return checks
+
+
+async def maintain_complaints(
+    client: BusinessClient,
+    owner: Any,
+    other: Any,
+    ids: dict[str, str],
+    activity: dict[str, Any],
+    check: Any,
+) -> None:
+    """真实维护三种新记录，固定CAS竞争/归属反例不经过模型。
+
+    原业务API和PG事务拥有写入；这里仅发合成资料请求。每张新表独立核验CAS，
+    两个请求共享expected_version，只允许一个提交；冲突不能计成成功。
+    """
+    order = dict(
+        paid={"amount": "173.45"},
+        discount={"amount": "0.00"},
+        discount_status="not_eligible",
+        sku_ids=["M42-SKU"],
+    )
+    await client.request(other, "POST", "orders", dict(order_id=ids["foreign_order"], **order))
+    coupon = dict(
+        status="usable",
+        minimum_spend={"amount": "200.00"},
+        valid_from=activity["valid_from"],
+        valid_until=activity["valid_until"],
+    )
+    await client.request(
+        other,
+        "POST",
+        "coupons",
+        dict(coupon_id=ids["foreign_coupon"], order_id=ids["foreign_order"], **coupon),
+    )
+    await client.request(
+        owner,
+        "POST",
+        "coupons",
+        dict(coupon_id=ids["different_coupon"], order_id=ids["order"], **coupon),
+    )
+    attempt = dict(
+        attempt_id=ids["attempt"],
+        status="failed",
+        failure_code="STOCK_CHANGED",
+        reason="合成库存变更导致创建失败。",
+        follow_up="核对库存后由用户另行发起下单。",
+    )
+    await client.request(owner, "POST", "attempts", attempt)
+    for key in ("pending", "returned", "conflict", "untracked"):
+        await client.request(
+            owner,
+            "POST",
+            "refunds",
+            dict(
+                refund_id=ids[key],
+                order_id=ids["order"],
+                coupon_id=ids["coupon"],
+                status="pending" if key == "pending" else "completed",
+                reason="合成退款来源记录。",
+            ),
+        )
+    returned = dict(
+        refund_id=ids["returned"],
+        coupon_id=ids["coupon"],
+        status="returned",
+        reason="同退款同券的合成回退记录。",
+    )
+    await client.request(owner, "POST", "coupon_returns", returned)
+    await client.request(
+        owner,
+        "POST",
+        "coupon_returns",
+        dict(returned, refund_id=ids["conflict"], coupon_id=ids["different_coupon"]),
+    )
+    refund = dict(
+        refund_id=ids["returned"],
+        order_id=ids["order"],
+        coupon_id=ids["coupon"],
+        status="completed",
+        reason="合成退款来源记录。",
+    )
+    for kind, data, key in [
+        ("attempts", attempt, "attempt_id"),
+        ("refunds", refund, "refund_id"),
+        ("coupon_returns", returned, "refund_id"),
+    ]:
+        current = await client.request(owner, "GET", f"{kind}/{data[key]}")
+        same = await client.request(owner, "POST", kind, data)
+        check(kind + ":idempotent_create", current == same)
+        rows = await asyncio.gather(
+            *(
+                client.request(
+                    owner,
+                    "PUT",
+                    f"{kind}/{data[key]}",
+                    dict(expected_version=current["version"], data=data),
+                )
+                for _ in range(2)
+            ),
+            return_exceptions=True,
+        )
+        check(
+            kind + ":cas_one_winner",
+            sum(isinstance(r, dict) for r in rows) == 1
+            and sum(getattr(r, "code", None) == "VERSION_CONFLICT" for r in rows) == 1,
+        )
+    denied = await asyncio.gather(
+        client.request(other, "GET", f"attempts/{ids['attempt']}"),
+        client.request(
+            owner,
+            "POST",
+            "refunds",
+            dict(refund, refund_id=ids["absent"], coupon_id=ids["foreign_coupon"]),
+        ),
+        client.request(other, "POST", "coupon_returns", returned),
+        return_exceptions=True,
+    )
+    check(
+        "complaint_owner_relations_denied",
+        all(getattr(r, "code", None) == "NOT_FOUND" for r in denied),
+    )
+
+
 async def probe(args: argparse.Namespace) -> int:
     """一次有限内容运行；服务维护和模型共享原引擎，却使用各自明确证据。
 
@@ -148,11 +371,28 @@ async def probe(args: argparse.Namespace) -> int:
     other = auth.rows[1][1]
     if owner == other:
         raise ConfigurationError("Catalog ownership counterexample needs a distinct owner")
+    catalog_version = "complaints-v3" if args.phase == "complaints" else "complaints-v2"
     credentials = ServiceCredentials.load(Path(args.service_credentials))
     code = evaluation_provenance()
     nonce = uuid4().hex[:12]
     ids = {
-        k: "M42-" + k + "-" + nonce for k in ("activity", "unknown", "foreign", "order", "coupon")
+        k: "M42-" + k + "-" + nonce
+        for k in (
+            "activity",
+            "unknown",
+            "foreign",
+            "order",
+            "coupon",
+            "attempt",
+            "absent",
+            "pending",
+            "returned",
+            "conflict",
+            "untracked",
+            "foreign_coupon",
+            "foreign_order",
+            "different_coupon",
+        )
     }
     report: dict[str, Any] = dict(
         format="m42-catalog-content-v1",
@@ -178,7 +418,7 @@ async def probe(args: argparse.Namespace) -> int:
     gate.open()
     runtime: LiveAssembly | None = None
     try:
-        business = create_business_app(Path.cwd(), credentials, catalog_version="complaints-v2")
+        business = create_business_app(Path.cwd(), credentials, catalog_version=catalog_version)
         async with (
             business.router.lifespan_context(business),
             api_client(business, http=True) as business_http,
@@ -274,6 +514,8 @@ async def probe(args: argparse.Namespace) -> int:
                 "owner_read_and_relation_denied",
                 all(getattr(r, "code", None) == "NOT_FOUND" for r in denied),
             )
+            if args.phase == "complaints":
+                await maintain_complaints(client, owner, other, ids, activity, check)
             runtime = LiveAssembly(
                 Path.cwd(),
                 Path(args.providers),
@@ -282,7 +524,7 @@ async def probe(args: argparse.Namespace) -> int:
                 corpus_path=Path(args.corpus),
                 sop_directory=Path(args.sop_directory),
                 cascade_policy=Path(args.cascade_policy),
-                event_collection="dh_m10_events_m42_eligibility",
+                event_collection="dh_m10_events_m42_" + args.phase,
             )
             report["sop_snapshot"] = runtime.sop_registry.snapshot_hash
             report["catalog_version"] = runtime.sop_registry.catalog_version
@@ -296,7 +538,9 @@ async def probe(args: argparse.Namespace) -> int:
                 budget_factory=gate.request,
             )
             async with app.router.lifespan_context(app), api_client(app, http=True) as http:
-                for name, text, expected, state, remaining in ELIGIBILITY_CASES:
+                for name, text, expected, state, remaining in (
+                    COMPLAINT_CASES if args.phase == "complaints" else ELIGIBILITY_CASES
+                ):
                     if args.cases and name not in args.cases:
                         continue
                     body = dict(
@@ -336,7 +580,7 @@ async def probe(args: argparse.Namespace) -> int:
                         )
                     atomic_json(output, report)
                     facts = {f.name: f.value for f in response.facts}
-                    for key, passed in content_checks(response, name, ids).items():
+                    for key, passed in content_checks(response, name, ids, catalog_version).items():
                         check(name + ":" + key, passed)
                     check(name + ":outcome", response.outcome == expected)
                     if state:
@@ -345,7 +589,7 @@ async def probe(args: argparse.Namespace) -> int:
                             facts.get("eligibility") == state
                             and facts.get("remaining_slots") == remaining,
                         )
-                    if name == "missing":
+                    if name in {"missing", "attempt-missing", "refund-missing"}:
                         check(
                             "missing:zero_calls",
                             gate.state == before and not response.tool_call_ids,
@@ -420,8 +664,10 @@ def main() -> int:
         description="M42 PG/HTTP MCP/original Conversation targeted content"
     )
     parser.add_argument("--live", action="store_true")
-    parser.add_argument("--phase", choices=["eligibility"], default="eligibility")
-    parser.add_argument("--cases", nargs="+", choices=[c[0] for c in ELIGIBILITY_CASES])
+    parser.add_argument("--phase", choices=["eligibility", "complaints"], default="eligibility")
+    parser.add_argument(
+        "--cases", nargs="+", choices=sorted({c[0] for c in (*ELIGIBILITY_CASES, *COMPLAINT_CASES)})
+    )
     for field in (
         "auth",
         "service-credentials",

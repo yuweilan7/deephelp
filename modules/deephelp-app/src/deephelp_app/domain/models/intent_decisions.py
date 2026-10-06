@@ -135,7 +135,7 @@ class IntentDecision(DTO):
     available_slots: tuple[EntityName, ...] = ()
     stage_evidence: tuple[EvidenceRef, ...] = ()
     reason_code: Identifier
-    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
+    registry_version: Literal["complaints-v1", "complaints-v2", "complaints-v3"] = REGISTRY_VERSION
     policy_version: Literal["slot-policy-v1", "cascade-policy-v1"] = POLICY_VERSION
     override: IntentOverride | None = None
     retrieval: DenseResult | None = None

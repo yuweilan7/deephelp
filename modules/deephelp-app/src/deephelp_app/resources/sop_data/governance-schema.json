@@ -1,12 +1,13 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "EntityName": {
       "enum": [
         "order_id",
         "coupon_id",
         "sku_id",
-        "activity_id"
+        "activity_id",
+        "attempt_id",
+        "refund_id"
       ],
       "title": "EntityName",
       "type": "string"
@@ -329,7 +330,9 @@
         "DISCOUNT_MISSING",
         "COUPON_UNUSABLE",
         "ORDER_ACTIVITY_QUERY",
-        "ACTIVITY_ELIGIBILITY_QUERY"
+        "ACTIVITY_ELIGIBILITY_QUERY",
+        "ORDER_CREATION_FAILED",
+        "REFUND_COUPON_NOT_RETURNED"
       ],
       "title": "IntentCode",
       "type": "string"
@@ -394,7 +397,9 @@
       "enum": [
         "get_order_benefits",
         "check_coupon",
-        "check_activity_eligibility"
+        "check_activity_eligibility",
+        "get_order_creation_failure",
+        "check_refund_coupon_return"
       ],
       "title": "ToolName",
       "type": "string"
@@ -438,7 +443,8 @@
       "default": "complaints-v1",
       "enum": [
         "complaints-v1",
-        "complaints-v2"
+        "complaints-v2",
+        "complaints-v3"
       ],
       "title": "Catalog Version",
       "type": "string"

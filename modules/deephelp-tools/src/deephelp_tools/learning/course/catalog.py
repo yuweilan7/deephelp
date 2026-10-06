@@ -28,11 +28,15 @@ from deephelp_tools.learning.replay.event_replay import envelope
 from .skills import RecordedSkillModel
 
 
-def catalog_registry() -> SOPRegistry:
+def catalog_registry(catalog_version: str = "complaints-v2") -> SOPRegistry:
     """读取已校验四叶子机器资产；它不会修改任何运行中的发布指针。"""
     return SOPRegistry.model_validate_json(
         files("deephelp_app")
-        .joinpath("resources/sop_data/business-registry-v3.json")
+        .joinpath(
+            "resources/sop_data/business-registry-v3.json"
+            if catalog_version == "complaints-v2"
+            else "resources/sop_data/business-registry-v4.json"
+        )
         .read_text(encoding="utf-8")
     )
 
@@ -43,6 +47,8 @@ def catalog_question(
     activity_id: str = "ACT-42",
     missing: bool = False,
     context: RequestEnvelope | None = None,
+    code: IntentCode = IntentCode.ACTIVITY_ELIGIBILITY_QUERY,
+    slots: dict[str, str] | None = None,
 ) -> tuple[Question, RequestEnvelope]:
     """建立绑定目录/SOP版本的合成问题，实体来源保持当前消息。
 
@@ -52,7 +58,7 @@ def catalog_question(
     context = context or envelope(
         f"活动编号{activity_id}，我有参与资格和名额吗？", "course-catalog"
     )
-    code = IntentCode.ACTIVITY_ELIGIBILITY_QUERY
+    slots = slots if slots is not None else {"activity_id": activity_id}
     question = Question(
         question_id="catalog-" + uuid4().hex,
         identity=context.identity,
@@ -61,12 +67,13 @@ def catalog_question(
         version=1,
         entities=()
         if missing
-        else (
+        else tuple(
             Entity(
-                name=EntityName.ACTIVITY_ID,
-                value=activity_id,
-                source=EntitySource(message_id=context.message_id, excerpt=activity_id),
-            ),
+                name=EntityName(key),
+                value=value,
+                source=EntitySource(message_id=context.message_id, excerpt=value),
+            )
+            for key, value in slots.items()
         ),
         member_message_ids=(context.message_id,),
         active_intent=code,
@@ -80,8 +87,15 @@ def catalog_question(
 class RecordedCatalogFacts:
     """明确离线的ToolPort：只回放固定事实，仍经过原请求/参数/证据守卫。"""
 
-    def __init__(self, *, eligibility: str = "eligible", remaining_slots: str = "7") -> None:
+    def __init__(
+        self,
+        *,
+        eligibility: str = "eligible",
+        remaining_slots: str = "7",
+        values: dict[str, str] | None = None,
+    ) -> None:
         self.eligibility, self.remaining_slots = eligibility, remaining_slots
+        self.values = values
         self.calls = 0
 
     async def execute(
@@ -100,14 +114,23 @@ class RecordedCatalogFacts:
         call_id = "recorded-call-" + uuid4().hex
         if on_dispatch:
             on_dispatch(call_id)
-        assert request.parameters.activity_id is not None
-        values = dict(
-            activity_id=request.parameters.activity_id,
-            activity_label="合成课程活动",
-            activity_rules="仅当前主体；资格与名额分别维护。",
-            eligibility=self.eligibility,
-            remaining_slots=self.remaining_slots,
-            eligibility_reason="离线固定观察，非企业记录。",
+        locator = (
+            request.parameters.activity_id
+            or request.parameters.attempt_id
+            or request.parameters.refund_id
+        )
+        assert locator is not None
+        values = (
+            self.values
+            if self.values is not None
+            else dict(
+                activity_id=locator,
+                activity_label="合成课程活动",
+                activity_rules="仅当前主体；资格与名额分别维护。",
+                eligibility=self.eligibility,
+                remaining_slots=self.remaining_slots,
+                eligibility_reason="离线固定观察，非企业记录。",
+            )
         )
         evidence_id = "recorded-evidence-" + uuid4().hex
         return ToolResult(
@@ -127,7 +150,7 @@ class RecordedCatalogFacts:
                     source=EvidenceSource.TOOL,
                     record_id=call_id,
                     version="business-fixtures-v1",
-                    locator=request.parameters.activity_id,
+                    locator=locator,
                     content_hash=hashlib.sha256(canonical(values)).hexdigest(),
                     summary="明确离线的固定记录观察。",
                 ),
@@ -164,4 +187,77 @@ async def catalog_demo() -> dict[str, object]:
         database_calls=0,
         catalog=complaint_registry("complaints-v2").model_dump(mode="json"),
         cases=cases,
+    )
+
+
+async def complaints_demo() -> dict[str, object]:
+    """六叶子原SOP实验，固定记录教等待/矛盾/已返还；没有维护/发券副作用。
+
+    与Java有限状态机相似，但await工具后仍需请求/事实/证据守卫。固定Port的
+    合成观察不能证明PG事务或真实模型；那些证据由catalog_probe另行验收。
+    """
+    registry = catalog_registry("complaints-v3")
+    rows = []
+    fixtures = [
+        (
+            "attempt",
+            IntentCode.ORDER_CREATION_FAILED,
+            dict(
+                attempt_id="TRY-42",
+                attempt_status="failed",
+                failure_code="STOCK_CHANGED",
+                failure_reason="提交前库存被其他合成订单占用。",
+                follow_up="核对库存后由用户另行发起下单。",
+            ),
+            False,
+        ),
+        ("attempt-missing", IntentCode.ORDER_CREATION_FAILED, {}, True),
+        *[
+            (
+                name,
+                IntentCode.REFUND_COUPON_NOT_RETURNED,
+                dict(
+                    refund_id="REF-42",
+                    coupon_id="CP-42",
+                    refund_status=refund,
+                    return_status=returned,
+                    return_reason="明确离线的来源记录。",
+                ),
+                False,
+            )
+            for name, refund, returned in [
+                ("waiting", "pending", "unknown"),
+                ("returned", "completed", "returned"),
+                ("conflict", "completed", "conflict"),
+                ("unknown", "completed", "unknown"),
+            ]
+        ],
+    ]
+    for name, code, values, missing in fixtures:
+        slots = (
+            {key: values[key] for key in (s.value for s in code.required_slots)}
+            if not missing
+            else {}
+        )
+        context = envelope("合成课程记录 " + " ".join(slots.values()), "course-complaints")
+        question, context = catalog_question(
+            registry, code=code, slots=slots, missing=missing, context=context
+        )
+        port = RecordedCatalogFacts(values=values)
+        result = await SOPExecutor(
+            RecordedSkillModel(), port, registry=registry, skills_enabled=False
+        ).execute(
+            question, ExecutionBudget.start(10, 6, 0), context=context, run_id="course-" + name
+        )
+        rows.append(
+            dict(
+                case=name,
+                status=result.status.value,
+                node_path=result.node_path,
+                tool_calls=port.calls,
+                result=result.model_dump(mode="json"),
+            )
+        )
+    return dict(
+        remote_model_calls=0, database_calls=0, catalog_version=registry.catalog_version, cases=rows
     )

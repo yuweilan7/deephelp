@@ -23,11 +23,14 @@ from deephelp_app.adapters.persistence.ledger import PostgresLedger
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.business import (
     BusinessActivityInput,
+    BusinessAttemptInput,
     BusinessCouponInput,
+    BusinessCouponReturnInput,
     BusinessEligibilityInput,
     BusinessInput,
     BusinessOrderInput,
     BusinessRecord,
+    BusinessRefundInput,
     BusinessRelations,
 )
 from deephelp_app.domain.models.common import ErrorCode, Money, VerifiedIdentity
@@ -39,24 +42,27 @@ from deephelp_app.domain.models.tools import (
     ToolStatus,
 )
 
-Kind = Literal["orders", "coupons", "activities", "eligibilities"]
-MODELS: dict[
-    str,
-    type[BusinessOrderInput]
-    | type[BusinessCouponInput]
-    | type[BusinessActivityInput]
-    | type[BusinessEligibilityInput],
-] = {
+Kind = Literal[
+    "orders", "coupons", "activities", "eligibilities", "attempts", "refunds", "coupon_returns"
+]
+# 每个资源只接受自己的DTO；动态表名仅来自这张代码白名单。
+MODELS: dict[str, type[BusinessInput]] = {
     "orders": BusinessOrderInput,
     "coupons": BusinessCouponInput,
     "activities": BusinessActivityInput,
     "eligibilities": BusinessEligibilityInput,
+    "attempts": BusinessAttemptInput,
+    "refunds": BusinessRefundInput,
+    "coupon_returns": BusinessCouponReturnInput,
 }
 IDS = {
     "orders": "order_id",
     "coupons": "coupon_id",
     "activities": "activity_id",
     "eligibilities": "activity_id",
+    "attempts": "attempt_id",
+    "refunds": "refund_id",
+    "coupon_returns": "refund_id",
 }
 
 
@@ -116,7 +122,7 @@ class BusinessRepository:
     async def migrate(self) -> None:
         async with self.transaction() as cursor:
             # 仅增量建表；重跑不改原行/receipt，DDL与本次迁移同事务提交。
-            for resource in ("020_business.sql", "042_eligibility.sql"):
+            for resource in ("020_business.sql", "042_eligibility.sql", "042_complaints.sql"):
                 sql = files("deephelp_services").joinpath("resources/" + resource).read_text()
                 for statement in sql.split(";"):
                     if statement.strip():
@@ -204,6 +210,18 @@ class BusinessRepository:
                 await self._get(cursor, "orders", identity, data.order_id, lock=True)
             if isinstance(data, BusinessEligibilityInput):
                 await self._get(cursor, "activities", identity, data.activity_id, lock=True)
+            if isinstance(data, BusinessRefundInput):
+                # 先锁订单，再核对同主体券。读取/维护沿相同顺序，事务无模型等待。
+                await self._get(cursor, "orders", identity, data.order_id, lock=True)
+                coupon = await self._get(cursor, "coupons", identity, data.coupon_id, lock=True)
+                assert isinstance(coupon.data, BusinessCouponInput)
+                if coupon.data.order_id != data.order_id:
+                    raise AppError(
+                        ErrorCode.INVALID_ARGUMENT, "Refund coupon/order association differs"
+                    )
+            if isinstance(data, BusinessCouponReturnInput):
+                await self._get(cursor, "refunds", identity, data.refund_id, lock=True)
+                await self._get(cursor, "coupons", identity, data.coupon_id, lock=True)
             try:
                 current = await self._get(cursor, kind, identity, record_id, lock=True)
             except AppError as exc:
@@ -225,6 +243,12 @@ class BusinessRepository:
             elif isinstance(data, BusinessCouponInput):
                 columns += ["order_id", "minimum_spend"]
                 values += [data.order_id, str(data.minimum_spend.amount)]
+            elif isinstance(data, BusinessRefundInput):
+                columns += ["order_id", "coupon_id"]
+                values += [data.order_id, data.coupon_id]
+            elif isinstance(data, BusinessCouponReturnInput):
+                columns += ["coupon_id"]
+                values += [data.coupon_id]
             if current:
                 await cursor.execute(
                     f"UPDATE dh_m20_{kind} SET version=%s,"
@@ -303,6 +327,11 @@ class BusinessRepository:
         async with self.transaction(snapshot=True) as cursor:
             if req.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
                 return await self._eligibility_query(cursor, envelope)
+            if req.tool_name in {
+                ToolName.GET_ORDER_CREATION_FAILURE,
+                ToolName.CHECK_REFUND_COUPON_RETURN,
+            }:
+                return await self._complaint_query(cursor, envelope)
             assert req.parameters.order_id is not None
             order = await self._get(cursor, "orders", req.identity, req.parameters.order_id)
             assert isinstance(order.data, BusinessOrderInput)
@@ -472,4 +501,71 @@ class BusinessRepository:
         )
         return await self._save_evidence(
             cursor, envelope, values, snapshots, now, activity.data.activity_id
+        )
+
+    async def _complaint_query(self, cursor: Any, envelope: ToolInvocationEnvelope) -> ToolResult:
+        """同一REPEATABLE READ快照核对尝试或退款/券/回退关联，再原子保存证据。
+
+        记录不存在/外主体返回同样的NOT_FOUND，不能泄露是否存在。矛盾优先于等待，
+        已回退要求退款确实完成；缺回退记录为unknown，用户说已退款不改变数据库。
+        本函数只写不可变查询证据，没有订单/退款/发券执行入口。
+        """
+        req = envelope.request
+        now = datetime.now(UTC)
+        if req.tool_name == ToolName.GET_ORDER_CREATION_FAILURE:
+            assert req.parameters.attempt_id is not None
+            record = await self._get(cursor, "attempts", req.identity, req.parameters.attempt_id)
+            assert isinstance(record.data, BusinessAttemptInput)
+            values = dict(
+                attempt_id=record.data.attempt_id,
+                attempt_status=record.data.status,
+                failure_code=record.data.failure_code,
+                failure_reason=record.data.reason,
+                follow_up=record.data.follow_up,
+            )
+            return await self._save_evidence(
+                cursor,
+                envelope,
+                values,
+                [record.model_dump(mode="json")],
+                now,
+                record.data.attempt_id,
+            )
+        assert req.parameters.refund_id is not None and req.parameters.coupon_id is not None
+        refund = await self._get(cursor, "refunds", req.identity, req.parameters.refund_id)
+        coupon = await self._get(cursor, "coupons", req.identity, req.parameters.coupon_id)
+        assert isinstance(refund.data, BusinessRefundInput) and isinstance(
+            coupon.data, BusinessCouponInput
+        )
+        order = await self._get(cursor, "orders", req.identity, refund.data.order_id)
+        snapshots = [r.model_dump(mode="json") for r in (refund, coupon, order)]
+        state, reason = "unknown", "未维护券回退记录；" + refund.data.reason
+        returned: BusinessCouponReturnInput | None = None
+        try:
+            record = await self._get(cursor, "coupon_returns", req.identity, refund.data.refund_id)
+        except AppError as exc:
+            if exc.code != ErrorCode.NOT_FOUND:
+                raise
+        else:
+            assert isinstance(record.data, BusinessCouponReturnInput)
+            returned = record.data
+            snapshots.append(record.model_dump(mode="json"))
+            state, reason = returned.status, returned.reason
+        if (
+            refund.data.coupon_id != coupon.data.coupon_id
+            or refund.data.order_id != coupon.data.order_id
+            or (returned and returned.coupon_id != coupon.data.coupon_id)
+        ):
+            state, reason = "conflict", "退款/订单/券/回退记录的关联编号不一致，需人工核对。"
+        elif returned and returned.status == "returned" and refund.data.status != "completed":
+            state, reason = "conflict", "券记录已回退，但退款记录未完成，不能据此推定退款完成。"
+        values = dict(
+            refund_id=refund.data.refund_id,
+            coupon_id=coupon.data.coupon_id,
+            refund_status=refund.data.status,
+            return_status=state,
+            return_reason=reason,
+        )
+        return await self._save_evidence(
+            cursor, envelope, values, snapshots, now, refund.data.refund_id
         )

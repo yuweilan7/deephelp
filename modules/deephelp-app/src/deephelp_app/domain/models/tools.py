@@ -27,12 +27,16 @@ class ToolName(StrEnum):
     GET_ORDER_BENEFITS = "get_order_benefits"
     CHECK_COUPON = "check_coupon"
     CHECK_ACTIVITY_ELIGIBILITY = "check_activity_eligibility"
+    GET_ORDER_CREATION_FAILURE = "get_order_creation_failure"
+    CHECK_REFUND_COUPON_RETURN = "check_refund_coupon_return"
 
 
 class ToolParameters(DTO):
     order_id: Identifier | None = None
     coupon_id: Identifier | None = None
     activity_id: Identifier | None = None
+    attempt_id: Identifier | None = None
+    refund_id: Identifier | None = None
 
     @model_serializer(mode="wrap")
     def compatible_parameters(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
@@ -41,6 +45,11 @@ class ToolParameters(DTO):
         ToolRequest按工具精确检查，不能用可选字段允许任意扩参。
         """
         data: dict[str, Any] = handler(self)
+        for key in ("attempt_id", "refund_id"):
+            if getattr(self, key) is None:
+                data.pop(key, None)
+        if self.attempt_id is not None or self.refund_id is not None:
+            return {k: v for k, v in data.items() if v is not None}
         if self.activity_id is None:
             data.pop("activity_id", None)
         else:
@@ -73,6 +82,21 @@ class ToolRequest(DTO):
     def read_only_parameters(self) -> ToolRequest:
         if self.parameters_hash != tool_parameters_hash(self.parameters):
             raise ValueError("Tool parameters hash mismatch")
+        fields = {
+            k
+            for k in ("order_id", "coupon_id", "activity_id", "attempt_id", "refund_id")
+            if getattr(self.parameters, k) is not None
+        }
+        special = {
+            ToolName.GET_ORDER_CREATION_FAILURE: {"attempt_id"},
+            ToolName.CHECK_REFUND_COUPON_RETURN: {"refund_id", "coupon_id"},
+        }
+        if self.tool_name in special:
+            if fields != special[self.tool_name]:
+                raise ValueError("Complaint tool parameters exceed exact slot contract")
+            return self
+        if fields & {"attempt_id", "refund_id"}:
+            raise ValueError("Legacy tools reject complaint slots")
         if self.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
             if (
                 self.parameters.activity_id is None

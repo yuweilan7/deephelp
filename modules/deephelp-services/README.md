@@ -86,3 +86,4 @@ py -3.14 -m uv run --locked --env-file .env.local python -m deephelp_tools.probe
 ```
 
 协议阶段仅在专用子进程增加观测：先调用原真实Embedding网关，把实际返回向量暂存到自身系统临时目录，再用该向量对照原本地检索。它不是Mock或第二次模型响应；生产服务没有该观测入口。报告保留向量hash、实际回执和三路结果，成功后删除临时向量/日志。业务阶段使用未加观测的正式服务，验收跨两个MCP的事实、双端校验、独立重启、零调用重放与越权。失败先保留脱敏结果/必要状态，修复只复验失败及受影响路径，不串跑历史模块或P00 full。
+M42六叶子Business服务使用`--catalog-version complaints-v3`；默认v1保持旧工具发现。维护资源新增attempts、refunds、coupon_returns，字段和CAS见[契约](../../docs/CONTRACTS.md#m42-版本目录与资格事实)。migration只增量建表，旧事实/查询证据不修改。退款需同主体订单及券；券回退需同主体退款及券，来源矛盾由查询报告conflict。查询没有退款/发券/重新下单接口。

@@ -4,6 +4,8 @@
 complaint_registry按需构造，导入模块不读取外部文件或服务。
 """
 
+from typing import Literal, cast
+
 from pydantic import model_validator
 
 from deephelp_app.domain.models.common import DTO, REGISTRY_VERSION
@@ -52,12 +54,16 @@ def catalog_codes(version: str) -> tuple[IntentCode, ...]:
 
     v1保留原父级和三叶子，v2只增加已实现活动资格叶子。未知版本拒绝。
     """
-    if version not in {"complaints-v1", "complaints-v2"}:
+    if version not in {"complaints-v1", "complaints-v2", "complaints-v3"}:
         raise ValueError("Unsupported registry version")
     return tuple(
         c
         for c in IntentCode
-        if version != "complaints-v1" or c != IntentCode.ACTIVITY_ELIGIBILITY_QUERY
+        if (
+            version == "complaints-v3"
+            or c not in {IntentCode.ORDER_CREATION_FAILED, IntentCode.REFUND_COUPON_NOT_RETURNED}
+        )
+        and (version != "complaints-v1" or c != IntentCode.ACTIVITY_ELIGIBILITY_QUERY)
     )
 
 
@@ -123,6 +129,7 @@ def complaint_registry(version: str = REGISTRY_VERSION) -> IntentRegistry:
     if version == REGISTRY_VERSION:
         return legacy
     catalog_codes(version)
+    version = cast(Literal["complaints-v1", "complaints-v2", "complaints-v3"], version)
     return IntentRegistry(
         version=version,
         intents=(
@@ -137,7 +144,37 @@ def complaint_registry(version: str = REGISTRY_VERSION) -> IntentRegistry:
                 is_actionable=True,
                 required_slots=(EntityName.ACTIVITY_ID,),
                 sop_id="activity-eligibility-v1",
-                version="complaints-v2",
+                version=version,
+            ),
+            *(
+                (
+                    IntentDefinition(
+                        code=IntentCode.ORDER_CREATION_FAILED,
+                        label="订单创建失败",
+                        l1="service",
+                        l2="order",
+                        l3="creation_failed",
+                        parent_code=IntentCode.ORDER_QUERY,
+                        is_actionable=True,
+                        required_slots=(EntityName.ATTEMPT_ID,),
+                        sop_id="order-creation-failed-v1",
+                        version=version,
+                    ),
+                    IntentDefinition(
+                        code=IntentCode.REFUND_COUPON_NOT_RETURNED,
+                        label="退款后券未退回",
+                        l1="service",
+                        l2="benefit",
+                        l3="refund_coupon_return",
+                        parent_code=IntentCode.BENEFIT_ISSUE,
+                        is_actionable=True,
+                        required_slots=(EntityName.REFUND_ID, EntityName.COUPON_ID),
+                        sop_id="refund-coupon-return-v1",
+                        version=version,
+                    ),
+                )
+                if version == "complaints-v3"
+                else ()
             ),
         ),
     )

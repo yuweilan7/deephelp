@@ -21,6 +21,8 @@ class EntityName(StrEnum):
     COUPON_ID = "coupon_id"
     SKU_ID = "sku_id"
     ACTIVITY_ID = "activity_id"
+    ATTEMPT_ID = "attempt_id"
+    REFUND_ID = "refund_id"
 
 
 class EntitySource(DTO):

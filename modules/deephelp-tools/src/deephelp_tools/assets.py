@@ -20,6 +20,7 @@ GROUPS = {
         "business-fixtures-v2.json",
         "m09_corpus.jsonl",
         "m42_catalog_v2_corpus.jsonl",
+        "m42_catalog_v3_corpus.jsonl",
     },
     "evaluation": {
         "cases.json",
@@ -28,6 +29,8 @@ GROUPS = {
         "m09_test.json",
         "m42_catalog_v2_dev.json",
         "m42_catalog_v2_test.json",
+        "m42_catalog_v3_dev.json",
+        "m42_catalog_v3_test.json",
         "m13_fasttext.json",
         "m17_cases.json",
         "m17_manifest.json",
