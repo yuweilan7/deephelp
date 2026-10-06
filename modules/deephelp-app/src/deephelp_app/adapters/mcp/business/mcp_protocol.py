@@ -36,11 +36,15 @@ def tool_schema(name: ToolName) -> dict[str, Any]:
     if name in {ToolName.GET_ORDER_BENEFITS, ToolName.CHECK_COUPON}:
         return next(t.input_schema for t in registered_tools() if t.name == name.value)
     schema = ToolParameters.model_json_schema()
-    field = schema["properties"]["activity_id"]["anyOf"][0]
+    slots = {
+        ToolName.CHECK_ACTIVITY_ELIGIBILITY: ["activity_id"],
+        ToolName.GET_ORDER_CREATION_FAILURE: ["attempt_id"],
+        ToolName.CHECK_REFUND_COUPON_RETURN: ["refund_id", "coupon_id"],
+    }[name]
     return {
         "type": "object",
-        "properties": {"activity_id": field},
-        "required": ["activity_id"],
+        "properties": {s: schema["properties"][s]["anyOf"][0] for s in slots},
+        "required": slots,
         "additionalProperties": False,
     }
 
@@ -57,28 +61,88 @@ def registered_tools(catalog_version: str = "complaints-v1") -> list[Tool]:
         Tool.model_validate(row)
         for row in json.loads(
             files("deephelp_app")
-            .joinpath("resources/sop_data/tools-v1.json")
+            .joinpath(
+                "resources/sop_data/tools-v1.json"
+                if catalog_version == "complaints-v1"
+                else "resources/sop_data/tools-v2.json"
+            )
             .read_text(encoding="utf-8")
         )
     ]
-    if catalog_version == "complaints-v1":
+    if catalog_version != "complaints-v3":
         return legacy
     return [
         *legacy,
-        Tool(
-            name=ToolName.CHECK_ACTIVITY_ELIGIBILITY.value,
-            description="查询当前主体已维护的活动资格、规则与剩余名额，只读；未知不推定有资格。",
-            input_schema=tool_schema(ToolName.CHECK_ACTIVITY_ELIGIBILITY),
-            output_schema=ToolResult.model_json_schema(),
-            annotations=ToolAnnotations(
-                read_only_hint=True,
-                destructive_hint=False,
-                idempotent_hint=True,
-                open_world_hint=False,
-            ),
-            _meta={"deephelp/tool_version": TOOL_VERSION},
-        ),
+        *[
+            Tool(
+                name=name.value,
+                description=description,
+                input_schema=tool_schema(name),
+                output_schema=ToolResult.model_json_schema(),
+                annotations=ToolAnnotations(
+                    read_only_hint=True,
+                    destructive_hint=False,
+                    idempotent_hint=True,
+                    open_world_hint=False,
+                ),
+                _meta={"deephelp/tool_version": TOOL_VERSION},
+            )
+            for name, description in (
+                (
+                    ToolName.GET_ORDER_CREATION_FAILURE,
+                    "只读查询当前主体下单尝试、持久原因及后续指引，不创建订单。",
+                ),
+                (
+                    ToolName.CHECK_REFUND_COUPON_RETURN,
+                    "只读核对当前主体退款与券回退关联、等待和冲突，不退款或发券。",
+                ),
+            )
+        ],
     ]
+
+
+def _validate_complaint(request: ToolRequest, result: ToolResult, evidence_version: str) -> None:
+    """新投诉事实闭包与可信参数双端绑定；矛盾只产生conflict，不能授权写动作。"""
+    facts = {f.name: f for f in result.facts}
+    attempt = request.tool_name == ToolName.GET_ORDER_CREATION_FAILURE
+    names = (
+        {"attempt_id", "attempt_status", "failure_code", "failure_reason", "follow_up"}
+        if attempt
+        else {"refund_id", "coupon_id", "refund_status", "return_status", "return_reason"}
+    )
+    locator = request.parameters.attempt_id if attempt else request.parameters.refund_id
+    if (
+        len(facts) != len(result.facts)
+        or set(facts) != names
+        or any(f.kind != FactKind.TEXT for f in result.facts)
+        or len(result.evidence_refs) != 1
+    ):
+        raise ValueError("Complaint fact closure mismatch")
+    values = {k: f.value for k, f in facts.items()}
+    if attempt:
+        valid = values["attempt_id"] == locator and values["attempt_status"] in {
+            "failed",
+            "succeeded",
+            "unknown",
+        }
+    else:
+        valid = (
+            values["refund_id"] == locator
+            and values["coupon_id"] == request.parameters.coupon_id
+            and values["refund_status"] in {"pending", "completed", "failed", "unknown"}
+            and values["return_status"] in {"pending", "returned", "failed", "unknown", "conflict"}
+        )
+        if values["return_status"] == "returned" and values["refund_status"] != "completed":
+            valid = False
+    ref = result.evidence_refs[0]
+    if (
+        not valid
+        or ref.version != evidence_version
+        or ref.locator != locator
+        or ref.content_hash != hashlib.sha256(canonical(values)).hexdigest()
+        or any(f.evidence_ids != (ref.evidence_id,) for f in result.facts)
+    ):
+        raise ValueError("Complaint state/evidence mismatch")
 
 
 @checked("mcp.input_schema")
@@ -136,6 +200,12 @@ def validate_observation(
     request: ToolRequest, result: ToolResult, *, evidence_version: str = "business-fixtures-v1"
 ) -> None:
     facts = {f.name: f for f in result.facts}
+    if request.tool_name in {
+        ToolName.GET_ORDER_CREATION_FAILURE,
+        ToolName.CHECK_REFUND_COUPON_RETURN,
+    }:
+        _validate_complaint(request, result, evidence_version)
+        return
     if request.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
         _validate_eligibility(request, result, evidence_version)
         return

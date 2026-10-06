@@ -168,3 +168,5 @@ M41管理：`python -m deephelp_tools.learning.skill_cli details`读取机器契
 hybrid_cli支持`--registry-version complaints-v2 --namespace NEW_NAMESPACE --corpus FROZEN_CORPUS --dev-queries DEV_JSON --test-queries TEST_JSON`，import/tune/evaluate/activate使用同累计预算、独立清单与新报告路径。`tune --tune-weight 0.5`可在看test之前明确只验证既有候选权重；默认仍搜索0.25/0.5/0.75。dev/test与reference保持来源/变体隔离，新标签不能导入旧scope。
 
 真实PG/正式HTTP MCP/600/SOP/事实/receipt验收入口为`python -m deephelp_tools.probes.conversation.catalog_probe --live --phase eligibility`；必填auth、service-credentials、providers、pointer、corpus、sop-directory、cascade-policy、budget-state、output见`--help`。配置原PG和依赖后再执行，固定Chat与Embedding使用精确providers；新语料使用独立scope/校准绑定，未校准分数接管时gates明确为空，不能套旧目录阈值。权限/CAS证据不经模型，成功消息重投和历史0调用。失败报告保留，`--cases CASE...`只重跑失败及受影响相邻样本；不更改样本预期换PASS。此入口不切正式发布。
+
+六叶子离线实验为`uv run --locked python -m deephelp_tools.learning.course complaints`。真实两类投诉使用同catalog_probe `--phase complaints`，选择complaints-v3的21条corpus及对应8dev/8test、独立index/pointer/selection/SOP目录/累计预算。hybrid_cli支持`--registry-version complaints-v3`，开发权重选择先于heldout test；默认不让原三叶子FastText或旧分数阈值决定新标签。13条固定内容含两新叶子、缺槽、不存在、等待、已回退、矛盾、未知/外主体及原四相邻路径，维护CAS不经模型。

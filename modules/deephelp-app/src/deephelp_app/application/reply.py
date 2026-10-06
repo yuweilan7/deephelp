@@ -43,8 +43,19 @@ def fact_reply(result: SOPResult, *, continuation: bool = False) -> str:
         value = facts.get(key)
         if isinstance(value, Money):
             parts.append(f"{label} {value.amount:.2f} {value.currency}。")
-    if "coupon_id" in facts:
+    if "coupon_id" in facts and "coupon_status" in facts:
         parts.append(f"券 {facts['coupon_id']}，状态 {facts.get('coupon_status')}。")
+    if "attempt_id" in facts:
+        parts.append(
+            f"下单尝试 {facts['attempt_id']}，状态 {facts['attempt_status']}。"
+            f"原因代码：{facts['failure_code']}；记录原因：{facts['failure_reason']}；"
+            f"记录的后续指引：{facts['follow_up']}。"
+        )
+    if "refund_id" in facts:
+        parts.append(
+            f"退款 {facts['refund_id']}，状态 {facts['refund_status']}；"
+            f"券回退状态 {facts['return_status']}。核对依据：{facts['return_reason']}。"
+        )
     if "activity_ids" in facts:
         parts.append(f"活动：{facts['activity_ids'] or '未查询到活动记录'}。")
     if "eligibility" in facts:

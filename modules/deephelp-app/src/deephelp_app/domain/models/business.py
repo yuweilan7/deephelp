@@ -90,8 +90,54 @@ class BusinessEligibilityInput(DTO):
     reason: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
 
 
+class BusinessAttemptInput(DTO):
+    """下单尝试的来源记录，不能把一次失败当成已创建的订单。
+
+    原因与后续指引均由维护者提供；unknown明确缺证据，不由模型补写。
+    查询不会创建订单或重新执行尝试。
+    """
+
+    attempt_id: Identifier
+    status: Literal["failed", "succeeded", "unknown"]
+    failure_code: Annotated[str, Field(strict=True, min_length=1, max_length=200)]
+    reason: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+    follow_up: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+
+
+class BusinessRefundInput(DTO):
+    """同主体订单/券的退款记录，用户陈述不能改变其完成状态。
+
+    关联只能引用已维护且同主体的订单和券；维护事务再次核对券所属订单。
+    """
+
+    refund_id: Identifier
+    order_id: Identifier
+    coupon_id: Identifier
+    status: Literal["pending", "completed", "failed", "unknown"]
+    reason: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+
+
+class BusinessCouponReturnInput(DTO):
+    """退款对应的券回退来源记录，以refund_id唯一维护并保留CAS版本。
+
+    同主体但券号与退款记录不一致允许保存为原始矛盾，查询必须报告conflict。
+    这样不会为了通过校验覆盖来源差异；外主体关联仍由事务拒绝。
+    """
+
+    refund_id: Identifier
+    coupon_id: Identifier
+    status: Literal["pending", "returned", "failed", "unknown"]
+    reason: Annotated[str, Field(strict=True, min_length=1, max_length=2000)]
+
+
 BusinessInput = (
-    BusinessOrderInput | BusinessCouponInput | BusinessActivityInput | BusinessEligibilityInput
+    BusinessOrderInput
+    | BusinessCouponInput
+    | BusinessActivityInput
+    | BusinessEligibilityInput
+    | BusinessAttemptInput
+    | BusinessRefundInput
+    | BusinessCouponReturnInput
 )
 
 

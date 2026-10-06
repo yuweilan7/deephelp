@@ -140,3 +140,19 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course catalog
 Java类比：版本目录像一组不可变用例契约及枚举白名单，SOP像按版本构建的编排表，PG的资格行类似带乐观锁的业务实体。边界是配置字符串不会授予方法调用权；Python await等待原连接/网关，不能为新叶子另建预算，事务不跨模型等待。
 
 练习与答案：1. 只有活动、没有资格行？返回unknown与unknown名额，保留真实规则，不编造原因。2. 有资格且名额0？回答已满，不能保证报名成功。3. 把新工具登记到优惠SOP？TOOL_GRANTS及schema绑定拒绝。4. 缺活动编号能用订单号代替？不能，询问活动编号，原SOP不派发查询。5. 更新资料后重投原message？读取原receipt与不可变事实0调用；新message才查询新的版本。6. 旧安装遇到新问题？旧目录不接收新叶子；保留原记录并由支持该目录的安装读取。
+
+### 下单失败与退款返券
+
+complaints-v3新增两条客诉。下单失败以attempt_id定位一次尝试，不能拿订单号代替，更不能根据“失败”自动重新下单。退款后券没退回以refund_id和coupon_id核对同主体退款、订单、券与回退来源；“我已经退款”只是用户陈述，退款完成须读取PG。先读[业务DTO](../../modules/deephelp-app/src/deephelp_app/domain/models/business.py)的三种记录，再读[仓储](../../modules/deephelp-services/src/deephelp_services/business/repository.py)的put与_complaint_query，最后看[六叶子SOP](../../modules/deephelp-app/src/deephelp_app/resources/sop_data/business-registry-v4.json)。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course complaints
+```
+
+六个离线结果：尝试失败原因在explained收口；缺尝试编号WAITING_SLOT且工具0次；退款pending进入waiting；同退款同券且completed/returned进入returned；关联矛盾进入conflict并转人工；缺回退记录进入unknown并转人工。模型与数据库均0次，固定观察通过原SOP/请求/事实/证据守卫，不是实际PG或模型验收。运行时lookup的await等原ToolPort，连接和预算由原请求装配拥有，PG事务不跨模型等待。退款SOP按“冲突→退款完成性→回退状态”顺序，任何分支都不会发券。
+
+工作台按订单→券→退款→回退的关系维护资料，版本竞争返回409，应读回当前版本再判断修改。下单尝试独立维护。回退记录与退款的券号不同而同属当前主体时，保留来源矛盾，原run看到conflict与实际证据；外主体引用仍拒绝。资料更新后旧message重投仍读旧不可变证据，新message才读取新版本。规则练习显示装配目录，浏览原run的事实/路径/错误不消费模型。
+
+Java类比：attempt像请求处理日志，refund与return像两个独立业务聚合，CAS类似@Version。边界是本项目记录为个人合成事实，并没有企业支付对账或事务性发券接口。Python的REPEATABLE READ使本次多记录查询一致，证据随查询事务提交；它不会把来源矛盾变成一致，也不会保证其他系统的副作用。模型选工具不能越过同主体关联和缺槽守卫。
+
+练习与答案：1. 尝试编号不存在？NOT_FOUND，不编造失败原因。2. 退款pending但券声称returned？conflict，不能据券推定退款完成。3. 用户给别人的券号？同主体读取失败，不泄漏券存在性。4. 同主体不同券的回退来源？保留矛盾并人工核对，不把它改成returned。5. completed但没有回退行？unknown，不能承诺发券。6. completed/returned再重投？原receipt重放0模型/工具，不再次发券。7. 缺coupon_id只有refund_id？询问券号，不把退款记录里的券偷当用户确认槽位。

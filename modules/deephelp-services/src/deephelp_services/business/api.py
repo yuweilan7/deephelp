@@ -276,7 +276,9 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--port", type=int, default=8011)
     parser.add_argument(
-        "--catalog-version", choices=["complaints-v1", "complaints-v2"], default="complaints-v1"
+        "--catalog-version",
+        choices=["complaints-v1", "complaints-v2", "complaints-v3"],
+        default="complaints-v1",
     )
     args = parser.parse_args()
     if args.command == "init":

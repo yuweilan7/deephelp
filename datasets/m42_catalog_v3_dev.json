@@ -1,0 +1,66 @@
+[
+  {
+    "query_id": "m42-v3-dev-0",
+    "text": "我还没参加活动，可以报名吗，还有多少位置",
+    "category": "adjacent",
+    "gold": "ACTIVITY_ELIGIBILITY_QUERY",
+    "source_group": "m42-dev-source-0",
+    "variant_group": "m42-dev-variant-0"
+  },
+  {
+    "query_id": "m42-v3-dev-1",
+    "text": "已付钱的订单承诺减免没有体现",
+    "category": "adjacent",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m42-dev-source-1",
+    "variant_group": "m42-dev-variant-1"
+  },
+  {
+    "query_id": "m42-v3-dev-2",
+    "text": "订单里输入优惠券被拒绝",
+    "category": "adjacent",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m42-dev-source-2",
+    "variant_group": "m42-dev-variant-2"
+  },
+  {
+    "query_id": "m42-v3-dev-3",
+    "text": "请列出这个已成单订单参与过的活动",
+    "category": "adjacent",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m42-dev-source-3",
+    "variant_group": "m42-dev-variant-3"
+  },
+  {
+    "query_id": "m42-v3-dev-4",
+    "text": "请查物流到哪里了",
+    "category": "unknown",
+    "gold": null,
+    "source_group": "m42-dev-source-4",
+    "variant_group": "m42-dev-variant-4"
+  },
+  {
+    "query_id": "m42-v3-dev-new-0",
+    "text": "点提交后一直提示未创建成功，想查这次下单尝试",
+    "category": "adjacent",
+    "gold": "ORDER_CREATION_FAILED",
+    "source_group": "m42-v3-dev-new-0-source",
+    "variant_group": "m42-v3-dev-new-0-variant"
+  },
+  {
+    "query_id": "m42-v3-dev-new-1",
+    "text": "钱退款后优惠券没有回到账户，帮我核对记录",
+    "category": "adjacent",
+    "gold": "REFUND_COUPON_NOT_RETURNED",
+    "source_group": "m42-v3-dev-new-1-source",
+    "variant_group": "m42-v3-dev-new-1-variant"
+  },
+  {
+    "query_id": "m42-v3-dev-new-2",
+    "text": "只查退款金额是否多扣",
+    "category": "unknown",
+    "gold": null,
+    "source_group": "m42-v3-dev-new-2-source",
+    "variant_group": "m42-v3-dev-new-2-variant"
+  }
+]

@@ -26,8 +26,15 @@ class IntentCode(StrEnum):
     ORDER_ACTIVITY_QUERY = "ORDER_ACTIVITY_QUERY"
     ACTIVITY_ELIGIBILITY_QUERY = "ACTIVITY_ELIGIBILITY_QUERY"
 
+    ORDER_CREATION_FAILED = "ORDER_CREATION_FAILED"
+    REFUND_COUPON_NOT_RETURNED = "REFUND_COUPON_NOT_RETURNED"
+
     @property
     def required_slots(self) -> tuple[EntityName, ...]:
+        if self == IntentCode.ORDER_CREATION_FAILED:
+            return (EntityName.ATTEMPT_ID,)
+        if self == IntentCode.REFUND_COUPON_NOT_RETURNED:
+            return (EntityName.REFUND_ID, EntityName.COUPON_ID)
         if self == IntentCode.ACTIVITY_ELIGIBILITY_QUERY:
             return (EntityName.ACTIVITY_ID,)
         if self == IntentCode.COUPON_UNUSABLE:
@@ -68,7 +75,7 @@ class IntentDefinition(DTO):
     is_actionable: bool
     required_slots: tuple[EntityName, ...] = ()
     sop_id: Identifier | None = None
-    version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
+    version: Literal["complaints-v1", "complaints-v2", "complaints-v3"] = REGISTRY_VERSION
 
     @model_validator(mode="after")
     def current_catalog(self) -> IntentDefinition:

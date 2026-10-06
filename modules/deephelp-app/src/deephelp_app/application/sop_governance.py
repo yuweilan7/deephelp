@@ -30,8 +30,16 @@ TOOL_GRANTS = {
     IntentCode.COUPON_UNUSABLE: (ToolName.CHECK_COUPON, ToolName.GET_ORDER_BENEFITS),
     IntentCode.ORDER_ACTIVITY_QUERY: (ToolName.GET_ORDER_BENEFITS,),
     IntentCode.ACTIVITY_ELIGIBILITY_QUERY: (ToolName.CHECK_ACTIVITY_ELIGIBILITY,),
+    IntentCode.ORDER_CREATION_FAILED: (ToolName.GET_ORDER_CREATION_FAILURE,),
+    IntentCode.REFUND_COUPON_NOT_RETURNED: (ToolName.CHECK_REFUND_COUPON_RETURN,),
 }
 FACT_TYPES = {
+    ToolName.GET_ORDER_CREATION_FAILURE: dict.fromkeys(
+        ("attempt_id", "attempt_status", "failure_code", "failure_reason", "follow_up"), "text"
+    ),
+    ToolName.CHECK_REFUND_COUPON_RETURN: dict.fromkeys(
+        ("refund_id", "coupon_id", "refund_status", "return_status", "return_reason"), "text"
+    ),
     ToolName.CHECK_ACTIVITY_ELIGIBILITY: dict.fromkeys(
         (
             "activity_id",
@@ -183,7 +191,7 @@ class GovernedSOP(DTO):
 
     @model_validator(mode="after")
     def topology(self) -> GovernedSOP:
-        item = complaint_registry("complaints-v2").get(self.intent_code)
+        item = complaint_registry("complaints-v3").get(self.intent_code)
         if (
             not item.is_actionable
             or self.sop_id != item.sop_id
@@ -300,7 +308,7 @@ class SOPRegistry(DTO):
     tool_schema_hash: Identifier
     prompt_version: Literal["sop-governed-v1"] = "sop-governed-v1"
     prompt: str = Field(min_length=1, max_length=16000)
-    catalog_version: Literal["complaints-v1", "complaints-v2"] = "complaints-v1"
+    catalog_version: Literal["complaints-v1", "complaints-v2", "complaints-v3"] = "complaints-v1"
     definitions: tuple[GovernedSOP, ...] = Field(min_length=3, max_length=6)
 
     @model_serializer(mode="wrap")
@@ -426,6 +434,10 @@ class RegistryStore:
             ):
                 raise ValueError("Registry version cannot be reused for different content")
             for definition in registry.definitions:
+                # 新目录可新增叶子；只有原已注册的SOP才比较版本重用。
+                # 旧快照仍保留原闭包，不能给旧问题补进新定义。
+                if definition.intent_code not in {d.intent_code for d in old.definitions}:
+                    continue
                 prior = old.definition(definition.intent_code)
                 if prior.version == definition.version and prior != definition:
                     raise ValueError("SOP version cannot be reused for different content")

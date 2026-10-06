@@ -61,7 +61,11 @@ def validate_tool_context(request: ToolRequest, question: Question) -> None:
     if not {slot.value for slot in question.active_intent.required_slots} <= set(values):
         raise AppError(ErrorCode.MISSING_SLOT, "Required tool slots are missing")
     expected_tool = (
-        ToolName.CHECK_ACTIVITY_ELIGIBILITY
+        ToolName.GET_ORDER_CREATION_FAILURE
+        if question.active_intent == IntentCode.ORDER_CREATION_FAILED
+        else ToolName.CHECK_REFUND_COUPON_RETURN
+        if question.active_intent == IntentCode.REFUND_COUPON_NOT_RETURNED
+        else ToolName.CHECK_ACTIVITY_ELIGIBILITY
         if question.active_intent == IntentCode.ACTIVITY_ELIGIBILITY_QUERY
         else ToolName.CHECK_COUPON
         if question.active_intent == IntentCode.COUPON_UNUSABLE
@@ -80,7 +84,15 @@ def validate_tool_context(request: ToolRequest, question: Question) -> None:
         or request.budget.remaining_attempts == 0
     ):
         raise AppError(ErrorCode.BUDGET_EXHAUSTED, "Tool budget is exhausted")
-    if values.get("order_id") != request.parameters.order_id:
+    for key in ("attempt_id", "refund_id"):
+        if getattr(request.parameters, key) is not None and values.get(key) != getattr(
+            request.parameters, key
+        ):
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "Tool complaint ID does not match question")
+    if (
+        request.parameters.order_id is not None
+        and values.get("order_id") != request.parameters.order_id
+    ):
         raise AppError(ErrorCode.INVALID_ARGUMENT, "Tool order does not match question")
     if request.parameters.coupon_id is not None:
         if values.get("coupon_id") != request.parameters.coupon_id:
