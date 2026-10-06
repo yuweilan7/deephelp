@@ -15,6 +15,7 @@ from mcp import StdioServerParameters
 from deephelp_app.adapters.approval.approval_store import TERMINAL
 from deephelp_app.adapters.approval.synthetic_rights import RightsClient
 from deephelp_app.adapters.mcp.shared.network_mcp import HTTPMCPConfig
+from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.release_assets import verify_release
 from deephelp_app.adapters.releases.release_store import (
     ReleaseMismatch,
@@ -108,17 +109,29 @@ class ReleaseRuntime:
                         if identity not in cache:
                             manifest = await store.manifest(identity)
                             data = verify_release(manifest)
+                            catalog = catalog_binding(
+                                data, manifest.sop_registry.get("catalog_version", "complaints-v1")
+                            )
                             assembly = LiveAssembly(
                                 Path.cwd(),
                                 resolve_artifact(manifest.providers_path),
                                 resolve_artifact(data["dense_pointer"]),
-                                fasttext_pointer=resolve_artifact(data["fasttext_pointer"]),
+                                fasttext_pointer=(
+                                    None if catalog else resolve_artifact(data["fasttext_pointer"])
+                                ),
+                                cascade_policy=(
+                                    resolve_artifact(catalog["cascade_policy"]) if catalog else None
+                                ),
                                 reviewed_rules=resolve_artifact(data["rules"]),
                                 event_collection="dh_m10_events_m18_release_" + identity[:20],
                                 tool_server=runtime.tool_server,
                                 business_mcp=runtime.business_mcp,
                                 retrieval_mcp=runtime.retrieval_mcp,
-                                corpus_path=runtime.corpus_path,
+                                corpus_path=(
+                                    resolve_artifact(catalog["corpus"])
+                                    if catalog
+                                    else runtime.corpus_path
+                                ),
                                 rights_port=runtime.rights_port,
                                 rights_key=runtime.rights_key,
                                 release_manifest=manifest,

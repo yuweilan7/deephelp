@@ -98,6 +98,13 @@ COMPLAINT_CASES = (
     ],
 )
 
+# 完整发布增加冻结未知边界，不因召回到相似叶子就授权执行工具。
+RELEASE_CASES = (
+    *COMPLAINT_CASES,
+    ("unsupported-logistics", "只想知道物流什么时候到", "HANDOFF", None, None),
+    ("unsupported-refund", "只查询退款进度，不查优惠券回退。", "HANDOFF", None, None),
+)
+
 
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
@@ -132,6 +139,14 @@ def content_checks(
     catalog_version: str = "complaints-v2",
 ) -> dict[str, bool]:
     """核对独立业务预期的600/事实/节点，可只读复核已采集响应而不重调模型。"""
+    if name.startswith("unsupported-"):
+        return dict(
+            rejected=response.intent_decision is not None
+            and response.intent_decision.final_code is None,
+            no_tool=not response.tool_call_ids and not response.facts and response.sop_plan is None,
+            catalog=response.versions.registry == catalog_version,
+            stage600=response.call_counts.intent_calls == 1,
+        )
     if name.startswith("attempt") or name.startswith("refund"):
         return complaint_checks(response, name, ids, catalog_version)
     expected = {
@@ -371,7 +386,7 @@ async def probe(args: argparse.Namespace) -> int:
     other = auth.rows[1][1]
     if owner == other:
         raise ConfigurationError("Catalog ownership counterexample needs a distinct owner")
-    catalog_version = "complaints-v3" if args.phase == "complaints" else "complaints-v2"
+    catalog_version = "complaints-v2" if args.phase == "eligibility" else "complaints-v3"
     credentials = ServiceCredentials.load(Path(args.service_credentials))
     code = evaluation_provenance()
     nonce = uuid4().hex[:12]
@@ -418,6 +433,38 @@ async def probe(args: argparse.Namespace) -> int:
     gate.open()
     runtime: LiveAssembly | None = None
     try:
+        if args.assets:
+            from deephelp_app.adapters.releases.catalog_binding import catalog_binding
+            from deephelp_app.application.artifact_paths import resolve_artifact
+            from deephelp_app.application.collaboration import policy_release_binding
+            from deephelp_app.application.corpus import digest
+            from deephelp_app.application.intent_prompt import default_system, fallback_contract
+            from deephelp_tools.evaluation.feedback.flywheel_assets import verify_files
+
+            data = verify_files(Path(args.assets))
+            binding = catalog_binding(data, catalog_version)
+            assert binding is not None
+            if any(
+                resolve_artifact(actual) != resolve_artifact(expected)
+                for actual, expected in (
+                    (args.pointer, data["dense_pointer"]),
+                    (args.corpus, binding["corpus"]),
+                    (args.cascade_policy, binding["cascade_policy"]),
+                )
+            ):
+                raise ConfigurationError("Content probe differs from complete catalog assets")
+            report.update(
+                assets_digest=digest(data),
+                catalog_binding_digest=digest(binding),
+                code_integrity_scope="runtime-v2",
+                judge_providers_digest=file_digest(
+                    Path(args.providers).parent / "event-judge.example.json"
+                ),
+                collaboration_policy_digest=policy_release_binding()["policy_digest"],
+                intent_prompt_request_digest=digest(
+                    [default_system(catalog_version), fallback_contract(catalog_version)]
+                ),
+            )
         business = create_business_app(Path.cwd(), credentials, catalog_version=catalog_version)
         async with (
             business.router.lifespan_context(business),
@@ -514,7 +561,7 @@ async def probe(args: argparse.Namespace) -> int:
                 "owner_read_and_relation_denied",
                 all(getattr(r, "code", None) == "NOT_FOUND" for r in denied),
             )
-            if args.phase == "complaints":
+            if args.phase != "eligibility":
                 await maintain_complaints(client, owner, other, ids, activity, check)
             runtime = LiveAssembly(
                 Path.cwd(),
@@ -525,9 +572,14 @@ async def probe(args: argparse.Namespace) -> int:
                 sop_directory=Path(args.sop_directory),
                 cascade_policy=Path(args.cascade_policy),
                 event_collection="dh_m10_events_m42_" + args.phase,
+                reviewed_rules=Path(data["rules"]) if args.assets else None,
+                skill_review=Path(args.skill_review) if args.skill_review else None,
             )
             report["sop_snapshot"] = runtime.sop_registry.snapshot_hash
             report["catalog_version"] = runtime.sop_registry.catalog_version
+            if args.skill_review:
+                report["skills_digest"] = runtime.skills_registry.digest
+                report["skills_review_digest"] = file_digest(Path(args.skill_review))
             app = create_app(
                 Settings(
                     mode="mvp", request_timeout=90, child_timeout=45, max_attempts=40, retry_limit=2
@@ -539,7 +591,11 @@ async def probe(args: argparse.Namespace) -> int:
             )
             async with app.router.lifespan_context(app), api_client(app, http=True) as http:
                 for name, text, expected, state, remaining in (
-                    COMPLAINT_CASES if args.phase == "complaints" else ELIGIBILITY_CASES
+                    RELEASE_CASES
+                    if args.phase == "release"
+                    else COMPLAINT_CASES
+                    if args.phase == "complaints"
+                    else ELIGIBILITY_CASES
                 ):
                     if args.cases and name not in args.cases:
                         continue
@@ -664,9 +720,15 @@ def main() -> int:
         description="M42 PG/HTTP MCP/original Conversation targeted content"
     )
     parser.add_argument("--live", action="store_true")
-    parser.add_argument("--phase", choices=["eligibility", "complaints"], default="eligibility")
     parser.add_argument(
-        "--cases", nargs="+", choices=sorted({c[0] for c in (*ELIGIBILITY_CASES, *COMPLAINT_CASES)})
+        "--phase", choices=["eligibility", "complaints", "release"], default="eligibility"
+    )
+    parser.add_argument(
+        "--assets", help="Exact immutable catalog assets for complete release content"
+    )
+    parser.add_argument("--skill-review", help="Retained approved Skill snapshot for the candidate")
+    parser.add_argument(
+        "--cases", nargs="+", choices=sorted({c[0] for c in (*ELIGIBILITY_CASES, *RELEASE_CASES)})
     )
     for field in (
         "auth",

@@ -85,6 +85,7 @@ class LiveAssembly:
         release_manifest: ReleaseManifest | None = None,
         release_channel: str | None = None,
         prompt_artifact: Path | None = None,
+        skill_review: Path | None = None,
     ) -> None:
         self.root, self.config, self.pointer = (
             root,
@@ -94,22 +95,28 @@ class LiveAssembly:
         self.release_manifest, self.release_channel = release_manifest, release_channel
         from deephelp_app.application.intent_prompt import published_prompt, read_prompt
 
-        if release_manifest and prompt_artifact:
-            raise ConfigurationError("Published runtime Prompt must come from its ReleaseManifest")
-        binding = published_prompt(release_manifest) if release_manifest else None
-        self.intent_prompt = (
-            binding[1] if binding else (read_prompt(prompt_artifact) if prompt_artifact else None)
-        )
-        self.judge_providers = (
-            resolve_artifact(release_manifest.judge_providers_path)
-            if release_manifest
-            else root / "modules/deephelp-app/event-judge.example.json"
-        )
         active = self.pointer.get("active")
         self.scope = (
             HybridScope.model_validate(active)
             if isinstance(active, dict) and active.get("index_kind") == "intent_hybrid"
             else DenseScope.model_validate(active)
+        )
+        if release_manifest and prompt_artifact:
+            raise ConfigurationError("Published runtime Prompt must come from its ReleaseManifest")
+        binding = published_prompt(release_manifest) if release_manifest else None
+        self.intent_prompt = (
+            binding[1]
+            if binding
+            else (
+                read_prompt(prompt_artifact, self.scope.registry_version)
+                if prompt_artifact
+                else None
+            )
+        )
+        self.judge_providers = (
+            resolve_artifact(release_manifest.judge_providers_path)
+            if release_manifest
+            else root / "modules/deephelp-app/event-judge.example.json"
         )
         self.top_k = 3
         self.cascade_policy_path = cascade_policy
@@ -129,10 +136,19 @@ class LiveAssembly:
         self.agent_policy = load_agent_policy()
         from deephelp_app.application.skills import SkillRegistry, load_skills
 
+        if release_manifest and skill_review:
+            raise ConfigurationError("Released Skill must come from its immutable manifest")
+        # 候选读取原审核快照，不让包内默认Skill替代云端现行版本。
+        # 只有文件验证，不提交审核或扩大工具许可。
+        reviewed_skills = None
+        if skill_review:
+            from deephelp_app.adapters.releases.skill_store import read_skill_review
+
+            reviewed_skills, _ = read_skill_review(skill_review)
         self.skills_registry = (
             SkillRegistry.model_validate(release_manifest.skill_registry)
             if release_manifest and release_manifest.skill_registry
-            else load_skills()
+            else reviewed_skills or load_skills()
         )
         self.skills_enabled = (
             release_manifest is None or release_manifest.skill_registry is not None
