@@ -49,7 +49,7 @@
 | M40 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M40.md) | 默认single，显式订单/券角色/两源门槛；PG任务短事务/CAS/取消/只读回收；12条原主链内容对照/正式两HTTP MCP事实、新精确安装与M36→M40恢复通过；固定样本未证明质量收益，协作增加调用/等待 |
 | M41 | IMPLEMENTED_LIVE_VERIFIED / LOCAL_CLOSEOUT_BLOCKED；三项能力验收/安装通过；[交接](../handoffs/M41.md) | 版本化订单/券Skill、只读组合、候选审核/完整发布；真实内容/页面/精确安装/恢复通过；本地临时产物清理被工具拒绝，整M收尾未完成。确定性选择，无模型选Skill质量收益结论 |
 | M42 | 三项能力/精确云安装与恢复已验；LOCAL_CLOSEOUT_BLOCKED；[交接](../handoffs/M42.md) | complaints-v3六叶子、PG维护/CAS、真实HTTP MCP/600/澄清/事实、15例候选及6例正式内容、冻结对照、同run原生观测与旧新零调用恢复通过；F2七文件/两目录及已覆盖短PLAN删除被工具拒绝 |
-| M43 | F1草稿/CAS/校验及实际浏览器已验收；[交接](../handoffs/M43.md) | 离线图/持久/权限及课程、前端构建与包安装通过；内置浏览器恢复后完成编辑/无效图定位/修正/刷新重载。F2预演/F3审核发布顺序续做，原云安装保持M42 |
+| M43 | F1作者/F2预演已验收；[交接](../handoffs/M43.md) | 原SOP离线正常/缺槽/坏证据/失败/取消、持久与实际浏览器刷新读取通过；1条Flash/HTTP MCP/PG修改分支真实内容PASS。F3审核发布顺序续做，原云安装保持M42 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 后续规格与实施边界

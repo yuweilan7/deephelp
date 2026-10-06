@@ -35,7 +35,12 @@ def install(app: FastAPI, assembly: LiveAssembly) -> None:
         config = EvaluationCatalog.model_validate_json(Path(catalog).read_text(encoding="utf-8"))
         app.include_router(
             sop_authoring_router(
-                assembly, app.state.browser_auth, config.owner, config.task_root / "sop"
+                assembly,
+                app.state.browser_auth,
+                config.owner,
+                config.task_root / "sop",
+                lambda: app.state.budget_factory(),
+                lambda: callable(getattr(app.state, "budget_factory", None)),
             )
         )
         app.include_router(

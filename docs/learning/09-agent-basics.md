@@ -169,6 +169,20 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-authori
 
 Java类比是不可变配置快照、乐观版本锁和服务端Bean Validation；这里验证每条有向无环路径上的事实可用性，不能将其当成任意规则脚本。writer短同步锁只覆盖回读/CAS/原子替换，不跨模型或工具await。练习与答案：1. 删除被连线引用的节点？保存为无效并定位，修正连线后再验。2. 将失败查询接到成功终点？原契约拒绝，缺证据不能成功。3. 加环或eval条件？拒绝。4. 修改外主体草稿？404。5. 旧revision覆盖？409且新稿保持。6. 保存通过等于业务批准？不是；只证明结构，正式运行/审批仍走原守卫。
 
+### SOP受控预演
+
+在同一草稿的“受控预演”确认槽位，再明确开始。默认固定合成事实，真正的查询/分支/终点仍由原SOPExecutor执行；页面显示实际命中第几条条件、原错误、未运行节点及候选hash。任务SUCCEEDED不等于业务成功，应另看RESOLVED、WAITING_SLOT或FAILED。刷新后选择持久任务只读原观察，模型0次；修改草稿后旧hash的结果不能作为新稿验收。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-rehearsal
+```
+
+预期三例依次RESOLVED、WAITING_SLOT、FAILED/MODEL_OUTPUT_INVALID；缺槽没有任何Port调用，错误证据不能走成功分支，全部远程模型/业务写入0。阅读[原预演入口](../../modules/deephelp-tools/src/deephelp_tools/learning/replay/sop_rehearsal.py)与[最小实验](../../modules/deephelp-tools/src/deephelp_tools/learning/course/sop_rehearsal.py)。固定适配只返回标明合成的ToolResult，金额/主体/locator/hash仍过正式守卫；不是第二引擎。
+
+任务协调器拥有worker/超时/取消，原装配拥有真实模型/MCP连接和唯一累计预算writer。cancel先保存CANCELLING、取消并join，执行器finally保存部分节点/已派发工具和预算，然后恢复本Task的ContextVar；只有服务端CANCELLED才表示清理完成。关闭页面不取消服务；进程中断只标INTERRUPTED，没有自动再派发。Java类比是任务Future、作用域状态与finally资源释放；Python取消从await抛出，捕获不能省略join或把已有派发说成未调用。
+
+真实只读模式须明确选择并确认，借用已打开原网关、可信身份和累计预算。只验证候选图，关闭Skills组合，不经过600、对话账本或回复润色；含审批提案的图在调用前拒绝。真实结果仍须核对具体PG事实/证据、同hash实际分支与模型调用；离线PASS不能代替完整发布。练习与答案：1. 空槽位？WAITING_SLOT、模型/工具0。2. 错locator？FAILED，不能成功。3. 浏览器超时等于取消？不是，应读原任务或明确取消并等待终态。4. 修改条件再读旧任务？保留旧观察并提示hash不同，不自动重演。5. 审批节点预演？拒绝，不形成SOPPlan。6. 重启后RUNNING？INTERRUPTED，普通读取不恢复业务。
+
 ### 同一目录的完整发布
 
 新增叶子不仅是扩大枚举。[发布绑定守卫](../../modules/deephelp-app/src/deephelp_app/adapters/releases/catalog_binding.py)把六叶子目录、语料、冻结dev/test、索引选择和级联策略连接起来；原ReleaseManifest继续绑定代码、工具、提供方、SOP与实际内容报告。旧目录的提示词输出只有三标签，新目录的请求schema允许六个叶子与null，不能让旧Prompt为新目录背书。核验只读资产，不在服务启动时打开测试集或调用模型。

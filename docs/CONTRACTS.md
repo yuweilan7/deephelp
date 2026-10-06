@@ -395,6 +395,10 @@ M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额
 
 `GET /learning/sop`读取当前GovernedSOP注册表、有限工具/事实元数据及当前owner草稿，模型0。`POST /learning/sop/drafts`只收sop_id/base_hash；`GET /drafts/{id}`回读持久原件，`PUT`只收正revision/content。随机ID不是路径或授权；BrowserAuth同源/CSRF及catalog owner均检查，外主体404、基准/revision冲突409。服务端根由catalog.task_root/sop确定。草稿包含owner、不可变完整基准/base_hash、revision、content_hash、DRAFT状态及原GovernedSOP校验结果；无效中间图可以保存修正，不能作为可执行或发布候选。槽位/意图/稳定SOP ID保持，工具参数仍由原已确认实体与schema生成，不开放脚本/地址/任意表达式。保存不改变正式registry、旧Question或审批/UNKNOWN；短同步writer不跨await，原子replace与锁内CAS只证明单机文件持久协议。
 
+M43预演：POST `/learning/sop/drafts/{id}/rehearsals`提交已保存revision、mode=offline/live-readonly、有限required_slots、合成scenario及真实模式confirmed=true。未知槽位、无效图、旧revision、含审批proposal在任何Port前拒绝；真实模式同时核对原base与已打开模型/只读MCP/累计writer。GET同路径列原任务，GET `/learning/sop/rehearsals/{id}`读取，POST `/{id}/cancel`取消并join，均沿原owner/BrowserAuth。读页面不恢复任务；进程启动未结束记录标INTERRUPTED。
+
+任务固定完整候选registry/hash、draft_hash/revision、可信owner和作者确认槽位来源，结果保存实际run/question、原节点起止/规则/路径、工具/证据/预算、未运行项。LearningJobs.SUCCEEDED只表示runner返回，须另看SOP结果RESOLVED/WAITING_SLOT/FAILED/HANDED_OFF；CANCELLED只有清理结束才返回。离线固定建议/合成事实不是模型质量；远程model_calls=0、业务写入0。真实预演借用原Port与共享预算，只进入原1000执行器，不创建会话账本/审批或调用600/回复润色。预演只验图，Skills组合关闭且正式内容门禁另核对原Skills路径。
+
 ## M41 版本化业务Skill
 
 唯一SkillReceipt记录原run/question/node、registry_digest、稳定skill_id/version/digest、已确认Entity来源、状态/起止、实际ToolResult与安全错误；SOPResult/ResponseEnvelope.skill_receipts默认空，VersionManifest.skills默认null兼容旧记录。响应守卫核对原run/question、注册表和call。Skill不是审批授权或事实来源，输出仍验证原ToolResult及证据链；缺槽无模型/工具/Skill，取消抛回父请求，不以新组合重跑恢复UNKNOWN。

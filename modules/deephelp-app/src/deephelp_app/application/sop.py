@@ -813,9 +813,20 @@ class SOPExecutor:
                     }
                     assert node.default
                     try:
-                        current = next(
-                            (r.target for r in node.routes if r.condition.matches(facts)),
-                            node.default,
+                        # 保存这次代码实际选择的第一条规则；观察者不能重新评估或补推断。
+                        # None明确表示所有有限条件未命中，沿发布的default收口。
+                        selected = next(
+                            (i for i, r in enumerate(node.routes) if r.condition.matches(facts)),
+                            None,
+                        )
+                        current = (
+                            node.routes[selected].target if selected is not None else node.default
+                        )
+                        node_observation["matched_route"] = selected
+                        node_observation["condition"] = (
+                            node.routes[selected].condition.model_dump(mode="json")
+                            if selected is not None
+                            else None
                         )
                         node_observation["next_node"] = current
                     except KeyError, ValueError:
