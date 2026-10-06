@@ -593,7 +593,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                 corpus_path=Path(args.corpus),
                 sop_directory=Path(args.sop_directory),
                 cascade_policy=Path(args.cascade_policy),
-                event_collection="dh_m10_events_m42_" + args.phase,
+                event_collection="dh_m10_events_m42_" + args.phase.replace("-", "_"),
                 reviewed_rules=Path(data["rules"]) if args.assets else None,
                 skill_review=Path(args.skill_review) if args.skill_review else None,
             )
