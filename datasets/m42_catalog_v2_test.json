@@ -1,0 +1,42 @@
+[
+  {
+    "query_id": "m42-v2-test-0",
+    "text": "活动资格满足吗，报名名额还剩几份",
+    "category": "adjacent",
+    "gold": "ACTIVITY_ELIGIBILITY_QUERY",
+    "source_group": "m42-test-source-0",
+    "variant_group": "m42-test-variant-0"
+  },
+  {
+    "query_id": "m42-v2-test-1",
+    "text": "原来承诺的折扣结账完全没少付",
+    "category": "adjacent",
+    "gold": "DISCOUNT_MISSING",
+    "source_group": "m42-test-source-1",
+    "variant_group": "m42-test-variant-1"
+  },
+  {
+    "query_id": "m42-v2-test-2",
+    "text": "订单的券过期所以无法抵扣",
+    "category": "adjacent",
+    "gold": "COUPON_UNUSABLE",
+    "source_group": "m42-test-source-2",
+    "variant_group": "m42-test-variant-2"
+  },
+  {
+    "query_id": "m42-v2-test-3",
+    "text": "已经下单了，想知道订单对应的活动记录",
+    "category": "adjacent",
+    "gold": "ORDER_ACTIVITY_QUERY",
+    "source_group": "m42-test-source-3",
+    "variant_group": "m42-test-variant-3"
+  },
+  {
+    "query_id": "m42-v2-test-4",
+    "text": "给我立即自动退款",
+    "category": "unknown",
+    "gold": null,
+    "source_group": "m42-test-source-4",
+    "variant_group": "m42-test-variant-4"
+  }
+]

@@ -61,7 +61,9 @@ def validate_tool_context(request: ToolRequest, question: Question) -> None:
     if not {slot.value for slot in question.active_intent.required_slots} <= set(values):
         raise AppError(ErrorCode.MISSING_SLOT, "Required tool slots are missing")
     expected_tool = (
-        ToolName.CHECK_COUPON
+        ToolName.CHECK_ACTIVITY_ELIGIBILITY
+        if question.active_intent == IntentCode.ACTIVITY_ELIGIBILITY_QUERY
+        else ToolName.CHECK_COUPON
         if question.active_intent == IntentCode.COUPON_UNUSABLE
         else ToolName.GET_ORDER_BENEFITS
     )
@@ -83,6 +85,11 @@ def validate_tool_context(request: ToolRequest, question: Question) -> None:
     if request.parameters.coupon_id is not None:
         if values.get("coupon_id") != request.parameters.coupon_id:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "Tool coupon does not match question")
+    if (
+        request.parameters.activity_id is not None
+        and values.get("activity_id") != request.parameters.activity_id
+    ):
+        raise AppError(ErrorCode.INVALID_ARGUMENT, "Tool activity does not match question")
 
 
 def validate_tool_result(request: ToolRequest, result: ToolResult) -> None:

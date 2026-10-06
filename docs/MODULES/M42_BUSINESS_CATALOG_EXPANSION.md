@@ -1,6 +1,6 @@
 # M42｜扩展客诉目录与可执行业务闭环
 
-**状态：** `SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`；2026-10-05规格。
+**状态：** `IN_PROGRESS`；F1活动资格候选已验，F2/F3待续；实际范围见[交接](../../handoffs/M42.md)。2026-10-05规格。
 **来源：** PDF文件页25–30的多层意图/更多客诉场景、67–69的业务工具与SOP；新增目录及具体工具/数据模型是本项目设计。
 **基线：** M39；复用[M02目录](M02_CONTRACTS_DATA.md)、[M12级联](M12_CASCADE_PIPELINE.md)、[M14 SOP治理](M14_SOP_GOVERNANCE.md)、[M15审批](M15_DURABILITY_APPROVAL.md)、[M20业务/检索MCP](M20_BUSINESS_SOURCE.md)、[M25 PG事实](M25_POSTGRES_FACTS.md)、[M18发布](M18_DATA_FLYWHEEL.md)。可独立实施，不要求先实现M40/M41。
 

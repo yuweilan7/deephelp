@@ -10,9 +10,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib.resources import files
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SerializerFunctionWrapHandler, model_serializer, model_validator
 
 from deephelp_app.adapters.mcp.business.mcp_protocol import canonical, registered_tools, tool_schema
 from deephelp_app.application.sop_config import SOPLimits
@@ -29,8 +29,20 @@ TOOL_GRANTS = {
     IntentCode.DISCOUNT_MISSING: (ToolName.GET_ORDER_BENEFITS,),
     IntentCode.COUPON_UNUSABLE: (ToolName.CHECK_COUPON, ToolName.GET_ORDER_BENEFITS),
     IntentCode.ORDER_ACTIVITY_QUERY: (ToolName.GET_ORDER_BENEFITS,),
+    IntentCode.ACTIVITY_ELIGIBILITY_QUERY: (ToolName.CHECK_ACTIVITY_ELIGIBILITY,),
 }
 FACT_TYPES = {
+    ToolName.CHECK_ACTIVITY_ELIGIBILITY: dict.fromkeys(
+        (
+            "activity_id",
+            "activity_label",
+            "activity_rules",
+            "eligibility",
+            "remaining_slots",
+            "eligibility_reason",
+        ),
+        "text",
+    ),
     ToolName.GET_ORDER_BENEFITS: {
         "order_id": "text",
         "paid": "money",
@@ -53,8 +65,8 @@ def digest(value: object) -> str:
     return "sha256:" + hashlib.sha256(canonical(value)).hexdigest()
 
 
-def schema_signature() -> str:
-    return digest([t.model_dump(mode="json") for t in registered_tools()])
+def schema_signature(catalog_version: str = "complaints-v1") -> str:
+    return digest([t.model_dump(mode="json") for t in registered_tools(catalog_version)])
 
 
 class FlowCondition(DTO):
@@ -171,7 +183,7 @@ class GovernedSOP(DTO):
 
     @model_validator(mode="after")
     def topology(self) -> GovernedSOP:
-        item = complaint_registry().get(self.intent_code)
+        item = complaint_registry("complaints-v2").get(self.intent_code)
         if (
             not item.is_actionable
             or self.sop_id != item.sop_id
@@ -288,15 +300,27 @@ class SOPRegistry(DTO):
     tool_schema_hash: Identifier
     prompt_version: Literal["sop-governed-v1"] = "sop-governed-v1"
     prompt: str = Field(min_length=1, max_length=16000)
-    definitions: tuple[GovernedSOP, ...] = Field(min_length=3, max_length=3)
+    catalog_version: Literal["complaints-v1", "complaints-v2"] = "complaints-v1"
+    definitions: tuple[GovernedSOP, ...] = Field(min_length=3, max_length=6)
+
+    @model_serializer(mode="wrap")
+    def compatible_snapshot(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """旧快照省略新增默认字段；旧hash及其运行/审批引用保持。
+
+        新目录显式写入版本，校验叶子闭包和对应发现schema，不只放宽长度。
+        """
+        data: dict[str, Any] = handler(self)
+        if self.catalog_version == "complaints-v1":
+            data.pop("catalog_version", None)
+        return data
 
     @model_validator(mode="after")
     def bindings(self) -> SOPRegistry:
         codes = [d.intent_code for d in self.definitions]
         if (
-            set(codes) != set(TOOL_GRANTS)
+            set(codes) != set(complaint_registry(self.catalog_version).actionable_codes)
             or len(set(codes)) != len(codes)
-            or self.tool_schema_hash != schema_signature()
+            or self.tool_schema_hash != schema_signature(self.catalog_version)
             or any(d.prompt_version != self.prompt_version for d in self.definitions)
             or len({d.version for d in self.definitions}) != len(self.definitions)
         ):
@@ -313,6 +337,7 @@ class SOPRegistry(DTO):
     def pin(self, versions: VersionManifest, code: IntentCode) -> VersionManifest:
         return versions.model_copy(
             update={
+                "registry": self.catalog_version,
                 "sop": self.definition(code).version,
                 "sop_registry": self.registry_version,
                 "sop_snapshot": self.snapshot_hash,

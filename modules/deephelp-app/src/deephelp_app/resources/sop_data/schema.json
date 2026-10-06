@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "EntityName": {
       "enum": [
@@ -17,7 +18,8 @@
         "ORDER_QUERY",
         "DISCOUNT_MISSING",
         "COUPON_UNUSABLE",
-        "ORDER_ACTIVITY_QUERY"
+        "ORDER_ACTIVITY_QUERY",
+        "ACTIVITY_ELIGIBILITY_QUERY"
       ],
       "title": "IntentCode",
       "type": "string"
@@ -152,7 +154,8 @@
     "ToolName": {
       "enum": [
         "get_order_benefits",
-        "check_coupon"
+        "check_coupon",
+        "check_activity_eligibility"
       ],
       "title": "ToolName",
       "type": "string"
@@ -279,6 +282,5 @@
     "handoff_conditions"
   ],
   "title": "SOPDefinition",
-  "type": "object",
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "type": "object"
 }

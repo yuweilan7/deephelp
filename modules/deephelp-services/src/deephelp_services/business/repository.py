@@ -24,6 +24,7 @@ from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.business import (
     BusinessActivityInput,
     BusinessCouponInput,
+    BusinessEligibilityInput,
     BusinessInput,
     BusinessOrderInput,
     BusinessRecord,
@@ -38,15 +39,25 @@ from deephelp_app.domain.models.tools import (
     ToolStatus,
 )
 
-Kind = Literal["orders", "coupons", "activities"]
+Kind = Literal["orders", "coupons", "activities", "eligibilities"]
 MODELS: dict[
-    str, type[BusinessOrderInput] | type[BusinessCouponInput] | type[BusinessActivityInput]
+    str,
+    type[BusinessOrderInput]
+    | type[BusinessCouponInput]
+    | type[BusinessActivityInput]
+    | type[BusinessEligibilityInput],
 ] = {
     "orders": BusinessOrderInput,
     "coupons": BusinessCouponInput,
     "activities": BusinessActivityInput,
+    "eligibilities": BusinessEligibilityInput,
 }
-IDS = {"orders": "order_id", "coupons": "coupon_id", "activities": "activity_id"}
+IDS = {
+    "orders": "order_id",
+    "coupons": "coupon_id",
+    "activities": "activity_id",
+    "eligibilities": "activity_id",
+}
 
 
 def checked_kind(kind: str) -> str:
@@ -103,11 +114,13 @@ class BusinessRepository:
             raise AppError(ErrorCode.TIMEOUT, "Business database timed out") from None
 
     async def migrate(self) -> None:
-        sql = files("deephelp_services").joinpath("resources/020_business.sql").read_text()
         async with self.transaction() as cursor:
-            for statement in sql.split(";"):
-                if statement.strip():
-                    await cursor.execute(statement)
+            # 仅增量建表；重跑不改原行/receipt，DDL与本次迁移同事务提交。
+            for resource in ("020_business.sql", "042_eligibility.sql"):
+                sql = files("deephelp_services").joinpath("resources/" + resource).read_text()
+                for statement in sql.split(";"):
+                    if statement.strip():
+                        await cursor.execute(statement)
 
     @staticmethod
     def owner(identity: VerifiedIdentity) -> tuple[str, str]:
@@ -189,6 +202,8 @@ class BusinessRepository:
         async with self.transaction() as cursor:
             if isinstance(data, BusinessCouponInput):
                 await self._get(cursor, "orders", identity, data.order_id, lock=True)
+            if isinstance(data, BusinessEligibilityInput):
+                await self._get(cursor, "activities", identity, data.activity_id, lock=True)
             try:
                 current = await self._get(cursor, kind, identity, record_id, lock=True)
             except AppError as exc:
@@ -286,6 +301,9 @@ class BusinessRepository:
         req = envelope.request
         # Facts plus their immutable evidence must come from one consistent view.
         async with self.transaction(snapshot=True) as cursor:
+            if req.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
+                return await self._eligibility_query(cursor, envelope)
+            assert req.parameters.order_id is not None
             order = await self._get(cursor, "orders", req.identity, req.parameters.order_id)
             assert isinstance(order.data, BusinessOrderInput)
             snapshots = [order.model_dump(mode="json")]
@@ -341,56 +359,117 @@ class BusinessRepository:
                     activity_ids=",".join(r.activity_id for r in active),
                     activity_labels=",".join(r.label for r in active),
                 )
-            evidence_id = "ev-" + uuid4().hex
-            fact_values = {
-                k: v.model_dump(mode="json") if isinstance(v, Money) else v
+            return await self._save_evidence(
+                cursor, envelope, values, snapshots, now, order.data.order_id
+            )
+
+    async def _save_evidence(
+        self,
+        cursor: Any,
+        envelope: ToolInvocationEnvelope,
+        values: dict[str, Any],
+        snapshots: list[dict[str, Any]],
+        now: datetime,
+        locator: str,
+    ) -> ToolResult:
+        """唯一事实/证据保存入口；调用者持有快照事务，提交后才能对外发布结果。"""
+        req = envelope.request
+        evidence_id = "ev-" + uuid4().hex
+        fact_values = {
+            k: v.model_dump(mode="json") if isinstance(v, Money) else v for k, v in values.items()
+        }
+        result = ToolResult(
+            operation_id=req.operation_id,
+            run_id=req.run_id,
+            tool_name=req.tool_name,
+            tool_version=TOOL_VERSION,
+            status=ToolStatus.SUCCEEDED,
+            call_id=envelope.call_id,
+            upstream_request_id=envelope.call_id,
+            facts=tuple(
+                Fact(
+                    name=k,
+                    kind=FactKind.MONEY
+                    if isinstance(v, Money)
+                    else FactKind.FLAG
+                    if isinstance(v, bool)
+                    else FactKind.TEXT,
+                    value=v,
+                    evidence_ids=(evidence_id,),
+                )
                 for k, v in values.items()
-            }
-            result = ToolResult(
-                operation_id=req.operation_id,
-                run_id=req.run_id,
-                tool_name=req.tool_name,
-                tool_version=TOOL_VERSION,
-                status=ToolStatus.SUCCEEDED,
-                call_id=envelope.call_id,
-                upstream_request_id=envelope.call_id,
-                facts=tuple(
-                    Fact(
-                        name=k,
-                        kind=FactKind.MONEY
-                        if isinstance(v, Money)
-                        else FactKind.FLAG
-                        if isinstance(v, bool)
-                        else FactKind.TEXT,
-                        value=v,
-                        evidence_ids=(evidence_id,),
-                    )
-                    for k, v in values.items()
+            ),
+            evidence_refs=(
+                EvidenceRef(
+                    evidence_id=evidence_id,
+                    source=EvidenceSource.TOOL,
+                    record_id=envelope.call_id,
+                    version="business-postgres-v1",
+                    locator=locator,
+                    content_hash=hashlib.sha256(canonical(fact_values)).hexdigest(),
+                    summary="PostgreSQL已提交业务记录；记录版本与原始快照可按evidence_id回查。",
                 ),
-                evidence_refs=(
-                    EvidenceRef(
-                        evidence_id=evidence_id,
-                        source=EvidenceSource.TOOL,
-                        record_id=envelope.call_id,
-                        version="business-postgres-v1",
-                        locator=order.data.order_id,
-                        content_hash=hashlib.sha256(canonical(fact_values)).hexdigest(),
-                        summary="PostgreSQL已提交业务记录；记录版本与原始快照可按evidence_id回查。",
-                    ),
+            ),
+        )
+        await cursor.execute(
+            "INSERT INTO dh_m20_evidence "
+            "(evidence_id,tenant_id,user_id,call_id,snapshot,result) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            (
+                evidence_id,
+                *self.owner(req.identity),
+                envelope.call_id,
+                json.dumps(
+                    {"records": snapshots, "observed_at": now.isoformat()}, ensure_ascii=False
                 ),
+                result.model_dump_json(),
+            ),
+        )
+        return result
+
+    async def _eligibility_query(self, cursor: Any, envelope: ToolInvocationEnvelope) -> ToolResult:
+        """同一快照读取活动规则与主体资格；未维护资格仍返回可核对的unknown。
+
+        事务没有模型等待，事实和证据一起提交；活动时间先于持久资格判断。
+        """
+        req = envelope.request
+        assert req.parameters.activity_id is not None
+        activity = await self._get(cursor, "activities", req.identity, req.parameters.activity_id)
+        assert isinstance(activity.data, BusinessActivityInput)
+        snapshots = [activity.model_dump(mode="json")]
+        eligibility, remaining, reason = "unknown", "unknown", "当前主体未维护资格或名额记录。"
+        try:
+            record = await self._get(
+                cursor, "eligibilities", req.identity, req.parameters.activity_id
             )
-            await cursor.execute(
-                "INSERT INTO dh_m20_evidence "
-                "(evidence_id,tenant_id,user_id,call_id,snapshot,result) "
-                "VALUES (%s,%s,%s,%s,%s,%s)",
-                (
-                    evidence_id,
-                    *self.owner(req.identity),
-                    envelope.call_id,
-                    json.dumps(
-                        {"records": snapshots, "observed_at": now.isoformat()}, ensure_ascii=False
-                    ),
-                    result.model_dump_json(),
-                ),
+        except AppError as exc:
+            if exc.code != ErrorCode.NOT_FOUND:
+                raise
+        else:
+            assert isinstance(record.data, BusinessEligibilityInput)
+            snapshots.append(record.model_dump(mode="json"))
+            eligibility = record.data.eligibility
+            remaining = (
+                "unknown"
+                if record.data.remaining_slots is None
+                else str(record.data.remaining_slots)
             )
-            return result
+            reason = record.data.reason
+        now = datetime.now(UTC)
+        if activity.data.status != "active":
+            eligibility = "inactive"
+        elif now < activity.data.valid_from:
+            eligibility = "not_started"
+        elif now >= activity.data.valid_until:
+            eligibility = "expired"
+        values = dict(
+            activity_id=activity.data.activity_id,
+            activity_label=activity.data.label,
+            activity_rules=activity.data.rules,
+            eligibility=eligibility,
+            remaining_slots=remaining,
+            eligibility_reason=reason,
+        )
+        return await self._save_evidence(
+            cursor, envelope, values, snapshots, now, activity.data.activity_id
+        )

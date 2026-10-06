@@ -17,18 +17,21 @@ class IntentRegistry(DTO):
 
     @model_validator(mode="after")
     def hierarchy(self) -> IntentRegistry:
-        if self.version != REGISTRY_VERSION:
-            raise ValueError("Unsupported registry version")
+        published = catalog_codes(self.version)
         entries = {item.code: item for item in self.intents}
-        if len(entries) != len(self.intents) or set(entries) != set(IntentCode):
+        if len(entries) != len(self.intents) or set(entries) != set(published):
             raise ValueError("Registry must contain every published code exactly once")
         for item in self.intents:
+            if item.version != self.version:
+                raise ValueError("Entry and catalog versions differ")
             levels = tuple(x for x in (item.l1, item.l2, item.l3, item.l4) if x is not None)
             if item.parent_code is None:
                 if len(levels) != 1:
                     raise ValueError("Root must have exactly one level")
             else:
-                parent = entries[item.parent_code]
+                parent = entries.get(item.parent_code)
+                if parent is None:
+                    raise ValueError("Parent is outside pinned catalog")
                 parent_levels = tuple(
                     x for x in (parent.l1, parent.l2, parent.l3, parent.l4) if x is not None
                 )
@@ -44,9 +47,23 @@ class IntentRegistry(DTO):
         return tuple(item.code for item in self.intents if item.is_actionable)
 
 
-def complaint_registry() -> IntentRegistry:
+def catalog_codes(version: str) -> tuple[IntentCode, ...]:
+    """固定版本的闭包；新枚举不会自动成为旧发布可执行的标签。
+
+    v1保留原父级和三叶子，v2只增加已实现活动资格叶子。未知版本拒绝。
+    """
+    if version not in {"complaints-v1", "complaints-v2"}:
+        raise ValueError("Unsupported registry version")
+    return tuple(
+        c
+        for c in IntentCode
+        if version != "complaints-v1" or c != IntentCode.ACTIVITY_ELIGIBILITY_QUERY
+    )
+
+
+def complaint_registry(version: str = REGISTRY_VERSION) -> IntentRegistry:
     """Construct on demand; importing the package performs no file or service I/O."""
-    return IntentRegistry(
+    legacy = IntentRegistry(
         version=REGISTRY_VERSION,
         intents=(
             IntentDefinition(
@@ -100,6 +117,27 @@ def complaint_registry() -> IntentRegistry:
                 is_actionable=True,
                 required_slots=(EntityName.ORDER_ID,),
                 sop_id="order-activity-v1",
+            ),
+        ),
+    )
+    if version == REGISTRY_VERSION:
+        return legacy
+    catalog_codes(version)
+    return IntentRegistry(
+        version=version,
+        intents=(
+            *(i.model_copy(update={"version": version}) for i in legacy.intents),
+            IntentDefinition(
+                code=IntentCode.ACTIVITY_ELIGIBILITY_QUERY,
+                label="活动参与资格与名额查询",
+                l1="service",
+                l2="order",
+                l3="activity_eligibility",
+                parent_code=IntentCode.ORDER_QUERY,
+                is_actionable=True,
+                required_slots=(EntityName.ACTIVITY_ID,),
+                sop_id="activity-eligibility-v1",
+                version="complaints-v2",
             ),
         ),
     )

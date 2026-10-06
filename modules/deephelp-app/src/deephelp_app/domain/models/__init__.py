@@ -16,6 +16,9 @@ from .business import (
     BusinessCouponInput as BusinessCouponInput,
 )
 from .business import (
+    BusinessEligibilityInput as BusinessEligibilityInput,
+)
+from .business import (
     BusinessInput as BusinessInput,
 )
 from .business import (

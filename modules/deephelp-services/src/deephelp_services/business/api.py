@@ -57,12 +57,14 @@ from deephelp_services.transport.http import (
 )
 
 
-def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[str, Any]]:
+def make_server(
+    repository: Any, verifier: DelegationVerifier, catalog_version: str = "complaints-v1"
+) -> Server[dict[str, Any]]:
     async def listing(
         ctx: ServerRequestContext[dict[str, Any]],
         params: PaginatedRequestParams | None,
     ) -> ListToolsResult:
-        return ListToolsResult(tools=registered_tools())
+        return ListToolsResult(tools=registered_tools(catalog_version))
 
     @server_call("mcp.business.call")
     async def calling(
@@ -75,6 +77,8 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
                 raise AppError(ErrorCode.FORBIDDEN, "Trusted tool delegation required")
             envelope = ToolInvocationEnvelope.model_validate(payload["envelope"])
             req = envelope.request
+            if params.name not in {t.name for t in registered_tools(catalog_version)}:
+                raise AppError(ErrorCode.FORBIDDEN, "Tool is outside service catalog")
             args = validate_arguments(params.name, params.arguments or {})
             if (
                 req.parameters != args
@@ -151,7 +155,11 @@ def make_server(repository: Any, verifier: DelegationVerifier) -> Server[dict[st
 
 
 def create_business_app(
-    root: Path, credentials: ServiceCredentials, *, repository: Any = None
+    root: Path,
+    credentials: ServiceCredentials,
+    *,
+    repository: Any = None,
+    catalog_version: str = "complaints-v1",
 ) -> FastAPI:
     verifier = DelegationVerifier(credentials, "business")
     app = FastAPI(title="DeepHelp Business", version="m20-business-v1")
@@ -161,7 +169,7 @@ def create_business_app(
         with environment("deephelp-business-mcp"):
             store = repository or await BusinessRepository.open(root)
             app.state.repository = store
-            manager = session_manager(make_server(store, verifier))
+            manager = session_manager(make_server(store, verifier, catalog_version))
             app.state.mcp_manager = manager
             try:
                 async with manager.run():
@@ -267,6 +275,9 @@ def main() -> int:
     parser.add_argument("--credentials", type=Path, required=True)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--port", type=int, default=8011)
+    parser.add_argument(
+        "--catalog-version", choices=["complaints-v1", "complaints-v2"], default="complaints-v1"
+    )
     args = parser.parse_args()
     if args.command == "init":
         initialize_credentials(args.credentials)
@@ -275,7 +286,7 @@ def main() -> int:
     credentials = ServiceCredentials.load(args.credentials)
     if args.command == "serve":
         uvicorn.run(
-            create_business_app(args.root, credentials),
+            create_business_app(args.root, credentials, catalog_version=args.catalog_version),
             host="127.0.0.1",
             port=args.port,
             access_log=False,

@@ -172,6 +172,8 @@ def load_binding(
     corpus = read_corpus(corpus_path) if corpus_path else None
     if corpus:
         corpus.require_valid()
+        if any(r.registry_version != scope.registry_version for r in corpus.records):
+            raise ConfigurationError("Published corpus and scope catalogs differ")
         if pointer.get("corpus_digest") != corpus.index_digest:
             raise ConfigurationError("Published corpus digest mismatch")
     if isinstance(scope, HybridScope):

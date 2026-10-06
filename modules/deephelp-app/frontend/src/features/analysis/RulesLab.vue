@@ -35,6 +35,11 @@ function inspect() {
     <p>
       这项实验运行原实体规则，新增模型调用 0 次；规则候选不等于完整 600 分类。
     </p>
+    <p>
+      complaints-v2 增加活动资格与名额查询。“活动能否报名、还有多少名额”与
+      “已成单订单参加了哪些活动”走不同叶子；旧安装仍按 complaints-v1 的三个叶子解释。
+      最终目录、分类来源与槽位以选中运行的实际记录为准。
+    </p>
     <form @submit.prevent="execute">
       <label for="rules-text">规则练习原文</label
       ><el-input
@@ -49,7 +54,7 @@ function inspect() {
     </form>
     <StateNotice :error="action.error.value" /><template v-if="result"
       ><p>
-        实际模型调用 {{ result.model_calls }} · 确认
+        实际目录 {{ result.catalog_version }} · 模型调用 {{ result.model_calls }} · 确认
         {{ result.confirmed.length }} · 冲突 {{ result.conflicts.length }} ·
         未决 {{ result.unresolved.length }}
       </p>

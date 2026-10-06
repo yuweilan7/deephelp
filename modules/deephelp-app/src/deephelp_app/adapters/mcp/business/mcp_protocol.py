@@ -7,6 +7,7 @@ validate_observation把返回事实绑定到请求编号、调用ID和来源版�
 import hashlib
 import hmac
 import json
+from importlib.resources import files
 from typing import Any, cast
 
 from jsonschema import Draft202012Validator
@@ -32,25 +33,42 @@ def canonical(value: object) -> bytes:
 
 
 def tool_schema(name: ToolName) -> dict[str, Any]:
+    if name in {ToolName.GET_ORDER_BENEFITS, ToolName.CHECK_COUPON}:
+        return next(t.input_schema for t in registered_tools() if t.name == name.value)
     schema = ToolParameters.model_json_schema()
-    if name == ToolName.GET_ORDER_BENEFITS:
-        del schema["properties"]["coupon_id"]
-    else:
-        schema["properties"]["coupon_id"] = schema["properties"]["coupon_id"]["anyOf"][0]
-        schema["required"] = ["order_id", "coupon_id"]
-    return schema
-
-
-def registered_tools() -> list[Tool]:
-    descriptions = {
-        ToolName.GET_ORDER_BENEFITS: "查询合成订单实付、优惠和活动证据。只读，服务端检查归属。",
-        ToolName.CHECK_COUPON: "查询合成订单对应优惠券的状态、门槛和可用性证据。只读。",
+    field = schema["properties"]["activity_id"]["anyOf"][0]
+    return {
+        "type": "object",
+        "properties": {"activity_id": field},
+        "required": ["activity_id"],
+        "additionalProperties": False,
     }
+
+
+def registered_tools(catalog_version: str = "complaints-v1") -> list[Tool]:
+    """旧发现契约逐字节保留；新版本显式追加有消费者的只读工具。
+
+    枚举扩展不改v1的output schema，因旧完整发布绑定其精确摘要。
+    """
+    from deephelp_app.domain.registry import catalog_codes
+
+    catalog_codes(catalog_version)
+    legacy = [
+        Tool.model_validate(row)
+        for row in json.loads(
+            files("deephelp_app")
+            .joinpath("resources/sop_data/tools-v1.json")
+            .read_text(encoding="utf-8")
+        )
+    ]
+    if catalog_version == "complaints-v1":
+        return legacy
     return [
+        *legacy,
         Tool(
-            name=name.value,
-            description=descriptions[name],
-            input_schema=tool_schema(name),
+            name=ToolName.CHECK_ACTIVITY_ELIGIBILITY.value,
+            description="查询当前主体已维护的活动资格、规则与剩余名额，只读；未知不推定有资格。",
+            input_schema=tool_schema(ToolName.CHECK_ACTIVITY_ELIGIBILITY),
             output_schema=ToolResult.model_json_schema(),
             annotations=ToolAnnotations(
                 read_only_hint=True,
@@ -59,8 +77,7 @@ def registered_tools() -> list[Tool]:
                 open_world_hint=False,
             ),
             _meta={"deephelp/tool_version": TOOL_VERSION},
-        )
-        for name in ToolName
+        ),
     ]
 
 
@@ -119,6 +136,9 @@ def validate_observation(
     request: ToolRequest, result: ToolResult, *, evidence_version: str = "business-fixtures-v1"
 ) -> None:
     facts = {f.name: f for f in result.facts}
+    if request.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
+        _validate_eligibility(request, result, evidence_version)
+        return
     expected = (
         {
             "order_id": FactKind.TEXT,
@@ -184,3 +204,44 @@ def validate_observation(
         or facts["usable"].value != (facts["coupon_status"].value == "usable")
     ):
         raise ValueError
+
+
+def _validate_eligibility(request: ToolRequest, result: ToolResult, evidence_version: str) -> None:
+    """双端核对活动编号、精确事实闭包、状态与不可变证据hash。
+
+    名额是持久记录的十进制整数文字；unknown不能携带猜测的数量。
+    """
+    facts = {f.name: f for f in result.facts}
+    names = {
+        "activity_id",
+        "activity_label",
+        "activity_rules",
+        "eligibility",
+        "remaining_slots",
+        "eligibility_reason",
+    }
+    if (
+        len(facts) != len(result.facts)
+        or set(facts) != names
+        or any(f.kind != FactKind.TEXT for f in result.facts)
+        or facts["activity_id"].value != request.parameters.activity_id
+        or len(result.evidence_refs) != 1
+    ):
+        raise ValueError("Eligibility fact binding mismatch")
+    values = {k: f.value for k, f in facts.items()}
+    ref = result.evidence_refs[0]
+    remaining = values["remaining_slots"]
+    if (
+        values["eligibility"]
+        not in {"eligible", "ineligible", "unknown", "inactive", "not_started", "expired"}
+        or not isinstance(remaining, str)
+        or (remaining != "unknown" and (not remaining.isascii() or not remaining.isdecimal()))
+    ):
+        raise ValueError("Eligibility state/count mismatch")
+    if (
+        ref.version != evidence_version
+        or ref.locator != request.parameters.activity_id
+        or ref.content_hash != hashlib.sha256(canonical(values)).hexdigest()
+        or any(f.evidence_ids != (ref.evidence_id,) for f in result.facts)
+    ):
+        raise ValueError("Eligibility evidence mismatch")

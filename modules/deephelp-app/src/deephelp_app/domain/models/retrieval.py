@@ -9,11 +9,13 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     Field,
+    SerializerFunctionWrapHandler,
     StrictBool,
+    model_serializer,
     model_validator,
 )
 
@@ -59,6 +61,7 @@ class CorpusRecord(DTO):
     source_group: Identifier
     variant_group: Identifier
     synthetic: Literal[True]
+    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
     label_path: tuple[Identifier, ...] | None = None
     metadata: dict[str, str] = Field(default_factory=dict, max_length=16)
 
@@ -66,7 +69,10 @@ class CorpusRecord(DTO):
     def registered_label(self) -> CorpusRecord:
         from deephelp_app.domain.registry import complaint_registry
 
-        definition = complaint_registry().get(self.intent_code)
+        try:
+            definition = complaint_registry(self.registry_version).get(self.intent_code)
+        except StopIteration:
+            raise ValueError("Label is unavailable in pinned catalog") from None
         levels = tuple(x for x in (definition.l1, definition.l2, definition.l3, definition.l4) if x)
         if len(self.doc_id.encode("utf-8")) > 128:
             raise ValueError("doc_id exceeds Milvus byte limit")
@@ -78,12 +84,19 @@ class CorpusRecord(DTO):
             raise ValueError("Metadata exceeds bounded string sizes")
         return self
 
+    @model_serializer(mode="wrap")
+    def compatible_record(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data: dict[str, Any] = handler(self)
+        if self.registry_version == "complaints-v1":
+            data.pop("registry_version", None)
+        return data
+
 
 class DenseScope(DTO):
     namespace: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,63}$")]
     dataset_version: Identifier
     signature: EmbeddingSignature
-    registry_version: Literal["complaints-v1"] = REGISTRY_VERSION
+    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
 
     @model_validator(mode="after")
     def milvus_byte_limits(self) -> DenseScope:
@@ -202,6 +215,11 @@ class DenseHit(DTO):
 
     @model_validator(mode="after")
     def score_range(self) -> DenseHit:
+        # 候选证据也有目录边界；旧索引不能借扩大后的枚举返回新业务标签。
+        from deephelp_app.domain.registry import catalog_codes
+
+        if self.intent_code not in catalog_codes(self.scope.registry_version):
+            raise ValueError("Retrieval hit is outside its pinned catalog")
         if self.score_kind == "cosine" and not -1.001 <= self.raw_score <= 1.001:
             raise ValueError("Cosine score outside range")
         if self.score_kind == "bm25" and self.raw_score < 0:
@@ -237,6 +255,13 @@ class DenseResult(DTO):
 
     @model_validator(mode="after")
     def rerank_evidence(self) -> DenseResult:
+        from deephelp_app.domain.registry import catalog_codes
+
+        if any(
+            candidate.intent_code not in catalog_codes(self.scope.registry_version)
+            for candidate in self.candidates
+        ) or any(hit.scope != self.scope for hit in self.hits):
+            raise ValueError("Retrieval candidates/evidence must use the pinned catalog scope")
         if self.retrieval_mode == "hybrid_rerank":
             if self.rerank is None or self.policy_version != "m31-rerank-v1":
                 raise ValueError("Rerank mode needs its policy and execution status")

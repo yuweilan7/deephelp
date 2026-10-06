@@ -9,10 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
     model_validator,
 )
 
@@ -24,11 +26,29 @@ from .evidence import EvidenceRef, EvidenceSource, Fact, validate_facts
 class ToolName(StrEnum):
     GET_ORDER_BENEFITS = "get_order_benefits"
     CHECK_COUPON = "check_coupon"
+    CHECK_ACTIVITY_ELIGIBILITY = "check_activity_eligibility"
 
 
 class ToolParameters(DTO):
-    order_id: Identifier
+    order_id: Identifier | None = None
     coupon_id: Identifier | None = None
+    activity_id: Identifier | None = None
+
+    @model_serializer(mode="wrap")
+    def compatible_parameters(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """旧参数hash保留原两个键；新工具只序列化自己的槽位。
+
+        ToolRequest按工具精确检查，不能用可选字段允许任意扩参。
+        """
+        data: dict[str, Any] = handler(self)
+        if self.activity_id is None:
+            data.pop("activity_id", None)
+        else:
+            if self.order_id is None:
+                data.pop("order_id", None)
+            if self.coupon_id is None:
+                data.pop("coupon_id", None)
+        return data
 
 
 def tool_parameters_hash(parameters: ToolParameters) -> str:
@@ -53,6 +73,16 @@ class ToolRequest(DTO):
     def read_only_parameters(self) -> ToolRequest:
         if self.parameters_hash != tool_parameters_hash(self.parameters):
             raise ValueError("Tool parameters hash mismatch")
+        if self.tool_name == ToolName.CHECK_ACTIVITY_ELIGIBILITY:
+            if (
+                self.parameters.activity_id is None
+                or self.parameters.order_id is not None
+                or self.parameters.coupon_id is not None
+            ):
+                raise ValueError("Activity tool requires only activity_id")
+            return self
+        if self.parameters.order_id is None or self.parameters.activity_id is not None:
+            raise ValueError("Legacy order tools require order_id and reject activity_id")
         if self.tool_name == ToolName.CHECK_COUPON and self.parameters.coupon_id is None:
             raise ValueError("Coupon tool requires coupon_id")
         if self.tool_name == ToolName.GET_ORDER_BENEFITS and self.parameters.coupon_id is not None:

@@ -161,3 +161,10 @@ uv run --locked --env-file .env.local python -m deephelp_tools.probes.conversati
 M41单Skill实验：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course skills`。真实固定内容复用原collaboration_probe，加`--execution-mode single --case normal-order --case injection-order`，仍须--live/准确providers/原累计budget-state/新output；证据为真实模型与stdio，非PG正式部署。[09章](../../docs/learning/09-agent-basics.md#版本化业务skillm41)说明预期与Java边界。
 
 M41管理：`python -m deephelp_tools.learning.skill_cli details`读取机器契约0模型，`trial --registry NEW_REGISTRY_JSON`用同核心/固定建议/真实本机stdio；draft/review参数见`--help`和09章。原工作台“工具与工作流”提供详情/差异/候选/显式审核/当前发布版本试运行；“评测与发布”的validate/prepare选择同一已审核Skill。正式六类受影响内容复用上方collaboration_delivery，加`--single-only --skill-review PRIVATE_APPROVED_REVIEW_JSON`；原release_cli的validate/prepare也接受`--skill-review`，完整门禁绑定快照/审核原件/本次代码与内容，不改旧manifest。全部真实命令须先核验真实依赖并声明固定样本/原共享预算，不因课程或页面浏览执行live。
+## M42 目录学习与针对性验收
+
+最小离线入口`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course catalog`复用真实SOP/目录守卫，输出资格符合7、未知转人工、缺编号0调用；解释见[09章](../../docs/learning/09-agent-basics.md#版本目录与活动资格m42)。远程模型/数据库均0，固定端口不代替真实内容。
+
+hybrid_cli支持`--registry-version complaints-v2 --namespace NEW_NAMESPACE --corpus FROZEN_CORPUS --dev-queries DEV_JSON --test-queries TEST_JSON`，import/tune/evaluate/activate使用同累计预算、独立清单与新报告路径。`tune --tune-weight 0.5`可在看test之前明确只验证既有候选权重；默认仍搜索0.25/0.5/0.75。dev/test与reference保持来源/变体隔离，新标签不能导入旧scope。
+
+真实PG/正式HTTP MCP/600/SOP/事实/receipt验收入口为`python -m deephelp_tools.probes.conversation.catalog_probe --live --phase eligibility`；必填auth、service-credentials、providers、pointer、corpus、sop-directory、cascade-policy、budget-state、output见`--help`。配置原PG和依赖后再执行，固定Chat与Embedding使用精确providers；新语料使用独立scope/校准绑定，未校准分数接管时gates明确为空，不能套旧目录阈值。权限/CAS证据不经模型，成功消息重投和历史0调用。失败报告保留，`--cases CASE...`只重跑失败及受影响相邻样本；不更改样本预期换PASS。此入口不切正式发布。

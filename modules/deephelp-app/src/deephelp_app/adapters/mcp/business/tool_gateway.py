@@ -71,6 +71,7 @@ class ToolGateway:
         ledger_path: Path | None = None,
         stderr: TextIO | None = None,
         max_invocations: int = 256,
+        catalog_version: str = "complaints-v1",
     ) -> None:
         if (
             max_result_bytes < 1024
@@ -85,6 +86,7 @@ class ToolGateway:
         if server is not None and http is not None:
             raise ConfigurationError("Choose exactly one MCP transport")
         self.server, self.http = server, http
+        self.catalog_version = catalog_version
         self.credentials: ServiceCredentials | None = http.credentials() if http else None
         self.evidence_version = "business-postgres-v1" if http else "business-fixtures-v1"
         self.max_invocations = max_invocations
@@ -157,7 +159,7 @@ class ToolGateway:
     async def list_tools(self) -> tuple[Tool, ...]:
         async with asyncio.timeout(self.startup_timeout):
             result = await self._connected().list_tools()
-        expected = {t.name: t for t in registered_tools()}
+        expected = {t.name: t for t in registered_tools(self.catalog_version)}
         if (
             result.next_cursor is not None
             or len(result.tools) != len(expected)

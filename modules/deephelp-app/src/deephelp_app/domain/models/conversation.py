@@ -76,6 +76,8 @@ class Question(DTO):
 
     @model_validator(mode="after")
     def provenance_and_versions(self) -> Question:
+        from deephelp_app.domain.registry import complaint_registry
+
         names = [entity.name for entity in self.entities]
         if len(names) != len(set(names)):
             raise ValueError(
@@ -105,7 +107,10 @@ class Question(DTO):
         if self.active_intent is not None:
             if (
                 not self.active_intent.actionable
-                or self.versions.registry != REGISTRY_VERSION
+                or self.active_intent
+                not in complaint_registry(
+                    self.versions.registry or REGISTRY_VERSION
+                ).actionable_codes
                 or self.versions.sop is None
             ):
                 raise ValueError("Active intent needs pinned compatible registry/SOP versions")

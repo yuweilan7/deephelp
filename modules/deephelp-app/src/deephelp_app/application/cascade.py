@@ -29,6 +29,7 @@ from deephelp_app.domain.models.model_io import ChatMessage, ChatRequest
 from deephelp_app.domain.models.retrieval import DenseResult, DenseScope, IntentCandidate, ScoreKind
 from deephelp_app.domain.models.text import DemandType, TextEntityResult
 from deephelp_app.domain.ports import ChatPort, DenseRetrieverPort, FallbackPort
+from deephelp_app.domain.registry import complaint_registry
 
 
 @dataclass(frozen=True)
@@ -85,11 +86,20 @@ class CascadePolicy:
 class StructuredFallback:
     """One task-sized schema call; optional FastText wraps this same port."""
 
-    def __init__(self, model: ChatPort, *, system_prompt: str | None = None) -> None:
+    def __init__(
+        self,
+        model: ChatPort,
+        *,
+        system_prompt: str | None = None,
+        catalog_version: str = "complaints-v1",
+    ) -> None:
         from deephelp_app.application.intent_prompt import default_system
 
         self.model = model
-        self.system_prompt = system_prompt if system_prompt is not None else default_system()
+        self.catalog_version = catalog_version
+        self.system_prompt = (
+            system_prompt if system_prompt is not None else default_system(catalog_version)
+        )
 
     async def decide(
         self,
@@ -99,7 +109,7 @@ class StructuredFallback:
         *,
         context: str | None = None,
     ) -> FallbackResult:
-        from deephelp_app.application.intent import INTENT_SCHEMA
+        from deephelp_app.application.intent import intent_schema
 
         result = await self.model.chat(
             ChatRequest(
@@ -127,7 +137,7 @@ class StructuredFallback:
                     ),
                 ],
                 response_format="json_schema",
-                output_schema=INTENT_SCHEMA,
+                output_schema=intent_schema(self.catalog_version),
                 max_output_tokens=2048,
                 repair_once=False,
             ),
@@ -232,6 +242,11 @@ class Cascade:
             kind: ScoreKind = ScoreKind.RULE,
             evidence: tuple[EvidenceRef, ...] = (),
         ) -> IntentDecision:
+            if (
+                code is not None
+                and code not in complaint_registry(self.scope.registry_version).actionable_codes
+            ):
+                raise AppError(ErrorCode.VERSION_CONFLICT, "Intent exceeds pinned catalog")
             action = decision or (
                 Decision.ACCEPT
                 if code and set(code.required_slots) <= set(available)
@@ -240,6 +255,7 @@ class Cascade:
                 else Decision.HANDOFF
             )
             return IntentDecision(
+                registry_version=self.scope.registry_version,
                 decision=action,
                 final_code=code,
                 reason_code=reason,

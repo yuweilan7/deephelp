@@ -232,6 +232,8 @@ class DenseImporter:
         self, preview: CorpusPreview, scope: DenseScope, budget: ExecutionBudget, manifest: Path
     ) -> dict[str, object]:
         preview.require_valid()
+        if any(r.registry_version != scope.registry_version for r in preview.records):
+            raise ValueError("Corpus and index catalog versions differ")
         if not preview.index_records:
             raise ValueError("No authorized train/reference records")
         manifest.parent.mkdir(parents=True, exist_ok=True)

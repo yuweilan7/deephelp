@@ -47,6 +47,12 @@ def fact_reply(result: SOPResult, *, continuation: bool = False) -> str:
         parts.append(f"券 {facts['coupon_id']}，状态 {facts.get('coupon_status')}。")
     if "activity_ids" in facts:
         parts.append(f"活动：{facts['activity_ids'] or '未查询到活动记录'}。")
+    if "eligibility" in facts:
+        parts.append(
+            f"活动 {facts['activity_id']}（{facts['activity_label']}），"
+            f"资格状态 {facts['eligibility']}，剩余名额 {facts['remaining_slots']}。"
+        )
+        parts.append(f"规则：{facts['activity_rules']}；资格记录：{facts['eligibility_reason']}。")
     if "sop_conclusion" in facts:
         parts.append(str(facts["sop_conclusion"]).rstrip("。.!?！？") + "。")
     if result.status == SOPStatus.NEEDS_APPROVAL:

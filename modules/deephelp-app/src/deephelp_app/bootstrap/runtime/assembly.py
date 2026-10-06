@@ -250,7 +250,13 @@ class LiveAssembly:
                 raise ConfigurationError("Cascade calibration retrieval weight differs")
             if policy.corpus_digest and policy.corpus_digest != self.pointer.get("corpus_digest"):
                 raise ConfigurationError("Cascade calibration corpus differs")
-            tools = ToolGateway(server=self.tool_server, http=self.business_mcp)
+            if self.scope.registry_version != self.sop_registry.catalog_version:
+                raise ConfigurationError("Retrieval and SOP catalog versions differ")
+            tools = ToolGateway(
+                server=self.tool_server,
+                http=self.business_mcp,
+                catalog_version=self.sop_registry.catalog_version,
+            )
             self.tools = tools
             await stack.enter_async_context(tools.open())
             assembly = self
@@ -292,7 +298,9 @@ class LiveAssembly:
                     )
 
             fallback: Any = StructuredFallback(
-                strong_model, system_prompt=self.intent_prompt.text if self.intent_prompt else None
+                strong_model,
+                system_prompt=self.intent_prompt.text if self.intent_prompt else None,
+                catalog_version=self.sop_registry.catalog_version,
             )
             classifier = None
             if self.fasttext_pointer is not None:
@@ -310,7 +318,7 @@ class LiveAssembly:
 
                 release_identity = release_hash(self.release_manifest)
             versions = VersionManifest(
-                registry="complaints-v1",
+                registry=self.sop_registry.catalog_version,
                 dataset=self.scope.dataset_version,
                 split="reference",
                 embedding_signature=self.scope.signature.fingerprint,
@@ -332,7 +340,12 @@ class LiveAssembly:
             )
             yield Conversation(
                 ledger,
-                TextEntityProcessor(model, trace=trace, reviewed_rules=self.reviewed_rules),
+                TextEntityProcessor(
+                    model,
+                    trace=trace,
+                    reviewed_rules=self.reviewed_rules,
+                    catalog_version=self.sop_registry.catalog_version,
+                ),
                 IntentService(
                     model,
                     CountedRetriever(RequestDense()),

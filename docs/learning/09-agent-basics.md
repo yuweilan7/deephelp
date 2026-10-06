@@ -122,3 +122,21 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.skill_cli trial --
 Java类比：不可变配置快照、乐观锁revision和一次请求借用的策略对象；Python文件短锁只覆盖同步登记/审核，不能跨await等待模型。选择按意图与原工具许可确定，已发布目标说明进入原模型选工具请求，模型建议仍经机器守卫；没有验证过模型选Skill质量，因此不称智能选择。
 
 练习与答案：9. 已审核后再改JSON？审核/文件/内容hash不匹配，发布拒绝。10. 只改页面列表能否宣称新版本运行？不能，原run必须带同快照/叶子版本及实际call/evidence。11. 回退旧安装继续新Skill消息？旧DTO不识别新字段时只读旧记录，新记录留PG，回到新安装再读；不降格回执、不回滚数据库或清零预算。
+
+## 版本目录与活动资格（M42）
+
+目录决定当前版本允许识别和执行哪些业务。`complaints-v1`保持优惠缺失、券不可用和订单已参加活动三个叶子；`complaints-v2`额外登记`ACTIVITY_ELIGIBILITY_QUERY`，需要`activity_id`。它查询未来参与资格与剩余名额，已成单活动仍走原`ORDER_ACTIVITY_QUERY`。父节点只帮助导航，不能执行；目录、SOP和工具许可同时校验，不能只扩大枚举。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course catalog
+```
+
+预期三个固定观察：资格符合、名额7，原SOP进入eligible并RESOLVED；未维护资格进入unknown并HANDED_OFF；缺活动编号进入WAITING_SLOT，模型和工具0次。整个实验远程模型和数据库调用均0，端口观察明确标为固定合成数据。实验复用真实SOPExecutor和唯一目录/ToolResult守卫，源码为[最小入口](../../modules/deephelp-tools/src/deephelp_tools/learning/course/catalog.py)。真实资格由独立Business服务从PG查询，离线固定值不证明某个主体实际有资格。
+
+按[目录](../../modules/deephelp-app/src/deephelp_app/domain/registry.py)→[SOP绑定](../../modules/deephelp-app/src/deephelp_app/application/sop_governance.py)→[MCP双端参数/观察](../../modules/deephelp-app/src/deephelp_app/adapters/mcp/business/mcp_protocol.py)→[PG查询事务](../../modules/deephelp-services/src/deephelp_services/business/repository.py)阅读。新资格资料必须引用同主体的活动，维护沿原CAS；查询在同一只读快照读取活动及资格，持久保存原版本/事实/hash。名额0是已满，null是未维护，不能相互替代。活动已停用、未开始或过期时以活动状态收口；资格符合也不代表已报名或已扣名额。
+
+工作台“业务资料”维护活动与资格，保存后读回版本，竞争保存可能409；“文本与识别”按装配目录做0模型规则练习，选中原run读600实际来源；“工具与工作流”核对同run节点、Fact与PG evidence。浏览页面不补调模型。旧问题继续绑定原目录和SOP快照，旧工具discovery/参数hash也保留；新叶子混入旧目录在模型/工具前拒绝。
+
+Java类比：版本目录像一组不可变用例契约及枚举白名单，SOP像按版本构建的编排表，PG的资格行类似带乐观锁的业务实体。边界是配置字符串不会授予方法调用权；Python await等待原连接/网关，不能为新叶子另建预算，事务不跨模型等待。
+
+练习与答案：1. 只有活动、没有资格行？返回unknown与unknown名额，保留真实规则，不编造原因。2. 有资格且名额0？回答已满，不能保证报名成功。3. 把新工具登记到优惠SOP？TOOL_GRANTS及schema绑定拒绝。4. 缺活动编号能用订单号代替？不能，询问活动编号，原SOP不派发查询。5. 更新资料后重投原message？读取原receipt与不可变事实0调用；新message才查询新的版本。6. 旧安装遇到新问题？旧目录不接收新叶子；保留原记录并由支持该目录的安装读取。

@@ -2,9 +2,26 @@ import { describe, it, expect, vi } from "vitest";
 import { ApiClient, ApiError } from "../src/api/client";
 import { LatestRead } from "../src/composables/latest";
 import { newMessage, uncertain } from "../src/composables/message";
+import { editorValues, recordBody } from "../src/api/business";
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status });
 describe("browser business boundaries", () => {
+  it.each([null, 0, 7])("preserves maintained capacity %s when reopened and saved", (remaining) => {
+    const data = {
+      activity_id: "ACT-42", eligibility: "eligible", remaining_slots: remaining,
+      reason: "合成资格维护",
+    };
+    const editor = editorValues("eligibilities", { version: 2, data });
+    expect(editor.remaining_slots).toBe(remaining === null ? "unknown" : String(remaining));
+    expect(recordBody("eligibilities", editor)).toEqual(data);
+  });
+  it.each(["", "  ", "-1", "1.5", "abc", "9007199254740993"])(
+    "rejects invalid capacity %s instead of silently writing unknown or zero", (remaining) => {
+      const editor = editorValues("eligibilities", null);
+      editor.remaining_slots = remaining;
+      expect(() => recordBody("eligibilities", editor)).toThrow("非负整数");
+    },
+  );
   it("reconnects reads once but never automatically repeats writes", async () => {
     const transport = vi
       .fn()

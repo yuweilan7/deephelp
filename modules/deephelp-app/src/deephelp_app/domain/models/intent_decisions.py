@@ -135,7 +135,7 @@ class IntentDecision(DTO):
     available_slots: tuple[EntityName, ...] = ()
     stage_evidence: tuple[EvidenceRef, ...] = ()
     reason_code: Identifier
-    registry_version: Literal["complaints-v1"] = REGISTRY_VERSION
+    registry_version: Literal["complaints-v1", "complaints-v2"] = REGISTRY_VERSION
     policy_version: Literal["slot-policy-v1", "cascade-policy-v1"] = POLICY_VERSION
     override: IntentOverride | None = None
     retrieval: DenseResult | None = None
@@ -143,7 +143,11 @@ class IntentDecision(DTO):
 
     @model_validator(mode="after")
     def selection_policy(self) -> IntentDecision:
+        from deephelp_app.domain.registry import complaint_registry
+
         codes = [candidate.code for candidate in self.candidates]
+        if not set(codes) <= set(complaint_registry(self.registry_version).actionable_codes):
+            raise ValueError("Candidates exceed pinned catalog")
         if len(codes) != len(set(codes)):
             raise ValueError("Duplicate candidate code")
         if [candidate.rank for candidate in self.candidates] != list(range(1, len(codes) + 1)):

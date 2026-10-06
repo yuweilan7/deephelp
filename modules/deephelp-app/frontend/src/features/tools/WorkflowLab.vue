@@ -102,6 +102,11 @@ function resume() {
       普通主链复用原 SOP 执行器，审批部分使用 LangGraph。PG
       操作账本是效果权威，checkpoint 记录图进度。
     </p>
+    <p>
+      complaints-v2 的活动资格查询需要活动编号。流程读取 PG 的规则、资格与名额快照：
+      未维护表示未知并转人工；资格符合且名额为 0 表示已满；缺编号先澄清。
+      查询不报名、不扣减名额。同次运行的 facts、证据、SOP 节点与版本可在原回执中核对。
+    </p>
     <el-button @click="workflow.load('/learning/workflow')"
       >读取 SOP 与实际图 · 0 模型</el-button
     ><StateNotice

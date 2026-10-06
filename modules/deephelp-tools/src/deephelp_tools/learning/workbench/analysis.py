@@ -64,12 +64,16 @@ def analysis_router(assembly: LiveAssembly, auth: BrowserAuth) -> APIRouter:
         return {
             "mode": "pure rules; not full extraction or 600 intent decision",
             "model_calls": 0,
+            "catalog_version": assembly.sop_registry.catalog_version,
             "clean": clean_text(body.text, TextPolicy()).model_dump(mode="json"),
             "observations": [e.model_dump(mode="json") for e in observations],
             "confirmed": [e.model_dump(mode="json") for e in entities],
             "conflicts": [e.model_dump(mode="json") for e in conflicts],
             "unresolved": unresolved,
-            "rule_matches": [m.model_dump(mode="json") for m in match_rules(envelope)],
+            "rule_matches": [
+                m.model_dump(mode="json")
+                for m in match_rules(envelope, assembly.sop_registry.catalog_version)
+            ],
             "code": ["application/text_entity.py:regex_entities / merge_entities / match_rules"],
         }
 

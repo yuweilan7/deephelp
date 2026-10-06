@@ -157,6 +157,7 @@ class MockBackend:
             self.update(
                 envelope, "succeeded", evidence=tuple(r.evidence_id for r in result.evidence_refs)
             )
+            assert parameters.order_id is not None
             fault = self.fault(req.tool_name, parameters.order_id)
             data = result.model_dump(mode="json")
             if fault.kind != "normal":

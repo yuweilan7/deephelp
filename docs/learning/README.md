@@ -18,7 +18,7 @@
 | [06 取消](06-cancellation.md) | deadline/timeout/shield/线程 | course cancellation |
 | [07 资源](07-resources.md) | 池/事务/stdio/退出栈 | course resources |
 | [08 客诉主线](08-message-path.md) | 13段、槽位、原receipt | 同01的request输出 |
-| [09 Agent基础](09-agent-basics.md) | 模型建议、受控专业角色与证据回收 | course request / collaboration |
+| [09 Agent基础](09-agent-basics.md) | 模型建议、受控专业角色、版本目录与事实分支 | course request / collaboration / skills / catalog |
 | [10 检索](10-retrieval.md) | 宽召回/重排/意图归并/最终确认 | course retrieval |
 | [11 记忆](11-memory.md) | 交错问题/账本/outbox/投影 | course memory |
 | [12 审批](12-approval.md) | interrupt/官方saver/UNKNOWN对账 | 原ApprovalService三种UNKNOWN测试 |
@@ -49,7 +49,7 @@ py -3.14 -m uv run --locked pytest modules/deephelp-app/tests/unit/approval/test
 
 第一轮读01–03、08–09，能指出DTO、唯一600、缺槽0工具、原receipt与事实回复。第二轮按04–07运行屏障实验，再回看主链的await/事务/shield。第三轮读10–14，用交错问题、UNKNOWN和原版本门禁深化。读不懂时先看当前行的输入/返回值/拥有者，不一次铺开全部适配器。
 
-安装tools wheel后同样使用 `python -m deephelp_tools.learning.course <topic>`；具体topic见上表，`--help`列完整12项，没有live选项。实验只在终端输出结果，不写新的运行指针、预算或报告。每次CLI30秒上限，线程另有有限退出兜底。主进程网络守卫与受控stdio边界见01章，真实模型质量/PG持久性/云平台必须由对应显式probe验收。
+安装tools wheel后同样使用 `python -m deephelp_tools.learning.course <topic>`；具体topic见上表，`--help`列当前主题，没有live选项。实验只在终端输出结果，不写新的运行指针、预算或报告。每次CLI30秒上限，线程另有有限退出兜底。主进程网络守卫与受控stdio边界见01章，真实模型质量/PG持久性/云平台必须由对应显式probe验收。
 
 三条主线练习贯穿课程：优惠缺槽→补订单号→事实，物流拒识，原消息重投；深化为优惠/券交错、取消收尾与UNKNOWN先对账。关键源码注释的阅读顺序见[source-navigation](source-navigation.md)。课程证明机制和命令可运行，不代替读者自测或把历史live记为本轮通过。
 

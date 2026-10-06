@@ -58,6 +58,8 @@ class SOPPlan(DTO):
         if (
             self.parameters_hash != tool_parameters_hash(self.parameters)
             or self.parameters.coupon_id is not None
+            or self.parameters.order_id is None
+            or self.parameters.activity_id is not None
         ):
             raise ValueError("Plan parameters hash mismatch")
         return self
