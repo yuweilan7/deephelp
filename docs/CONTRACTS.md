@@ -391,6 +391,10 @@ M40有界协作：角色策略agent-policy-v2登记order-benefits/get_order_bene
 M40正式发布保持m18-release-v1/hash格式，角色策略JSON精确字节额外进入prompts，内容报告必须核对collaboration_policy_digest；runtime-v2包含应用与同源built，tooling另绑。单路径默认不变，协作内容门禁适用范围见M40交接。M36旧DTO严格拒绝M40新字段，因此旧安装恢复只读旧记录，新记录保留原值且需回M40读取；不把新回执降格、修改旧manifest或覆写预算换兼容。
 
 
+## M43 SOP作者草稿
+
+`GET /learning/sop`读取当前GovernedSOP注册表、有限工具/事实元数据及当前owner草稿，模型0。`POST /learning/sop/drafts`只收sop_id/base_hash；`GET /drafts/{id}`回读持久原件，`PUT`只收正revision/content。随机ID不是路径或授权；BrowserAuth同源/CSRF及catalog owner均检查，外主体404、基准/revision冲突409。服务端根由catalog.task_root/sop确定。草稿包含owner、不可变完整基准/base_hash、revision、content_hash、DRAFT状态及原GovernedSOP校验结果；无效中间图可以保存修正，不能作为可执行或发布候选。槽位/意图/稳定SOP ID保持，工具参数仍由原已确认实体与schema生成，不开放脚本/地址/任意表达式。保存不改变正式registry、旧Question或审批/UNKNOWN；短同步writer不跨await，原子replace与锁内CAS只证明单机文件持久协议。
+
 ## M41 版本化业务Skill
 
 唯一SkillReceipt记录原run/question/node、registry_digest、稳定skill_id/version/digest、已确认Entity来源、状态/起止、实际ToolResult与安全错误；SOPResult/ResponseEnvelope.skill_receipts默认空，VersionManifest.skills默认null兼容旧记录。响应守卫核对原run/question、注册表和call。Skill不是审批授权或事实来源，输出仍验证原ToolResult及证据链；缺槽无模型/工具/Skill，取消抛回父请求，不以新组合重跑恢复UNKNOWN。

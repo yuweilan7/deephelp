@@ -108,6 +108,8 @@ M40显式协作从原[SOPExecutor](../../modules/deephelp-app/src/deephelp_app/a
 M41版本化Skill：[机器契约/执行](../../modules/deephelp-app/src/deephelp_app/application/skills.py) → [原SOP](../../modules/deephelp-app/src/deephelp_app/application/sop.py) → [09章实验](09-agent-basics.md#版本化业务skillm41)。
 
 管理阅读：[候选/审核原件](../../modules/deephelp-app/src/deephelp_app/adapters/releases/skill_store.py) → [原工作台管理](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/skills.py) → [完整发布](../../modules/deephelp-tools/src/deephelp_tools/evaluation/releases/release_prepare.py)。管理API无模型，试运行复用原converse/course；生产装配在原LiveAssembly消费审核后的清单快照。
+M43作者从[草稿事实源](../../modules/deephelp-app/src/deephelp_app/adapters/releases/sop_drafts.py)进入[作者API](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/sop_authoring.py)，图校验仍是原GovernedSOP；[09章实验](09-agent-basics.md#sop可视草稿与casm43)给出CAS、无效中间图及Java边界。前端WorkflowLab只生成契约，不执行业务判断。
+
 ## M42 新目录的阅读入口
 
 活动资格路径从[目录与版本](../../modules/deephelp-app/src/deephelp_app/domain/registry.py)进入：[600识别](../../modules/deephelp-app/src/deephelp_app/application/cascade.py)只接收当前scope的叶子，[SOP治理](../../modules/deephelp-app/src/deephelp_app/application/sop_governance.py)核对整份目录与工具许可，[Business PG](../../modules/deephelp-services/src/deephelp_services/business/repository.py)提供规则/资格/名额及原版本快照。学习用`course catalog`，机制和Java边界见[09章](09-agent-basics.md#版本目录与活动资格m42)。旧三叶子资源与参数hash保留，目录不通过放宽白名单扩权。

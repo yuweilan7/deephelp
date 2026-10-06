@@ -201,24 +201,31 @@ class GovernedSOP(DTO):
         ):
             raise ValueError("Flow exceeds fixed intent grants or slot contract")
         index = {n.node_id: n for n in self.nodes}
-        if len(index) != len(self.nodes) or self.entry not in index:
-            raise ValueError("Duplicate node ID or missing entry")
+        if len(index) != len(self.nodes):
+            duplicates = sorted(
+                key for key in index if sum(n.node_id == key for n in self.nodes) > 1
+            )
+            raise ValueError("Duplicate node ID: " + ",".join(duplicates))
+        if self.entry not in index:
+            raise ValueError("Missing entry node: " + self.entry)
         for n in self.nodes:
             if not set(n.targets()) <= set(index):
-                raise ValueError("Unknown node reference")
+                raise ValueError("Unknown node reference at node " + n.node_id)
             if n.tool:
                 if n.tool not in self.allowed_tools:
-                    raise ValueError("Unpublished tool")
+                    raise ValueError("Unpublished tool at node " + n.node_id)
                 if not set(tool_schema(n.tool)["required"]) <= {
                     s.value for s in self.required_slots
                 }:
-                    raise ValueError("Tool slots incompatible with flow")
+                    raise ValueError("Tool slots incompatible with flow at node " + n.node_id)
                 assert n.failure
                 if index[n.failure].kind != "end" or index[n.failure].status not in {
                     SOPStatus.HANDED_OFF,
                     SOPStatus.FAILED,
                 }:
-                    raise ValueError("Failed lookup must stop at a non-success end")
+                    raise ValueError(
+                        "Failed lookup must stop at a non-success end at node " + n.node_id
+                    )
             if n.proposal and self.intent_code != IntentCode.DISCOUNT_MISSING:
                 raise ValueError("Proposal exceeds fixed action grant")
         visited: set[str] = set()
@@ -229,7 +236,7 @@ class GovernedSOP(DTO):
             if key in depths:
                 return depths[key]
             if key in stack:
-                raise ValueError("Cycles are unsupported; all flows must terminate")
+                raise ValueError("Cycles are unsupported; all flows must terminate at node " + key)
             stack.add(key)
             visited.add(key)
             depth = 1 + max((visit(t) for t in index[key].targets()), default=0)
@@ -238,7 +245,10 @@ class GovernedSOP(DTO):
             return depth
 
         if visit(self.entry) > self.limits.max_steps or visited != set(index):
-            raise ValueError("Unreachable node or insufficient step budget")
+            raise ValueError(
+                "Unreachable node or insufficient step budget: "
+                + ",".join(sorted(set(index) - visited))
+            )
         lookups = {n.node_id: n for n in self.nodes if n.tool}
         if {n.tool for n in lookups.values()} != set(self.allowed_tools):
             raise ValueError("Unused tool grant")
@@ -264,7 +274,7 @@ class GovernedSOP(DTO):
                     c = route.condition
                     signature = c.model_dump_json()
                     if signature in signatures:
-                        raise ValueError("Duplicate branch condition")
+                        raise ValueError("Duplicate branch condition at node " + key)
                     signatures.add(signature)
                     kinds = []
                     for ref in (c.fact, c.other_fact):
@@ -278,10 +288,10 @@ class GovernedSOP(DTO):
                             or lookup is None
                             or lookup.tool is None
                         ):
-                            raise ValueError("Fact is unavailable on a branch path")
+                            raise ValueError("Fact is unavailable on a branch path at node " + key)
                         kind = FACT_TYPES[lookup.tool].get(fact)
                         if kind is None:
-                            raise ValueError("Unknown fact reference")
+                            raise ValueError("Unknown fact reference at node " + key)
                         kinds.append(kind)
                     if (
                         (c.op in {"money_lt", "money_gte"} and kinds != ["money", "money"])
@@ -292,7 +302,7 @@ class GovernedSOP(DTO):
                             and kinds != ["flag" if isinstance(c.value, bool) else "text"]
                         )
                     ):
-                        raise ValueError("Incompatible condition fact types")
+                        raise ValueError("Incompatible condition fact types at node " + key)
                 for target in node.targets():
                     check_path(target, available)
             elif node.status in {SOPStatus.RESOLVED, SOPStatus.NEEDS_APPROVAL} and not available:
