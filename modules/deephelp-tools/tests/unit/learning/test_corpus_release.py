@@ -179,3 +179,38 @@ def test_retrieval_or_feedback_success_cannot_replace_full_business_content():
     ):
         with pytest.raises(ConfigurationError):
             require_content(valid | change, binding)
+
+
+async def test_known_retrieval_regression_rejects_before_chat(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    import deephelp_tools.evaluation.retrieval.corpus_release as module
+
+    _, retrieval = evidence()
+    retrieval.update(status="PASS", observations=[])
+    retrieval["metrics"]["test"]["candidate"]["bm25"]["mrr"] = 0.85
+    (tmp_path / "retrieval-gate.json").write_text(json.dumps(retrieval))
+    policy = tmp_path / "policy.json"
+    policy.write_text("{}")
+
+    class NeverChat:
+        async def chat(self, *args, **kwargs):
+            raise AssertionError("Known regression cannot dispatch a paid classification")
+
+    monkeypatch.setattr(module, "freeze_files", lambda *args: tmp_path)
+    monkeypatch.setattr(
+        module, "verify_files", lambda *args, **kwargs: {"providers_digest": "provider"}
+    )
+    monkeypatch.setattr(module, "catalog_binding", lambda *args: {"cascade_policy": str(policy)})
+    monkeypatch.setattr(module, "dataset", lambda *args: (None, {"dev": [], "test": []}))
+    result = await module.quality_gate(
+        tmp_path,
+        {"version_hash": "a" * 64, "catalog_version": "complaints-v3"},
+        SimpleNamespace(gateway=NeverChat()),
+        lambda: None,
+        policy,
+    )
+    assert result["status"] == "FAIL" and result["rows"] == []
+    assert result["checks"] == {"retrieval_no_regression": False}
+    assert result["classification_accuracy"] == dict(candidate=None, published=None)

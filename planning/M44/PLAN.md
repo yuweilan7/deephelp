@@ -10,6 +10,8 @@ F3当前落点：原m18-collect隔离身份采集新固定run，浏览器人审c
 
 F3 live在调用前核对当前安装/原审核配置，累计M44预算275次基础上max_calls一次调整900（含Milvus读回及安装/恢复RPC），max_tokens600000/max_cost5和原累计/未知预留保持。预期新增模型40–60请求、输入2万–8万、输出含推理1万–6万，有限修复余量；不因FAIL重复加预算或改盲测。源码先形成干净commit，再精确内容/打包/安装；最终文档不冒充新运行字节。
 
+实际22条追加版本的test BM25 MRR从0.9167降到0.8889，Dense/Hybrid保持。保留原观察及FAIL，不放宽门禁、不修改heldout。分类在已知检索退化时先拒绝，0Chat；修订以原反馈的直接订单关联问法替代间接商品SKU/报名活动的重复例句，草稿删除一条后冻结新21条版本，旧21/22条原件保持。仍沿同900累计上限，只重验新的受影响语料/内容；sdist生成资源按原hook映射回唯一datasets/demo-data源核对，不把生成包目录误认源码缺失。
+
 真实依赖前读LOCAL_SETUP、DEPENDENCIES和所需模型摘要；每次live先列明确样本/调用/token及修复余量上限。同会话同事实路径复用证据。未配置Rerank显示未运行，语料召回不升级为业务事实。
 
 每feature独立feature分支验收、中文commit/push、main no-ff保存、六SHA同步后继续。handoffs/M44与STATE记录必要最终证据/未验范围；本轮临时资源在Temp或.local/tmp/m44，退出后精确清理。完成PLAN被规格/handoff覆盖后删除。

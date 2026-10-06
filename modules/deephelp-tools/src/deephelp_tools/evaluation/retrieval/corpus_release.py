@@ -98,6 +98,24 @@ async def quality_gate(
     )
     if progress["contract"] != contract:
         raise ConfigurationError("Corpus classification input/code/config changed")
+    if not changes or any(row["delta"] < -1e-9 for row in changes):
+        # 已知召回退化先留真实拒绝，不消耗Chat为一个不能准备的候选补分类故事。
+        progress.update(
+            status="FAIL",
+            checks=dict(retrieval_no_regression=False),
+            version_hash=snapshot["version_hash"],
+            retrieval_digest=digest(retrieval),
+            metric_changes=changes,
+            classification_accuracy=dict(candidate=None, published=None),
+            unverified=[
+                "classification skipped: retrieval quality rejected",
+                "full business content not run",
+                "independent customer distribution",
+            ],
+            active_changed=False,
+        )
+        atomic_json(path, progress)
+        return progress
     policy = CascadePolicy.load(Path(catalog["cascade_policy"]))
     try:
         for query in queries["test"]:
