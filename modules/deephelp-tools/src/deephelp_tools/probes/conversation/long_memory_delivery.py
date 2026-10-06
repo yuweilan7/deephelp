@@ -80,7 +80,7 @@ async def delivery(config: dict[str, Any], output: Path) -> None:
                     "paid": {"amount": "71.23"},
                     "discount": {"amount": "0.00"},
                     "discount_status": "not_eligible",
-                    "sku_ids": [],
+                    "sku_ids": ["m46-synthetic-sku"],
                 },
             )
             text = source["input"]["raw_text"]
