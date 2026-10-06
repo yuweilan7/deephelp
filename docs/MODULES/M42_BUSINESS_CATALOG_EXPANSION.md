@@ -1,12 +1,12 @@
 # M42｜扩展客诉目录与可执行业务闭环
 
-**状态：** `IN_PROGRESS`；F1/F2三条新增业务候选已验，F3对照/发布待续；实际范围见[交接](../../handoffs/M42.md)。2026-10-05规格。
+**状态：** 三项能力、真实内容、精确云安装与旧新恢复已验；`LOCAL_CLOSEOUT_BLOCKED`为F2七文件/两目录及已被交接覆盖的短PLAN工具拒绝删除。实际证据/限制见[交接](../../handoffs/M42.md)。2026-10-05规格，2026-10-06实施结果。
 **来源：** PDF文件页25–30的多层意图/更多客诉场景、67–69的业务工具与SOP；新增目录及具体工具/数据模型是本项目设计。
 **基线：** M39；复用[M02目录](M02_CONTRACTS_DATA.md)、[M12级联](M12_CASCADE_PIPELINE.md)、[M14 SOP治理](M14_SOP_GOVERNANCE.md)、[M15审批](M15_DURABILITY_APPROVAL.md)、[M20业务/检索MCP](M20_BUSINESS_SOURCE.md)、[M25 PG事实](M25_POSTGRES_FACTS.md)、[M18发布](M18_DATA_FLYWHEEL.md)。可独立实施，不要求先实现M40/M41。
 
 ## 明确新增范围
 
-当前只有`DISCOUNT_MISSING / COUPON_UNUSABLE / ORDER_ACTIVITY_QUERY`三个可执行叶子；父节点不能执行。层级结构支持更深目录不代表已经覆盖PDF的广泛业务。本M选择三条有真实合成业务数据与工具消费者的新能力，面向当前个人客户视角，不一次扩展客户/运营/商家全角色后台。
+实施前基线只有`DISCOUNT_MISSING / COUPON_UNUSABLE / ORDER_ACTIVITY_QUERY`三个可执行叶子；父节点不能执行。层级结构支持更深目录不代表已经覆盖PDF的广泛业务。本M选择三条有真实合成业务数据与工具消费者的新能力，面向当前个人客户视角，不一次扩展客户/运营/商家全角色后台。
 
 | 新业务叶子（中文目标，code在实施时固定） | 必须与现有意图区分 | 初始闭环 |
 |---|---|---|

@@ -192,3 +192,11 @@ py -3.14 -m uv export --frozen --all-packages --no-dev --no-editable --no-emit-w
 两方向都由**目标安装**的`deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`读取当前PG revision，再用目标完整hash、现场`--expected-revision`与原`--budget-state /srv/deephelp-modern/state/budget.json`执行activate；最后switch.sh目标安装、有界检查实际health。现成参数结构见上方恢复命令；不能只切symlink、沿用旧revision或用本机预算替代云累计状态。Skill候选/批准/拒绝记录仍在原catalog的task_root/skills，恢复不回滚它们。
 
 实际M41→M40→M41中完整33张非系统表（业务、官方与旧checkpoint）只见发布active/审计变化，模型计量保持；发布资产读取仍计RPC attempts。M40严格DTO只读原M40历史，新Skill字段/回执保留在PG，回M41读原记录；不让旧版继续新会话，不重放UNKNOWN或业务副作用。
+
+## M42 六叶子安装与恢复
+
+当前安装/hash/revision见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，内容与恢复范围见[M42交接](../../handoffs/M42.md#f3六叶子对照完整发布与恢复)。恢复闭包`/srv/deephelp-modern/recovery/m42-business-v1`保留原/新runtime.env、learning-catalog、原pointer/artifact-map、recovery.json与精确bundle。旧目标m41-skills-v1，新目标m42-business-v1；先停止四单元并核对MainPID=0及无其他写者，以ubuntu/0600恢复目标配置，重新source，再使用**目标安装**的release_cli status读现场PG revision，activate对应完整hash及现场expected-revision，最后switch目标安装并有界检查真实health。
+
+M41目标使用原state/budget.json，M42目标使用state-m42/budget.json；M42预算由本次本机累计值移交，切换不清零，不把old-budget.json等快照复制到活动账本。目标配置同时决定catalog、providers、pointer、state_root及task_root；不能只切symlink。新task_root在state-m42/tasks，保留原16份已结束任务/审核字节；原任务根不改。业务MCP启动通过DEEPHELP_BUSINESS_CATALOG选择complaints-v3，旧配置默认complaints-v1。登记清单须满足原state目录路径守卫。
+
+旧新切换不回滚PG、不重放业务或审批/UNKNOWN。新诊断密钥下读取旧run采用停写后的PG主体/session验证与原日志HMAC核对，只重映射scope hash；原事件内容、时间、事实/工具版本及原密钥/日志保持。对应diagnostic-scope-import.json与new-restored-final.json保留来源核验，跨主体仍404，读取与重放零模型调用。manifest绑定的辅助.gitignore也要原字节安装并通过SHA256SUMS；不能为方便修改完整清单或覆盖旧共享providers。
