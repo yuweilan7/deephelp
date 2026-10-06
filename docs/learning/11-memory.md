@@ -43,6 +43,8 @@ sequenceDiagram
 
 ## 两会话长期记忆实验（M46）
 
+这里先学可观察的派生上下文与当前事实边界，不承诺记忆提高回答质量。当前策略为精确引用，没有自动跨session向量召回或把个人陈述送进模型。正式固定集比较开启/关闭当前facts、不同订单、缺槽/范围外、明确question_hint续接、更正和遗忘；源码/安装/UI字节、schema与策略在完整manifest中绑定。可在对话页看到下一条新消息选中了几条历史，原记忆页读取实际采用/拒绝和版本审计；浏览0模型，原run引用是当时的审计，不随以后遗忘重写。
+
 ```powershell
 py -3.14 -m uv run --locked python -m deephelp_tools.learning.course long-memory
 ```

@@ -2,6 +2,8 @@
 
 ## M46 明确跨会话历史引用
 
+新完整清单可选memory_binding绑定`resources/memory-policy.json`、DTO schema digest、原八项内容报告路径/hash及当前runtime字节。空字段不进入旧release_hash；旧manifest原件不改。原prepare显式`--memory-report`才启用，启动/激活双向核验实际内容/策略/schema；VersionManifest.memory记录m46-explicit-v1。没有该绑定的完整运行不装配长期记忆；旧安装只读自身兼容回执，对带新M46字段的回执停止，不承诺跨schema续跑。原Question未固定memory版本时source_hash省略新空字段，保留旧来源摘要身份；撤回/遗忘同时按owner+原question守护，不能因新源hash绕过墓碑。
+
 业务摘要在实际run中还须满足当前已确认意图及所有来源槽位相符；当前歧义/未确认、不同订单/意图、低可信与到期分别拒绝。候选浏览只核验来源；它不能预先宣称与下一条问题相关。最后一次PG语句同时回读scope与head，是选择线性化点；此前来源等待期间的撤回/更正会被挡住，之后已完成的原回执按审计保留。
 
 `GET/PUT /learning/long-memory/records/{memory_id}`提供本人详情/明确操作；PUT收expected_revision、action(retain/correct/revoke/forget)、edit_id及保留/更正文字、USER_ASSERTED/LOW、1–365天有效期。用户陈述保留/更正只改变派生记忆，不能篡改原摘要来源或工具事实；correct只对ACTIVE user_retained有效。PG行锁内head与不可变版本同事务提交，CAS冲突409。REVOKED不能保留复活，FORGOTTEN为不可逆检索墓碑，head文字改为`[forgotten]`；重复保留同源仍返回墓碑。版本详情只给最多32个最新版本的审计元数据，不回传历史文字。旧业务/审批/UNKNOWN/原run和不可变审计资料不删除。M46不使用缓存/向量/outbox投影；原M10延迟任务没有M46写消费者，不能重建已遗忘记忆。

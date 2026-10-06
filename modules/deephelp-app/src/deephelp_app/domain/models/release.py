@@ -37,6 +37,7 @@ class VersionManifest(DTO):
     release_manifest: Identifier | None = None
     collaboration: Identifier | None = None
     skills: Identifier | None = None
+    memory: Identifier | None = None
 
 
 class ReleaseManifest(DTO):
@@ -67,6 +68,7 @@ class ReleaseManifest(DTO):
     skill_registry: dict[str, Any] | None = None
     skill_review_path: str | None = None
     sop_review_path: str | None = None
+    memory_binding: dict[str, Any] | None = None
 
 
 class ReleasePointer(DTO):

@@ -27,6 +27,31 @@ from deephelp_app.domain.models.conversation import RequestEnvelope
 from deephelp_app.domain.models.long_memory import MemoryChange, MemoryReference, MemoryUse
 
 
+def assembly_from_config(config: dict[str, Any]) -> LiveAssembly:
+    """所有记忆实测共用原装配；可选审核SOP/Skill沿现有批准原件装配。"""
+    runtime = LiveAssembly(
+        Path.cwd(),
+        Path(config["providers"]),
+        Path(config["pointer"]),
+        business_mcp=HTTPMCPConfig(
+            url=config["business_url"], credentials_path=Path(config["business_credentials"])
+        ),
+        corpus_path=Path(config["corpus"]),
+        cascade_policy=Path(config["cascade"]),
+        reply_polish=True,
+        sop_directory=Path(config["sop_directory"]),
+        reviewed_rules=Path(config["rules"]) if config.get("rules") else None,
+        skill_review=Path(config["skill_review"]) if config.get("skill_review") else None,
+    )
+    if config.get("sop_review"):
+        from deephelp_app.adapters.releases.sop_drafts import read_sop_review
+
+        reviewed, _ = read_sop_review(Path(config["sop_review"]))
+        runtime.sop_registry = reviewed
+        runtime.sop_snapshots = (reviewed, *runtime.sop_snapshots)
+    return runtime
+
+
 async def run(config: dict[str, Any], output: Path) -> None:
     if await asyncio.to_thread(output.exists):
         raise ValueError("Use a new immutable content report path")
@@ -43,18 +68,7 @@ async def run(config: dict[str, Any], output: Path) -> None:
     gate.open()
     report: dict[str, Any] = {"status": "PENDING", "source_report": config["source_report"]}
     try:
-        assembly = LiveAssembly(
-            Path.cwd(),
-            Path(config["providers"]),
-            Path(config["pointer"]),
-            business_mcp=HTTPMCPConfig(
-                url=config["business_url"], credentials_path=Path(config["business_credentials"])
-            ),
-            corpus_path=Path(config["corpus"]),
-            cascade_policy=Path(config["cascade"]),
-            reply_polish=True,
-            sop_directory=Path(config["sop_directory"]),
-        )
+        assembly = assembly_from_config(config)
         async with (
             httpx.AsyncClient(trust_env=False, timeout=90) as client,
             assembly.open(client, MemoryTrace()) as conversation,

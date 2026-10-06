@@ -375,3 +375,53 @@ async def test_original_projection_worker_late_delivery_does_not_revive_memory()
     assert await worker.once(ExecutionBudget.start(10, 1, 0)) == "projected"
     assert len(index.rows) == 2
     assert (await store.get(request.identity, memory.memory_id)).state == "FORGOTTEN"
+
+
+async def test_forgotten_source_cannot_return_as_new_hash_after_version_change():
+    request, question, store, service, memory, _ = await fixture()
+    await service.change(
+        request.identity,
+        memory.memory_id,
+        MemoryChange(expected_revision=1, action="forget", edit_id="forget-source"),
+    )
+    store.cases.questions[question.question_id] = question.model_copy(update={"version": 7})
+    assert (
+        await service.preserve(request.identity, "source", question.question_id)
+    ).state == "FORGOTTEN"
+
+
+async def test_new_optional_memory_version_preserves_legacy_source_hash():
+    import hashlib
+    import json
+
+    from deephelp_app.application.long_memory import source_hash
+
+    _, question, _, _, _, _ = await fixture()
+    original = json.loads(question.model_dump_json())
+    original["versions"].pop("memory")
+    original_bytes = json.dumps(original, ensure_ascii=False, separators=(",", ":")).encode()
+    assert source_hash(question) == hashlib.sha256(original_bytes).hexdigest()
+
+
+def test_release_memory_binding_rejects_old_pass_and_policy_drift(tmp_path):
+    import json
+
+    from deephelp_app.adapters.releases.memory_binding import (
+        memory_policy_binding,
+        require_memory_content,
+    )
+    from deephelp_app.domain.errors import ConfigurationError
+
+    report = tmp_path / "memory.json"
+    report.write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "checks": {"fake": True},
+                "rows": [],
+                "memory_policy_binding": memory_policy_binding(),
+            }
+        )
+    )
+    with pytest.raises(ConfigurationError, match="complete current content"):
+        require_memory_content(report)

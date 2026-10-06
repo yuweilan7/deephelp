@@ -227,7 +227,11 @@ class LiveAssembly:
             from deephelp_app.application.long_memory import LongMemoryService
 
             memory = MemoryService(
-                ledger, cache, long_term=LongMemoryService(PostgresLongMemory(ledger.pool))
+                ledger,
+                cache,
+                long_term=LongMemoryService(PostgresLongMemory(ledger.pool))
+                if self.release_manifest is None or self.release_manifest.memory_binding is not None
+                else None,
             )
             gateway = create_gateway(client, self.config, AsyncCalls(2, 30))
             self.gateway = gateway
@@ -358,6 +362,7 @@ class LiveAssembly:
                 code_commit=self.release_manifest.code_commit if self.release_manifest else None,
                 collaboration=self.agent_policy.digest,
                 skills=self.skills_registry.digest if self.skills_enabled else None,
+                memory="m46-explicit-v1" if memory.long_term else None,
             )
             yield Conversation(
                 ledger,

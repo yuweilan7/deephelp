@@ -40,6 +40,7 @@ async def run(args: argparse.Namespace) -> int:
             quality_review=local_path(args.quality_review) if args.quality_review else None,
             skill_review=local_path(args.skill_review) if args.skill_review else None,
             sop_review=local_path(args.sop_review) if args.sop_review else None,
+            memory_report=local_path(args.memory_report) if args.memory_report else None,
         )
         atomic_json(output, manifest.model_dump(mode="json"))
         print(json.dumps(dict(release_hash=release_hash(manifest), output=str(output))))
@@ -91,6 +92,9 @@ def main() -> None:
         "--quality-review", help="Reviewed independent improvement closure; extra gate only"
     )
     parser.add_argument("--skill-review")
+    parser.add_argument(
+        "--memory-report", help="Exact M46 policy/schema and fixed lifecycle content"
+    )
     parser.add_argument(
         "--sop-review", help="Immutable approved SOP artifact for exact content gate"
     )

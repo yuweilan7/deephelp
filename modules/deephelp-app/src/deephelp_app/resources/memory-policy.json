@@ -1,0 +1,1 @@
+{"strategy":"m46-explicit-v1","schema":"m46-memory-v1","max_sources":8,"max_candidates":32,"max_references":4,"context_bytes":8192,"default_valid_days":30,"max_valid_days":365,"retrieval":"postgres-heads-explicit","history_prompt":"none","index_signature":"none","selection_stage":"after-current-business","forgotten":"irreversible-retrieval-tombstone"}

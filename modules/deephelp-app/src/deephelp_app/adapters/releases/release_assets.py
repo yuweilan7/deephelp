@@ -16,6 +16,10 @@ from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.corpus_binding import corpus_binding, require_content
+from deephelp_app.adapters.releases.memory_binding import (
+    memory_policy_binding,
+    require_memory_content,
+)
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.adapters.releases.sop_drafts import read_sop_review
@@ -38,7 +42,7 @@ def release_hash(manifest: ReleaseManifest) -> str:
     # 新可选字段为空时不进入旧清单身份；历史原字节/hash不改写。
     omitted = {
         key
-        for key in ("skill_registry", "skill_review_path", "sop_review_path")
+        for key in ("skill_registry", "skill_review_path", "sop_review_path", "memory_binding")
         if getattr(manifest, key) is None
     }
     return digest(manifest.model_dump(mode="json", exclude=omitted))
@@ -74,6 +78,21 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
         p.relative_to(package).as_posix(): file_digest(p) for p in sorted(package.rglob("*.txt"))
     }
     collaboration = policy_release_binding()
+    if manifest.memory_binding is not None:
+        memory = dict(manifest.memory_binding)
+        report_path = resolve_artifact(memory.pop("content_path"))
+        report_sha = memory.pop("content_sha256")
+        if (
+            memory != memory_policy_binding()
+            or file_digest(report_path) != report_sha
+            or not any(
+                resolve_artifact(p) == report_path and h == report_sha
+                for p, h in manifest.files.items()
+            )
+        ):
+            raise ConfigurationError("Memory policy/schema/content binding changed")
+        require_memory_content(report_path)
+        prompts[memory["resource"]] = memory["sha256"]
     if manifest.sop_review_path:
         review_path = resolve_artifact(manifest.sop_review_path)
         try:
