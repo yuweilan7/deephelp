@@ -2,6 +2,10 @@
 
 ## M46 明确跨会话历史引用
 
+业务摘要在实际run中还须满足当前已确认意图及所有来源槽位相符；当前歧义/未确认、不同订单/意图、低可信与到期分别拒绝。候选浏览只核验来源；它不能预先宣称与下一条问题相关。最后一次PG语句同时回读scope与head，是选择线性化点；此前来源等待期间的撤回/更正会被挡住，之后已完成的原回执按审计保留。
+
+`GET/PUT /learning/long-memory/records/{memory_id}`提供本人详情/明确操作；PUT收expected_revision、action(retain/correct/revoke/forget)、edit_id及保留/更正文字、USER_ASSERTED/LOW、1–365天有效期。用户陈述保留/更正只改变派生记忆，不能篡改原摘要来源或工具事实；correct只对ACTIVE user_retained有效。PG行锁内head与不可变版本同事务提交，CAS冲突409。REVOKED不能保留复活，FORGOTTEN为不可逆检索墓碑，head文字改为`[forgotten]`；重复保留同源仍返回墓碑。版本详情只给最多32个最新版本的审计元数据，不回传历史文字。旧业务/审批/UNKNOWN/原run和不可变审计资料不删除。M46不使用缓存/向量/outbox投影；原M10延迟任务没有M46写消费者，不能重建已遗忘记忆。
+
 原`MemoryService.load`、活动归属窗口和Milvus identity+session过滤保持。独立`LongMemoryService`只读取同VerifiedIdentity明确允许的来源。`ConverseInput.history_memory`缺省为空；显式值含scope_revision和1–4个唯一memory_id/revision引用，绑定消息payload_hash，不能用同message_id改变历史选择。目标session授权scope含revision/enabled及最多8个其他来源session；CAS改变范围后旧选择拒绝。
 
 `POST /learning/long-memory/preserve`仅收source_session/source_question，服务端回PG核对owner、已结束非审批状态，生成确定性摘要；稳定ID绑定owner/来源/hash，重复保留返回原版本/时间，不复活撤回记录。`GET /learning/long-memory/{session}`浏览合法候选，`PUT /{session}/scope`收expected_revision/enabled/source_sessions；均沿原BrowserAuth/CSRF，不接路径、SQL、身份或模型。来源必须是同owner已保留的session，外主体及伪造来源404，CAS冲突409。空目标scope可创建在当前新会话提问之前。

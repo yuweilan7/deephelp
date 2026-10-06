@@ -11,6 +11,23 @@ from pydantic import AwareDatetime, Field, model_validator
 from .common import DTO, Count, Identifier, PositiveCount, VerifiedIdentity
 
 
+class MemoryChange(DTO):
+    """明确操作正文；edit_id是用户更正来源，不能作为业务事实证据。"""
+
+    expected_revision: PositiveCount
+    action: Literal["retain", "correct", "revoke", "forget"]
+    edit_id: Identifier
+    text: str | None = Field(default=None, min_length=1, max_length=2000)
+    confidence: Literal["USER_ASSERTED", "LOW"] = "USER_ASSERTED"
+    valid_days: int = Field(default=30, ge=1, le=365)
+
+    @model_validator(mode="after")
+    def explicit_content(self) -> MemoryChange:
+        if (self.action in {"retain", "correct"}) != (self.text is not None):
+            raise ValueError("Only explicit retain/correct needs text")
+        return self
+
+
 class MemoryReference(DTO):
     memory_id: Identifier
     revision: PositiveCount
@@ -61,6 +78,10 @@ class LongMemory(DTO):
     created_at: AwareDatetime
     expires_at: AwareDatetime
     retained: bool = False
+    confidence: Literal["SOURCE_VERIFIED", "USER_ASSERTED", "LOW"] = "SOURCE_VERIFIED"
+    edit_id: Identifier | None = None
+    changed_at: AwareDatetime | None = None
+    change_action: Literal["preserve", "retain", "correct", "revoke", "forget"] = "preserve"
 
 
 class MemoryDecision(DTO):

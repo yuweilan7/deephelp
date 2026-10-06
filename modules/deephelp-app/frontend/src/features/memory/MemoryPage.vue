@@ -19,7 +19,29 @@ const targetSession = ref(workspace.session),
   sourceSessions = ref(""),
   selectedMemories = ref<string[]>([]),
   history = useRead<LongMemoryCandidates>(),
-  action = useAction();
+  action = useAction(),
+  correction = ref("");
+async function changeMemory(
+  memoryId: string,
+  revision: number,
+  change: "retain" | "correct" | "revoke" | "forget",
+) {
+  await api.request(
+    "/learning/long-memory/records/" + encodeURIComponent(memoryId),
+    "PUT",
+    {
+      expected_revision: revision,
+      action: change,
+      edit_id: crypto.randomUUID(),
+      ...(change === "retain" || change === "correct"
+        ? { text: correction.value }
+        : {}),
+    },
+  );
+  await loadHistory();
+  action.notice.value =
+    "记忆版本已更新。遗忘关闭后续检索；原业务账本和旧回执仍按审计规则保留。";
+}
 async function loadHistory() {
   selectedMemories.value = [];
   workspace.historyMemory = null;
@@ -151,6 +173,12 @@ function readTurns() {
       />
       <p>{{ action.notice.value }}</p>
       <template v-if="history.data.value">
+        <label
+          >明确保留或更正的稳定信息<input v-model="correction" maxlength="2000"
+        /></label>
+        <p>
+          业务摘要须与当前已确认订单和意图一致。用户保留文字只作为明确来源的个人陈述；更正不能改写原订单事实。撤回与遗忘不能重新开启。
+        </p>
         <p>
           授权版本 {{ history.data.value.scope.revision }} ·
           {{ history.data.value.scope.enabled ? "已开启" : "未开启" }} · 候选
@@ -172,6 +200,49 @@ function readTurns() {
             源版本 {{ c.memory.source_version }}</label
           >
           <p>{{ c.reason }} · {{ c.memory?.text || "拒绝，未返回内容" }}</p>
+          <el-button
+            v-if="c.memory"
+            :disabled="action.busy.value || !correction"
+            @click="
+              action.run(() =>
+                changeMemory(
+                  c.reference.memory_id,
+                  c.reference.revision,
+                  c.memory?.kind === 'user_retained' ? 'correct' : 'retain',
+                ),
+              )
+            "
+            >{{
+              c.memory.kind === "user_retained" ? "明确更正" : "保留用户陈述"
+            }}</el-button
+          >
+          <el-button
+            v-if="c.memory"
+            :disabled="action.busy.value"
+            @click="
+              action.run(() =>
+                changeMemory(
+                  c.reference.memory_id,
+                  c.reference.revision,
+                  'revoke',
+                ),
+              )
+            "
+            >撤回此条</el-button
+          >
+          <el-button
+            :disabled="action.busy.value || c.reason === 'memory_forgotten'"
+            @click="
+              action.run(() =>
+                changeMemory(
+                  c.reference.memory_id,
+                  c.reference.revision,
+                  'forget',
+                ),
+              )
+            "
+            >遗忘此条</el-button
+          >
           <p v-if="c.memory">
             保留时间 {{ c.memory.created_at }} · 有效至
             {{ c.memory.expires_at }} · 原消息

@@ -31,6 +31,10 @@ export interface MemoryUse {
 }
 export interface LongMemory {
   memory_id: string;
+  kind: string;
+  confidence: string;
+  edit_id: string | null;
+  change_action: string;
   revision: number;
   source_session: string;
   source_question: string;

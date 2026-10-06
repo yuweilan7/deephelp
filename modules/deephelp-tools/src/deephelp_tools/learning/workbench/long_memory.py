@@ -10,6 +10,7 @@ from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.long_memory import LongMemoryService
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import DTO, Count, ErrorCode, Identifier
+from deephelp_app.domain.models.long_memory import MemoryChange
 
 
 class PreserveMemory(DTO):
@@ -41,6 +42,14 @@ def long_memory_router(auth: BrowserAuth) -> APIRouter:
     async def candidates(session: Identifier, request: Request) -> object:
         owner = auth(request)
         return await service(request).candidates(owner, session)
+
+    @router.get("/records/{memory_id}")
+    async def detail(memory_id: Identifier, request: Request) -> object:
+        return await service(request).detail(auth(request), memory_id)
+
+    @router.put("/records/{memory_id}")
+    async def change(memory_id: Identifier, body: MemoryChange, request: Request) -> object:
+        return await service(request).change(auth(request), memory_id, body)
 
     @router.put("/{session}/scope")
     async def configure(session: Identifier, body: ConfigureMemory, request: Request) -> object:

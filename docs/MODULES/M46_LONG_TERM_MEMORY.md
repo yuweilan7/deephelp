@@ -1,6 +1,6 @@
 # M46｜可追溯、可控制的跨会话长期记忆
 
-**状态：** `F1_IMPLEMENTED_LIVE_VERIFIED / F2_F3_IN_PROGRESS`；2026-10-06，实际证据见[交接](../../handoffs/M46.md)。
+**状态：** `F1_F2_IMPLEMENTED_VERIFIED / F3_IN_PROGRESS`；2026-10-06，实际证据见[交接](../../handoffs/M46.md)。
 **来源：** PDF文件页62–66及75的长短期记忆/持续上下文方向。当前已有同会话持久状态与向量检索；跨会话选择、冲突和遗忘策略是本项目新增设计。
 **基线：** M39；复用[M10](M10_MEMORY_LIFECYCLE.md)、[M11](M11_EVENT_CLUSTER.md)、[M12](M12_CASCADE_PIPELINE.md)、[M15](M15_DURABILITY_APPROVAL.md)、[M25](M25_POSTGRES_FACTS.md)、[M36](M36_EXPLAINABLE_WORKBENCH.md)。可独立实施；只有向已存在多Agent提供上下文时再核对M40接口。
 
