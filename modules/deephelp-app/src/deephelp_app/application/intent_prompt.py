@@ -1,7 +1,7 @@
 """结构化兜底请求契约与不可变本地Prompt资产。
 
 默认系统文字和fallback_contract绑定输出schema；发布Prompt需核对contract与请求摘要。
-read_prompt只读指定版本，模板变量或漂移内容拒绝；本轮未改实际Prompt字符串。
+read_prompt只读指定目录版本，模板变量或漂移内容拒绝；旧默认契约保持原身份。
 """
 
 from importlib.resources import files
@@ -43,8 +43,9 @@ def default_system(catalog_version: str = "complaints-v1") -> str:
     )
 
 
-def fallback_contract() -> dict[str, Any]:
-    from deephelp_app.application.intent import INTENT_SCHEMA
+def fallback_contract(catalog_version: str = "complaints-v1") -> dict[str, Any]:
+    """请求schema随显式目录变化；默认保留历史三叶子契约的原字节。"""
+    from deephelp_app.application.intent import INTENT_SCHEMA, intent_schema
 
     return dict(
         role="system",
@@ -53,7 +54,9 @@ def fallback_contract() -> dict[str, Any]:
         input_keys=["text", "confirmed_event_context", "retrievals"],
         serialization="json.dumps ensure_ascii=False; complete text and confirmed context",
         response_format="json_schema",
-        output_schema=INTENT_SCHEMA,
+        output_schema=(
+            INTENT_SCHEMA if catalog_version == "complaints-v1" else intent_schema(catalog_version)
+        ),
         max_output_tokens=2048,
         repair_once=False,
         tools=[],
@@ -61,7 +64,7 @@ def fallback_contract() -> dict[str, Any]:
     )
 
 
-def read_prompt(path: Path) -> PromptArtifact:
+def read_prompt(path: Path, catalog_version: str = "complaints-v1") -> PromptArtifact:
     from deephelp_app.application.artifact_paths import resolve_artifact
 
     resolved = resolve_artifact(path)
@@ -69,7 +72,7 @@ def read_prompt(path: Path) -> PromptArtifact:
         raise ConfigurationError("Prompt artifact exceeds the static contract limit")
     prompt = PromptArtifact.model_validate_json(resolved.read_text(encoding="utf-8"))
     if (
-        prompt.contract != fallback_contract()
+        prompt.contract != fallback_contract(catalog_version)
         or "{{" in prompt.text
         or "}}" in prompt.text
         or prompt.request_digest != digest([prompt.text, prompt.contract])
@@ -90,4 +93,5 @@ def published_prompt(manifest: ReleaseManifest) -> tuple[Path, PromptArtifact] |
     paths = [Path(path) for path, value in manifest.files.items() if value == fingerprint]
     if len(paths) != 1 or file_digest(paths[0]) != fingerprint:
         raise ConfigurationError("Published Prompt has no unique immutable local artifact")
-    return paths[0], read_prompt(paths[0])
+    catalog = manifest.sop_registry.get("catalog_version", "complaints-v1")
+    return paths[0], read_prompt(paths[0], catalog)

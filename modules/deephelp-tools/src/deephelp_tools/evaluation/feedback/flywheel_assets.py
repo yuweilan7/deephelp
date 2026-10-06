@@ -298,6 +298,20 @@ async def activate(store: FeedbackStore, assets: Path, pointer: Path, gate: Budg
 
 def verify_files(path: Path, *, validation_inputs: bool = True) -> dict[str, Any]:
     data = runtime_verify_files(path)
+    if validation_inputs and data.get("catalog_binding"):
+        # 六叶子冻结组独立于旧m18-demo；验证真实split和选择摘要，不借旧报告放行。
+        from deephelp_app.adapters.releases.catalog_binding import catalog_binding
+        from deephelp_tools.evaluation.retrieval.hybrid_eval import dataset, query_digest
+
+        binding = catalog_binding(data, "complaints-v3")
+        assert binding is not None
+        _, queries = dataset(
+            Path(binding["corpus"]),
+            {key: Path(binding[key]) for key in ("dev", "test")},
+        )
+        if any(query_digest(queries[key]) != binding[key + "_digest"] for key in ("dev", "test")):
+            raise ConfigurationError("Catalog frozen validation inputs changed")
+        return data
     if validation_inputs and data.get("demo_data_digest") != file_digest(DEMO_DATA):
         raise ConfigurationError("Release validation data changed")
     return data

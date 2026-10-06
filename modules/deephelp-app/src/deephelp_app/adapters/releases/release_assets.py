@@ -14,6 +14,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 )
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
+from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.runtime_assets import read_data, verify_files, verify_remote
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.application.artifact_paths import resolve_artifact
@@ -47,6 +48,7 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
     dense = read_data(Path(data["dense_pointer"]))
     classifier = FastTextClassifier(pointer_manifest(Path(data["fasttext_pointer"])))
     registry = SOPRegistry.model_validate(manifest.sop_registry)
+    binding_catalog = catalog_binding(data, registry.catalog_version)
     package = PACKAGE
     validation = read_data(Path(manifest.validation_path))
     if dense.get("selection", {}).get("format") == "m31-dev-selection-v1":
@@ -96,7 +98,9 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
             raise ConfigurationError("Published Prompt request has no matching content validation")
     elif validation.get("intent_prompt_request_digest") not in {
         None,
-        digest([default_system(), fallback_contract()]),
+        digest(
+            [default_system(registry.catalog_version), fallback_contract(registry.catalog_version)]
+        ),
     }:
         raise ConfigurationError("Validated custom Prompt is missing from the complete release")
     if (
@@ -119,6 +123,10 @@ def verify_release(manifest: ReleaseManifest) -> dict[str, Any]:
         or validation.get("code_digest") != manifest.code_digest
         or validation.get("providers_digest") != manifest.providers_digest
         or validation.get("judge_providers_digest") != manifest.judge_providers_digest
+        or (
+            binding_catalog is not None
+            and validation.get("catalog_binding_digest") != digest(binding_catalog)
+        )
     ):
         raise ConfigurationError("Complete release versions/configuration do not match")
     required = {

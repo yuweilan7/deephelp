@@ -94,22 +94,28 @@ class LiveAssembly:
         self.release_manifest, self.release_channel = release_manifest, release_channel
         from deephelp_app.application.intent_prompt import published_prompt, read_prompt
 
-        if release_manifest and prompt_artifact:
-            raise ConfigurationError("Published runtime Prompt must come from its ReleaseManifest")
-        binding = published_prompt(release_manifest) if release_manifest else None
-        self.intent_prompt = (
-            binding[1] if binding else (read_prompt(prompt_artifact) if prompt_artifact else None)
-        )
-        self.judge_providers = (
-            resolve_artifact(release_manifest.judge_providers_path)
-            if release_manifest
-            else root / "modules/deephelp-app/event-judge.example.json"
-        )
         active = self.pointer.get("active")
         self.scope = (
             HybridScope.model_validate(active)
             if isinstance(active, dict) and active.get("index_kind") == "intent_hybrid"
             else DenseScope.model_validate(active)
+        )
+        if release_manifest and prompt_artifact:
+            raise ConfigurationError("Published runtime Prompt must come from its ReleaseManifest")
+        binding = published_prompt(release_manifest) if release_manifest else None
+        self.intent_prompt = (
+            binding[1]
+            if binding
+            else (
+                read_prompt(prompt_artifact, self.scope.registry_version)
+                if prompt_artifact
+                else None
+            )
+        )
+        self.judge_providers = (
+            resolve_artifact(release_manifest.judge_providers_path)
+            if release_manifest
+            else root / "modules/deephelp-app/event-judge.example.json"
         )
         self.top_k = 3
         self.cascade_policy_path = cascade_policy

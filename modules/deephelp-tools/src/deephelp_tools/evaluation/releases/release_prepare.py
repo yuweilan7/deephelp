@@ -13,6 +13,7 @@ from deephelp_app.adapters.model_gateway.fasttext_runtime import (
 )
 from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
+from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.skill_store import read_skill_review
 from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
@@ -40,10 +41,13 @@ def prepare_manifest(
     skill_review: Path | None = None,
 ) -> ReleaseManifest:
     data = verify_files(assets, validation_inputs=True)
+    catalog = catalog_binding(data, registry.catalog_version)
     validation_path = validation_path or assets.parent / "validation.json"
     validation = read_data(validation_path)
     if validation.get("status") != "PASS" or validation.get("assets_digest") != digest(data):
         raise ConfigurationError("Complete release requires this asset's successful regression")
+    if catalog and validation.get("catalog_binding_digest") != digest(catalog):
+        raise ConfigurationError("Catalog binding has no matching exact content validation")
     if data["providers_digest"] != file_digest(providers):
         raise ConfigurationError("Provider configuration changed")
     dense = read_data(Path(data["dense_pointer"]))
@@ -101,7 +105,7 @@ def prepare_manifest(
             raise ConfigurationError("Reviewed original content report changed")
         files[str(source_path.resolve())] = observed["sha256"]
     if prompt_artifact:
-        prompt = read_prompt(prompt_artifact)
+        prompt = read_prompt(prompt_artifact, registry.catalog_version)
         if validation.get("intent_prompt_request_digest") != prompt.request_digest:
             raise ConfigurationError("Prompt request changed since the exact content gate")
         fingerprint = file_digest(prompt_artifact)
@@ -109,7 +113,9 @@ def prepare_manifest(
         files[str(prompt_artifact.resolve())] = fingerprint
     elif validation.get("intent_prompt_request_digest") not in {
         None,
-        digest([default_system(), fallback_contract()]),
+        digest(
+            [default_system(registry.catalog_version), fallback_contract(registry.catalog_version)]
+        ),
     }:
         raise ConfigurationError("Validated custom Prompt requires its immutable artifact")
     return ReleaseManifest(

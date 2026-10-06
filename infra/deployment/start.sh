@@ -20,7 +20,8 @@ case "${1:-}" in
     exec "$python" -m deephelp_tools.demo.synthetic_rights --port "$rights_port" --key "$state/rights.key" ;;
   business)
     export DEEPHELP_METRICS_PORT=${DEEPHELP_BUSINESS_METRICS_PORT:-9465}
-    exec "$python" -m deephelp_services.business serve --credentials "$state/business.json" --port "$business_port" ;;
+    exec "$python" -m deephelp_services.business serve --credentials "$state/business.json" --port "$business_port" \
+      --catalog-version "${DEEPHELP_BUSINESS_CATALOG:-complaints-v1}" ;;
   retrieval)
     export DEEPHELP_METRICS_PORT=${DEEPHELP_RETRIEVAL_METRICS_PORT:-9466}
     exec "$python" -m deephelp_services.retrieval serve --credentials "$state/retrieval.json" --port "$retrieval_port" \

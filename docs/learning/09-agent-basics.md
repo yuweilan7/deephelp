@@ -156,3 +156,13 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course complaints
 Java类比：attempt像请求处理日志，refund与return像两个独立业务聚合，CAS类似@Version。边界是本项目记录为个人合成事实，并没有企业支付对账或事务性发券接口。Python的REPEATABLE READ使本次多记录查询一致，证据随查询事务提交；它不会把来源矛盾变成一致，也不会保证其他系统的副作用。模型选工具不能越过同主体关联和缺槽守卫。
 
 练习与答案：1. 尝试编号不存在？NOT_FOUND，不编造失败原因。2. 退款pending但券声称returned？conflict，不能据券推定退款完成。3. 用户给别人的券号？同主体读取失败，不泄漏券存在性。4. 同主体不同券的回退来源？保留矛盾并人工核对，不把它改成returned。5. completed但没有回退行？unknown，不能承诺发券。6. completed/returned再重投？原receipt重放0模型/工具，不再次发券。7. 缺coupon_id只有refund_id？询问券号，不把退款记录里的券偷当用户确认槽位。
+
+### 同一目录的完整发布
+
+新增叶子不仅是扩大枚举。[发布绑定守卫](../../modules/deephelp-app/src/deephelp_app/adapters/releases/catalog_binding.py)把六叶子目录、语料、冻结dev/test、索引选择和级联策略连接起来；原ReleaseManifest继续绑定代码、工具、提供方、SOP与实际内容报告。旧目录的提示词输出只有三标签，新目录的请求schema允许六个叶子与null，不能让旧Prompt为新目录背书。核验只读资产，不在服务启动时打开测试集或调用模型。
+
+当前六叶子候选没有经过六类校准的FastText，明确采用not_configured，原三类模型保留用于旧版本恢复。实际run的fasttext_model为空，600路径显示规则/召回/结构化兜底，不能将空字段解释成“FastText判断未知”。融合也不是概率；冻结检索组中BM25可能优于融合，不能看test结果后改变dev选出的权重。
+
+先运行前面的catalog与complaints离线入口观察同一SOP，再读[发布装配](../../modules/deephelp-app/src/deephelp_app/bootstrap/runtime/release_runtime.py)的entry：锁只保护每个版本实例的创建，资源由后台任务进入/退出，旧run仍选原manifest。Java类比是不可变版本容器与生命周期管理，不能类比成对同一Spring Bean原地替换配置。
+
+练习与答案：1. SOP六叶子但索引三叶子？拒绝发布/装配，不临时扩大检索scope。2. 只把Prompt文案改成六类？请求schema和内容验收仍需同目录。3. 检索首位是客诉但用户只问物流？600拒绝，无工具派发。4. 服务器Milvus健康但本机报不可用？先查本机转发监听及鉴权；服务器状态不能证明整个客户端路径。5. 回退旧安装要删新表吗？不删，业务事实和预算保留，旧安装读其兼容旧run，再切回新安装读取新字段。
