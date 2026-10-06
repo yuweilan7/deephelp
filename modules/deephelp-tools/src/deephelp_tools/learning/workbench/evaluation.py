@@ -688,6 +688,9 @@ def evaluation_router(
             await jobs.close()
 
     router = APIRouter(prefix="/learning/evaluation", lifespan=lifespan, route_class=LearningRoute)
+    from deephelp_tools.learning.workbench.independent_quality import independent_router
+
+    router.include_router(independent_router(assembly, auth, config.owner))
 
     @router.get("")
     async def catalog(request: Request) -> dict[str, Any]:

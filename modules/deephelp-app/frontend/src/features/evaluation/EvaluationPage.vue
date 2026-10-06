@@ -9,6 +9,7 @@ import ReportPanel from "./ReportPanel.vue";
 import CandidatePanel from "./CandidatePanel.vue";
 import TaskPanel from "./TaskPanel.vue";
 import ReleasePanel from "./ReleasePanel.vue";
+import IndependentPanel from "./IndependentPanel.vue";
 const catalog = useRead<Catalog>(),
   plan = useRead<Plan>(),
   taskId = ref("");
@@ -44,7 +45,8 @@ onMounted(refresh);
     配置，恢复后刷新。当前业务对话可按其自身依赖继续。
   </p>
   <template v-if="catalog.data.value"
-    ><p>
+    ><IndependentPanel />
+    <p>
       当前工具冻结集 {{ catalog.data.value.dataset.cases }} 会话 /
       {{ catalog.data.value.dataset.turns }} 消息 · 独立审计
       {{ catalog.data.value.dataset.independent_cases }} · 来源组
