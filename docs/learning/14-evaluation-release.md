@@ -26,6 +26,20 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course evaluation
 
 按[evaluation_demo](../../modules/deephelp-tools/src/deephelp_tools/learning/course/evidence.py)看：audit读包内冻结原件核对来源/标签/分组；构造明确的合成selected报告；complete=False模拟中断，wrong_owner模拟安全失败；targeted_gate逐项拒绝。ratio空分母保留未知，不编100%通过。实验不生成可以注册发布的content报告。
 
+## 独立来源、双盲标与锁定留出集
+
+M45把作者输入与标注收据分开。不同作者不等于真实客户：`independent_ai_synthetic`明确表示AI独立合成，两个标注者也分别声明只看新输入/业务定义；实际导入/提交主体另行持久记录。作者不能自审，两个完整标签有分歧时第三位主体复核，不能用模型回答确认gold。近重复/会话组不能跨train/dev/holdout；同一句换订单号仍会拒绝。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course independent-quality
+```
+
+预期三个拒绝分别是跨split近重复、作者自审、缺两份盲标；完整教学收据后FROZEN，远程模型/数据库均0，quality_claim=false。教学夹具的两个名字只是演示守卫，不是本次独立质量证据。
+
+沿 [independent_data](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/independent_data.py) 读receive→annotate→adjudicate→freeze→verify，再看 [IndependentDatasets](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/independent_store.py) 的PG短事务CAS：回执未知先读revision，不能覆盖已审资料。对应Java聚合版本和不可变制品；Pydantic DTO不拥有锁/连接，代码守卫也不能替代来源人的诚实声明。
+
+原“评测与改进”的独立数据面板显示实际来源、会话/消息数、split、盲标者、原分歧/未决数与hash，输入投影不返回其他标签；浏览0模型。常见错误是把AI合成称为真实客户、让作者看模型答案修gold、调试holdout后继续称未见。练习：两盲标者意见不同时能否用被测模型选择正确票？答案：不能，必须第三方按输入独立裁决；若测试转入开发，另建独立holdout。
+
 ## 原发布路径与源码
 
 ```mermaid

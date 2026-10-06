@@ -28,6 +28,8 @@ Conversation保留stage/prepare等原方法入口，绑定的是对应职责模�
 
 ## 唯一类型的责任
 
+独立质量学习沿 [independent_data](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/independent_data.py) 的来源/盲标/冻结纯变换 → [independent_store](../../modules/deephelp-tools/src/deephelp_tools/evaluation/quality/independent_store.py) 的原PG池/短事务CAS → [原评测扩展](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/independent_quality.py) 的owner与不含答案的投影；离线入口 [independent_quality_demo](../../modules/deephelp-tools/src/deephelp_tools/learning/course/independent_quality.py) 共用核心，不复制分类引擎。
+
 [domain/models](../../modules/deephelp-app/src/deephelp_app/domain/models/__init__.py)只显式导出原公开名字；定义按概念保存在同目录的具体模块，内部import直接指向它们。
 
 | 要查的规则 | 定义入口 | 向下依赖 |

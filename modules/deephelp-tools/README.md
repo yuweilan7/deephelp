@@ -1,5 +1,7 @@
 # DeepHelp 独立工具包
 
+M45独立数据机制：`py -3.14 -m uv run --locked python -m deephelp_tools.learning.course independent-quality`，默认离线/0模型，教学夹具不声称质量。实际私有来源用 `python -m deephelp_tools.evaluation.quality.independent_cli --intake <脱敏输入JSON> --annotation <盲标A收据> --annotation <盲标B收据> [--adjudication <独立裁决>] --postgres <原PG配置> --tenant <已验证主体> --user <主体> --output <新冻结JSON> --report <必要摘要>`；有实际许可/来源声明，输入含固定train/dev/holdout，收据绑定input_hash且不可看被测输出。`--protocol-report <文件>`另验隔离PG竞争/回滚/精确测试行清理；全部0模型。来源、未决/锁定状态沿原评测页，契约见[第14章](../../docs/learning/14-evaluation-release.md#独立来源双盲标与锁定留出集)。
+
 本地核心先运行`course request`，不需PG、云凭据、旧.local或前端built；环境准备和最短路径见[课程](../../docs/learning/README.md#本地核心最短路径)。真实业务/完整工作台才按[PG入口](../../infra/postgres/README.md)配置并迁移，M26审批使用官方保存器。正式云安装与源码分别见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，旧完整发布绑定其原安装字节。
 
 本包依赖 `deephelp-app` 的唯一领域类型与会话引擎，提供显式学习、demo、探针、冻结评测、训练及发布准备。运行包没有反向依赖。根开发环境通过唯一uv锁安装三个workspace包，独立机器可只安装app wheel；需要演示/学习时再安装tools及其依赖。

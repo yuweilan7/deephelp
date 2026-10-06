@@ -51,11 +51,12 @@
 | M42 | 三项能力/精确云安装与恢复已验；LOCAL_CLOSEOUT_BLOCKED；[交接](../handoffs/M42.md) | complaints-v3六叶子、PG维护/CAS、真实HTTP MCP/600/澄清/事实、15例候选及6例正式内容、冻结对照、同run原生观测与旧新零调用恢复通过；F2七文件/两目录及已覆盖短PLAN删除被工具拒绝 |
 | M43 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M43.md) | 可视草稿/CAS/校验、原执行器预演/取消/持久重载、不可变审核与原完整内容发布门禁；实际浏览器闭环、修改分支及相邻PG/HTTP内容、同run Langfuse、精确云安装/M42↔M43恢复通过；浏览/历史0模型，35张非发布表恢复时行数/内容摘要不变 |
 | M44 | IMPLEMENTED_LIVE_VERIFIED；全部三项完成；[交接](../handoffs/M44.md) | PG语料草稿/CAS/导入审核、不可变冻结/独立候选索引/同向量诊断、原反馈人审回流及完整发布；正式Hybrid不退化、固定test两版本8/8分类正确、六叶子及2未知业务通过；精确三包安装/重启/M43↔M44恢复通过，37张非发布表不变。BM25诊断MRR下降，无质量提升或客户泛化结论 |
+| M45 | IN_PROGRESS；F1独立AI数据/双盲标/PG冻结已验；[交接](../handoffs/M45.md) | 48会话86消息，train/dev/holdout 8/16/24，两位AI盲标与一轮第三方裁决；模型0。精确配对与审核改进/holdout复验继续，正式安装仍M44，未证明客户泛化 |
 | 模型/业务联调 | MVP_LIVE_VERIFIED；企业业务 NOT_RUN | 2026-10-05按用户长期选择固定通用Chat为qwen3.8-flash，强判仍qwen3.7-flash；新11会话14消息内容、云PG订单/同run Langfuse/零调用重放及配置恢复通过；原Embedding签名保持，Rerank主链已接但正式默认关闭 |
 
 ## 后续规格与实施边界
 
-2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部交付，M41三项能力已验收部署、本地清理尚有工具拒绝；M42三项能力已顺序验收部署，本地清理仍有工具拒绝。M43、M44各三个feature均已顺序验收交付，见[M44交接](../handoffs/M44.md)；M45–M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不启动远期能力或调度。
+2026-10-05已交付M40–M46的后续能力规格：多Agent、Skills、业务目录扩展、可视化SOP、语料工作台、独立质量验证、跨会话记忆；能力/feature及直接依赖见[ROADMAP](ROADMAP.md#后续能力规格)。M40全部交付，M41三项能力已验收部署、本地清理尚有工具拒绝；M42三项能力已顺序验收部署，本地清理仍有工具拒绝。M43、M44各三个feature均已顺序验收交付，见[M44交接](../handoffs/M44.md)；M45 F1已验并继续F2/F3；M46仍为`SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`。取消独立全量注释M；M19/M32–M39沉淀的职责、中文讲解、课程/前端学习与原运行观测、相关清理/文档同步已写成[每个feature的交付习惯](../AGENTS.md#每个feature的编码与交付习惯)。不重启已完成专项，不启动远期能力或调度。
 
 ## 当前运行与验收边界
 

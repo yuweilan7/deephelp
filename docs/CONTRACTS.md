@@ -429,6 +429,14 @@ complaints-v3显式六叶子，新增ORDER_CREATION_FAILED（父ORDER_QUERY，at
 
 尝试查询精确TEXT事实attempt_id/attempt_status/failure_code/failure_reason/follow_up；退款查询精确TEXT事实refund_id/coupon_id/refund_status/return_status/return_reason。退款状态pending/completed/failed/unknown；券回退pending/returned/failed/unknown/conflict。关联矛盾或退款未完成而券声称returned优先conflict；缺回退行unknown；returned必须关联正确且退款completed。查询在同一REPEATABLE READ事务读取版本并保存不可变证据，NOT_FOUND不能泄漏外主体存在性；模型仅选允许工具，原因从PG维护记录来。
 
+## M45 独立数据与盲审协议
+
+原 `/learning/evaluation/independent` 只允许 catalog owner，其他主体404；沿原BrowserAuth、CSRF与同源。PG池在父lifespan就绪后借用，首次独立操作串行幂等迁移 `dh_m45_datasets`；输入/盲标/裁决/冻结在短事务revision CAS，失败回滚，无模型/业务副作用。接收最多1000会话、每会话10轮，拒绝明显联系方式/证件/URL，来源须先脱敏，来源原件/许可及收据私有保存。作者ID与实际导入主体、声明标注者与实际提交主体分别记录；声明不证明人类身份或客户代表性。
+
+source_kind区分独立AI合成、独立人类合成、获准客户资料；输入hash、来源/重复组、train/dev/holdout及历史输入检查在盲测之前确定。近重复按编号中立的会话前缀三字串Jaccard≥0.8保守拒绝跨split；普通补槽短语只有与此前会话上下文合并才比较。该守卫不能证明语义独立。两个非作者且不同reviewer须完整盲标，无被测答案/旧样本；分歧由第三位主体按输入裁决，原两票不改。
+
+GET只投影来源/计数/revision/分歧/锁定hash；`/datasets/{id}/inputs`只返回会话和输入hash，不含gold/scenario提示。POST接收、annotations、adjudication与freeze；盲标绑定完整input_hash，标签仅六叶子/unknown/multiple。freeze生成完整不可变闭包，后续审核拒绝，hash不符不能读作有效。无独立资料显示DATA_NOT_AVAILABLE；AI教学反例不计作质量样本。浏览/接收/审核/冻结均模型0，当前正式业务安装不因此切换。
+
 ## M44 语料作者协议
 
 `/learning/corpus`复用BrowserAuth/CSRF/同源，唯一catalog owner之外404；无原PG池501。GET按offset/limit分页，PUT/POST/DELETE正文revision与真实PG聚合CAS不符409。record复用CorpusRecord合法叶子/split/固定目录，source是有界非空来源说明；owner、审核者、路径不由正文指定。相同ID仅PUT修改，不允许改ID；修改恢复DRAFT。草稿删除不影响发布、审批或业务事实。
