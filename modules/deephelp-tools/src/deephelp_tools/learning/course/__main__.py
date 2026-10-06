@@ -10,6 +10,7 @@ from .basics import syntax_demo, types_demo
 from .cancellation import cancellation_demo
 from .catalog import catalog_demo, complaints_demo
 from .collaboration import collaboration_demo
+from .corpus_authoring import corpus_authoring_demo
 from .evidence import evaluation_demo, observations_demo
 from .offline import offline_only
 from .request import memory_demo, request_demo
@@ -37,6 +38,7 @@ TOPICS: dict[str, Callable[[], Awaitable[dict[str, object]]]] = {
     "complaints": complaints_demo,
     "sop-authoring": sop_authoring_demo,
     "sop-rehearsal": sop_rehearsal_demo,
+    "corpus-authoring": corpus_authoring_demo,
 }
 
 

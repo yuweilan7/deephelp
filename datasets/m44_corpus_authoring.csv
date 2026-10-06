@@ -1,0 +1,3 @@
+doc_id,content,intent_code,split,source_group,variant_group,synthetic,registry_version
+m44-example-order,请核对购买订单参加的促销活动,ORDER_ACTIVITY_QUERY,reference,m44-example-order,m44-example-order,true,complaints-v3
+m44-example-coupon,购物券满足门槛却仍无法抵扣,COUPON_UNUSABLE,reference,m44-example-coupon,m44-example-coupon,true,complaints-v3

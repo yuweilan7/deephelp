@@ -2,6 +2,7 @@
 import PageGuide from "../../components/PageGuide.vue";
 import RulesLab from "./RulesLab.vue";
 import RetrievalLab from "./RetrievalLab.vue";
+import CorpusAuthor from "./CorpusAuthor.vue";
 </script>
 <template>
   <PageGuide
@@ -18,4 +19,5 @@ import RetrievalLab from "./RetrievalLab.vue";
     lesson="https://github.com/yuweilan7/deephelp/blob/main/docs/learning/10-retrieval.md"
   />
   <div class="two-column"><RulesLab /><RetrievalLab /></div>
+  <CorpusAuthor />
 </template>

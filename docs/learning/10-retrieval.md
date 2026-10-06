@@ -62,3 +62,17 @@ flowchart LR
 预测先只保留discount-a/coupon再Rerank，是否还能选discount-b？只把top_n从3改1呢？
 
 答案：被裁掉的discount-b无法恢复，实验要先保留全部3份。top_n=1与N=3不匹配，RerankPolicy拒绝。正确扩大N也需要实际覆盖/延迟/预算验证，不能拿本合成排序证明真实质量提升。
+
+## 语料作者、导入与审核（M44）
+
+在“识别与检索”读取工作区，新建候选时选择当前目录叶子标签，填文本、split、来源说明和来源/近义组。保存后读取真实revision；编辑已审核记录退回DRAFT。删除只影响作者候选。PG按owner+目录隔离，短事务锁内核对revision、完整校验后提交；模型等待不占此锁。
+
+JSONL沿用CorpusRecord；CSV用冻结字段名或字段→表头映射；Excel用字段→A/B列映射，单工作表、文本单元格，公式拒绝。必需字段doc_id/content/intent_code/split/source_group/variant_group/synthetic；v3还须registry_version=complaints-v3，来源说明可写metadata.source。先预览逐行修正错标签、缺列、重复ID/跨split近重复，再明确导入全部行；之后人工核对并填写理由批准所选记录。
+
+```powershell
+py -3.14 -m uv run --locked python -m deephelp_tools.learning.course corpus-authoring
+```
+
+预期父标签INVALID_ARGUMENT、失败导入0行、预览0条草稿、导入DRAFT、审核APPROVED，模型0。实验复用纯变换，不证明PG持久协议。Java可类比聚合version乐观锁及单事务批量写；数据库事务不与前端编辑时长绑定。
+
+常见错误：dev/test进入业务索引、同义改写冒充独立split、高置信自动金标、响应超时直接重投。练习：10行中第7行父标签，保存几行？答案0。提交响应丢失时先读同preview_id的IMPORTED/imported_revision对账，不能清零revision绕过冲突。

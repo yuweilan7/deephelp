@@ -1,6 +1,6 @@
 # M44｜知识与意图语料的管理、检索和发布工作台
 
-**状态：** `SPEC_DELIVERED / IMPLEMENTATION_NOT_STARTED`；2026-10-05规格。
+**状态：** `F1_VERIFIED / F2_F3_IN_PROGRESS`；2026-10-06，实际证据见[交接](../../handoffs/M44.md)。
 **来源：** PDF文件页35–41的语料导入/检索、70的后台维护及检索调试。先管理当前系统实际消费的意图例句、解释/来源与关联材料；不泛化成任意文档RAG平台。
 **基线：** M39；复用[M05](M05_DENSE_INGEST.md)、[M09](M09_HYBRID_RETRIEVAL.md)、[M18](M18_DATA_FLYWHEEL.md)、[M20](M20_BUSINESS_SOURCE.md)、[M29](M29_LANGFUSE_ENGINEERING.md)、[M31](M31_RERANK_INTEGRATION.md)、[M35](M35_FRONTEND_FOUNDATION.md)。M42只影响已经实际交付的新标签，不是本M硬前置。
 
