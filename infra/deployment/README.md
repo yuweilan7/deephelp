@@ -210,3 +210,15 @@ M41目标使用原state/budget.json，M42目标使用state-m42/budget.json；M42
 恢复仍用既有控制脚本：先`sudo bash /opt/deephelp-app/bin/control.sh stop`，核对四单元MainPID=0及目标预算无writer；以ubuntu/0600从闭包恢复**目标**runtime/catalog/artifact-map并重新source。使用**目标安装**的`.venv/bin/python -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`读取现场revision，再activate目标完整hash与现场expected-revision，最后`sudo bash /opt/deephelp-app/bin/switch.sh 目标安装ID`并有界核对health。M42使用原state-m42/budget.json，M43使用artifacts-m43/.local/m43/budget.json；不把old-budget-at-cutover.json、任何报告快照或本机已移交的预算复制到活动账本。恢复时原模型tokens/费用保持，元数据核验仍计RPC attempts；budget.lock由原writer关闭，不手工清除有效锁。
 
 M43实际采用37→38→39→40 CAS链并回到M43；后续操作必须读现场revision。旧问题/审批/UNKNOWN的原SOP及参数未迁移或重演，旧安装只读自身兼容历史。新完整版本的登记/激活会先复核审核原件、相同候选内容及安装字节；保存/预演/审核/prepare都不能替代完整发布。Windows→云路径解析属于精确闭包适配，原报告与清单路径/hash保持不可变。
+
+## M44 审核语料安装与恢复
+
+当前完整hash、revision、运行/工具摘要只见[PROJECT_STATE](../../docs/PROJECT_STATE.md)，语料/分类/正式内容与39张PG表恢复证据见[M44交接](../../handoffs/M44.md#f3-人审反馈质量门禁完整发布与精确恢复)。新目标`m44-corpus-v3`，旧目标`m43-sop-author-v1`；恢复闭包`/srv/deephelp-modern/recovery/m44-corpus-v3`保存旧runtime.env/catalog/artifact-map/pointer、新new-runtime.env/new-learning-catalog.json/new-artifact-map.json、精确bundle及recovery.json。v1/v2安装与恢复原件继续保留用于原证据/失败定位，v2启动失败不计交付成功。
+
+新state/task_root为`artifacts-m44/.local/m44`，单一artifact-map把Windows仓库根映射到`artifacts-m44`。原已登记manifest.json属于首次v2准备；最终v3文件为同目录**manifest-v3.json**，两文件与其绑定报告不能覆盖或裁剪。增量部署只创建缺失文件，已有字节必须与原hash一致；配置/原件/来源反馈及SOP/Skill快照必须全部可解析。三包安装还须核对SHA256SUMS包含的wheels/.gitignore；原install.sh没有复制它时，只补入同bundle原件再完整校验。
+
+恢复用原control.sh/switch.sh：先`sudo bash /opt/deephelp-app/bin/control.sh stop`，核对app/business/retrieval/rights MainPID=0、两版累计账本无活动writer；以ubuntu/0600恢复闭包的**目标**runtime/catalog/artifact-map并重新source。随后用**目标安装**的`.venv/bin/python -m deephelp_app.bootstrap.commands.release_cli status --live --channel m30-personal`取得现场revision，再activate目标完整hash/现场expected-revision和该目标当前`$DEEPHELP_STATE_ROOT/budget.json`，最后switch.sh目标安装并有界health。M43用`artifacts-m43/.local/m43/budget.json`，M44用`artifacts-m44/.local/m44/budget.json`；任何old-budget、报告快照或本机已移交副本均不能复制回活动账本。
+
+首次作者工作台与云正式实例之间只在双方writer退出后移交同一累计账本，当前writer归云端；本机保留只读移交/最终预算证据，不重新打开。质量/完整内容依赖的旧FAIL/part/成功报告链、审核、索引、不可变版本及旧run/审批/UNKNOWN继续保留。当前装配的PG池在父ReleaseRuntime lifespan启动后才可借用，学习router不能在注册阶段读取未就绪资源，也不拥有关闭该池的权利。
+
+本次最终发布/双向恢复43→44→45，最终回到M44；后续操作仍必须读现场revision。停写比较39张非系统表，只允许发布active/审计预期变化；新旧receipt、其他37张行数/摘要及模型计量不变，实际元数据RPC仍计attempts。旧安装只读兼容历史，不继续执行M44问题；恢复不回滚PG或重放副作用。

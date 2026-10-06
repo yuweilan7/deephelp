@@ -21,6 +21,7 @@ from pydantic import Field
 
 from deephelp_app.adapters.persistence.corpus_workspaces import PostgresCorpusWorkspaces
 from deephelp_app.adapters.releases.asset_integrity import file_digest
+from deephelp_app.adapters.releases.corpus_binding import corpus_binding
 from deephelp_app.adapters.releases.release_assets import verify_release
 from deephelp_app.adapters.releases.release_store import ReleaseStore
 from deephelp_app.adapters.releases.skill_store import SkillStore
@@ -76,6 +77,9 @@ class EvaluationCatalog(DTO):
     imports: dict[Key, HistoricalImport] = Field(default_factory=dict, max_length=16)
     prompt_artifact: Path | None = None
     corpus_splits: dict[Literal["dev", "test"], Path] = Field(default_factory=dict)
+    corpus_baseline: Key | None = None
+    corpus_sop_review: Path | None = None
+    corpus_skill_review: Path | None = None
 
 
 class Capture(DTO):
@@ -102,6 +106,7 @@ class JobInput(DTO):
         "platform_candidate",
         "corpus_build",
         "corpus_compare",
+        "corpus_gate",
     ]
     candidate_ids: tuple[Hash, ...] = Field(default=(), max_length=10)
     asset_id: Key | None = None
@@ -263,6 +268,10 @@ def evaluation_router(
             path = jobs.output(row) / "assets" / "assets.json"
             if row["options"]["action"] == "build" and path.is_file():
                 return path
+            if row["options"]["action"] == "corpus_gate":
+                path = root / "corpus" / str(row["options"]["corpus_version"]) / "assets.json"
+                if row["state"] == "SUCCEEDED" and path.is_file():
+                    return path
         raise AppError(ErrorCode.NOT_FOUND, "Candidate asset unavailable", 404)
 
     # 这个闭包只选择catalog允许的原工具入口，长期任务调度由LearningJobs拥有。
@@ -277,7 +286,7 @@ def evaluation_router(
         options, action = row["options"], row["options"]["action"]
         # 借用应用已经打开的预算writer，仅提供request；任务恢复不能新建预算文件清零。
         gate = SharedGate(factory, config.budget_state)
-        if action in {"corpus_build", "corpus_compare"}:
+        if action in {"corpus_build", "corpus_compare", "corpus_gate"}:
             from deephelp_tools.evaluation.retrieval.corpus_candidate import (
                 build_candidate,
                 compare_candidate,
@@ -295,10 +304,41 @@ def evaluation_router(
                     factory,
                     {s: p for s, p in config.corpus_splits.items()},
                 )
-            else:
+            elif action == "corpus_compare":
                 result = await compare_candidate(
                     root, snapshot, assembly, options["query"], factory
                 )
+            else:
+                from deephelp_tools.evaluation.retrieval.corpus_release import (
+                    prepare_corpus_assets,
+                    quality_gate,
+                )
+
+                baseline = asset_path(config.corpus_baseline)
+                classification_report = await quality_gate(
+                    root, snapshot, assembly, factory, baseline
+                )
+                result = dict(
+                    evidence_status=classification_report["status"],
+                    version_hash=snapshot["version_hash"],
+                    metric_changes=classification_report["metric_changes"],
+                    deployed_route=classification_report["deployed_route"],
+                    diagnostic_regressions=classification_report["diagnostic_regressions"],
+                    checks=classification_report["checks"],
+                    classification_accuracy=classification_report["classification_accuracy"],
+                    unverified=classification_report["unverified"],
+                    active_changed=False,
+                )
+                if classification_report["status"] == "PASS":
+                    corpus_asset_path = await asyncio.to_thread(
+                        prepare_corpus_assets, root, snapshot, assembly, baseline
+                    )
+                    await feedback().require_current(verify_files(corpus_asset_path)["source"])
+                    data = verify_files(corpus_asset_path)
+                    authored = corpus_binding(data)
+                    assert authored is not None
+                    await feedback().record_corpus_derivatives(data["source"], authored["files"])
+                    result["asset_id"] = "task-" + row["id"]
             result["cumulative_budget"] = gate.state
             atomic_json(output / "corpus.json", result)
             return result
@@ -445,12 +485,29 @@ def evaluation_router(
             if options.get("sop_draft")
             else None
         )
+        if options.get("corpus_version"):
+            skill_review = skill_review or config.corpus_skill_review
+            sop_review = sop_review or config.corpus_sop_review
+            data = verify_files(assets, validation_inputs=True)
+            authored = corpus_binding(data)
+            if authored is None or authored["version_hash"] != options["corpus_version"]:
+                raise ConfigurationError("Corpus task differs from its reviewed assets")
+            await feedback().require_current(data["source"])
         registry = read_sop_review(sop_review)[0] if sop_review else assembly.sop_registry
         if action == "validate":
-            if sop_review and registry.catalog_version == "complaints-v3":
+            if (
+                sop_review or options.get("corpus_version")
+            ) and registry.catalog_version == "complaints-v3":
                 # 旧M18 stdio只发现三工具；六叶子作者候选沿现有真实PG/HTTP目录探针。
-                # 冻结三个相邻样本，任务/预算仍由当前app拥有，不另开累计writer。
-                from deephelp_tools.probes.conversation.catalog_probe import probe
+                # SOP只验相邻样本；语料验六叶子及未知，预算仍由当前app拥有。
+                from deephelp_app.adapters.releases.asset_integrity import provenance
+                from deephelp_app.application.corpus import digest
+                from deephelp_tools.probes.conversation.catalog_probe import (
+                    merge_content,
+                    probe,
+                    reusable_cases,
+                    reuse_full_content,
+                )
 
                 business = getattr(assembly, "business_mcp", None)
                 if business is None or skill_review is None:
@@ -462,9 +519,75 @@ def evaluation_router(
 
                 binding = catalog_binding(data, registry.catalog_version)
                 assert binding is not None
+                requested = (
+                    [
+                        "order-adjacent",
+                        "coupon-adjacent",
+                        "discount-adjacent",
+                        "eligible",
+                        "attempt",
+                        "refund-pending",
+                        "unsupported-logistics",
+                        "unsupported-refund",
+                    ]
+                    if options.get("corpus_version")
+                    else ["order-adjacent", "coupon-adjacent", "discount-adjacent"]
+                )
+                previous = None
+                completed: list[str] = []
+                if options.get("corpus_version"):
+                    assert sop_review is not None
+                    expected = dict(
+                        code_digest=provenance()["package_digest"],
+                        providers_digest=file_digest(config.providers),
+                        pointer_digest=file_digest(Path(data["dense_pointer"])),
+                        assets_digest=digest(data),
+                        corpus_binding_digest=digest(corpus_binding(data)),
+                        sop_review_digest=file_digest(sop_review),
+                        skills_review_digest=file_digest(skill_review),
+                    )
+                    # 只读同目标已结束任务；原失败行和未结束任务不能被复用。
+                    for prior in sorted(
+                        jobs.rows.values(), key=lambda t: t["updated_at"], reverse=True
+                    ):
+                        if (
+                            prior["id"] == row["id"]
+                            or prior["state"] != "SUCCEEDED"
+                            or prior["options"] != options
+                        ):
+                            continue
+                        prior_path = jobs.output(prior) / "validation.json"
+                        if prior_path.is_file():
+                            accepted = reusable_cases(
+                                json.loads(prior_path.read_text(encoding="utf-8")),
+                                expected,
+                                requested,
+                            )
+                            if accepted:
+                                previous, completed = prior_path, accepted
+                                break
+                if previous and len(completed) == len(requested):
+                    from deephelp_tools.integrity import evaluation_provenance
+
+                    validation_report = reuse_full_content(
+                        previous,
+                        expected,
+                        requested,
+                        str(evaluation_provenance()["tooling_digest"]),
+                    )
+                    validation_report["budget"] = gate.state
+                    atomic_json(output / "validation.json", validation_report)
+                    return dict(
+                        evidence_status="PASS",
+                        checks=validation_report["checks"],
+                        reused_cases=completed,
+                        model_calls=0,
+                        active_changed=False,
+                    )
+                content_path = output / ("content-part.json" if previous else "validation.json")
                 await probe(
                     argparse.Namespace(
-                        output=str(output / "validation.json"),
+                        output=str(content_path),
                         budget_state=str(config.budget_state),
                         auth=str(config.auth),
                         service_credentials=str(business.credentials_path),
@@ -477,10 +600,15 @@ def evaluation_router(
                         assets=str(assets),
                         skill_review=str(skill_review),
                         sop_review=str(sop_review),
-                        cases=["order-adjacent", "coupon-adjacent", "discount-adjacent"],
+                        cases=[name for name in requested if name not in completed],
                     ),
                     borrowed_gate=gate,
                 )
+                if previous:
+                    atomic_json(
+                        output / "validation.json",
+                        merge_content(previous, content_path, completed, requested),
+                    )
                 validation_report = json.loads(
                     (output / "validation.json").read_text(encoding="utf-8")
                 )
@@ -515,6 +643,7 @@ def evaluation_router(
                 and task["options"]["asset_id"] == options["asset_id"]
                 and task["options"].get("skill_candidate") == options.get("skill_candidate")
                 and task["options"].get("sop_draft") == options.get("sop_draft")
+                and task["options"].get("corpus_version") == options.get("corpus_version")
             ),
             key=lambda task: (task["updated_at"], task["id"]),
             reverse=True,
@@ -812,7 +941,10 @@ def evaluation_router(
     @router.post("/tasks")
     async def start(request: Request, body: JobInput) -> dict[str, Any]:
         owner(request)
-        if body.action in {"corpus_build", "corpus_compare"}:
+        corpus_actions = {"corpus_build", "corpus_compare", "corpus_gate"}
+        if body.action in corpus_actions or (
+            body.action in {"validate", "prepare"} and body.corpus_version is not None
+        ):
             if body.corpus_version is None or (body.action == "corpus_compare") != (
                 body.query is not None
             ):
@@ -827,6 +959,10 @@ def evaluation_router(
             await PostgresCorpusWorkspaces(assembly.ledger.pool).version(
                 config.owner, assembly.sop_registry.catalog_version, body.corpus_version
             )
+            if body.action == "corpus_gate" and config.corpus_baseline not in config.assets:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT, "Corpus release baseline unavailable", 422
+                )
         elif body.corpus_version is not None or body.query is not None:
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT, "This action does not consume corpus/query", 422
@@ -871,7 +1007,14 @@ def evaluation_router(
                 ErrorCode.INVALID_ARGUMENT, "Only platform upload consumes an import", 422
             )
         if body.action in {"validate", "prepare"}:
-            asset_path(body.asset_id)
+            data = verify_files(asset_path(body.asset_id))
+            authored = corpus_binding(data)
+            if (authored is None) != (body.corpus_version is None) or (
+                authored is not None and authored["version_hash"] != body.corpus_version
+            ):
+                raise AppError(
+                    ErrorCode.VERSION_CONFLICT, "Corpus release needs its frozen version", 409
+                )
         elif body.asset_id is not None:
             raise AppError(ErrorCode.INVALID_ARGUMENT, "This action does not consume an asset", 422)
         if body.action not in {"build", "platform_candidate"} and body.candidate_ids:

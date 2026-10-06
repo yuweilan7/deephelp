@@ -15,20 +15,24 @@ from fastapi import APIRouter, Query, Request
 from pydantic import Field
 
 from deephelp_app.adapters.persistence.corpus_workspaces import PostgresCorpusWorkspaces
+from deephelp_app.adapters.releases.feedback_store import FeedbackReader
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.corpus import read_corpus_bytes
 from deephelp_app.application.corpus_authoring import (
     corpus_bytes,
     delete_record,
     edit_record,
+    import_feedback,
     import_preview,
     review_records,
     stage_preview,
+    version_diff,
 )
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import DTO, ErrorCode, VerifiedIdentity
 from deephelp_app.domain.models.corpus_authoring import (
     CorpusEdit,
+    CorpusFeedback,
     CorpusFreeze,
     CorpusImport,
     CorpusReview,
@@ -45,12 +49,18 @@ class CorpusDelete(DTO):
 def corpus_authoring_router(
     assembly: Any, auth: BrowserAuth, owner: VerifiedIdentity, *, store: Any = None
 ) -> APIRouter:
-    pool = getattr(getattr(assembly, "ledger", None), "pool", None)
-    repository: Any = store or (PostgresCorpusWorkspaces(pool) if pool else None)
-    catalog = assembly.sop_registry.catalog_version
+    pool: Any = None
+    repository: Any = store
+    catalog = ""
 
     @asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[None]:
+        nonlocal pool, repository, catalog
+        # 正式ReleaseRuntime在外层应用lifespan才打开原装配；注册路由时尚无ledger/目录。
+        # 此处在父生命周期就绪后借池并迁移，所有权仍属原装配，退出不关闭借用池。
+        pool = getattr(getattr(assembly, "ledger", None), "pool", None)
+        catalog = assembly.sop_registry.catalog_version
+        repository = store or (PostgresCorpusWorkspaces(pool) if pool else None)
         if repository is not None:
             await repository.migrate()
         yield
@@ -62,6 +72,8 @@ def corpus_authoring_router(
             raise AppError(ErrorCode.NOT_FOUND, "Corpus workspace not found", 404)
         if repository is None:
             raise AppError(ErrorCode.NOT_IMPLEMENTED, "Corpus authoring requires PostgreSQL", 501)
+        if not catalog:
+            raise AppError(ErrorCode.UPSTREAM_UNAVAILABLE, "Corpus runtime is not ready", 503)
 
     def view(row: dict[str, Any], offset: int = 0, limit: int = 20) -> dict[str, Any]:
         value = copy.deepcopy(row)
@@ -196,6 +208,32 @@ def corpus_authoring_router(
         scoped(request)
         value: dict[str, Any] = await repository.freeze(owner, catalog, body.revision, body.version)
         return value
+
+    @router.post("/feedback")
+    async def from_feedback(body: CorpusFeedback, request: Request) -> dict[str, Any]:
+        scoped(request)
+        if pool is None:
+            raise AppError(ErrorCode.NOT_IMPLEMENTED, "Original feedback requires PostgreSQL", 501)
+        candidate = await FeedbackReader(pool).get(body.candidate_id)
+        if candidate.revision != body.candidate_revision:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "Feedback revision changed", 409)
+        review = candidate.reviews.get("corpus")
+        if review is None or review.reviewer != f"{owner.tenant_id}/{owner.user_id}":
+            raise AppError(
+                ErrorCode.NOT_FOUND, "Feedback approval belongs to another reviewer", 404
+            )
+        return view(
+            await repository.change(
+                owner, catalog, body.revision, lambda row: import_feedback(row, candidate)
+            )
+        )
+
+    @router.get("/versions/{identity}/diff/{base}")
+    async def differences(identity: str, base: str, request: Request) -> dict[str, Any]:
+        scoped(request)
+        before = await repository.version(owner, catalog, base)
+        after = await repository.version(owner, catalog, identity)
+        return version_diff(before, after)
 
     @router.get("/versions")
     async def versions(request: Request) -> dict[str, Any]:

@@ -161,6 +161,21 @@ async def build_candidate(
     corpus, queries = dataset(
         directory / "corpus.jsonl", {s: directory / (s + ".json") for s in splits}
     )
+    # 新反馈在任何付费请求前核对标识归一后的近重复；人工独立声明不能替代泄漏守卫。
+    from difflib import SequenceMatcher
+
+    from deephelp_tools.evaluation.feedback.flywheel import neutral
+
+    for entry in snapshot["entries"].values():
+        if not entry.get("feedback"):
+            continue
+        text = neutral(entry["record"]["content"])
+        if any(
+            SequenceMatcher(None, text, neutral(q.text), autojunk=False).ratio() >= 0.9
+            for rows in queries.values()
+            for q in rows
+        ):
+            raise ConfigurationError("Feedback is a near duplicate of frozen heldout input")
     scope = HybridScope.model_validate(load_json(directory / "scope.json"))
     current = assembly.retrieval_binding
     if current.weight not in {0.25, 0.5, 0.75}:
@@ -281,7 +296,11 @@ async def build_candidate(
                         ],
                         m,
                     )
-                    for m in ("dense", "bm25", "hybrid")
+                    for m in (
+                        ("dense", "bm25", "hybrid", "hybrid_rerank")
+                        if current.rerank_policy
+                        else ("dense", "bm25", "hybrid")
+                    )
                 }
                 for n in ("published", "candidate")
             }

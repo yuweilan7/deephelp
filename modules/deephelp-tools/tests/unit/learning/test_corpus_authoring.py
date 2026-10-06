@@ -296,3 +296,53 @@ async def test_real_browser_auth_origin_csrf_and_unavailable_pg():
         ) as client,
     ):
         assert (await client.get("/learning/corpus")).status_code == 501
+
+
+async def test_release_assembly_opens_before_router_borrows_pg(monkeypatch):
+    """正式发布代理在父lifespan才就绪；注册路由不能提前访问池或目录。"""
+    from contextlib import asynccontextmanager
+
+    from fastapi import FastAPI
+
+    import deephelp_tools.learning.workbench.corpus_authoring as module
+
+    ready = False
+    pool = object()
+    borrowed = []
+
+    class DeferredAssembly:
+        def __getattr__(self, name):
+            if not ready:
+                raise AssertionError("Release assembly accessed before parent startup")
+            return {
+                "ledger": SimpleNamespace(pool=pool),
+                "sop_registry": SimpleNamespace(catalog_version="complaints-v3"),
+            }[name]
+
+    @asynccontextmanager
+    async def lifespan(app):
+        nonlocal ready
+        ready = True
+        try:
+            yield
+        finally:
+            ready = False
+
+    def repository(actual):
+        borrowed.append(actual)
+        return TransactionDouble()
+
+    monkeypatch.setattr(module, "PostgresCorpusWorkspaces", repository)
+    app = FastAPI(lifespan=lifespan)
+    app.include_router(corpus_authoring_router(DeferredAssembly(), lambda r: OWNER, OWNER))
+    assert borrowed == []
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1"
+        ) as client,
+    ):
+        row = (await client.get("/learning/corpus")).json()
+        assert row["catalog_version"] == "complaints-v3" and row["model_calls"] == 0
+        assert borrowed == [pool]
+    assert ready is False

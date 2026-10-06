@@ -86,3 +86,13 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course corpus-auth
 Java可类比不可变快照、Future取消和可重建查询投影，但远程upsert结果未知不等于事务回滚。模型已返回的向量在下一await前保存pending journal；恢复先核对内容/来源/向量hash，再用同PK写入/读回，不能重新付费生成它。完成观察逐条保存；读取、恢复已完成索引也要复核真实远程字节，缺失或篡改拒绝，不把本地VERIFIED当永真。
 
 明确执行对照后，页面显示候选/正式版本共用的实际查询向量hash、Dense cosine、BM25词项分数、Hybrid归一融合、配置Rerank的实际状态，以及各路耗时/文本/来源。未配置重排为not_run，不能补画第四路。固定合成样本的改善/退化与未运行分类分别记录；召回到物流近似语料仍不能越过最终分类守卫。练习：已写入Milvus但回执丢失，恢复要再Embedding吗？答案：有已确认pending向量时先核对journal，再写/读回同PK；没收到模型结果时用量仍未知，不能伪称已有向量。
+
+### 原反馈、新版本与完整发布
+
+先在原“评测与反馈”采集已结束run并人工批准corpus路线，声明标签与heldout独立；作者页输入候选ID及审核revision，服务器读取原候选的脱敏文本、原run和人工标签，进入DRAFT。模型预测、高置信或平台分数不批准它。再次核对作者记录并审核，冻结新版本；旧版本的来源、审核、文本和索引保持可读。版本差异显示新增/删除及完整条目修改，删除工作区记录不会删除原run所依赖的历史字节。
+
+按页上的顺序执行候选索引→最终分类与退化门禁→六叶子业务与未知范围验收→准备完整清单→原CAS发布。分类复用已完成检索观察，不再Embedding；策略沿原当前版本，只重绑定候选scope/hash，不能借test调权重或放宽阈值。每条最终结果保存后才运行下一条，恢复跳过已确认结果；代码/配置/观察变化拒绝借用旧门禁。页面列出Dense/BM25/Hybrid的dev/test差值及两版本最终分类正确率；持平如实显示，未配置Rerank和独立客户分布不宣称已验。
+
+发布复核作者快照、索引、冻结split、规则、Prompt、SOP、Skill、代码和本次业务报告，并在同一个PG事务内再次锁读当前反馈revision及active CAS。审核撤销与发布提交串行；原lineage记录本次不可变资产hash。Java可类比不可变构建产物加短事务乐观锁；Milvus投影、业务事实、模型计量和已发生工具效果不随发布指针回滚。prepare只是READY；完整安装和目标配置成套切换后才是新运行，旧进程仍固定启动版本。
+
+离线`course corpus-authoring`另输出version_diff_changed=1、old_snapshot_rows=1、deleted_workspace_rows=0、model_calls=0。练习：分类全对但Hybrid MRR下降能发布吗？答案不能，先保留FAIL及原盲测；不要改金标或扩大预算换PASS。练习：发布后撤销反馈，能清除旧发布文件吗？答案不能；旧run/恢复仍引用它，新的publish先核对当前审核，修订须新版本重验。

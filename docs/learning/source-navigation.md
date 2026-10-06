@@ -119,6 +119,8 @@ M44沿[语料解析](../../modules/deephelp-app/src/deephelp_app/application/cor
 
 ## M42 新目录的阅读入口
 
+M44发布从[原反馈导入与版本diff](../../modules/deephelp-app/src/deephelp_app/application/corpus_authoring.py)→[同观察最终分类/资产准备](../../modules/deephelp-tools/src/deephelp_tools/evaluation/retrieval/corpus_release.py)→[语料发布闭包守卫](../../modules/deephelp-app/src/deephelp_app/adapters/releases/corpus_binding.py)→原ReleaseManifest/ReleaseStore阅读。作者API借原PG池，LearningJobs拥有重任务，应用拥有累计writer；具体操作、Java类比和练习见[10章](10-retrieval.md#原反馈新版本与完整发布)。浏览/版本差异零模型，发布不能把语料当业务事实。
+
 活动资格路径从[目录与版本](../../modules/deephelp-app/src/deephelp_app/domain/registry.py)进入：[600识别](../../modules/deephelp-app/src/deephelp_app/application/cascade.py)只接收当前scope的叶子，[SOP治理](../../modules/deephelp-app/src/deephelp_app/application/sop_governance.py)核对整份目录与工具许可，[Business PG](../../modules/deephelp-services/src/deephelp_services/business/repository.py)提供规则/资格/名额及原版本快照。学习用`course catalog`，机制和Java边界见[09章](09-agent-basics.md#版本目录与活动资格m42)。旧三叶子资源与参数hash保留，目录不通过放宽白名单扩权。
 
 六叶子投诉继续读同仓储的_complaint_query和[新SOP](../../modules/deephelp-app/src/deephelp_app/resources/sop_data/business-registry-v4.json)，`course complaints`演示失败原因、等待、矛盾与已返还；[09章](09-agent-basics.md#下单失败与退款返券)解释尝试/退款/回退三个记录与Java类比。真实内容只由catalog_probe的complaints阶段证明。

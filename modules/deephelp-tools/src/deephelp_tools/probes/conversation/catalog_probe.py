@@ -105,6 +105,118 @@ RELEASE_CASES = (
     ("unsupported-refund", "只查询退款进度，不查优惠券回退。", "HANDOFF", None, None),
 )
 
+# 新反馈样本在独立盲测之外预先声明；仍走原Conversation/PG事实，不复制测试措辞。
+CORPUS_FEEDBACK_CASES = (
+    (
+        "order-adjacent",
+        "订单{order}是不是挂了本轮促销活动关联，帮我核对这次关联。",
+        "ANSWERED",
+        None,
+        None,
+    ),
+)
+
+
+def reusable_cases(
+    report: dict[str, Any], expected: dict[str, str], requested: list[str]
+) -> list[str]:
+    """只复用同运行字节/资产/审核的完整成功行；未完成断言或失败行必须重验。
+
+    采集器修正不改变运行时：原FAIL原件保留，最终合并报告绑定其hash。
+    每行必须已有原receipt重投及PG历史断言，不能把HTTP200当成内容成功。
+    """
+    if report.get("phase") != "release" or any(report.get(k) != v for k, v in expected.items()):
+        return []
+    checks = report.get("checks", {})
+    result = []
+    for row in report.get("rows", []):
+        name = row["case_id"]
+        scoped = {k: v for k, v in checks.items() if k.startswith(name + ":")}
+        if (
+            name in requested
+            and scoped
+            and all(v is True for v in scoped.values())
+            and (
+                checks.get(name + ":history") is True
+                and checks.get(name + ":zero_call_replay") is True
+            )
+        ):
+            result.append(name)
+    return result
+
+
+def merge_content(
+    previous: Path, partial: Path, completed: list[str], requested: list[str]
+) -> dict[str, Any]:
+    """合并原成功行与本次修复行；不改两份原件，不把旧失败断言变成成功。
+
+    全部来源hash进入发布清单，复用行计量属于原报告，当前writer只新增本次调用。
+    """
+    old = json.loads(previous.read_text(encoding="utf-8"))
+    new: dict[str, Any] = json.loads(partial.read_text(encoding="utf-8"))
+    signatures = (
+        "code_digest",
+        "providers_digest",
+        "pointer_digest",
+        "assets_digest",
+        "corpus_binding_digest",
+        "sop_review_digest",
+        "skills_review_digest",
+    )
+    if reusable_cases(old, {k: new[k] for k in signatures}, requested) != completed:
+        raise ConfigurationError("Reused content target or completed rows changed")
+    checks = {
+        k: v
+        for k, v in old["checks"].items()
+        if any(k.startswith(name + ":") for name in completed)
+    } | new["checks"]
+    rows = [r for r in old["rows"] if r["case_id"] in completed] + new["rows"]
+    passed = (
+        new["status"] == "PASS"
+        and all(v is True for v in checks.values())
+        and len(rows) == len(requested)
+        and {r["case_id"] for r in rows} == set(requested)
+    )
+    return new | dict(
+        status="PASS" if passed else "FAIL",
+        rows=rows,
+        checks=checks,
+        reused_cases=completed,
+        observed_source=dict(path=str(previous.resolve()), sha256=file_digest(previous)),
+        content_sources={str(partial.resolve()): file_digest(partial)},
+        usage_scope="Current repaired rows only; reused API usage remains in original bound report",
+    )
+
+
+def reuse_full_content(
+    previous: Path, expected: dict[str, str], requested: list[str], tooling: str
+) -> dict[str, Any]:
+    """管理路由/采集器等tools变化不重跑未改变的业务运行；逐行严格复核相同合同。
+
+    这是零模型的证据复核，当前工具版本说明本次复核者，原模型请求仍归原报告。
+    原FAIL、补验part及完整报告都沿来源hash保留，不声称重新执行了模型业务。
+    """
+    old: dict[str, Any] = json.loads(previous.read_text(encoding="utf-8"))
+    completed = reusable_cases(old, expected, requested)
+    if (
+        old["status"] != "PASS"
+        or set(completed) != set(requested)
+        or not all(v is True for v in old["checks"].values())
+    ):
+        raise ConfigurationError("Full content reuse requires complete exact PASS evidence")
+    sources = dict(old.get("content_sources", {}))
+    if origin := old.get("observed_source"):
+        sources[origin["path"]] = origin["sha256"]
+    return old | dict(
+        tooling_digest=tooling,
+        reused_cases=completed,
+        api_observations=[],
+        observed_source=dict(path=str(previous.resolve()), sha256=file_digest(previous)),
+        content_sources=sources,
+        usage=summarize_usage([]),
+        execution="Read-only exact runtime/content verification; no new business/model execution",
+    )
+
 
 def safe_failures(error: BaseException) -> list[dict[str, Any]]:
     """展开异步生命周期异常组，只保留安全错误码/请求ID及代码位置。"""
@@ -383,6 +495,12 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
     if len(auth.rows) < 2:
         raise ConfigurationError("Catalog probe needs two distinct synthetic owners")
     token, owner = auth.rows[0]
+    if args.phase == "corpus-feedback" and (
+        owner.tenant_id != "synthetic-tenant" or owner.user_id != "synthetic-user-a"
+    ):
+        raise ConfigurationError(
+            "Original feedback collection requires its isolated synthetic owner"
+        )
     other = auth.rows[1][1]
     if owner == other:
         raise ConfigurationError("Catalog ownership counterexample needs a distinct owner")
@@ -445,6 +563,10 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
             data = verify_files(Path(args.assets))
             binding = catalog_binding(data, catalog_version)
             assert binding is not None
+            from deephelp_app.adapters.releases.corpus_binding import corpus_binding
+
+            if authored := corpus_binding(data):
+                report["corpus_binding_digest"] = digest(authored)
             if any(
                 resolve_artifact(actual) != resolve_artifact(expected)
                 for actual, expected in (
@@ -572,7 +694,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                 corpus_path=Path(args.corpus),
                 sop_directory=Path(args.sop_directory),
                 cascade_policy=Path(args.cascade_policy),
-                event_collection="dh_m10_events_m42_" + args.phase,
+                event_collection="dh_m10_events_m42_" + args.phase.replace("-", "_"),
                 reviewed_rules=Path(data["rules"]) if args.assets else None,
                 skill_review=Path(args.skill_review) if args.skill_review else None,
             )
@@ -607,7 +729,9 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
             )
             async with app.router.lifespan_context(app), api_client(app, http=True) as http:
                 for name, text, expected, state, remaining in (
-                    RELEASE_CASES
+                    CORPUS_FEEDBACK_CASES
+                    if args.phase == "corpus-feedback"
+                    else RELEASE_CASES
                     if args.phase == "release"
                     else COMPLAINT_CASES
                     if args.phase == "complaints"
@@ -616,7 +740,7 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                     if args.cases and name not in args.cases:
                         continue
                     body = dict(
-                        channel="m42-catalog",
+                        channel="m18-collect" if args.phase == "corpus-feedback" else "m42-catalog",
                         session_id="m42-" + uuid4().hex,
                         message_id=uuid4().hex,
                         raw_text=text.format(**ids),
@@ -656,9 +780,17 @@ async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None
                         check(name + ":" + key, passed)
                     check(name + ":outcome", response.outcome == expected)
                     if edited := report.get("reviewed_sop"):
+                        # 未知意图不执行SOP，因此不会产生SOP快照；仍须绑定当前语料签名。
                         check(
                             name + ":candidate_snapshot",
-                            response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash,
+                            response.versions.dataset == runtime.scope.dataset_version
+                            and response.versions.embedding_signature
+                            == runtime.scope.signature.fingerprint
+                            and (
+                                response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash
+                                if response.sop_plan is not None
+                                else response.versions.sop_snapshot is None
+                            ),
                         )
                         if (
                             response.intent_decision
@@ -760,7 +892,9 @@ def main() -> int:
     )
     parser.add_argument("--live", action="store_true")
     parser.add_argument(
-        "--phase", choices=["eligibility", "complaints", "release"], default="eligibility"
+        "--phase",
+        choices=["eligibility", "complaints", "release", "corpus-feedback"],
+        default="eligibility",
     )
     parser.add_argument(
         "--assets", help="Exact immutable catalog assets for complete release content"
