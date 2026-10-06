@@ -7,7 +7,6 @@ router借用原ledger池，不拥有新连接池或模型预算；无PG时明确
 import base64
 import binascii
 import copy
-import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -19,6 +18,7 @@ from deephelp_app.adapters.persistence.corpus_workspaces import PostgresCorpusWo
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.corpus import read_corpus_bytes
 from deephelp_app.application.corpus_authoring import (
+    corpus_bytes,
     delete_record,
     edit_record,
     import_preview,
@@ -29,6 +29,7 @@ from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.models.common import DTO, ErrorCode, VerifiedIdentity
 from deephelp_app.domain.models.corpus_authoring import (
     CorpusEdit,
+    CorpusFreeze,
     CorpusImport,
     CorpusReview,
     CorpusUpload,
@@ -186,17 +187,30 @@ def corpus_authoring_router(
             revision=row["revision"],
             catalog_version=catalog,
             model_calls=0,
-            jsonl="\n".join(
-                json.dumps(
-                    {
-                        **e["record"],
-                        "metadata": {**e["record"].get("metadata", {}), "source": e["source"]},
-                    },
-                    ensure_ascii=False,
-                )
-                for _, e in sorted(row["entries"].items())
-            ),
+            jsonl=corpus_bytes(row).decode(),
             note="Draft export, not reviewed release or business facts",
         )
+
+    @router.post("/versions")
+    async def freeze(body: CorpusFreeze, request: Request) -> dict[str, Any]:
+        scoped(request)
+        value: dict[str, Any] = await repository.freeze(owner, catalog, body.revision, body.version)
+        return value
+
+    @router.get("/versions")
+    async def versions(request: Request) -> dict[str, Any]:
+        scoped(request)
+        scope = getattr(assembly, "scope", None)
+        return dict(
+            versions=await repository.versions(owner, catalog),
+            model_calls=0,
+            published_scope=scope.model_dump(mode="json") if scope is not None else None,
+        )
+
+    @router.get("/versions/{identity}")
+    async def version(identity: str, request: Request) -> dict[str, Any]:
+        scoped(request)
+        value: dict[str, Any] = await repository.version(owner, catalog, identity)
+        return value
 
     return router

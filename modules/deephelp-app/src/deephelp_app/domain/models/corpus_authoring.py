@@ -39,3 +39,9 @@ class CorpusUpload(DTO):
     format: Literal["jsonl", "csv", "xlsx"]
     data_base64: str = Field(max_length=2_800_000)
     columns: dict[str, str] = Field(default_factory=dict, max_length=16)
+
+
+class CorpusFreeze(DTO):
+    revision: Revision
+    version: Identifier
+    confirmed: Literal[True]

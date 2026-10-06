@@ -3,6 +3,7 @@ import PageGuide from "../../components/PageGuide.vue";
 import RulesLab from "./RulesLab.vue";
 import RetrievalLab from "./RetrievalLab.vue";
 import CorpusAuthor from "./CorpusAuthor.vue";
+import CorpusIndex from "./CorpusIndex.vue";
 </script>
 <template>
   <PageGuide
@@ -20,4 +21,5 @@ import CorpusAuthor from "./CorpusAuthor.vue";
   />
   <div class="two-column"><RulesLab /><RetrievalLab /></div>
   <CorpusAuthor />
+  <CorpusIndex />
 </template>

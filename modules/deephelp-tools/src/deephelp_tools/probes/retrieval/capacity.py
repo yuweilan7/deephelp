@@ -7,6 +7,7 @@
 
 import asyncio
 import json
+import os
 from pathlib import Path
 
 from deephelp_app.application.dense import Capacity
@@ -19,7 +20,8 @@ class SSHCapacity:
     """Read-only checks against the existing P00 host; no deployment or restart command."""
 
     def __init__(self, root: Path) -> None:
-        self.root, self.config = root, local_connection(root)
+        self.root = root
+        self.config = local_connection(root) if os.name == "nt" else None
         self.observations: list[dict[str, int]] = []
 
     async def __call__(self) -> Capacity:
@@ -42,23 +44,30 @@ class SSHCapacity:
         d = self.config
         # 创建真正的SSH子进程，参数按数组传入而非拼本地shell命令。
         # communicate等待输出/退出，外层30秒限定总等待；stderr不向公开诊断回显。
+        # 云安装在已核定的专用宿主本地读同一观察，不引用Windows私钥或另开SSH跳板。
+        # 两条传输共用同一脚本/健康判断；本次调用仍拥有子进程取消与回收。
+        command = ["sudo", "python3", "-c", remote[len("sudo python3 -c '") : -1]]
+        if d is not None:
+            command = [
+                "ssh",
+                "-T",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "StrictHostKeyChecking=yes",
+                "-o",
+                "UserKnownHostsFile=" + str(self.root / "infra/client/known_hosts"),
+                "-o",
+                "ConnectTimeout=12",
+                "-i",
+                d["DEEPHELP_SSH_KEY_WINDOWS"],
+                "-p",
+                d["DEEPHELP_SSH_PORT"],
+                d["DEEPHELP_SSH_USER"] + "@" + d["DEEPHELP_SSH_HOST"],
+                remote,
+            ]
         process = await asyncio.create_subprocess_exec(
-            "ssh",
-            "-T",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "StrictHostKeyChecking=yes",
-            "-o",
-            "UserKnownHostsFile=" + str(self.root / "infra/client/known_hosts"),
-            "-o",
-            "ConnectTimeout=12",
-            "-i",
-            d["DEEPHELP_SSH_KEY_WINDOWS"],
-            "-p",
-            d["DEEPHELP_SSH_PORT"],
-            d["DEEPHELP_SSH_USER"] + "@" + d["DEEPHELP_SSH_HOST"],
-            remote,
+            *command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

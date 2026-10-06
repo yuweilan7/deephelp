@@ -434,3 +434,9 @@ complaints-v3显式六叶子，新增ORDER_CREATION_FAILED（父ORDER_QUERY，at
 `/learning/corpus`复用BrowserAuth/CSRF/同源，唯一catalog owner之外404；无原PG池501。GET按offset/limit分页，PUT/POST/DELETE正文revision与真实PG聚合CAS不符409。record复用CorpusRecord合法叶子/split/固定目录，source是有界非空来源说明；owner、审核者、路径不由正文指定。相同ID仅PUT修改，不允许改ID；修改恢复DRAFT。草稿删除不影响发布、审批或业务事实。
 
 `POST /previews`接受有界base64原字节、jsonl/csv/xlsx与显式列映射，复用原解析器，保存hash/逐行诊断；`POST /imports`必须confirmed=true及server preview_id，锁内再次校验完整目标，一次提交全部行与IMPORTED/imported_revision回执，失败entries/revision均不变。响应未知先读回执，不自动重投。浏览/解析/审核/导出模型0；导入不自动审核。`POST /reviews`明确确认、合法所选ID及理由，PG保存主体、时间、记录revision/hash和APPROVED/REJECTED；历史审核不被编辑覆写。导出只是作者JSONL，不代表正式数据/索引激活。
+
+`POST /versions`要求confirmed、revision及新版本名；每条记录的人工审核主体/revision/hash必须与当前记录完全匹配，PG冻结完整审核闭包和JSONL源hash。相同owner/目录/版本名的同字节重试幂等，不同字节409。GET版本只读本owner历史；修改/删除草稿不修改快照。导出/冻结需为metadata.source保留一格，不静默丢弃已有属性。
+
+原`/learning/evaluation/tasks`增加`corpus_build`与`corpus_compare`，只接受服务端冻结version_hash，compare才接受有界非空query。构建由catalog配置独立dev/test、原模型签名/检索配置和唯一重任务/预算writer决定，不能提交集合、文件路径或向量。候选集合与pointer独立于正式active/previous。原DenseImporter在模型返回后、下一await前保存pending向量/hash/usage回执，写入未知可按同PK续跑；已完成ID仍读回核对，篡改/缺失不能借恢复PASS。旧清单缺逐批回执时保持未知，不补造。
+
+比较要求正式/候选同签名、K、权重、重排配置；一次EmbeddingResult进入两个原HybridRetriever，保留向量hash、实际Embedding attempts/usage、三路原结果与各路服务耗时。未配置Rerank明确not_run/not_configured；分数不是分类概率、召回不是最终意图/事实。GET任务只读原manifest/部分观察；取消等待资源退出，重载后显式resume，完成观察不重跑模型。

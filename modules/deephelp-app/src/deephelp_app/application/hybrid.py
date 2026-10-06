@@ -14,7 +14,7 @@ from deephelp_app.application.dense import reference_matches, validate_vector
 from deephelp_app.domain.errors import AppError
 from deephelp_app.domain.execution import ExecutionBudget
 from deephelp_app.domain.models.common import ErrorCode
-from deephelp_app.domain.models.model_io import RerankDocument, RerankRequest
+from deephelp_app.domain.models.model_io import EmbeddingResult, RerankDocument, RerankRequest
 from deephelp_app.domain.models.retrieval import (
     CorpusRecord,
     DenseCandidate,
@@ -223,6 +223,12 @@ class HybridRetriever:
         top_k是最终意图数，limit可为更宽文档召回；所有路共用向量、签名与预算。
         返回每路原证据，引用语料不符或scope漂移直接拒绝，不能用异样本凑对照。
         """
+        self._limit(text, scope, top_k)
+        async with asyncio.timeout(budget.remaining_seconds()):
+            embedded = await self.embeddings.embed([text], budget)
+            return await self.compare_embedded(text, scope, budget, embedded, top_k=top_k)
+
+    def _limit(self, text: str, scope: DenseScope, top_k: int) -> int:
         if not isinstance(scope, HybridScope):
             raise AppError(
                 ErrorCode.VERSION_CONFLICT, "Hybrid requires a signed intent HybridScope"
@@ -236,8 +242,25 @@ class HybridRetriever:
         )
         if limit < top_k:
             raise ValueError("Recall budget is below final top_k")
+        return limit
+
+    async def compare_embedded(
+        self,
+        text: str,
+        scope: DenseScope,
+        budget: ExecutionBudget,
+        embedded: EmbeddingResult,
+        *,
+        top_k: int = 3,
+    ) -> dict[str, DenseResult]:
+        """复用同一次实际Embedding比较冻结scope；不同签名拒绝，不自动生成第二向量。
+
+        原compare及候选/正式资产诊断都调用这里，算法和本地语料核验只有一份。
+        该接口是可信服务内部Port，不接受浏览器提供向量/签名。
+        """
+        limit = self._limit(text, scope, top_k)
+        assert isinstance(scope, HybridScope)
         async with asyncio.timeout(budget.remaining_seconds()):
-            embedded = await self.embeddings.embed([text], budget)
             # 同一查询向量交给三路对照；不能各取一次随机/漂移向量后宣称公平比较。
             if embedded.signature != scope.signature or len(embedded.vectors) != 1:
                 raise AppError(

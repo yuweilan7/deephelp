@@ -282,9 +282,9 @@ async def test_idempotent_readback_and_lost_ack_resume(tmp_path):
     assert len(store.rows[SCOPE.fingerprint]) == 2
     assert not manifest.with_suffix(".lock").exists()
     await importer.import_corpus(data, SCOPE, budget(), manifest)
-    assert port.calls == 3
+    assert port.calls == 2  # 已返回的第二批向量有journal，未知写回执不再生成它。
     await importer.import_corpus(data, SCOPE, budget(), manifest)
-    assert port.calls == 3 and len(store.rows[SCOPE.fingerprint]) == 2
+    assert port.calls == 2 and len(store.rows[SCOPE.fingerprint]) == 2
     assert load_json(manifest)["status"] == "VERIFIED"
 
 
@@ -362,7 +362,7 @@ async def test_capacity_failure_between_batches_keeps_completed_ids(tmp_path):
 
 
 async def test_cancelled_writer_keeps_pending_batch_and_cleans_lock(tmp_path):
-    event, store = asyncio.Event(), Store()
+    event, store, port = asyncio.Event(), Store(), Embeddings()
     real_write = store.write
 
     async def slow_write(scope, rows):
@@ -373,9 +373,7 @@ async def test_cancelled_writer_keeps_pending_batch_and_cleans_lock(tmp_path):
     store.write = slow_write
     manifest = tmp_path / "i.json"
     task = asyncio.create_task(
-        DenseImporter(Embeddings(), store, capacity).import_corpus(
-            preview(), SCOPE, budget(), manifest
-        )
+        DenseImporter(port, store, capacity).import_corpus(preview(), SCOPE, budget(), manifest)
     )
     await event.wait()
     task.cancel()
@@ -384,9 +382,27 @@ async def test_cancelled_writer_keeps_pending_batch_and_cleans_lock(tmp_path):
     assert not manifest.with_suffix(".lock").exists()
     assert load_json(manifest)["pending_ids"] == ["001", "002"]
     store.write = real_write
-    await DenseImporter(Embeddings(), store, capacity).import_corpus(
+    await DenseImporter(port, store, capacity, batch_size=1).import_corpus(
         preview(), SCOPE, budget(), manifest
     )
+    assert port.calls == 1 and not load_json(manifest)["pending_rows"]
+
+
+async def test_pending_vector_tampering_rejected_before_new_embedding(tmp_path):
+    port, store, manifest = Embeddings(), Store(), tmp_path / "pending.json"
+    store.fail_write = 1
+    with pytest.raises(AppError):
+        await DenseImporter(port, store, capacity, batch_size=1).import_corpus(
+            preview(), SCOPE, budget(), manifest
+        )
+    state = load_json(manifest)
+    state["pending_rows"]["001"]["vector"] = [0.0, 1.0, 0.0]
+    atomic_json(manifest, state)
+    with pytest.raises(AppError, match="Pending vector hash mismatch"):
+        await DenseImporter(port, store, capacity).import_corpus(
+            preview(), SCOPE, budget(), manifest
+        )
+    assert port.calls == 1 and store.writes == 1
 
 
 async def test_retrieval_each_class_independent_best_match_and_dto_roundtrip(tmp_path):
