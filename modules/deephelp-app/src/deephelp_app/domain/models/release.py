@@ -66,6 +66,7 @@ class ReleaseManifest(DTO):
     validation_digest: Identifier
     skill_registry: dict[str, Any] | None = None
     skill_review_path: str | None = None
+    sop_review_path: str | None = None
 
 
 class ReleasePointer(DTO):

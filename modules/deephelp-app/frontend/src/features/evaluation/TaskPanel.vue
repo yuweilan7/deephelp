@@ -34,10 +34,19 @@ const mode = ref("audit"),
   }>(),
   action = useAction();
 const skill = ref("");
+const sop = ref("");
+const sops = useRead<{
+  drafts: {
+    draft_id: string;
+    status: string;
+    content: { intent_code: string; version: string };
+  }[];
+}>();
 const skills = useRead<{
   candidates: { candidate_digest: string; status: string }[];
 }>();
 onMounted(() => skills.load("/learning/skills"));
+onMounted(() => sops.load("/learning/sop"));
 watch(
   () => props.catalog.assets,
   (rows) => {
@@ -70,6 +79,9 @@ function start() {
         : null,
       skill_candidate: ["validate", "prepare"].includes(mode.value)
         ? skill.value || null
+        : null,
+      sop_draft: ["validate", "prepare"].includes(mode.value)
+        ? sop.value || null
         : null,
       confirmed: true,
     });
@@ -113,13 +125,18 @@ function control(op: "cancel" | "resume") {
         {{ plan.build.embedding_input_tokens_estimate.join("–") }}
         tokens。可选训练走原门禁。
       </p>
-      <p>
+      <p v-if="!sop">
         验证：{{ plan.validate.conversations }} 会话 /
         {{ plan.validate.messages }} 消息，预计远程
         {{ plan.validate.remote_calls_estimate.join("–") }} 次；每条输入
         {{ plan.validate.per_message_tokens_estimate.input.join("–") }} / 输出
         {{ plan.validate.per_message_tokens_estimate.output.join("–") }}
         tokens。推理沿原配置与实际 usage，未知项保持未知；估算不等于实测。
+      </p>
+      <p v-else>
+        SOP候选验证：订单、优惠券、折扣三个固定相邻样本；六叶子目录沿原真实PG/HTTP探针。
+        预计远程模型约4–12次，含600与必要原Skill，输入每次约1千–2万、输出及推理约1百–1万tokens。
+        使用当前共享预算，实际usage与未知预留在原报告中查看；准备/发布只核对同一候选证据。
       </p>
       <p>
         总超时 {{ plan.timeout_seconds }} 秒 · 最多
@@ -166,6 +183,27 @@ function control(op: "cancel" | "resume") {
       </p>
       <RawDetails v-if="asset.data.value" :value="asset.data.value" />
       <template v-if="['validate', 'prepare'].includes(mode)">
+        <label>已审核SOP草稿</label
+        ><select v-model="sop">
+          <option value="">原正式SOP · 未选择作者候选</option>
+          <option
+            v-for="s in sops.data.value?.drafts.filter(
+              (d) => d.status === 'APPROVED',
+            ) || []"
+            :key="s.draft_id"
+            :value="s.draft_id"
+          >
+            {{ s.content.intent_code }} · {{ s.content.version }} ·
+            {{ s.draft_id }}
+          </option></select
+        ><el-button @click="sops.load('/learning/sop')"
+          >刷新SOP审核 · 0模型</el-button
+        ><StateNotice :error="sops.error.value" :loading="sops.loading.value" />
+        <p v-if="sop">
+          六叶子 SOP 候选复用原 PG / HTTP MCP
+          固定订单活动、券与优惠相邻内容；需同时选择已审核
+          Skill。服务器核对相同候选、工具、资产和运行字节。预期查询；验收装配另维护隔离合成资料，不产生退款或发券效果。
+        </p>
         <label>已审核Skill候选</label>
         <select v-model="skill">
           <option value="">未选择 · 新Skill发布必须选择已审核候选</option>

@@ -23,6 +23,7 @@ from deephelp_app.adapters.releases.asset_integrity import file_digest
 from deephelp_app.adapters.releases.release_assets import verify_release
 from deephelp_app.adapters.releases.release_store import ReleaseStore
 from deephelp_app.adapters.releases.skill_store import SkillStore
+from deephelp_app.adapters.releases.sop_drafts import SOPDraftStore, read_sop_review
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.artifact_paths import resolve_artifact, state_root
 from deephelp_app.application.dense import atomic_json
@@ -97,6 +98,7 @@ class JobInput(DTO):
     import_id: Key | None = None
     candidate_revision: Annotated[int, Field(strict=True, ge=0)] | None = None
     skill_candidate: Hash | None = None
+    sop_draft: Key | None = None
     confirmed: Literal[True]
 
 
@@ -113,8 +115,28 @@ class SharedGate(BudgetSession):
     factory返回同一累计预算边界下的新请求预算；这里不打开/重置文件，不拥有writer关闭。
     """
 
-    def __init__(self, factory: Callable[[], ExecutionBudget]):
-        self.factory = factory
+    def __init__(self, factory: Callable[[], ExecutionBudget], state_path: Path | None = None):
+        self.factory, self.state_path = factory, state_path
+        if state_path is not None:
+            self.path = state_path
+
+    @property
+    def state(self) -> dict[str, Any]:
+        # 同writer已派发前同步保存；这里只读计量，不开锁/重置或保存自己的副本。
+        if self.state_path is None:
+            raise ConfigurationError("Borrowed content gate needs its original budget state")
+        value: dict[str, Any] = json.loads(self.state_path.read_text(encoding="utf-8"))
+        return value
+
+    @state.setter
+    def state(self, value: dict[str, Any]) -> None:
+        raise ConfigurationError("Borrowed gate cannot replace its owner's budget state")
+
+    def open(self) -> None:
+        raise ConfigurationError("Borrowed gate cannot open a second writer")
+
+    def close(self) -> None:
+        raise ConfigurationError("Borrowed gate cannot close its owner's writer")
 
     def request(self) -> ExecutionBudget:
         return self.factory()
@@ -242,7 +264,7 @@ def evaluation_router(
         output.mkdir(parents=True, exist_ok=False)  # noqa: ASYNC240 -- bounded durable job path
         options, action = row["options"], row["options"]["action"]
         # 借用应用已经打开的预算writer，仅提供request；任务恢复不能新建预算文件清零。
-        gate = SharedGate(factory)
+        gate = SharedGate(factory, config.budget_state)
         if action in {"platform_upload", "platform_candidate"}:
             assert config.platform_config is not None
             if action == "platform_upload":
@@ -381,7 +403,55 @@ def evaluation_router(
             if options.get("skill_candidate")
             else None
         )
+        sop_review = (
+            SOPDraftStore(config.task_root / "sop").approved(options["sop_draft"], config.owner)
+            if options.get("sop_draft")
+            else None
+        )
+        registry = read_sop_review(sop_review)[0] if sop_review else assembly.sop_registry
         if action == "validate":
+            if sop_review and registry.catalog_version == "complaints-v3":
+                # 旧M18 stdio只发现三工具；六叶子作者候选沿现有真实PG/HTTP目录探针。
+                # 冻结三个相邻样本，任务/预算仍由当前app拥有，不另开累计writer。
+                from deephelp_tools.probes.conversation.catalog_probe import probe
+
+                business = getattr(assembly, "business_mcp", None)
+                if business is None or skill_review is None:
+                    raise ConfigurationError(
+                        "Six-leaf SOP content needs original HTTP MCP and approved Skill"
+                    )
+                data = verify_files(assets, validation_inputs=True)
+                from deephelp_app.adapters.releases.catalog_binding import catalog_binding
+
+                binding = catalog_binding(data, registry.catalog_version)
+                assert binding is not None
+                await probe(
+                    argparse.Namespace(
+                        output=str(output / "validation.json"),
+                        budget_state=str(config.budget_state),
+                        auth=str(config.auth),
+                        service_credentials=str(business.credentials_path),
+                        providers=str(config.providers),
+                        pointer=data["dense_pointer"],
+                        corpus=binding["corpus"],
+                        sop_directory=str(config.task_root / "sop" / "versions"),
+                        cascade_policy=binding["cascade_policy"],
+                        phase="release",
+                        assets=str(assets),
+                        skill_review=str(skill_review),
+                        sop_review=str(sop_review),
+                        cases=["order-adjacent", "coupon-adjacent", "discount-adjacent"],
+                    ),
+                    borrowed_gate=gate,
+                )
+                validation_report = json.loads(
+                    (output / "validation.json").read_text(encoding="utf-8")
+                )
+                return dict(
+                    evidence_status=validation_report["status"],
+                    checks=validation_report["checks"],
+                    active_changed=False,
+                )
             validation_report = await validate(
                 feedback(),
                 assets,
@@ -389,9 +459,10 @@ def evaluation_router(
                 gate,
                 config.providers,
                 config.auth,
-                registry=assembly.sop_registry,
+                registry=registry,
                 prompt_artifact=config.prompt_artifact,
                 skill_review=skill_review,
+                sop_review=sop_review,
                 persist_assets_validation=False,
             )
             return dict(
@@ -406,6 +477,7 @@ def evaluation_router(
                 if task["options"]["action"] == "validate"
                 and task["options"]["asset_id"] == options["asset_id"]
                 and task["options"].get("skill_candidate") == options.get("skill_candidate")
+                and task["options"].get("sop_draft") == options.get("sop_draft")
             ),
             key=lambda task: (task["updated_at"], task["id"]),
             reverse=True,
@@ -423,11 +495,12 @@ def evaluation_router(
             prepare_manifest,
             assets,
             config.providers,
-            assembly.sop_registry,
+            registry,
             "m22-" + row["id"],
             prompt_artifact=config.prompt_artifact,
             validation_path=validation_path,
             skill_review=skill_review,
+            sop_review=sop_review,
         )
         # This registers an immutable full release only after the original M18 exact gate.
         identity = await release().register(manifest)
@@ -656,8 +729,9 @@ def evaluation_router(
             await feedback().require_current(data["source"])
         except ConfigurationError:
             current, error = False, "Reviewed source changed"
+        # 冻结目录资产可能没有构建器的行数/version元数据；已校验的原摘要仍显示，缺项保持未知。
         return {
-            k: data[k]
+            k: data.get(k)
             for k in ("version", "status", "source", "corpus_rows", "training_rows", "rule_rows")
         } | dict(
             files_verified=True,
@@ -705,6 +779,18 @@ def evaluation_router(
             raise AppError(
                 ErrorCode.INVALID_ARGUMENT, "Skill candidate is only used by validate/prepare"
             )
+        if body.sop_draft:
+            if body.action not in {"validate", "prepare"}:
+                raise AppError(
+                    ErrorCode.INVALID_ARGUMENT, "SOP candidate is only used by validate/prepare"
+                )
+            store = SOPDraftStore(config.task_root / "sop")
+            draft = store.get(body.sop_draft, config.owner)
+            if draft["base_hash"] != assembly.sop_registry.snapshot_hash:
+                raise AppError(
+                    ErrorCode.VERSION_CONFLICT, "SOP candidate published base changed", 409
+                )
+            store.approved(body.sop_draft, config.owner)
         if body.action == "platform_candidate":
             if config.platform_config is None:
                 raise AppError(ErrorCode.NOT_FOUND, "Platform review is not configured", 404)

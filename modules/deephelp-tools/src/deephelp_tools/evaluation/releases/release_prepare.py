@@ -15,6 +15,7 @@ from deephelp_app.adapters.model_gateway.providers import ProviderConfig
 from deephelp_app.adapters.releases.asset_integrity import PACKAGE, file_digest, provenance
 from deephelp_app.adapters.releases.catalog_binding import catalog_binding
 from deephelp_app.adapters.releases.skill_store import read_skill_review
+from deephelp_app.adapters.releases.sop_drafts import read_sop_review
 from deephelp_app.application.collaboration import policy_release_binding
 from deephelp_app.application.corpus import digest
 from deephelp_app.application.intent_prompt import (
@@ -39,6 +40,7 @@ def prepare_manifest(
     validation_path: Path | None = None,
     prompt_artifact: Path | None = None,
     skill_review: Path | None = None,
+    sop_review: Path | None = None,
 ) -> ReleaseManifest:
     data = verify_files(assets, validation_inputs=True)
     catalog = catalog_binding(data, registry.catalog_version)
@@ -84,6 +86,18 @@ def prepare_manifest(
     files[str(providers.resolve())] = file_digest(providers)
     files[str(judge.resolve())] = file_digest(judge)
     files[str(validation_path.resolve())] = file_digest(validation_path)
+    if sop_review:
+        try:
+            reviewed_sop, _ = read_sop_review(sop_review)
+        except ValueError, KeyError, OSError:
+            raise ConfigurationError("SOP approved artifact invalid") from None
+        review_sha = file_digest(sop_review)
+        if reviewed_sop != registry or validation.get("sop_review_digest") != review_sha:
+            raise ConfigurationError("SOP approval has no matching exact content validation")
+        files[str(sop_review.resolve())] = review_sha
+        prompts["sop:review"] = review_sha
+    elif validation.get("sop_review_digest"):
+        raise ConfigurationError("Validated SOP must provide its approved artifact")
     skills = None
     if skill_review:
         skills, _ = read_skill_review(skill_review)
@@ -142,4 +156,5 @@ def prepare_manifest(
         validation_digest=digest(validation),
         skill_registry=skills.content() if skills else None,
         skill_review_path=str(skill_review.resolve()) if skill_review else None,
+        sop_review_path=str(sop_review.resolve()) if sop_review else None,
     )

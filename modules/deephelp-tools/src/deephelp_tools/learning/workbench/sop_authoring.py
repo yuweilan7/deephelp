@@ -13,7 +13,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from pydantic import Field
 
-from deephelp_app.adapters.releases.sop_drafts import SOPDraftStore, draft_registry
+from deephelp_app.adapters.releases.sop_drafts import SOPDraftStore, draft_registry, sop_diff
 from deephelp_app.api.workbench import BrowserAuth
 from deephelp_app.application.sop_governance import FACT_TYPES, TOOL_GRANTS, SOPRegistry
 from deephelp_app.domain.errors import AppError
@@ -40,6 +40,14 @@ class RehearsalInput(DTO):
     slots: dict[str, Identifier] = Field(default_factory=dict, max_length=8)
     scenario: Literal["normal", "invalid_fact", "tool_failure", "slow"] = "normal"
     confirmed: bool = False
+
+
+class DraftReview(DTO):
+    revision: int = Field(strict=True, ge=1)
+    base_hash: Identifier
+    approve: bool
+    reason: str = Field(min_length=1, max_length=1000)
+    confirmed: Literal[True]
 
 
 def sop_authoring_router(
@@ -128,6 +136,29 @@ def sop_authoring_router(
     async def save(draft_id: str, body: SaveDraft, request: Request) -> dict[str, Any]:
         scoped(request)
         return store.update(draft_id, owner, body.revision, body.content)
+
+    @router.get("/drafts/{draft_id}/diff")
+    async def difference(draft_id: str, request: Request) -> dict[str, Any]:
+        base = scoped(request)
+        draft = store.get(draft_id, owner)
+        registry = draft_registry(draft)
+        old = SOPRegistry.model_validate(draft["base_registry"]).definition(
+            draft["content"]["intent_code"]
+        )
+        return dict(
+            changes=sop_diff(old.model_dump(mode="json"), draft["content"]),
+            base_current=draft["base_hash"] == base.snapshot_hash,
+            candidate_hash=registry.snapshot_hash,
+            reviewed=draft["status"],
+            model_calls=0,
+        )
+
+    @router.post("/drafts/{draft_id}/review")
+    async def review(draft_id: str, body: DraftReview, request: Request) -> dict[str, Any]:
+        base = scoped(request)
+        if body.base_hash != base.snapshot_hash:
+            raise AppError(ErrorCode.VERSION_CONFLICT, "SOP review published base changed", 409)
+        return store.review(draft_id, owner, body.revision, base, body.reason, body.approve)
 
     @router.post("/drafts/{draft_id}/rehearsals")
     async def rehearse(draft_id: str, body: RehearsalInput, request: Request) -> dict[str, Any]:

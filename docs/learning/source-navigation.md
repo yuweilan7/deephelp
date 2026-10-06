@@ -111,6 +111,8 @@ M41版本化Skill：[机器契约/执行](../../modules/deephelp-app/src/deephel
 M43作者从[草稿事实源](../../modules/deephelp-app/src/deephelp_app/adapters/releases/sop_drafts.py)进入[作者API](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/sop_authoring.py)，图校验仍是原GovernedSOP；[09章实验](09-agent-basics.md#sop可视草稿与casm43)给出CAS、无效中间图及Java边界。前端WorkflowLab只生成契约，不执行业务判断。
 预演继续读[候选执行作用域](../../modules/deephelp-tools/src/deephelp_tools/learning/replay/sop_rehearsal.py)→原SOPExecutor→[持久任务及cancel/join](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/jobs.py)；course sop-rehearsal提供正常、缺槽和坏证据原结果。原observe_sop_node直接记录命中规则，不由页面重新判断。
 
+审核接着读同一SOPDraftStore的review/approved→[原评测任务](../../modules/deephelp-tools/src/deephelp_tools/learning/workbench/evaluation.py)→[原完整清单准备](../../modules/deephelp-tools/src/deephelp_tools/evaluation/releases/release_prepare.py)与[发布字节守卫](../../modules/deephelp-app/src/deephelp_app/adapters/releases/release_assets.py)。review冻结完整闭包，RegistryStore只维护隔离候选版本索引，最终active仍由原ReleaseStore的PG CAS拥有。course sop-authoring同时展示字段diff、审核冻结和旧revision拒绝，远程调用0；真实内容沿catalog_probe借用当前累计writer。
+
 ## M42 新目录的阅读入口
 
 活动资格路径从[目录与版本](../../modules/deephelp-app/src/deephelp_app/domain/registry.py)进入：[600识别](../../modules/deephelp-app/src/deephelp_app/application/cascade.py)只接收当前scope的叶子，[SOP治理](../../modules/deephelp-app/src/deephelp_app/application/sop_governance.py)核对整份目录与工具许可，[Business PG](../../modules/deephelp-services/src/deephelp_services/business/repository.py)提供规则/资格/名额及原版本快照。学习用`course catalog`，机制和Java边界见[09章](09-agent-basics.md#版本目录与活动资格m42)。旧三叶子资源与参数hash保留，目录不通过放宽白名单扩权。

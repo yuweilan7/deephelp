@@ -167,6 +167,12 @@ py -3.14 -m uv run --locked python -m deephelp_tools.learning.course sop-authori
 
 预期invalid_graph.valid=false并指出order悬空边，修正后saved_revision=3、reloaded_equal=true、stale_revision=VERSION_CONFLICT、published_unchanged=true、model_calls=0。实验使用正式[SOPDraftStore](../../modules/deephelp-app/src/deephelp_app/adapters/releases/sop_drafts.py)与原GovernedSOP，Temp由context manager释放。草稿事实源是文件，官方checkpoint不保存作者内容；新版本只有审核、内容门禁和完整发布后才用于新运行。
 
+同一实验还输出differences、review_status=APPROVED、candidate_matches_review=true和frozen_edit=VERSION_CONFLICT。页面先保存再读取字段差异，核对版本、节点条件和结论，填写理由并明确批准或拒绝。审核writer核对原基准/revision，再保存完整候选与审核原件；审核后不能原地修改，需新建草稿。新SOP版本不能覆盖已有同版本不同内容，拒绝原件也保留理由。
+
+进入“评测与发布”，选择APPROVED的草稿ID、同一资产和已审核Skill，再执行内容验证及准备完整版本。六叶子候选复用真实PG/HTTP目录探针的订单、优惠券和折扣固定相邻样本，借用应用唯一累计writer；不自动重建向量或全量评测。完整ReleaseManifest绑定审核原件、完整候选hash、当前代码/提供方/资产与本次实际内容报告，缺原件、旧报告或篡改都拒绝。准备只登记READY；发布页面显示完整hash与PG revision，明确确认后CAS切换。Java类比是不可变审批配置、制品清单与版本容器；不能把草稿批准类比成对旧订单执行批准。
+
+旧Question、SOPPlan、审批和UNKNOWN继续绑定原snapshot/原receipt；发布不会重新解释旧问题，也不重放副作用。练习与答案：1. 审核后编辑？409，另建草稿。2. 未审核候选直接准备？409。3. 对新hash借用旧PASS？完整门禁拒绝。4. 两页同时发布？旧PG revision冲突，读回实际指针。5. 基准在审核前改变？409，应从新正式版本重建。6. 页面写“批准”能省略实际内容验证吗？不能，审核与内容证据都必须匹配。
+
 Java类比是不可变配置快照、乐观版本锁和服务端Bean Validation；这里验证每条有向无环路径上的事实可用性，不能将其当成任意规则脚本。writer短同步锁只覆盖回读/CAS/原子替换，不跨模型或工具await。练习与答案：1. 删除被连线引用的节点？保存为无效并定位，修正连线后再验。2. 将失败查询接到成功终点？原契约拒绝，缺证据不能成功。3. 加环或eval条件？拒绝。4. 修改外主体草稿？404。5. 旧revision覆盖？409且新稿保持。6. 保存通过等于业务批准？不是；只证明结构，正式运行/审批仍走原守卫。
 
 ### SOP受控预演

@@ -365,14 +365,14 @@ async def maintain_complaints(
     )
 
 
-async def probe(args: argparse.Namespace) -> int:
+async def probe(args: argparse.Namespace, *, borrowed_gate: BudgetSession | None = None) -> int:
     """一次有限内容运行；服务维护和模型共享原引擎，却使用各自明确证据。
 
     新建合成资料归属于可信auth主体；其他主体不能读/关联或改写原记录。
     每条响应先落报告再检查，外部失败保留诊断；不重复已经接收的message_id。
     """
     output = await asyncio.to_thread(Path(args.output).resolve)
-    gate = BudgetSession(Path(args.budget_state))
+    gate = borrowed_gate or BudgetSession(Path(args.budget_state))
     validate_control_paths(
         [gate.path, Path(args.providers), Path(args.auth), Path(args.service_credentials)],
         output=output,
@@ -430,7 +430,8 @@ async def probe(args: argparse.Namespace) -> int:
         if not passed:
             raise ConfigurationError("Catalog fixed check failed: " + key)
 
-    gate.open()
+    if borrowed_gate is None:
+        gate.open()
     runtime: LiveAssembly | None = None
     try:
         if args.assets:
@@ -575,6 +576,21 @@ async def probe(args: argparse.Namespace) -> int:
                 reviewed_rules=Path(data["rules"]) if args.assets else None,
                 skill_review=Path(args.skill_review) if args.skill_review else None,
             )
+            if getattr(args, "sop_review", None):
+                from deephelp_app.adapters.releases.sop_drafts import read_sop_review
+
+                reviewed_sop, sop_record = read_sop_review(Path(args.sop_review))
+                # 本次任务以已冻结审核为准；另一个草稿发布到候选索引不能改换本任务目标。
+                # 旧快照仍供原问题回读，新问题只得到这份完整候选。
+                runtime.sop_registry = reviewed_sop
+                runtime.sop_snapshots = (reviewed_sop, *runtime.sop_snapshots)
+                report["sop_review_digest"] = file_digest(Path(args.sop_review))
+                report["reviewed_sop"] = next(
+                    d for d in reviewed_sop.definitions if d.sop_id == sop_record["sop_id"]
+                ).model_dump(mode="json")
+                report["acceptance_scope"] = (
+                    "Selected changed SOP and adjacent fixed content; not full historical quality"
+                )
             report["sop_snapshot"] = runtime.sop_registry.snapshot_hash
             report["catalog_version"] = runtime.sop_registry.catalog_version
             if args.skill_review:
@@ -639,6 +655,28 @@ async def probe(args: argparse.Namespace) -> int:
                     for key, passed in content_checks(response, name, ids, catalog_version).items():
                         check(name + ":" + key, passed)
                     check(name + ":outcome", response.outcome == expected)
+                    if edited := report.get("reviewed_sop"):
+                        check(
+                            name + ":candidate_snapshot",
+                            response.versions.sop_snapshot == runtime.sop_registry.snapshot_hash,
+                        )
+                        if (
+                            response.intent_decision
+                            and response.intent_decision.final_code == edited["intent_code"]
+                        ):
+                            visited = set(response.sop_node_path)
+                            ends = [
+                                n
+                                for n in edited["nodes"]
+                                if n["kind"] == "end" and n["node_id"] in visited
+                            ]
+                            check(
+                                name + ":edited_version", response.versions.sop == edited["version"]
+                            )
+                            check(
+                                name + ":edited_conclusion",
+                                bool(ends) and any(n["conclusion"] in response.reply for n in ends),
+                            )
                     if state:
                         check(
                             name + ":facts",
@@ -708,7 +746,8 @@ async def probe(args: argparse.Namespace) -> int:
             else "Catalog probe failed; retain fixed evidence",
         }
     finally:
-        gate.close()
+        if borrowed_gate is None:
+            gate.close()
         report["budget"] = gate.state
         report["usage"] = summarize_usage(report["api_observations"])
         atomic_json(output, report)
@@ -727,6 +766,7 @@ def main() -> int:
         "--assets", help="Exact immutable catalog assets for complete release content"
     )
     parser.add_argument("--skill-review", help="Retained approved Skill snapshot for the candidate")
+    parser.add_argument("--sop-review", help="Immutable approved SOP snapshot for the candidate")
     parser.add_argument(
         "--cases", nargs="+", choices=sorted({c[0] for c in (*ELIGIBILITY_CASES, *RELEASE_CASES)})
     )
