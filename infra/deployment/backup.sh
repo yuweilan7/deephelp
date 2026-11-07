@@ -43,9 +43,7 @@ tar --exclude=deephelp-modern/.backup-lock -czf "$destination/runtime.tar.gz" -C
 readlink -f /opt/deephelp-app/modern > "$destination/installed-version.txt"
 tar --exclude='.venv' -czf "$destination/installation.tar.gz" -C /opt/deephelp-app/releases "$(basename "$(cat "$destination/installed-version.txt")")"
 tar -czf "$destination/metrics.tar.gz" -C /srv deephelp-metrics
-# These immutable compatible installs are the new-write-safe rollback material.
-tar --exclude='.venv' -czf "$destination/retained-installations.tar.gz" -C /opt/deephelp-app/releases \
-  m30-deployment-v1 "$(basename "$(cat "$destination/installed-version.txt")")"
+# installation.tar.gz 已保存本次运行的安装；历史安装由各自的恢复流程管理。
 cd "$destination"
 sha256sum *.dump *.tar.gz installed-version.txt > SHA256SUMS
 sha256sum --strict --check SHA256SUMS
