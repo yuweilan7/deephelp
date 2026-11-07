@@ -108,3 +108,15 @@ tar data filter拒绝越界路径/链接，保留CH根内相对metadata链接并
 在本机容量下，先停止源平台，再运行隔离副本；这项恢复不证明两套平台同时容量。
 实际verify历史trace/score、待消费队列引用和同一S3对象hash/metadata后，停止副本、恢复源平台。
 源平台和归档保留；只清理本次新建且已核对路径的隔离副本，不删Docker全局镜像/卷或旧环境。
+
+## ClickHouse 诊断日志与磁盘维护
+
+`clickhouse.xml` 适用于当前低负载单机。查询和错误日志按日分区，保留 7 天，服务端文件日志继续按大小轮转。
+高频的数据库内部采样、合并、指标和追踪日志停写。Langfuse 的 `default.events_full`、`default.events_core`、
+`default.scores` 以及 SeaweedFS 的原始事件仍用于工作台观测和恢复。合并池为 4 线程，单次后台合并选取上限为 64 MiB。
+
+排查空间先用 `system.parts` 按 `database, table` 汇总，再核对备份和现有消费者。停写配置只影响新日志，
+旧积压仍须在库内按已确认的 `system` 表逐个清理。验证新日志的 TTL 后才可清理被替换的旧日志表。
+更新挂载的 `clickhouse.xml` 前备份原字节，保留挂载文件的 inode 并仅重启 ClickHouse。
+恢复后核对容器内存限制、健康状态及原 trace 的观测内容。旧冷备仍包含归档当时的日志配置，
+使用旧归档恢复时先核对隔离目标的配置和诊断表占用，再决定是否按本节应用保留策略。

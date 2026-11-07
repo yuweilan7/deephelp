@@ -1,6 +1,6 @@
 # 项目当前状态
 
-更新：2026-10-06。只记录实现与实际验证；命令见 [ROADMAP](ROADMAP.md) / [LOCAL_SETUP](LOCAL_SETUP.md)。下表验收状态来自各特性的历史证据，不表示今日重跑。
+更新：2026-11-07。只记录实现与实际验证；命令见 [ROADMAP](ROADMAP.md) / [LOCAL_SETUP](LOCAL_SETUP.md)。下表验收状态来自各特性的历史证据，不表示今日重跑。
 
 | 范围 | 状态与证据 | 限制 |
 |---|---|---|
@@ -62,6 +62,8 @@
 ## 当前运行与验收边界
 
 以下云事实为2026-10-06本次M46正式PG/HTTP内容、新安装重启及M44↔M46两向恢复后的观察。精确安装来自干净源码d9fb43c325e8e59dbffda40b2db705e646a6b399，后续交付文档不改安装字节；原M44及更早有效安装/恢复资料保留。
+
+2026-11-07 云端磁盘维护清理了 Langfuse 专用 ClickHouse 的 12 张停写或被替换的内部诊断表，根盘使用率从 67% 降至 45%，可用约 32 GiB。ClickHouse 恢复原 1.5 GiB 容器限制，查询与错误日志按日分区保留 7 天。清理前后三张应用表行数一致，恢复后另观察到 5 条观测写入。原 PostgreSQL 业务事实与同一条 Langfuse trace 的 96 个节点、3 个 generation 及其用量均可读，模型调用 0。该旧 run 的工作台临时调试快照已超出原保留窗口，原生 Langfuse API 仍能读回。原配置、脱敏故障摘要及清理前后核对保存在服务器 Langfuse 的 `backups/clickhouse-maintenance-20261107`。配置与运维入口见 [ClickHouse 诊断日志与磁盘维护](../infra/langfuse/README.md#clickhouse-诊断日志与磁盘维护)。
 
 | 当前运行项 | 已记录值/边界 |
 |---|---|
