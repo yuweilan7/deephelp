@@ -1,9 +1,35 @@
 <clickhouse>
   <logger><level>warning</level><size>10M</size><count>3</count></logger>
   <max_server_memory_usage>1073741824</max_server_memory_usage>
-  <background_pool_size>16</background_pool_size>
+  <!-- 单机内存受限，约束合并并发和单次选取的数据量。 -->
+  <background_pool_size>4</background_pool_size>
+  <merge_tree>
+    <max_bytes_to_merge_at_max_space_in_pool>67108864</max_bytes_to_merge_at_max_space_in_pool>
+    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>4</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+    <number_of_free_entries_in_pool_to_execute_mutation>4</number_of_free_entries_in_pool_to_execute_mutation>
+    <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>4</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+  </merge_tree>
   <background_schedule_pool_size>4</background_schedule_pool_size>
   <background_message_broker_schedule_pool_size>4</background_message_broker_schedule_pool_size>
   <background_distributed_schedule_pool_size>4</background_distributed_schedule_pool_size>
   <background_buffer_flush_schedule_pool_size>4</background_buffer_flush_schedule_pool_size>
+  <!-- 这些是 ClickHouse 自诊断表。Langfuse 的 trace、span 和 score 保存在应用表。 -->
+  <trace_log remove="1"/>
+  <text_log remove="1"/>
+  <part_log remove="1"/>
+  <metric_log remove="1"/>
+  <background_schedule_pool_log remove="1"/>
+  <asynchronous_metric_log remove="1"/>
+  <processors_profile_log remove="1"/>
+  <opentelemetry_span_log remove="1"/>
+  <query_metric_log remove="1"/>
+  <query_views_log remove="1"/>
+  <query_log>
+    <partition_by>event_date</partition_by>
+    <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+  </query_log>
+  <error_log>
+    <partition_by>event_date</partition_by>
+    <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+  </error_log>
 </clickhouse>
