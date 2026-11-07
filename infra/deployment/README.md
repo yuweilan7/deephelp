@@ -1,6 +1,6 @@
 # M30 PostgreSQL/Langfuse 个人云运行
 
-正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程；关系事实与官方checkpoint在应用PG，原生trace进入Langfuse。Prometheus/Grafana保留，三个应用进程各自暴露loopback指标。M30已完成正式单写与旧服务退役；旧M23源码/脚本由`bak/mysql-otel`保留，旧安装/源数据/冷备继续作为恢复资料。当前交付状态以PROJECT_STATE和M30 handoff为准。
+正式入口为一个工作台应用、独立Business/Retrieval MCP和可选合成权益进程。关系事实与官方checkpoint在应用PG，原生trace进入Langfuse，三个应用进程向Prometheus/Grafana暴露loopback指标。当前云端只保留M46安装。本文各旧版本的切换步骤记录当时的验证，复用前须从相应归档重建其安装及依赖。当前状态见 [PROJECT_STATE](../../docs/PROJECT_STATE.md#当前运行与验收边界)。
 
 ## M31 策略发布与恢复
 
@@ -47,7 +47,7 @@ sudo bash /opt/deephelp-app/bin/restore.sh /srv/deephelp-backup/modern-NEW_LABEL
   deephelp_m25_m30_restore_NEWNAME /srv/deephelp-modern-restore-NEWNAME
 ```
 
-备份先停所有modern单元并拒绝未登记PG连接；再custom-format dump应用全schema（含官方checkpoint/发布/关系/观测登记）。M29独立学习数据库另存learning.dump，不合并不同演示的审批/效果状态。随后冷停Langfuse六组件、保存元PG/CH/Redis AOF/SeaweedFS对象/master/filer及身份密钥，并冷备新Prometheus/Grafana目录。保存运行根、受引用工件、任务/M29状态与当前/保留A/B安装材料（依赖hash清单、三wheel、启动文件）；EXIT恢复已停服务，失败保留必要现场/锁。进行备份前须结束SDK/平台人工写者；业务与平台之间没有跨库事务。
+备份先停所有modern单元并拒绝未登记PG连接，再以custom-format dump保存应用全schema（含官方checkpoint/发布/关系/观测登记）。独立学习库只有在显式配置时才单独生成`learning.dump`，当前M46配置只备份现行业务库。随后冷停Langfuse六组件，保存元PG/CH/Redis AOF/SeaweedFS和身份密钥，并冷备Prometheus/Grafana目录。运行根、引用工件和当前安装材料随同保存，安装包含依赖hash清单、三wheel和启动文件。EXIT恢复已停服务，失败保留必要现场/锁。备份前须结束SDK和平台人工写者，业务与平台各自维持事务边界。
 
 恢复只允许新命名库与新绝对运行根，校验SHA256SUMS、pg_restore单事务和Python tar data filter；只调整部署配置/映射target，原签名资产不改。按备用端口启动恢复副本，核对所有表行hash、历史/关系/官方图与同run平台内容。Langfuse归档通过infra/langfuse/restore.sh另恢复到新根，在容量允许前先停止源平台，验后恢复源；不双挂数据目录。learning.dump同样恢复到独立新库以验证M29记录，禁止把它作为第二活动业务写入口。
 
